@@ -31,7 +31,7 @@ export async function AppShell({ active, children }: AppShellProps) {
   const showAdmin = canAccessAdmin(user);
 
   return (
-    <main className="min-h-screen overflow-x-hidden bg-bg pb-[calc(6rem+env(safe-area-inset-bottom))] md:pb-0">
+    <main className="min-h-screen overflow-x-hidden bg-bg">
       <header className="sticky top-0 z-40 border-b border-line bg-white/95 backdrop-blur">
         <div className="mx-auto flex h-16 max-w-7xl items-center gap-3 px-page">
           <Link className="flex min-w-0 items-center gap-3 text-lg font-black text-ink" href="/">
@@ -67,7 +67,7 @@ export async function AppShell({ active, children }: AppShellProps) {
       </header>
       <div className="mx-auto min-w-0 max-w-7xl px-page py-5 md:py-7">{children}</div>
       <footer className="border-t border-white/10 bg-navy-900">
-        <div className="mx-auto grid max-w-7xl gap-4 px-page py-6 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
+        <div className="mx-auto grid max-w-7xl gap-4 px-page pt-6 pb-[calc(6.5rem+env(safe-area-inset-bottom))] md:grid-cols-[minmax(0,1fr)_auto] md:items-center md:py-6">
           <div className="min-w-0">
             <div className="flex min-w-0 items-center gap-2">
               <span className="grid h-8 w-8 shrink-0 place-items-center rounded-md bg-white/10 text-xs font-black text-action">SR</span>

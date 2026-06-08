@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { AppShell } from "@/components/layout/AppShell";
+import { ManualPaymentPanel } from "@/components/payments/ManualPaymentPanel";
 import { PlayerTrustCard } from "@/components/trust/PlayerTrustCard";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -179,6 +180,7 @@ function FundingCard({
         <div className="mt-3 rounded-md border border-line bg-white p-3 text-sm">
           <p className="font-bold text-ink">{submission.sender_account_name || "Account name hidden"}</p>
           <p className="mt-1 text-muted">{submission.sender_bank_name || "Bank not supplied"}</p>
+          {submission.transfer_reference ? <p className="mt-1 font-mono text-xs font-bold text-dim">Ref: {submission.transfer_reference}</p> : null}
           {submission.proof_url ? (
             <a className="mt-2 inline-flex font-black text-cyan hover:text-action" href={submission.proof_url} rel="noreferrer" target="_blank">
               View screenshot
@@ -663,8 +665,12 @@ export default async function MatchDetailPage({
               title="Submit payment proof before play"
               description="Once both players are in, each player submits exact transfer proof for admin review."
             />
-            <div className="border-b border-line bg-cyanSoft p-4 text-sm font-bold leading-6 text-ink">
-              Closed beta payment rail: transfer to the admin-provided account for this room, then upload the screenshot below. The permanent collection account will appear here after the Kora or bank rail is finalized.
+            <div className="border-b border-line p-4">
+              <ManualPaymentPanel
+                amountLabel="Exact transfer amount"
+                amountValue={formatEntryAmount(room)}
+                referenceHint={`Use room code ${room.room_code} in the transfer narration or note if your banking app supports it.`}
+              />
             </div>
             <div className="grid gap-3 p-4 md:grid-cols-2">
               {(["player_a", "player_b"] as const).map((slot) => {
@@ -686,6 +692,10 @@ export default async function MatchDetailPage({
               <label className="grid gap-2 text-sm font-bold text-ink">
                 Bank
                 <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" disabled={!canSubmitFunding} name="sender_bank_name" placeholder="OPay, GTBank, Moniepoint..." required />
+              </label>
+              <label className="grid gap-2 text-sm font-bold text-ink">
+                Transfer reference <span className="font-bold text-muted">(optional)</span>
+                <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" disabled={!canSubmitFunding} name="transfer_reference" placeholder={`Narration or receipt reference for ${room.room_code}`} />
               </label>
               <label className="grid gap-2 text-sm font-bold text-ink">
                 Account name

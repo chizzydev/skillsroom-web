@@ -125,6 +125,7 @@ export async function submitManualFundingAction(formData: FormData) {
 
     await submitManualFunding(matchRoomId, {
       amount_minor: Math.round(amountNaira * 100),
+      transfer_reference: String(formData.get("transfer_reference") || "").trim() || undefined,
       sender_account_name: String(formData.get("sender_account_name") || "").trim(),
       sender_bank_name: String(formData.get("sender_bank_name") || "").trim(),
       proof_url: storedProof.url,

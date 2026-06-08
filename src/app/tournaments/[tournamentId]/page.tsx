@@ -5,6 +5,7 @@ import { Badge, type BadgeTone } from "@/components/ui/Badge";
 import { DataTable } from "@/components/ui/DataTable";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Panel, PanelHeader } from "@/components/ui/Panel";
+import { ManualPaymentPanel } from "@/components/payments/ManualPaymentPanel";
 import { StatusPanel } from "@/components/ui/StatusPanel";
 import { Timeline } from "@/components/ui/Timeline";
 import { canAccessAdmin, getCurrentUser } from "@/lib/auth-bridge";
@@ -805,6 +806,13 @@ export default async function TournamentDetailPage({
 
           <Panel>
             <PanelHeader eyebrow="Contribution" title="Submit prize or entry funding" />
+            <div className="border-b border-line p-4">
+              <ManualPaymentPanel
+                amountLabel={detail.entry_fee_amount_minor > 0 ? "Standard entry fee" : "Current entry fee"}
+                amountValue={formatMinorMoney(detail.currency, detail.entry_fee_amount_minor)}
+                referenceHint={`Use ${detail.title} in the transfer narration or note so the contribution can be matched quickly.`}
+              />
+            </div>
             <form action={submitTournamentContributionAction} className="grid gap-3 p-4">
               <input name="tournament_id" type="hidden" value={detail.id} />
               <label className="grid gap-2 text-sm font-bold text-ink">
