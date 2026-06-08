@@ -10,6 +10,25 @@ type SignInPageProps = {
   searchParams?: Promise<{ redirect?: string; error?: string; ref?: string }>;
 };
 
+function signInErrorMessage(error?: string) {
+  switch (error) {
+    case "GOOGLE_AUTH_NOT_CONFIGURED":
+      return "Google sign-in is not configured on the API yet. Check the Railway GOOGLE_CLIENT_ID value and redeploy.";
+    case "GOOGLE_ACCOUNT_NOT_VERIFIED":
+      return "That Google account could not be verified. Make sure the account email is verified in Google.";
+    case "GOOGLE_ALREADY_LINKED":
+      return "That Google account is already linked to another Skillsroom account.";
+    case "CROSS_ORIGIN_MUTATION_BLOCKED":
+      return "Google sign-in request was blocked by the API origin policy. Check WEB_APP_ORIGIN on Railway.";
+    case "google_api_unreachable":
+      return "Google sign-in could not reach the API. Check NEXT_PUBLIC_API_BASE_URL on Vercel and confirm Railway is online.";
+    case "google_failed":
+      return "Google sign-in failed. If your client ID is correct, check that this exact origin is allowed in Google Authorized JavaScript origins.";
+    default:
+      return "Sign in failed. Check your email, username, or password.";
+  }
+}
+
 export default async function SignInPage({ searchParams }: SignInPageProps) {
   const params = await searchParams;
   const existingUser = await getCurrentUser();
@@ -42,9 +61,7 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
         </p>
         {params?.error ? (
           <p className="mt-4 rounded-md border border-red-200 bg-red-50 p-3 text-sm font-bold text-red-700">
-            {params.error === "google_failed"
-              ? "Google sign-in failed. If your client ID is correct, check that this exact origin is allowed in Google Authorized JavaScript origins."
-              : "Sign in failed. Check your email, username, or password."}
+            {signInErrorMessage(params.error)}
           </p>
         ) : null}
 
