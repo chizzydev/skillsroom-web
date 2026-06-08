@@ -1,0 +1,45 @@
+{
+  "name": "skill-rooms-web",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Skill Rooms web app - player lobby, match room UI, and admin operations console.",
+  "scripts": {
+    "dev": "next dev -p 3100",
+    "build": "next build",
+    "start": "next start -p 3100",
+    "typecheck": "tsc --noEmit",
+    "lint": "next lint",
+    "test": "tsx src/lib/phase0-smoke.test.ts",
+    "evidence:cleanup:check": "tsx src/workers/evidence-cleanup-check.ts",
+    "evidence:deletion:check": "tsx src/workers/evidence-deletion-check.ts",
+    "evidence:migration:check": "tsx src/workers/evidence-provider-migration-check.ts",
+    "evidence:retention:check": "tsx src/workers/evidence-retention-check.ts",
+    "evidence:storage:check": "tsx src/workers/evidence-storage-provider-check.ts",
+    "launch:check": "tsx src/workers/launch-check.ts",
+    "tournament:operator-qa": "tsx src/workers/tournament-operator-qa-check.ts",
+    "tournament:launch-checklist": "tsx src/workers/tournament-launch-checklist.ts",
+    "tournament:dry-run-check": "tsx src/workers/tournament-live-dry-run-check.ts"
+  },
+  "dependencies": {
+    "next": "^15.1.6",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "zod": "^3.25.76"
+  },
+  "overrides": {
+    "postcss": "^8.5.10"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3.3.5",
+    "@types/node": "^22.10.10",
+    "@types/react": "^19.0.8",
+    "@types/react-dom": "^19.0.3",
+    "autoprefixer": "^10.4.20",
+    "eslint": "^9.19.0",
+    "eslint-config-next": "^15.1.6",
+    "postcss": "^8.5.10",
+    "tailwindcss": "^3.4.15",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
+  }
+}

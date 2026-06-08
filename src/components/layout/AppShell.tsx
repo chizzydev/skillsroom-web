@@ -1,0 +1,107 @@
+import Link from "next/link";
+import { AccountMenu } from "./AccountMenu";
+import { canAccessAdmin, getCurrentUser } from "@/lib/auth-bridge";
+
+type AppShellProps = {
+  active: "lobby" | "matches" | "tournaments" | "community" | "notifications" | "profile";
+  children: React.ReactNode;
+};
+
+const nav = [
+  { key: "lobby", label: "Lobby", short: "Lobby", href: "/" },
+  { key: "matches", label: "Rooms", short: "Rooms", href: "/matches" },
+  { key: "tournaments", label: "Tournaments", short: "Tourneys", href: "/tournaments" },
+  { key: "notifications", label: "Notifications", short: "Inbox", href: "/notifications" },
+  { key: "profile", label: "Profile", short: "Profile", href: "/profile" }
+] as const;
+
+const footerLinks = [
+  { label: "Policies", href: "/policies" },
+  { label: "Rules", href: "/rules" },
+  { label: "Prizes", href: "/prizes" },
+  { label: "Disputes", href: "/disputes" },
+  { label: "Trust", href: "/trust" },
+  { label: "Terms", href: "/terms" },
+  { label: "Privacy", href: "/privacy" },
+  { label: "Support", href: "/support" }
+] as const;
+
+export async function AppShell({ active, children }: AppShellProps) {
+  const user = await getCurrentUser();
+  const showAdmin = canAccessAdmin(user);
+
+  return (
+    <main className="min-h-screen overflow-x-hidden bg-bg pb-[calc(6rem+env(safe-area-inset-bottom))] md:pb-0">
+      <header className="sticky top-0 z-40 border-b border-line bg-white/95 backdrop-blur">
+        <div className="mx-auto flex h-16 max-w-7xl items-center gap-3 px-page">
+          <Link className="flex min-w-0 items-center gap-3 text-lg font-black text-ink" href="/">
+            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-md bg-navy-900 text-sm text-action shadow-tight">SR</span>
+            <span className="hidden truncate min-[430px]:inline">Skillsroom</span>
+          </Link>
+          <nav className="ml-3 hidden flex-1 items-center justify-center gap-1 md:flex">
+            {nav.map((item) => (
+              <Link
+                className={[
+                  "whitespace-nowrap rounded-md px-3 py-2 text-sm font-black transition",
+                  item.key === active ? "bg-surfaceHigh text-ink shadow-tight" : "text-muted hover:bg-surfaceHigh hover:text-ink"
+                ].join(" ")}
+                href={item.href}
+                key={item.key}
+              >
+                {item.label}
+              </Link>
+            ))}
+          </nav>
+          <div className="ml-auto flex items-center gap-2">
+              <Link className="hidden min-h-control items-center rounded-md bg-action px-4 text-sm font-black text-navy-950 shadow-action hover:bg-actionHover sm:inline-flex" href="/matches/new">
+                Create room
+              </Link>
+            {showAdmin ? (
+              <Link className="hidden min-h-control items-center rounded-md border border-line bg-white px-3 text-sm font-black text-ink shadow-tight hover:bg-surfaceHigh lg:inline-flex" href="/admin">
+                Ops
+              </Link>
+            ) : null}
+            <AccountMenu compact user={user} />
+          </div>
+        </div>
+      </header>
+      <div className="mx-auto min-w-0 max-w-7xl px-page py-5 md:py-7">{children}</div>
+      <footer className="border-t border-white/10 bg-navy-900">
+        <div className="mx-auto grid max-w-7xl gap-4 px-page py-6 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
+          <div className="min-w-0">
+            <div className="flex min-w-0 items-center gap-2">
+              <span className="grid h-8 w-8 shrink-0 place-items-center rounded-md bg-white/10 text-xs font-black text-action">SR</span>
+              <strong className="text-sm font-black text-white">Skillsroom</strong>
+            </div>
+            <p className="mt-2 max-w-2xl text-xs leading-5 text-slate-300">
+              Private competitive rooms with clear rules, manual review, evidence trails, and controlled settlement workflows.
+            </p>
+          </div>
+          <nav className="grid min-w-0 grid-cols-2 gap-x-4 gap-y-2 text-xs font-black text-slate-300 sm:flex sm:flex-wrap">
+            {footerLinks.map((item) => (
+              <Link className="hover:text-white" href={item.href} key={item.href}>
+                {item.label}
+              </Link>
+            ))}
+          </nav>
+        </div>
+      </footer>
+      <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-white/95 px-2 pb-[max(env(safe-area-inset-bottom),0.65rem)] pt-2 shadow-[0_-18px_40px_rgba(15,23,42,0.08)] backdrop-blur md:hidden">
+        <div className="mx-auto grid max-w-md grid-cols-5 gap-1">
+          {nav.map((item) => (
+            <Link
+              className={[
+                "grid min-h-12 min-w-0 place-items-center rounded-md px-0.5 text-center text-[0.62rem] font-black leading-tight sm:text-[0.68rem]",
+                item.key === active ? "bg-cyanSoft text-ink" : "text-muted"
+              ].join(" ")}
+              href={item.href}
+              key={item.key}
+            >
+              <span className="truncate">{item.short}</span>
+            </Link>
+          ))}
+        </div>
+      </nav>
+    </main>
+  );
+}

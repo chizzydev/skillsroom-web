@@ -1,0 +1,54 @@
+type Column<T> = {
+  key: string;
+  label: string;
+  render: (row: T) => React.ReactNode;
+  className?: string;
+};
+
+export function DataTable<T>({ rows, columns }: { rows: T[]; columns: Column<T>[] }) {
+  return (
+    <div className="min-w-0 max-w-full">
+      <div className="grid divide-y divide-line md:hidden">
+        {rows.map((row, rowIndex) => (
+          <article className="grid min-w-0 gap-3 bg-white p-3 min-[380px]:p-4" key={rowIndex}>
+            {columns.map((column) => (
+              <div className="grid min-w-0 grid-cols-[minmax(4.5rem,34%)_minmax(0,1fr)] gap-2 min-[380px]:gap-3" key={column.key}>
+                <dt className="min-w-0 font-mono text-[0.62rem] font-black uppercase tracking-[0.12em] text-dim min-[380px]:text-[0.65rem]">
+                  {column.label}
+                </dt>
+                <dd className="min-w-0 text-sm leading-6 text-ink [overflow-wrap:anywhere]">{column.render(row)}</dd>
+              </div>
+            ))}
+          </article>
+        ))}
+      </div>
+      <div className="hidden max-w-full overflow-x-auto md:block">
+      <table className="min-w-full border-collapse text-left text-sm">
+        <thead>
+          <tr className="border-b border-line bg-surfaceWarm">
+            {columns.map((column) => (
+              <th
+                className={["whitespace-nowrap px-4 py-3 font-mono text-[0.68rem] font-black uppercase tracking-[0.12em] text-dim", column.className ?? ""].join(" ")}
+                key={column.key}
+              >
+                {column.label}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-line">
+          {rows.map((row, rowIndex) => (
+            <tr className="bg-white align-top transition hover:bg-surfaceWarm" key={rowIndex}>
+              {columns.map((column) => (
+                <td className={["px-4 py-4 leading-6", column.className ?? ""].join(" ")} key={column.key}>
+                  {column.render(row)}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      </div>
+    </div>
+  );
+}
