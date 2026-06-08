@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { apiBaseUrl } from "@/lib/api";
+import { buildApiProxyHeaders } from "@/lib/api-proxy";
 import { readAccessToken } from "@/lib/auth-session";
 
 export async function POST(request: NextRequest) {
@@ -16,11 +17,11 @@ export async function POST(request: NextRequest) {
 
   const response = await fetch(`${apiBaseUrl()}/auth/google-link`, {
     method: "POST",
-    headers: {
+    headers: buildApiProxyHeaders(request, {
       "content-type": "application/json",
       accept: "application/json",
       authorization: `Bearer ${accessToken}`
-    },
+    }),
     body: JSON.stringify({ id_token: idToken })
   });
 

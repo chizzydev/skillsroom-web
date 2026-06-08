@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { apiBaseUrl } from "@/lib/api";
+import { buildApiProxyHeaders } from "@/lib/api-proxy";
 import { setAuthCookies } from "@/lib/auth-session";
 
 export async function POST(request: NextRequest) {
@@ -18,7 +19,7 @@ export async function POST(request: NextRequest) {
 
   const response = await fetch(`${apiBaseUrl()}/auth/register`, {
     method: "POST",
-    headers: { "content-type": "application/json", accept: "application/json" },
+    headers: buildApiProxyHeaders(request, { "content-type": "application/json", accept: "application/json" }),
     body: JSON.stringify({
       email: String(formData.get("email") || "").trim(),
       username: String(formData.get("username") || "").trim(),

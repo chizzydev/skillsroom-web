@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { apiBaseUrl } from "@/lib/api";
+import { buildApiProxyHeaders } from "@/lib/api-proxy";
 import { setAuthCookies } from "@/lib/auth-session";
 
 export async function POST(request: NextRequest) {
@@ -7,7 +8,7 @@ export async function POST(request: NextRequest) {
   const redirectTo = String(formData.get("redirect") || "/");
   const response = await fetch(`${apiBaseUrl()}/auth/login`, {
     method: "POST",
-    headers: { "content-type": "application/json", accept: "application/json" },
+    headers: buildApiProxyHeaders(request, { "content-type": "application/json", accept: "application/json" }),
     body: JSON.stringify({
       identifier: String(formData.get("identifier") || "").trim(),
       password: String(formData.get("password") || "")
