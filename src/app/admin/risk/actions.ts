@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { apiBaseUrl } from "@/lib/api";
+import { requireAdminStepUpToken } from "@/lib/admin-step-up-session";
 import { canAccessAdmin, getAccessToken, getCurrentUser } from "@/lib/auth-bridge";
 import {
   approveEvidenceDeletion,
@@ -128,13 +129,14 @@ export async function updateRiskFlagStatusAction(formData: FormData) {
 
 export async function createModerationActionAction(formData: FormData) {
   try {
+    const stepUpToken = await requireAdminStepUpToken();
     await createModerationAction({
       target_user_id: String(formData.get("target_user_id") || "").trim() || undefined,
       match_room_id: String(formData.get("match_room_id") || "").trim() || undefined,
       action_type: String(formData.get("action_type") || "warn") as ModerationAction["action_type"],
       severity: String(formData.get("severity") || "medium") as ModerationAction["severity"],
       summary: String(formData.get("summary") || "").trim(),
-      stepUpToken: String(formData.get("step_up_token") || "").trim()
+      stepUpToken
     });
   } catch (error) {
     redirect(withError(error));

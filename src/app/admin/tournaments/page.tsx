@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { AdminEmptyState } from "@/components/admin/AdminEmptyState";
+import { AdminStepUpPanel } from "@/components/admin/AdminStepUpPanel";
 import { CatalogRulesetFields } from "@/components/catalog/CatalogRulesetFields";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { AdminShell } from "@/components/layout/AdminShell";
@@ -315,6 +316,8 @@ export default async function AdminTournamentsPage({
           <StatusPanel detail="Approved/projected" label="Prize Exposure" tone="success" value={formatMinorMoney("NGN", prizeExposure)} />
         </div>
 
+        <AdminStepUpPanel returnTo="/admin/tournaments" description="Confirm your current Skillsroom password once before approving contributions, linking rooms, applying result decisions, or reserving tournament money actions." />
+
         <Panel>
           <PanelHeader
             description="Live oversight across active tournaments: entrants, check-ins, seeding, rounds, linked match rooms, disputes, and result-review pressure."
@@ -498,7 +501,6 @@ export default async function AdminTournamentsPage({
                   <label className="flex items-center gap-2"><input name="view_finances" type="checkbox" defaultChecked /> View finances</label>
                 </div>
                 <textarea className="min-h-20 rounded-md border border-line bg-white px-3 py-2 text-sm outline-none focus:border-action" name="notes" placeholder="Internal approval note" />
-                <input className="min-h-11 rounded-md border border-line bg-white px-3 font-mono text-xs outline-none focus:border-action" name="step_up_token" placeholder="Step-up token" required />
                 <Button type="submit">Grant access</Button>
               </form>
 
@@ -529,7 +531,6 @@ export default async function AdminTournamentsPage({
                 </div>
                 <textarea className="min-h-20 rounded-md border border-line bg-white px-3 py-2 text-sm outline-none focus:border-action" name="creator_notes" placeholder="Creator or sponsor note" />
                 <label className="flex items-center gap-2 text-sm font-bold text-ink"><input name="featured" type="checkbox" /> Feature this event</label>
-                <input className="min-h-11 rounded-md border border-line bg-white px-3 font-mono text-xs outline-none focus:border-action" name="step_up_token" placeholder="Step-up token" required />
                 <Button type="submit">Update event</Button>
               </form>
             </div>
@@ -597,7 +598,6 @@ export default async function AdminTournamentsPage({
                     <form action={reviewTournamentContributionAction} className="grid min-w-56 gap-2">
                       <input name="contribution_id" type="hidden" value={row.id} />
                       <input className="min-h-9 rounded-md border border-line bg-white px-2 text-xs outline-none focus:border-action" name="note" placeholder="Review note" />
-                      <input className="min-h-9 rounded-md border border-line bg-white px-2 text-xs outline-none focus:border-action" name="step_up_token" placeholder="Step-up token" required />
                       <div className="grid grid-cols-2 gap-2">
                         <button className="min-h-9 rounded-md bg-success px-3 text-xs font-black text-white" name="decision" type="submit" value="approve">Approve</button>
                         <button className="min-h-9 rounded-md bg-danger px-3 text-xs font-black text-white" name="decision" type="submit" value="reject">Reject</button>
@@ -732,10 +732,6 @@ export default async function AdminTournamentsPage({
                 Match ID
                 <input className="min-h-11 rounded-md border border-line bg-white px-3 font-mono text-xs outline-none focus:border-action" name="match_id" placeholder="Optional: link one match" />
               </label>
-              <label className="grid gap-2 text-sm font-bold text-ink">
-                Step-up token
-                <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="step_up_token" required />
-              </label>
             </div>
             <div className="flex flex-wrap items-center gap-3">
               <Button type="submit">Link match rooms</Button>
@@ -799,10 +795,6 @@ export default async function AdminTournamentsPage({
                 Score summary
                 <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="score_summary" placeholder="2-1, forfeit, no-show, DQ" />
               </label>
-              <label className="grid gap-2 text-sm font-bold text-ink">
-                Step-up token
-                <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="step_up_token" required />
-              </label>
             </div>
             <label className="grid gap-2 text-sm font-bold text-ink">
               Review note
@@ -839,10 +831,6 @@ export default async function AdminTournamentsPage({
                 Notes
                 <textarea className="min-h-24 rounded-md border border-line bg-white px-3 py-2 text-sm outline-none focus:border-action" name="notes" placeholder="Prize allocation, commission, or payout note" />
               </label>
-              <label className="grid gap-2 text-sm font-bold text-ink">
-                Step-up token
-                <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="step_up_token" required />
-              </label>
               <Button type="submit">Reserve prize payouts</Button>
             </form>
             <form action={reserveTournamentRefundsAction} className="grid gap-3 rounded-md border border-line bg-white p-4">
@@ -859,10 +847,6 @@ export default async function AdminTournamentsPage({
               <label className="grid gap-2 text-sm font-bold text-ink">
                 Refund reason
                 <textarea className="min-h-24 rounded-md border border-line bg-white px-3 py-2 text-sm outline-none focus:border-action" defaultValue="tournament_refund_reserved" name="reason" required />
-              </label>
-              <label className="grid gap-2 text-sm font-bold text-ink">
-                Step-up token
-                <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="step_up_token" required />
               </label>
               <Button type="submit" variant="danger">Reserve entry refunds</Button>
             </form>
@@ -896,10 +880,6 @@ export default async function AdminTournamentsPage({
               <label className="grid gap-2 text-sm font-bold text-ink">
                 Reason
                 <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" defaultValue="cumulative_scores_applied" name="reason" />
-              </label>
-              <label className="grid gap-2 text-sm font-bold text-ink">
-                Step-up token
-                <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="step_up_token" required />
               </label>
             </div>
             <label className="grid gap-2 text-sm font-bold text-ink">

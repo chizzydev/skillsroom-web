@@ -1330,6 +1330,13 @@ export function formatMinorMoney(currency: string, amountMinor: number) {
   return `${currency} ${new Intl.NumberFormat("en-NG", { maximumFractionDigits: 0 }).format(amount)}`;
 }
 
+export function confirmAdminStepUp(input: { password: string }) {
+  return apiRequest<{ step_up_token: string; expires_at: string }>("/auth/step-up", {
+    method: "POST",
+    body: JSON.stringify(input)
+  });
+}
+
 export function listMatchRooms(status?: MatchRoomStatus) {
   const query = status ? `?status=${encodeURIComponent(status)}` : "";
   return apiRequest<{ rooms: MatchRoom[] }>(`/match-rooms${query}`);

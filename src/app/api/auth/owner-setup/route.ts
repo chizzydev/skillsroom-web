@@ -1,7 +1,7 @@
 import type { NextRequest } from "next/server";
 import { apiBaseUrl } from "@/lib/api";
 import { buildApiProxyHeaders } from "@/lib/api-proxy";
-import { setAuthCookies } from "@/lib/auth-session";
+import { clearAdminStepUpCookies, setAuthCookies } from "@/lib/auth-session";
 import { redirectAfterPost } from "@/lib/redirect-response";
 
 export async function POST(request: NextRequest) {
@@ -40,6 +40,7 @@ export async function POST(request: NextRequest) {
     };
   };
   const nextResponse = redirectAfterPost(new URL("/admin", request.url));
+  clearAdminStepUpCookies(nextResponse);
   setAuthCookies(nextResponse, payload.data);
   return nextResponse;
 }

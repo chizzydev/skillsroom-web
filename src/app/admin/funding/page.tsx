@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { AdminEmptyState } from "@/components/admin/AdminEmptyState";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
+import { AdminStepUpPanel } from "@/components/admin/AdminStepUpPanel";
 import { AdminShell } from "@/components/layout/AdminShell";
 import { LiveUpdateStream } from "@/components/realtime/LiveUpdateStream";
 import { Badge } from "@/components/ui/Badge";
@@ -105,27 +106,26 @@ export default async function AdminFundingPage({ searchParams }: { searchParams:
             </div>
           </Panel>
 
-          <Panel className="h-fit xl:sticky xl:top-24">
-            <PanelHeader eyebrow="Decision" title="Approve or reject funding" description="Approvals create balanced ledger entries into platform cash and match escrow." />
-            <form action={reviewFundingSubmissionAction} className="grid gap-3 p-4">
-              <label className="grid gap-2 text-sm font-bold text-ink">
-                Submission ID
-                <input className="min-h-11 rounded-md border border-line bg-white px-3 font-mono text-sm outline-none focus:border-action" name="submission_id" required />
-              </label>
-              <label className="grid gap-2 text-sm font-bold text-ink">
-                Step-up token
-                <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="step_up_token" required />
-              </label>
-              <label className="grid gap-2 text-sm font-bold text-ink">
-                Review note
-                <textarea className="min-h-28 rounded-md border border-line bg-white px-3 py-2 text-sm outline-none focus:border-action" name="note" />
-              </label>
-              <div className="grid gap-2">
-                <Button name="decision" type="submit" value="approve">Approve funding</Button>
-                <Button name="decision" type="submit" value="reject" variant="danger">Reject funding</Button>
-              </div>
-            </form>
-          </Panel>
+          <div className="grid h-fit gap-4 xl:sticky xl:top-24">
+            <AdminStepUpPanel returnTo="/admin/funding" />
+            <Panel>
+              <PanelHeader eyebrow="Decision" title="Approve or reject funding" description="Approvals create balanced ledger entries into platform cash and match escrow." />
+              <form action={reviewFundingSubmissionAction} className="grid gap-3 p-4">
+                <label className="grid gap-2 text-sm font-bold text-ink">
+                  Submission ID
+                  <input className="min-h-11 rounded-md border border-line bg-white px-3 font-mono text-sm outline-none focus:border-action" name="submission_id" required />
+                </label>
+                <label className="grid gap-2 text-sm font-bold text-ink">
+                  Review note
+                  <textarea className="min-h-28 rounded-md border border-line bg-white px-3 py-2 text-sm outline-none focus:border-action" name="note" />
+                </label>
+                <div className="grid gap-2">
+                  <Button name="decision" type="submit" value="approve">Approve funding</Button>
+                  <Button name="decision" type="submit" value="reject" variant="danger">Reject funding</Button>
+                </div>
+              </form>
+            </Panel>
+          </div>
         </div>
       </section>
     </AdminShell>

@@ -93,7 +93,7 @@ Build confirmed funding route:
 
 - `/admin/funding`
 
-Player room detail now includes funding submission and funding status panels. Admin funding review uses the API step-up token flow.
+Player room detail now includes funding submission and funding status panels. Admin funding review now uses the authenticated step-up unlock flow instead of manual token entry.
 
 ## Phase 7 Verification
 

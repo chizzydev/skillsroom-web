@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { AdminEmptyState } from "@/components/admin/AdminEmptyState";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
+import { AdminStepUpPanel } from "@/components/admin/AdminStepUpPanel";
 import { AdminShell } from "@/components/layout/AdminShell";
 import { LiveUpdateStream } from "@/components/realtime/LiveUpdateStream";
 import { Badge } from "@/components/ui/Badge";
@@ -102,29 +103,28 @@ export default async function AdminResultsPage({ searchParams }: { searchParams:
             </div>
           </Panel>
 
-          <Panel className="h-fit xl:sticky xl:top-24">
-            <PanelHeader eyebrow="Decision" title="Review result claim" description="Use step-up before moving a room toward settlement or dispute resolution." />
-            <form action={reviewResultClaimAction} className="grid gap-3 p-4">
-              <label className="grid gap-2 text-sm font-bold text-ink">
-                Claim ID
-                <input className="min-h-11 rounded-md border border-line bg-white px-3 font-mono text-sm outline-none focus:border-action" name="claim_id" required />
-              </label>
-              <label className="grid gap-2 text-sm font-bold text-ink">
-                Step-up token
-                <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="step_up_token" required />
-              </label>
-              <label className="grid gap-2 text-sm font-bold text-ink">
-                Review note
-                <textarea className="min-h-28 rounded-md border border-line bg-white px-3 py-2 text-sm outline-none focus:border-action" name="note" />
-              </label>
-              <div className="grid gap-2">
-                <Button name="decision" type="submit" value="approve_claim">Approve claim</Button>
-                <Button name="decision" type="submit" value="mark_disputed" variant="secondary">Mark disputed</Button>
-                <Button name="decision" type="submit" value="reject_claim" variant="danger">Reject claim</Button>
-                <Button name="decision" type="submit" value="void_match" variant="danger">Void match</Button>
-              </div>
-            </form>
-          </Panel>
+          <div className="grid h-fit gap-4 xl:sticky xl:top-24">
+            <AdminStepUpPanel returnTo="/admin/results" />
+            <Panel>
+              <PanelHeader eyebrow="Decision" title="Review result claim" description="Unlock first, then move a room toward settlement, dispute resolution, or void." />
+              <form action={reviewResultClaimAction} className="grid gap-3 p-4">
+                <label className="grid gap-2 text-sm font-bold text-ink">
+                  Claim ID
+                  <input className="min-h-11 rounded-md border border-line bg-white px-3 font-mono text-sm outline-none focus:border-action" name="claim_id" required />
+                </label>
+                <label className="grid gap-2 text-sm font-bold text-ink">
+                  Review note
+                  <textarea className="min-h-28 rounded-md border border-line bg-white px-3 py-2 text-sm outline-none focus:border-action" name="note" />
+                </label>
+                <div className="grid gap-2">
+                  <Button name="decision" type="submit" value="approve_claim">Approve claim</Button>
+                  <Button name="decision" type="submit" value="mark_disputed" variant="secondary">Mark disputed</Button>
+                  <Button name="decision" type="submit" value="reject_claim" variant="danger">Reject claim</Button>
+                  <Button name="decision" type="submit" value="void_match" variant="danger">Void match</Button>
+                </div>
+              </form>
+            </Panel>
+          </div>
         </div>
       </section>
     </AdminShell>

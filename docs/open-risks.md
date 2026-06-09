@@ -1,6 +1,6 @@
 # Open Risks
 
-Last updated: 2026-05-31
+Last updated: 2026-06-09
 
 ## V3 Product Recovery
 
@@ -16,17 +16,13 @@ Required before closed beta:
 
 ## Auth Shape
 
-V3 Phase 2 replaced the visible development sign-in with owned Skill Rooms auth. Remaining auth UX work is now shell/account polish and admin step-up refinement.
+V3 Phase 2 replaced the visible development sign-in with owned Skill Rooms auth. Admin-sensitive actions now use a password-confirmed, session-bound step-up unlock instead of manual token copy-paste.
 
 Implemented in V3 Phase 3:
 
 - account menu
 - role-aware admin entry
 - visible logout controls
-
-Still required:
-
-- step-up flow tied to authenticated admin sessions
 
 ## Visual Polish
 
@@ -59,10 +55,6 @@ Evidence capture and file upload are not implemented yet. Phase 7 must handle mo
 ## Funding UX
 
 Phase 6 adds funding submission and admin review, but it still relies on an external bank/app check before approval. The product should not imply automated bank confirmation until provider or bank integration exists.
-
-## Step-Up UX
-
-Admin funding approval is step-up gated. The current UI accepts a step-up token manually; this should become a smoother authenticated approval modal once the final auth system is connected.
 
 ## Admin Player Directory
 

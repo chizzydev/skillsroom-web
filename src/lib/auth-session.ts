@@ -1,5 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import {
+  adminStepUpCookieName,
+  adminStepUpCookieNames,
   accessTokenCookieName,
   accessTokenCookieNames,
   refreshTokenCookieName,
@@ -11,6 +13,11 @@ type AuthSessionPayload = {
   refresh_token: string;
   access_token_expires_at: string;
   refresh_token_expires_at: string;
+};
+
+type AdminStepUpSessionPayload = {
+  token: string;
+  expires_at: string;
 };
 
 export function setAuthCookies(response: NextResponse, session: AuthSessionPayload) {
@@ -32,7 +39,13 @@ export function setAuthCookies(response: NextResponse, session: AuthSessionPaylo
 }
 
 export function clearAuthCookies(response: NextResponse) {
-  for (const name of [...accessTokenCookieNames(), ...refreshTokenCookieNames()]) {
+  for (const name of [...accessTokenCookieNames(), ...refreshTokenCookieNames(), ...adminStepUpCookieNames()]) {
+    response.cookies.delete(name);
+  }
+}
+
+export function clearAdminStepUpCookies(response: NextResponse) {
+  for (const name of adminStepUpCookieNames()) {
     response.cookies.delete(name);
   }
 }
@@ -51,4 +64,15 @@ export function readAccessToken(request: NextRequest) {
       .map((name) => request.cookies.get(name)?.value)
       .find(Boolean) ?? null
   );
+}
+
+export function setAdminStepUpCookie(response: NextResponse, session: AdminStepUpSessionPayload) {
+  const secure = process.env.NODE_ENV === "production";
+  response.cookies.set(adminStepUpCookieName(), session.token, {
+    httpOnly: true,
+    sameSite: "lax",
+    secure,
+    path: "/",
+    expires: new Date(session.expires_at)
+  });
 }

@@ -2,6 +2,14 @@
 
 Last updated: 2026-06-09
 
+## Admin Step-Up UX Hardening
+
+- Replaced raw admin `step-up token` inputs across funding, results, settlements, Risk Ops, and tournament operator flows.
+- Added a shared admin unlock panel that confirms the current admin password and stores a short-lived step-up grant in an httpOnly cookie.
+- Sensitive admin mutations now read the session-bound step-up grant server-side instead of asking operators to copy tokens manually.
+- Step-up state is cleared on fresh auth transitions so old unlock state does not leak across login/session changes.
+- This closes the previous dead-end operator flow and makes sensitive approvals/rejections production-usable.
+
 ## Realtime Product Feel
 
 - Added same-origin realtime proxy route at `/api/community/realtime/stream` so browser sessions can subscribe without exposing access tokens to client-side header logic.
@@ -319,7 +327,7 @@ Result: no matches.
 - Added room funding submissions table to `/matches/[matchId]`.
 - Added `/admin/funding` route.
 - Added admin funding queue with submitted transfers.
-- Added approve/reject review form requiring a step-up token.
+- Added approve/reject review form for admin-sensitive review actions.
 - Updated admin navigation to point Funding at `/admin/funding`.
 
 ## Phase 6 Verification Run
@@ -347,7 +355,7 @@ Result: all passed, with zero audit vulnerabilities.
 - Added result claims table to room detail.
 - Added `/admin/results` route.
 - Added admin result review queue with submitted result claims.
-- Added approve/reject/dispute/void review form requiring a step-up token.
+- Added approve/reject/dispute/void review form for admin-sensitive review actions.
 - Updated admin navigation to include Results.
 
 ## Phase 7 Verification Run
@@ -377,7 +385,7 @@ Result: all passed, with zero audit vulnerabilities.
 - Added queued refund table.
 - Added settlement reservation form.
 - Added refund reservation form.
-- Added payout/refund completion forms requiring step-up tokens and bank references.
+- Added payout/refund completion forms with admin-sensitive confirmation and bank references.
 - Updated admin navigation to include Settlements.
 
 ## Phase 8 Verification Run
@@ -907,7 +915,7 @@ Result: all passed.
   - proof URL fallback
   - notes
 - Added tournament contribution review queue on `/admin/tournaments`.
-- Review controls require step-up token and support approve/reject decisions.
+- Review controls require an active admin step-up unlock and support approve/reject decisions.
 - Contribution queue shows tournament, source, amount, proof link, and review controls.
 
 ## Tournament Engine Phase T8 Verification Run
@@ -1148,7 +1156,7 @@ Result: all passed.
 - Added admin tournament console scoring workflow:
   - tournament selector
   - generated match ID input
-  - step-up token input
+  - admin step-up confirmation
   - reason input
   - multi-line result entry form
 - Added operator-friendly result parsing:
@@ -1173,7 +1181,7 @@ Result: all passed.
 ## Completed In Tournament Engine Phase T18
 
 - Hardened the admin tournament match-room linker on `/admin/tournaments`:
-  - added required step-up token input
+  - added required admin step-up confirmation
   - kept round-level and specific-match linking controls
   - clarified that single-match retries safely return existing links
 - Updated the web API bridge for the hardened linker:
@@ -1333,7 +1341,7 @@ Result: all passed.
   - optional linked result claim ID
   - score summary
   - review note
-  - step-up token
+  - admin step-up confirmation
 - Kept the workflow live-data only:
   - no preview claims
   - no static tournament rows
@@ -1362,7 +1370,7 @@ Result: all passed.
 - Added admin tournament settlement actions:
   - reserve prize payouts
   - reserve entry refunds
-  - step-up token enforcement through the API bridge
+  - session-bound admin step-up enforcement through the API bridge
 - Added `/admin/tournaments` settlement panel:
   - reserve payout queues from prize allocations/standings
   - queue participant-entry refunds

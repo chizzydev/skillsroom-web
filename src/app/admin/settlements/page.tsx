@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { AdminEmptyState } from "@/components/admin/AdminEmptyState";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
+import { AdminStepUpPanel } from "@/components/admin/AdminStepUpPanel";
 import { AdminShell } from "@/components/layout/AdminShell";
 import { LiveUpdateStream } from "@/components/realtime/LiveUpdateStream";
 import { Badge } from "@/components/ui/Badge";
@@ -80,6 +81,8 @@ export default async function AdminSettlementsPage({ searchParams }: { searchPar
           <StatusPanel detail="Step-up required" label="Money Actions" tone="cyan" value={(payouts.length + refunds.length).toString()} />
         </div>
 
+        <AdminStepUpPanel returnTo="/admin/settlements" />
+
         <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1fr)_420px]">
           <Panel>
             <PanelHeader eyebrow="Payouts" title="Queued winner payouts" description="Complete only after the bank transfer has actually been sent." />
@@ -111,10 +114,6 @@ export default async function AdminSettlementsPage({ searchParams }: { searchPar
               <label className="grid gap-2 text-sm font-bold text-ink">
                 Bank payout reference
                 <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="payout_reference" required />
-              </label>
-              <label className="grid gap-2 text-sm font-bold text-ink">
-                Step-up token
-                <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="step_up_token" required />
               </label>
               <Button type="submit">Complete payout</Button>
             </form>
@@ -153,10 +152,6 @@ export default async function AdminSettlementsPage({ searchParams }: { searchPar
                 Bank refund reference
                 <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="refund_reference" required />
               </label>
-              <label className="grid gap-2 text-sm font-bold text-ink">
-                Step-up token
-                <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="step_up_token" required />
-              </label>
               <Button type="submit" variant="secondary">Complete refund</Button>
             </form>
           </Panel>
@@ -174,10 +169,6 @@ export default async function AdminSettlementsPage({ searchParams }: { searchPar
                 Notes
                 <textarea className="min-h-24 rounded-md border border-line bg-white px-3 py-2 text-sm outline-none focus:border-action" name="notes" />
               </label>
-              <label className="grid gap-2 text-sm font-bold text-ink">
-                Step-up token
-                <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="step_up_token" required />
-              </label>
               <Button type="submit">Reserve settlement</Button>
             </form>
 
@@ -189,10 +180,6 @@ export default async function AdminSettlementsPage({ searchParams }: { searchPar
               <label className="grid gap-2 text-sm font-bold text-ink">
                 Refund reason
                 <textarea className="min-h-24 rounded-md border border-line bg-white px-3 py-2 text-sm outline-none focus:border-action" name="reason" required />
-              </label>
-              <label className="grid gap-2 text-sm font-bold text-ink">
-                Step-up token
-                <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="step_up_token" required />
               </label>
               <Button type="submit" variant="danger">Reserve refunds</Button>
             </form>

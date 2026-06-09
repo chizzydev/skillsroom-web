@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { AdminEmptyState } from "@/components/admin/AdminEmptyState";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
+import { AdminStepUpPanel } from "@/components/admin/AdminStepUpPanel";
 import { AdminShell } from "@/components/layout/AdminShell";
 import { LiveUpdateStream } from "@/components/realtime/LiveUpdateStream";
 import { Badge } from "@/components/ui/Badge";
@@ -302,29 +303,31 @@ export default async function AdminRiskPage({ searchParams }: { searchParams: Pr
             )}
           </Panel>
 
-          <Panel>
-            <PanelHeader eyebrow="Action" title="Apply account moderation" description="Restrictions, suspensions, and bans require admin step-up." />
-            <form action={createModerationActionAction} className="grid gap-3 p-4">
-              <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="target_user_id" placeholder="Target user ID" />
-              <input className="min-h-11 rounded-md border border-line bg-white px-3 font-mono text-sm outline-none focus:border-action" name="match_room_id" placeholder="Optional room ID" />
-              <select className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="action_type">
-                <option value="warn">Warn</option>
-                <option value="restrict">Restrict</option>
-                <option value="suspend">Suspend</option>
-                <option value="ban">Ban</option>
-                <option value="note">Note</option>
-              </select>
-              <select className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="severity">
-                <option value="medium">Medium</option>
-                <option value="high">High</option>
-                <option value="critical">Critical</option>
-                <option value="low">Low</option>
-              </select>
-              <textarea className="min-h-24 rounded-md border border-line bg-white px-3 py-2 text-sm outline-none focus:border-action" name="summary" placeholder="Reason and operator note" required />
-              <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="step_up_token" placeholder="Step-up token" required />
-              <Button type="submit" variant="danger">Apply moderation</Button>
-            </form>
-          </Panel>
+          <div className="grid gap-4">
+            <AdminStepUpPanel returnTo="/admin/risk" />
+            <Panel>
+              <PanelHeader eyebrow="Action" title="Apply account moderation" description="Restrictions, suspensions, and bans use the active unlock on this session." />
+              <form action={createModerationActionAction} className="grid gap-3 p-4">
+                <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="target_user_id" placeholder="Target user ID" />
+                <input className="min-h-11 rounded-md border border-line bg-white px-3 font-mono text-sm outline-none focus:border-action" name="match_room_id" placeholder="Optional room ID" />
+                <select className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="action_type">
+                  <option value="warn">Warn</option>
+                  <option value="restrict">Restrict</option>
+                  <option value="suspend">Suspend</option>
+                  <option value="ban">Ban</option>
+                  <option value="note">Note</option>
+                </select>
+                <select className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="severity">
+                  <option value="medium">Medium</option>
+                  <option value="high">High</option>
+                  <option value="critical">Critical</option>
+                  <option value="low">Low</option>
+                </select>
+                <textarea className="min-h-24 rounded-md border border-line bg-white px-3 py-2 text-sm outline-none focus:border-action" name="summary" placeholder="Reason and operator note" required />
+                <Button type="submit" variant="danger">Apply moderation</Button>
+              </form>
+            </Panel>
+          </div>
         </div>
 
         <Panel>

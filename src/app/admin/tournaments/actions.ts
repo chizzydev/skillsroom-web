@@ -1,6 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { requireAdminStepUpToken } from "@/lib/admin-step-up-session";
 import {
   ApiRequestError,
   applyTournamentCumulativeScores,
@@ -26,6 +27,7 @@ import {
 
 function actionErrorMessage(error: unknown) {
   if (error instanceof ApiRequestError) return error.message;
+  if (error instanceof Error) return error.message;
   return "The tournament operation could not be completed.";
 }
 
@@ -121,10 +123,11 @@ export async function createTournamentAction(formData: FormData) {
 
 export async function reviewTournamentContributionAction(formData: FormData) {
   try {
+    const stepUpToken = await requireAdminStepUpToken();
     await reviewTournamentContribution(String(formData.get("contribution_id") || ""), {
       decision: String(formData.get("decision")) === "reject" ? "reject" : "approve",
       note: optionalString(formData, "note"),
-      stepUpToken: String(formData.get("step_up_token") || "").trim()
+      stepUpToken
     });
   } catch (error) {
     redirect(`/admin/tournaments?error=${encodeURIComponent(actionErrorMessage(error))}`);
@@ -177,12 +180,13 @@ export async function generateTournamentStructureAction(formData: FormData) {
 export async function linkTournamentMatchRoomsAction(formData: FormData) {
   let tournamentId = "";
   try {
+    const stepUpToken = await requireAdminStepUpToken();
     tournamentId = String(formData.get("tournament_id") || "").trim();
     await linkTournamentMatchRooms(tournamentId, {
       round_id: optionalString(formData, "round_id"),
       match_id: optionalString(formData, "match_id"),
       reason: optionalString(formData, "reason") ?? "tournament_match_rooms_linked",
-      stepUpToken: String(formData.get("step_up_token") || "").trim()
+      stepUpToken
     });
   } catch (error) {
     redirect(`/admin/tournaments?error=${encodeURIComponent(actionErrorMessage(error))}`);
@@ -194,6 +198,7 @@ export async function linkTournamentMatchRoomsAction(formData: FormData) {
 export async function applyTournamentCumulativeScoresAction(formData: FormData) {
   let tournamentId = "";
   try {
+    const stepUpToken = await requireAdminStepUpToken();
     tournamentId = String(formData.get("tournament_id") || "").trim();
     const results = parseCumulativeResults(String(formData.get("results") || ""));
     await applyTournamentCumulativeScores(tournamentId, {
@@ -201,7 +206,7 @@ export async function applyTournamentCumulativeScoresAction(formData: FormData) 
       results,
       reason: optionalString(formData, "reason") ?? "cumulative_scores_applied",
       metadata: { source: "admin_tournament_console" },
-      stepUpToken: String(formData.get("step_up_token") || "").trim()
+      stepUpToken
     });
   } catch (error) {
     redirect(`/admin/tournaments?error=${encodeURIComponent(actionErrorMessage(error))}`);
@@ -213,6 +218,7 @@ export async function applyTournamentCumulativeScoresAction(formData: FormData) 
 export async function reviewTournamentMatchResultAction(formData: FormData) {
   let tournamentId = "";
   try {
+    const stepUpToken = await requireAdminStepUpToken();
     tournamentId = String(formData.get("tournament_id") || "").trim();
     const matchId = String(formData.get("match_id") || "").trim();
     await reviewTournamentMatchResult(tournamentId, matchId, {
@@ -223,7 +229,7 @@ export async function reviewTournamentMatchResultAction(formData: FormData) {
       score_summary: optionalString(formData, "score_summary"),
       note: optionalString(formData, "note"),
       metadata: { source: "admin_tournament_console" },
-      stepUpToken: String(formData.get("step_up_token") || "").trim()
+      stepUpToken
     });
   } catch (error) {
     redirect(`/admin/tournaments?error=${encodeURIComponent(actionErrorMessage(error))}`);
@@ -235,10 +241,11 @@ export async function reviewTournamentMatchResultAction(formData: FormData) {
 export async function reserveTournamentSettlementAction(formData: FormData) {
   let tournamentId = "";
   try {
+    const stepUpToken = await requireAdminStepUpToken();
     tournamentId = String(formData.get("tournament_id") || "").trim();
     await reserveTournamentSettlement(tournamentId, {
       notes: optionalString(formData, "notes"),
-      stepUpToken: String(formData.get("step_up_token") || "").trim()
+      stepUpToken
     });
   } catch (error) {
     redirect(`/admin/tournaments?error=${encodeURIComponent(actionErrorMessage(error))}`);
@@ -250,10 +257,11 @@ export async function reserveTournamentSettlementAction(formData: FormData) {
 export async function reserveTournamentRefundsAction(formData: FormData) {
   let tournamentId = "";
   try {
+    const stepUpToken = await requireAdminStepUpToken();
     tournamentId = String(formData.get("tournament_id") || "").trim();
     await reserveTournamentRefunds(tournamentId, {
       reason: optionalString(formData, "reason") ?? "tournament_refund_reserved",
-      stepUpToken: String(formData.get("step_up_token") || "").trim()
+      stepUpToken
     });
   } catch (error) {
     redirect(`/admin/tournaments?error=${encodeURIComponent(actionErrorMessage(error))}`);
@@ -265,6 +273,7 @@ export async function reserveTournamentRefundsAction(formData: FormData) {
 export async function grantTournamentHostAction(formData: FormData) {
   let tournamentId = "";
   try {
+    const stepUpToken = await requireAdminStepUpToken();
     tournamentId = String(formData.get("tournament_id") || "").trim();
     const target = optionalString(formData, "target");
     const isUserId = Boolean(target?.includes("-") || target?.startsWith("auth0|") || target?.startsWith("google:"));
@@ -278,7 +287,7 @@ export async function grantTournamentHostAction(formData: FormData) {
         view_finances: formData.get("view_finances") === "on"
       },
       notes: optionalString(formData, "notes"),
-      stepUpToken: String(formData.get("step_up_token") || "").trim()
+      stepUpToken
     });
   } catch (error) {
     redirect(`/admin/tournaments?error=${encodeURIComponent(actionErrorMessage(error))}`);
@@ -290,6 +299,7 @@ export async function grantTournamentHostAction(formData: FormData) {
 export async function updateTournamentHostEventAction(formData: FormData) {
   let tournamentId = "";
   try {
+    const stepUpToken = await requireAdminStepUpToken();
     tournamentId = String(formData.get("tournament_id") || "").trim();
     await updateTournamentHostEvent(tournamentId, {
       title: optionalString(formData, "title"),
@@ -304,7 +314,7 @@ export async function updateTournamentHostEventAction(formData: FormData) {
         creator_notes: optionalString(formData, "creator_notes"),
         featured: formData.get("featured") === "on"
       },
-      stepUpToken: String(formData.get("step_up_token") || "").trim()
+      stepUpToken
     });
   } catch (error) {
     redirect(`/admin/tournaments?error=${encodeURIComponent(actionErrorMessage(error))}`);

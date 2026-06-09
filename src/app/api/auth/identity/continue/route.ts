@@ -2,7 +2,7 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { apiBaseUrl } from "@/lib/api";
 import { buildApiProxyHeaders } from "@/lib/api-proxy";
-import { setAuthCookies } from "@/lib/auth-session";
+import { clearAdminStepUpCookies, setAuthCookies } from "@/lib/auth-session";
 import { redirectAfterPost } from "@/lib/redirect-response";
 
 export async function POST(request: NextRequest) {
@@ -63,6 +63,7 @@ export async function POST(request: NextRequest) {
   const nextResponse = wantsJson
     ? NextResponse.json({ ok: true, redirect_to: destination.toString() })
     : redirectAfterPost(destination);
+  clearAdminStepUpCookies(nextResponse);
   setAuthCookies(nextResponse, payload.data);
   return nextResponse;
 }
