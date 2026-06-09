@@ -55,15 +55,17 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
   }
 
   return (
-    <main className="min-h-screen bg-bg px-4 py-10">
-      <div className="mx-auto grid max-w-6xl gap-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(22rem,28rem)] lg:items-center">
-        <AuthTrustPanel
-          ctaHref="/community"
-          ctaLabel="Review public community pages"
-          summary="Structured rooms, tournament operations, evidence review, dispute handling, and controlled settlement workflows for competitive players."
-          title="Competitive gaming with visible rules and review."
-        />
-        <section className="w-full min-w-0 rounded-lg border border-line bg-surface p-5 shadow-panel sm:p-6">
+    <main className="min-h-screen bg-bg px-4 py-6 sm:py-10">
+      <div className="mx-auto grid max-w-6xl gap-4 sm:gap-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(22rem,28rem)] lg:items-center">
+        <div className="order-2 lg:order-1">
+          <AuthTrustPanel
+            ctaHref="/community"
+            ctaLabel="Review public community pages"
+            summary="Structured rooms, tournament operations, evidence review, dispute handling, and controlled settlement workflows for competitive players."
+            title="Competitive gaming with visible rules and review."
+          />
+        </div>
+        <section className="order-1 w-full min-w-0 rounded-lg border border-line bg-surface p-5 shadow-panel sm:p-6 lg:order-2">
           <Badge tone="cyan">Account access</Badge>
           <h1 className="mt-3 text-2xl font-black text-ink sm:text-3xl">Welcome back</h1>
           <p className="mt-2 text-sm leading-6 text-muted">

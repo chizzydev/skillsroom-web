@@ -23,15 +23,17 @@ export default async function RegisterPage({ searchParams }: RegisterPageProps) 
   }
 
   return (
-    <main className="min-h-screen bg-bg px-4 py-10">
-      <div className="mx-auto grid max-w-6xl gap-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(22rem,28rem)] lg:items-center">
-        <AuthTrustPanel
-          ctaHref="/rules"
-          ctaLabel="Review competition rules first"
-          summary="Create one account for verified rooms, tournament check-ins, evidence submissions, community identity, and future competitive history."
-          title="Create a player identity you can keep across matches and tournaments."
-        />
-        <section className="w-full min-w-0 rounded-lg border border-line bg-surface p-5 shadow-panel sm:p-6">
+    <main className="min-h-screen bg-bg px-4 py-6 sm:py-10">
+      <div className="mx-auto grid max-w-6xl gap-4 sm:gap-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(22rem,28rem)] lg:items-center">
+        <div className="order-2 lg:order-1">
+          <AuthTrustPanel
+            ctaHref="/rules"
+            ctaLabel="Review competition rules first"
+            summary="Create one account for verified rooms, tournament check-ins, evidence submissions, community identity, and future competitive history."
+            title="Create a player identity you can keep across matches and tournaments."
+          />
+        </div>
+        <section className="order-1 w-full min-w-0 rounded-lg border border-line bg-surface p-5 shadow-panel sm:p-6 lg:order-2">
           <Badge tone="cyan">Player access</Badge>
           <h1 className="mt-3 text-2xl font-black text-ink sm:text-3xl">Create your account</h1>
           <p className="mt-2 text-sm leading-6 text-muted">

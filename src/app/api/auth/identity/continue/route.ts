@@ -1,4 +1,5 @@
 import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
 import { apiBaseUrl } from "@/lib/api";
 import { buildApiProxyHeaders } from "@/lib/api-proxy";
 import { setAuthCookies } from "@/lib/auth-session";
@@ -6,6 +7,7 @@ import { redirectAfterPost } from "@/lib/redirect-response";
 
 export async function POST(request: NextRequest) {
   const formData = await request.formData();
+  const wantsJson = request.headers.get("x-skillrooms-client") === "google-button";
   const redirectTo = String(formData.get("redirect") || "/");
   const idToken = String(formData.get("id_token") || "");
   const referralCode = String(formData.get("referral_code") || "").trim();
@@ -22,6 +24,9 @@ export async function POST(request: NextRequest) {
     signInUrl.searchParams.set("error", "google_api_unreachable");
     signInUrl.searchParams.set("redirect", redirectTo);
     if (referralCode) signInUrl.searchParams.set("ref", referralCode);
+    if (wantsJson) {
+      return NextResponse.json({ ok: false, redirect_to: signInUrl.toString(), error: "google_api_unreachable" }, { status: 502 });
+    }
     return redirectAfterPost(signInUrl);
   }
 
@@ -40,6 +45,9 @@ export async function POST(request: NextRequest) {
     signInUrl.searchParams.set("error", errorCode);
     signInUrl.searchParams.set("redirect", redirectTo);
     if (referralCode) signInUrl.searchParams.set("ref", referralCode);
+    if (wantsJson) {
+      return NextResponse.json({ ok: false, redirect_to: signInUrl.toString(), error: errorCode }, { status: 400 });
+    }
     return redirectAfterPost(signInUrl);
   }
 
@@ -51,7 +59,10 @@ export async function POST(request: NextRequest) {
       refresh_token_expires_at: string;
     };
   };
-  const nextResponse = redirectAfterPost(new URL(redirectTo, request.url));
+  const destination = new URL(redirectTo, request.url);
+  const nextResponse = wantsJson
+    ? NextResponse.json({ ok: true, redirect_to: destination.toString() })
+    : redirectAfterPost(destination);
   setAuthCookies(nextResponse, payload.data);
   return nextResponse;
 }
