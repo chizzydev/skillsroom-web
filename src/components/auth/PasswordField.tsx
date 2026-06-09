@@ -1,6 +1,7 @@
 "use client";
 
 import { useId, useState } from "react";
+import { authFieldClassName } from "./field-styles";
 
 type PasswordFieldProps = {
   label: string;
@@ -8,9 +9,10 @@ type PasswordFieldProps = {
   autoComplete: string;
   minLength?: number;
   helperText?: string;
+  enterKeyHint?: "next" | "done" | "go" | "search" | "send";
 };
 
-export function PasswordField({ label, name, autoComplete, minLength, helperText }: PasswordFieldProps) {
+export function PasswordField({ label, name, autoComplete, minLength, helperText, enterKeyHint }: PasswordFieldProps) {
   const [visible, setVisible] = useState(false);
   const id = useId();
 
@@ -20,16 +22,18 @@ export function PasswordField({ label, name, autoComplete, minLength, helperText
       <span className="relative block">
         <input
           autoComplete={autoComplete}
-          className="min-h-11 w-full rounded-md border border-line bg-white px-3 pr-12 text-sm outline-none focus:border-action"
+          className={`${authFieldClassName} w-full pr-12`}
           id={id}
+          enterKeyHint={enterKeyHint}
           minLength={minLength}
           name={name}
           required
+          spellCheck={false}
           type={visible ? "text" : "password"}
         />
         <button
           aria-label={visible ? "Hide password" : "Show password"}
-          className="absolute right-2 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-md text-muted hover:bg-surfaceWarm hover:text-ink focus:outline-none focus:ring-2 focus:ring-action"
+          className="absolute right-2 top-1/2 grid h-10 w-10 -translate-y-1/2 place-items-center rounded-md text-muted hover:bg-surfaceWarm hover:text-ink focus:outline-none focus:ring-2 focus:ring-action sm:h-8 sm:w-8"
           onClick={() => setVisible((current) => !current)}
           type="button"
         >

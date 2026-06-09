@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/Badge";
 import { AuthTrustPanel } from "@/components/auth/AuthTrustPanel";
 import { GoogleAuthButton } from "@/components/auth/GoogleAuthButton";
 import { PasswordField } from "@/components/auth/PasswordField";
+import { authFieldClassName } from "@/components/auth/field-styles";
 import { SubmitButton } from "@/components/ui/SubmitButton";
 
 type RegisterPageProps = {
@@ -62,12 +63,16 @@ export default async function RegisterPage({ searchParams }: RegisterPageProps) 
             <label className="grid gap-2 text-sm font-bold text-ink">
               Username
               <input
-                className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action"
+                autoCapitalize="none"
+                autoCorrect="off"
+                className={authFieldClassName}
+                enterKeyHint="next"
                 maxLength={24}
                 minLength={3}
                 name="username"
                 pattern="[A-Za-z0-9_]+"
                 placeholder="ChizzyCOD"
+                spellCheck={false}
                 type="text"
                 autoComplete="username"
                 required
@@ -77,15 +82,19 @@ export default async function RegisterPage({ searchParams }: RegisterPageProps) 
             <label className="grid gap-2 text-sm font-bold text-ink">
               Email
               <input
-                className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action"
+                autoCapitalize="none"
+                autoCorrect="off"
+                className={authFieldClassName}
+                enterKeyHint="next"
                 name="email"
+                spellCheck={false}
                 type="email"
                 autoComplete="email"
                 required
               />
             </label>
-            <PasswordField autoComplete="new-password" helperText="Use at least 10 characters." label="Password" minLength={10} name="password" />
-            <PasswordField autoComplete="new-password" label="Confirm password" minLength={10} name="password_confirm" />
+            <PasswordField autoComplete="new-password" enterKeyHint="next" helperText="Use at least 10 characters." label="Password" minLength={10} name="password" />
+            <PasswordField autoComplete="new-password" enterKeyHint="done" label="Confirm password" minLength={10} name="password_confirm" />
             <SubmitButton fullWidth idleLabel="Create account" pendingLabel="Creating account..." />
           </form>
           <div className="mt-5 grid gap-3 text-sm font-semibold text-muted">

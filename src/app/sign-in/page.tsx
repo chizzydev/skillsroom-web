@@ -6,6 +6,7 @@ import { apiBaseUrl } from "@/lib/api";
 import { GoogleAuthButton } from "@/components/auth/GoogleAuthButton";
 import { AuthTrustPanel } from "@/components/auth/AuthTrustPanel";
 import { PasswordField } from "@/components/auth/PasswordField";
+import { authFieldClassName } from "@/components/auth/field-styles";
 import { SubmitButton } from "@/components/ui/SubmitButton";
 
 type SignInPageProps = {
@@ -88,14 +89,18 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
             <label className="grid gap-2 text-sm font-bold text-ink">
               Email or username
               <input
-                className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action"
+                autoCapitalize="none"
+                autoCorrect="off"
+                className={authFieldClassName}
+                enterKeyHint="next"
                 name="identifier"
+                spellCheck={false}
                 type="text"
                 autoComplete="username"
                 required
               />
             </label>
-            <PasswordField autoComplete="current-password" label="Password" name="password" />
+            <PasswordField autoComplete="current-password" enterKeyHint="go" label="Password" name="password" />
             <SubmitButton fullWidth idleLabel="Sign in" pendingLabel="Signing in..." />
           </form>
           <div className="mt-5 grid gap-3 text-sm font-semibold text-muted">
