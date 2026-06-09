@@ -211,10 +211,10 @@ export default async function AdminPage({
 
         <LiveUpdateStream eventTypePrefixes={["admin.queue.", "match.", "tournament.", "notification."]} label="Ops live" />
 
-        {error ? <TransientStatusBanner clearKeys={["error"]} message={error} /> : null}
-        {announcementSaved ? <TransientStatusBanner clearKeys={["announcement_saved"]} message="Platform announcement saved." tone="success" /> : null}
-        {announcementPublished ? <TransientStatusBanner clearKeys={["announcement_published"]} message="Announcement published." tone="success" /> : null}
-        {announcementArchived ? <TransientStatusBanner clearKeys={["announcement_archived"]} message="Announcement archived." tone="success" /> : null}
+        {error ? <TransientStatusBanner clearKeys={["error"]} durationMs={9000} message={error} /> : null}
+        {announcementSaved ? <TransientStatusBanner clearKeys={["announcement_saved"]} durationMs={9000} message="Platform announcement saved." tone="success" /> : null}
+        {announcementPublished ? <TransientStatusBanner clearKeys={["announcement_published"]} durationMs={9000} message="Announcement published." tone="success" /> : null}
+        {announcementArchived ? <TransientStatusBanner clearKeys={["announcement_archived"]} durationMs={9000} message="Announcement archived." tone="success" /> : null}
         {loadError ? (
           <div className="rounded-md border border-danger bg-red-50 p-4 text-sm font-bold text-danger">{loadError}</div>
         ) : null}

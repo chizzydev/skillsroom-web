@@ -261,6 +261,8 @@ export default async function MatchDetailPage({
     tournamentMatchContext(tournamentDetail, tournamentMatchId);
   const tournamentCheckIns = data.tournament_match_check_ins ?? [];
   const currentParticipant = participants.find((participant) => participant.user_id === user.id);
+  const allJoinedParticipantsApproved =
+    participants.length > 0 && participants.every((participant) => participant.funding_status === "approved");
   const currentFundingSubmission = currentParticipant
     ? funding?.submissions.find((item) => item.participant_id === currentParticipant.id) ?? null
     : null;
@@ -364,11 +366,11 @@ export default async function MatchDetailPage({
           tournamentId={tournamentId ?? undefined}
         />
 
-        {error ? <TransientStatusBanner clearKeys={["error"]} message={error} /> : null}
-        {inviteSent ? <TransientStatusBanner clearKeys={["invite_sent"]} message="Invite sent. The player will see it in their notifications." tone="success" /> : null}
-        {checkedInSuccess ? <TransientStatusBanner clearKeys={["checked_in"]} message="Tournament match check-in recorded." tone="success" /> : null}
-        {livestreamSaved ? <TransientStatusBanner clearKeys={["livestream_saved"]} message="Livestream link saved." tone="success" /> : null}
-        {livestreamArchived ? <TransientStatusBanner clearKeys={["livestream_archived"]} message="Livestream archived." tone="success" /> : null}
+        {error ? <TransientStatusBanner clearKeys={["error"]} durationMs={8000} message={error} /> : null}
+        {inviteSent ? <TransientStatusBanner clearKeys={["invite_sent"]} durationMs={7000} message="Invite sent. The player will see it in their notifications." tone="success" /> : null}
+        {checkedInSuccess ? <TransientStatusBanner clearKeys={["checked_in"]} durationMs={7000} message="Tournament match check-in recorded." tone="success" /> : null}
+        {livestreamSaved ? <TransientStatusBanner clearKeys={["livestream_saved"]} durationMs={7000} message="Livestream link saved." tone="success" /> : null}
+        {livestreamArchived ? <TransientStatusBanner clearKeys={["livestream_archived"]} durationMs={7000} message="Livestream archived." tone="success" /> : null}
 
         <div className="grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <Panel className="p-4">
@@ -684,10 +686,14 @@ export default async function MatchDetailPage({
             <PanelHeader eyebrow="Submit Funding" title="Transfer proof" description="Amount, sender bank, account name, and screenshot are enough for review." />
             <form action={submitManualFundingAction} className="grid gap-3 p-4">
               {currentParticipant ? (
-                currentFundingStatus === "approved" ? (
+                currentFundingStatus === "approved" && ["awaiting_funding", "funding_review"].includes(room.status) ? (
                   <TransientStatusBanner
                     clearKeys={[]}
-                    message="Your own funding is already approved. We are waiting for the other player so the room can move forward."
+                    message={
+                      allJoinedParticipantsApproved
+                        ? "Both funding approvals are in. This room is refreshing into the play stage now."
+                        : "Your own funding is already approved. We are waiting for the other player so the room can move forward."
+                    }
                     tone="success"
                   />
                 ) : currentFundingStatus === "submitted" ? (

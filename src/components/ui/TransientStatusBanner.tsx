@@ -7,12 +7,14 @@ type TransientStatusBannerProps = {
   message: string;
   tone?: "success" | "danger";
   clearKeys?: string[];
+  durationMs?: number;
 };
 
 export function TransientStatusBanner({
   message,
   tone = "danger",
-  clearKeys = ["error", "success"]
+  clearKeys = ["error", "success"],
+  durationMs = 6500
 }: TransientStatusBannerProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -27,6 +29,8 @@ export function TransientStatusBanner({
   );
 
   useEffect(() => {
+    if (clearKeys.length === 0) return;
+
     const params = new URLSearchParams(searchParams.toString());
     let changed = false;
     for (const key of clearKeys) {
@@ -37,8 +41,12 @@ export function TransientStatusBanner({
     }
     if (!changed) return;
     const next = params.toString();
-    router.replace(next ? `${pathname}?${next}` : pathname, { scroll: false });
-  }, [clearKeys, pathname, router, searchParams]);
+    const timer = setTimeout(() => {
+      router.replace(next ? `${pathname}?${next}` : pathname, { scroll: false });
+    }, durationMs);
+
+    return () => clearTimeout(timer);
+  }, [clearKeys, durationMs, pathname, router, searchParams]);
 
   return <div className={className}>{message}</div>;
 }

@@ -69,8 +69,8 @@ export default async function AdminSettlementsPage({ searchParams }: { searchPar
 
         <LiveUpdateStream eventTypePrefixes={["admin.queue.settlements.", "admin.queue.refunds.", "admin.queue.tournament_settlements.", "admin.queue.tournament_refunds.", "match.settlement.", "match.payout.", "match.refund.", "tournament.settlement.", "tournament.refunds."]} label="Money ops live" />
 
-        {error ? <TransientStatusBanner clearKeys={["error"]} message={error} /> : null}
-        {success ? <TransientStatusBanner clearKeys={["success"]} message={success} tone="success" /> : null}
+        {error ? <TransientStatusBanner clearKeys={["error"]} durationMs={9000} message={error} /> : null}
+        {success ? <TransientStatusBanner clearKeys={["success"]} durationMs={9000} message={success} tone="success" /> : null}
         {loadError ? (
           <div className="rounded-md border border-danger bg-red-50 p-4 text-sm font-bold text-danger">{loadError}</div>
         ) : null}
