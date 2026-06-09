@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/Button";
 import { DataTable } from "@/components/ui/DataTable";
 import { Panel, PanelHeader } from "@/components/ui/Panel";
 import { StatusPanel } from "@/components/ui/StatusPanel";
+import { TransientStatusBanner } from "@/components/ui/TransientStatusBanner";
 import { canAccessAdmin, getCurrentUser } from "@/lib/auth-bridge";
 import {
   formatEntryAmount,
@@ -68,15 +69,10 @@ export default async function AdminSettlementsPage({ searchParams }: { searchPar
 
         <LiveUpdateStream eventTypePrefixes={["admin.queue.settlements.", "admin.queue.refunds.", "admin.queue.tournament_settlements.", "admin.queue.tournament_refunds.", "match.settlement.", "match.payout.", "match.refund.", "tournament.settlement.", "tournament.refunds."]} label="Money ops live" />
 
-        {(error || loadError || success) ? (
-          <div
-            className={[
-              "rounded-md border p-4 text-sm font-bold",
-              error || loadError ? "border-danger bg-red-50 text-danger" : "border-success bg-emerald-50 text-success"
-            ].join(" ")}
-          >
-            {error ?? loadError ?? success}
-          </div>
+        {error ? <TransientStatusBanner clearKeys={["error"]} message={error} /> : null}
+        {success ? <TransientStatusBanner clearKeys={["success"]} message={success} tone="success" /> : null}
+        {loadError ? (
+          <div className="rounded-md border border-danger bg-red-50 p-4 text-sm font-bold text-danger">{loadError}</div>
         ) : null}
 
         <div className="grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-4">

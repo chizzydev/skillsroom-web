@@ -8,6 +8,7 @@ import { LiveUpdateStream } from "@/components/realtime/LiveUpdateStream";
 import { Badge, type BadgeTone } from "@/components/ui/Badge";
 import { DataTable } from "@/components/ui/DataTable";
 import { Panel, PanelHeader } from "@/components/ui/Panel";
+import { TransientStatusBanner } from "@/components/ui/TransientStatusBanner";
 import { canAccessAdmin, getCurrentUser } from "@/lib/auth-bridge";
 import {
   formatEntryAmount,
@@ -210,15 +211,12 @@ export default async function AdminPage({
 
         <LiveUpdateStream eventTypePrefixes={["admin.queue.", "match.", "tournament.", "notification."]} label="Ops live" />
 
-        {(error || loadError || announcementSaved || announcementPublished || announcementArchived) ? (
-          <div
-            className={[
-              "rounded-md border p-4 text-sm font-bold",
-              error || loadError ? "border-danger bg-red-50 text-danger" : "border-success bg-emerald-50 text-success"
-            ].join(" ")}
-          >
-            {error ?? loadError ?? (announcementSaved ? "Platform announcement saved." : announcementPublished ? "Announcement published." : "Announcement archived.")}
-          </div>
+        {error ? <TransientStatusBanner clearKeys={["error"]} message={error} /> : null}
+        {announcementSaved ? <TransientStatusBanner clearKeys={["announcement_saved"]} message="Platform announcement saved." tone="success" /> : null}
+        {announcementPublished ? <TransientStatusBanner clearKeys={["announcement_published"]} message="Announcement published." tone="success" /> : null}
+        {announcementArchived ? <TransientStatusBanner clearKeys={["announcement_archived"]} message="Announcement archived." tone="success" /> : null}
+        {loadError ? (
+          <div className="rounded-md border border-danger bg-red-50 p-4 text-sm font-bold text-danger">{loadError}</div>
         ) : null}
 
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">

@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Panel, PanelHeader } from "@/components/ui/Panel";
 import { SubmitButton } from "@/components/ui/SubmitButton";
 import { Timeline } from "@/components/ui/Timeline";
+import { TransientStatusBanner } from "@/components/ui/TransientStatusBanner";
 import { getCurrentUser } from "@/lib/auth-bridge";
 import {
   formatEntryAmount,
@@ -260,6 +261,9 @@ export default async function MatchDetailPage({
     tournamentMatchContext(tournamentDetail, tournamentMatchId);
   const tournamentCheckIns = data.tournament_match_check_ins ?? [];
   const currentParticipant = participants.find((participant) => participant.user_id === user.id);
+  const currentFundingSubmission = currentParticipant
+    ? funding?.submissions.find((item) => item.participant_id === currentParticipant.id) ?? null
+    : null;
   const gameName = tournamentDetail?.game_name ?? "the game";
   const currentPlayerCheckedIn = currentParticipant
     ? tournamentCheckIns.some((checkIn) => checkIn.participant_id === currentParticipant.id)
@@ -282,7 +286,12 @@ export default async function MatchDetailPage({
       ? (["Check in for this match", "Confirm you are present before playing or submitting result evidence."] as const)
       : [baseNextTitle, baseNextDetail];
   const canOpen = room.status === "draft" && room.created_by_user_id === user.id;
-  const canSubmitFunding = ["awaiting_funding", "funding_review", "open"].includes(room.status);
+  const roomAllowsFundingSubmission = ["awaiting_funding", "funding_review", "open"].includes(room.status);
+  const currentFundingStatus = currentParticipant?.funding_status ?? null;
+  const canSubmitFunding =
+    roomAllowsFundingSubmission &&
+    Boolean(currentParticipant) &&
+    (currentFundingStatus === "pending" || currentFundingStatus === "rejected");
   const canSubmitResult = ["funded", "active", "awaiting_results", "under_review"].includes(room.status);
   const canTournamentCheckIn =
     isTournamentRoom &&
@@ -355,29 +364,11 @@ export default async function MatchDetailPage({
           tournamentId={tournamentId ?? undefined}
         />
 
-        {error ? (
-          <div className="rounded-md border border-danger bg-red-50 p-4 text-sm font-bold text-danger">{error}</div>
-        ) : null}
-        {inviteSent ? (
-          <div className="rounded-md border border-success bg-successSoft p-4 text-sm font-bold text-success">
-            Invite sent. The player will see it in their notifications.
-          </div>
-        ) : null}
-        {checkedInSuccess ? (
-          <div className="rounded-md border border-success bg-successSoft p-4 text-sm font-bold text-success">
-            Tournament match check-in recorded.
-          </div>
-        ) : null}
-        {livestreamSaved ? (
-          <div className="rounded-md border border-success bg-successSoft p-4 text-sm font-bold text-success">
-            Livestream link saved.
-          </div>
-        ) : null}
-        {livestreamArchived ? (
-          <div className="rounded-md border border-success bg-successSoft p-4 text-sm font-bold text-success">
-            Livestream archived.
-          </div>
-        ) : null}
+        {error ? <TransientStatusBanner clearKeys={["error"]} message={error} /> : null}
+        {inviteSent ? <TransientStatusBanner clearKeys={["invite_sent"]} message="Invite sent. The player will see it in their notifications." tone="success" /> : null}
+        {checkedInSuccess ? <TransientStatusBanner clearKeys={["checked_in"]} message="Tournament match check-in recorded." tone="success" /> : null}
+        {livestreamSaved ? <TransientStatusBanner clearKeys={["livestream_saved"]} message="Livestream link saved." tone="success" /> : null}
+        {livestreamArchived ? <TransientStatusBanner clearKeys={["livestream_archived"]} message="Livestream archived." tone="success" /> : null}
 
         <div className="grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <Panel className="p-4">
@@ -692,6 +683,27 @@ export default async function MatchDetailPage({
           <Panel>
             <PanelHeader eyebrow="Submit Funding" title="Transfer proof" description="Amount, sender bank, account name, and screenshot are enough for review." />
             <form action={submitManualFundingAction} className="grid gap-3 p-4">
+              {currentParticipant ? (
+                currentFundingStatus === "approved" ? (
+                  <TransientStatusBanner
+                    clearKeys={[]}
+                    message="Your own funding is already approved. We are waiting for the other player so the room can move forward."
+                    tone="success"
+                  />
+                ) : currentFundingStatus === "submitted" ? (
+                  <div className="rounded-md border border-orange-200 bg-warningSoft p-4 text-sm font-bold text-warning">
+                    Your funding proof is already under review. Wait for operator approval before sending anything again.
+                  </div>
+                ) : currentFundingStatus === "rejected" ? (
+                  <div className="rounded-md border border-danger bg-red-50 p-4 text-sm font-bold text-danger">
+                    Your last funding proof was rejected. Submit a corrected transfer proof to continue.
+                  </div>
+                ) : null
+              ) : (
+                <div className="rounded-md border border-line bg-surfaceWarm p-4 text-sm font-bold text-muted">
+                  Join this room first before submitting your own funding proof.
+                </div>
+              )}
               <input name="match_room_id" type="hidden" value={room.id} />
               <label className="grid gap-2 text-sm font-bold text-ink">
                 Amount (NGN)
@@ -730,6 +742,15 @@ export default async function MatchDetailPage({
                 <textarea className="min-h-24 rounded-md border border-line bg-white px-3 py-2 text-sm outline-none focus:border-action" disabled={!canSubmitFunding} name="proof_note" placeholder="Anything admin should know" />
               </label>
               <SubmitButton disabled={!canSubmitFunding} idleLabel="Submit funding" pendingLabel="Submitting funding..." />
+              {!canSubmitFunding && currentFundingStatus === "approved" ? (
+                <p className="text-xs font-bold leading-5 text-muted">Your slot is already approved. The room will stay in funding review until the opponent is approved too.</p>
+              ) : null}
+              {!canSubmitFunding && currentFundingStatus === "submitted" ? (
+                <p className="text-xs font-bold leading-5 text-muted">A submission already exists for your slot, so this form stays locked until admin reviews it.</p>
+              ) : null}
+              {!canSubmitFunding && !currentParticipant ? (
+                <p className="text-xs font-bold leading-5 text-muted">Only joined room participants can submit funding for this room.</p>
+              ) : null}
             </form>
           </Panel>
         </div>
