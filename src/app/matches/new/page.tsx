@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { AppShell } from "@/components/layout/AppShell";
+import { CatalogRulesetFields } from "@/components/catalog/CatalogRulesetFields";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Panel, PanelHeader } from "@/components/ui/Panel";
@@ -10,7 +11,7 @@ import { listGameCatalog, type Game, type MatchRuleset } from "@/lib/match-room-
 import { createMatchRoomAction } from "../actions";
 
 const steps = [
-  { label: "Draft", detail: "Room is created privately with COD Mobile rules.", status: "current" as const },
+  { label: "Draft", detail: "Room is created privately with the selected game and ruleset.", status: "current" as const },
   { label: "Open", detail: "Share code or publish to lobby after confirming details.", status: "pending" as const },
   { label: "Opponent joins", detail: "Room moves to awaiting funding when player B joins.", status: "pending" as const },
   { label: "Funding review", detail: "Both entries must be checked before play starts.", status: "pending" as const }
@@ -32,18 +33,18 @@ export default async function NewMatchPage({ searchParams }: { searchParams: Pro
     loadError = "Unable to load available games and rulesets.";
   }
 
-  const selectedGame = games.find((game) => game.slug === "cod-mobile") ?? games[0] ?? null;
+  const selectedGame = games.find((game) => game.slug === "free-fire") ?? games[0] ?? null;
   const selectedRulesets = selectedGame ? rulesets.filter((ruleset) => ruleset.game_id === selectedGame.id) : [];
-  const selectedRuleset = selectedRulesets.find((ruleset) => ruleset.slug === "cod-mobile-1v1-beta") ?? selectedRulesets[0] ?? null;
+  const selectedRuleset = selectedRulesets[0] ?? null;
 
   return (
     <AppShell active="matches">
       <section className="grid gap-6">
         <section className="rounded-lg border border-line bg-white p-5 shadow-panel md:p-7">
           <Badge tone="cyan">Create Room</Badge>
-          <h1 className="mt-3 text-3xl font-black text-ink md:text-5xl">Set up a COD Mobile room.</h1>
+          <h1 className="mt-3 text-3xl font-black text-ink md:text-5xl">Set up a verified match room.</h1>
           <p className="mt-3 max-w-3xl text-sm leading-6 text-muted md:text-base">
-            Room creation is strict from the first step: complete profile, fixed ruleset, exact entry, and auditable state changes.
+            Skillsroom rooms are game-aware from the first step: choose the title, lock the ruleset, set the entry, and keep every state change auditable.
           </p>
         </section>
 
@@ -55,7 +56,7 @@ export default async function NewMatchPage({ searchParams }: { searchParams: Pro
                 className="inline-flex min-h-10 items-center justify-center rounded-md border border-danger bg-white px-4 text-sm font-black text-danger shadow-tight"
                 href="/profile#game-accounts"
               >
-                Add COD handle
+                Add primary game account
               </Link>
             ) : null}
           </div>
@@ -67,26 +68,12 @@ export default async function NewMatchPage({ searchParams }: { searchParams: Pro
             {selectedGame && selectedRuleset ? (
             <form action={createMatchRoomAction} className="grid gap-4 p-4 md:grid-cols-2">
               <input name="commission_bps" type="hidden" value="1000" />
-              <label className="grid gap-2 text-sm font-bold text-ink">
-                Game
-                <select className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" defaultValue={selectedGame.slug} name="game_slug">
-                  {games.map((game) => (
-                    <option key={game.id} value={game.slug}>
-                      {game.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="grid gap-2 text-sm font-bold text-ink">
-                Ruleset
-                <select className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" defaultValue={selectedRuleset.slug} name="ruleset_slug">
-                  {selectedRulesets.map((ruleset) => (
-                    <option key={ruleset.id} value={ruleset.slug}>
-                      {ruleset.title}
-                    </option>
-                  ))}
-                </select>
-              </label>
+              <CatalogRulesetFields
+                games={games}
+                initialGameSlug={selectedGame.slug}
+                initialRulesetSlug={selectedRuleset.slug}
+                rulesets={rulesets}
+              />
               <label className="grid gap-2 text-sm font-bold text-ink">
                 Entry amount (NGN)
                 <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" min="100" name="entry_amount_naira" required step="100" type="number" defaultValue="2000" />

@@ -34,7 +34,7 @@ export default async function RegisterPage({ searchParams }: RegisterPageProps) 
           <Badge tone="cyan">Player access</Badge>
           <h1 className="mt-3 text-2xl font-black text-ink sm:text-3xl">Create your account</h1>
           <p className="mt-2 text-sm leading-6 text-muted">
-            Your account keeps rooms, COD Mobile handles, evidence, notifications, dispute history, and competitive identity tied to you.
+            Your account keeps rooms, game handles, evidence, notifications, dispute history, and competitive identity tied to you.
           </p>
           {params?.error ? (
             <p className="mt-4 rounded-md border border-red-200 bg-red-50 p-3 text-sm font-bold text-red-700">

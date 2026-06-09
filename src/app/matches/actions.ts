@@ -40,8 +40,8 @@ export async function createMatchRoomAction(formData: FormData) {
     const title = String(formData.get("title") || "").trim();
 
     const result = await createMatchRoom({
-      game_slug: String(formData.get("game_slug") || "cod-mobile"),
-      ruleset_slug: String(formData.get("ruleset_slug") || "cod-mobile-1v1-beta"),
+      game_slug: String(formData.get("game_slug") || "free-fire"),
+      ruleset_slug: String(formData.get("ruleset_slug") || "free-fire-clash-squad-solo-beta"),
       entry_amount_minor: Math.round(entryAmountNaira * 100),
       commission_bps: Number(formData.get("commission_bps") || 1000),
       title: title || undefined

@@ -88,7 +88,7 @@ export default async function MatchesPage({ searchParams }: { searchParams: Prom
                 label: "Room",
                 render: (row) => (
                   <Link className="font-bold text-ink hover:text-action" href={`/matches/${row.id}`}>
-                    {row.title ?? "COD Mobile room"}
+                    {row.title ?? "Private room"}
                   </Link>
                 )
               },

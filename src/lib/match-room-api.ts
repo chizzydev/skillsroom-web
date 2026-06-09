@@ -41,6 +41,7 @@ export type Game = {
   slug: string;
   name: string;
   platform: string;
+  catalog_order: number;
   status: "active" | "paused" | "retired";
   created_at: string;
   updated_at: string;

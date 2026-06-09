@@ -10,7 +10,7 @@ import { Panel, PanelHeader } from "@/components/ui/Panel";
 import { StatusPanel } from "@/components/ui/StatusPanel";
 import { Timeline } from "@/components/ui/Timeline";
 import { getCurrentUser, getGoogleLinkStatus } from "@/lib/auth-bridge";
-import { getMyCommunityClan, getMyReferralProgram, getPlayerTrustSummary, getProfileMe, type UserGameAccount } from "@/lib/match-room-api";
+import { getMyCommunityClan, getMyReferralProgram, getPlayerTrustSummary, getProfileMe, listGameCatalog, type Game, type UserGameAccount } from "@/lib/match-room-api";
 import { updateProfileAction, upsertCommunityClanAction, upsertGameAccountAction } from "./actions";
 
 const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3100";
@@ -46,21 +46,24 @@ export default async function ProfilePage({ searchParams }: ProfilePageProps) {
   let clanData: Awaited<ReturnType<typeof getMyCommunityClan>> | null = null;
   let referralData: Awaited<ReturnType<typeof getMyReferralProgram>> | null = null;
   let googleLinkStatus: Awaited<ReturnType<typeof getGoogleLinkStatus>> | null = null;
+  let games: Game[] = [];
   let loadError: string | null = null;
 
   try {
-    const [profileResult, trustResult, clanResult, referralResult, googleResult] = await Promise.all([
+    const [profileResult, trustResult, clanResult, referralResult, googleResult, catalogResult] = await Promise.all([
       getProfileMe(),
       getPlayerTrustSummary(user.id),
       getMyCommunityClan(),
       getMyReferralProgram(),
-      getGoogleLinkStatus()
+      getGoogleLinkStatus(),
+      listGameCatalog()
     ]);
     profileData = profileResult;
     trustData = trustResult.trust;
     clanData = clanResult;
     referralData = referralResult;
     googleLinkStatus = googleResult;
+    games = catalogResult.games;
   } catch {
     loadError = "Unable to load your player profile.";
   }
@@ -72,6 +75,8 @@ export default async function ProfilePage({ searchParams }: ProfilePageProps) {
   const referralSummary = referralData?.summary ?? { total: 0, pending_activation: 0, reward_issued: 0, reward_held: 0 };
   const referrals = referralData?.referrals ?? [];
   const gameAccounts = profileData?.game_accounts ?? [];
+  const gameMap = new Map(games.map((game) => [game.id, game]));
+  const betaLeadGame = games.find((game) => game.slug === "free-fire") ?? games[0] ?? null;
   const completion = profileData?.completion;
   const defaultUsername = profile?.username ?? user.email?.split("@")[0]?.replace(/[^A-Za-z0-9_]/g, "").slice(0, 24) ?? "";
   const completionItems = [
@@ -82,10 +87,10 @@ export default async function ProfilePage({ searchParams }: ProfilePageProps) {
       status: profile?.username ? "done" as const : "current" as const
     },
     {
-      label: "COD Mobile account",
+      label: "Primary game account",
       detail: gameAccounts.some((account) => account.is_primary && account.status !== "disabled")
         ? "Primary game handle is connected."
-        : "Add your COD Mobile handle before entering rooms.",
+        : "Add your main in-game handle before entering rooms.",
       status: gameAccounts.some((account) => account.is_primary && account.status !== "disabled")
         ? "done" as const
         : profile?.username
@@ -106,7 +111,7 @@ export default async function ProfilePage({ searchParams }: ProfilePageProps) {
           <Badge tone="cyan">Player Profile</Badge>
           <h1 className="mt-3 text-2xl font-black text-ink md:text-3xl">Trusted Player Identity</h1>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-muted md:text-base">
-            Your profile connects login, COD Mobile handle, reputation, and review history so rooms can be settled with less confusion.
+            Your profile connects login, game handles, reputation, and review history so rooms can be settled with less confusion.
           </p>
         </section>
 
@@ -123,7 +128,7 @@ export default async function ProfilePage({ searchParams }: ProfilePageProps) {
         ) : null}
         {params?.game_account_saved ? (
           <div className="rounded-md border border-success bg-successSoft p-4 text-sm font-bold text-success">
-            COD Mobile handle saved. Admins can now verify it during room review.
+            Game account saved. Admins can now verify it during room review.
           </div>
         ) : null}
         {params?.clan_saved ? (
@@ -327,7 +332,7 @@ export default async function ProfilePage({ searchParams }: ProfilePageProps) {
               </label>
               <label className="grid gap-2 text-sm font-bold text-ink md:col-span-2">
                 Game focus
-                <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" defaultValue={Array.isArray(clan?.game_focus) ? clan?.game_focus.join(", ") : ""} name="game_focus" placeholder="cod-mobile, efootball, fifa-24" required />
+                <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" defaultValue={Array.isArray(clan?.game_focus) ? clan?.game_focus.join(", ") : ""} name="game_focus" placeholder="free-fire, valorant, ea-sports-fc-mobile" required />
                 <span className="text-xs leading-5 text-muted">Use game slugs, separated by commas.</span>
               </label>
               <label className="grid gap-2 text-sm font-bold text-ink md:col-span-2">
@@ -444,13 +449,14 @@ export default async function ProfilePage({ searchParams }: ProfilePageProps) {
 
         <Panel>
           <PanelHeader
-            description="Your COD handle is what players use to find you in-game. It is separate from your Skillsroom login."
+            description="Your in-game handles are what players use to find you during rooms and tournaments. They stay separate from your Skillsroom login."
             eyebrow="Game Accounts"
-            title="Connected COD Mobile handles"
+            title="Connected game accounts"
           />
           {gameAccounts.length ? (
             <DataTable
               columns={[
+                { key: "game_name", label: "Game", render: (row) => <span className="text-sm font-bold text-ink">{gameMap.get(row.game_id)?.name ?? row.game_id}</span> },
                 { key: "handle", label: "Handle", render: (row) => <span className="font-mono font-bold text-ink">{row.handle}</span> },
                 { key: "platform", label: "Platform", render: (row) => <span className="text-muted">{row.platform}</span> },
                 { key: "region", label: "Region", render: (row) => <span className="text-muted">{row.region}</span> },
@@ -462,16 +468,31 @@ export default async function ProfilePage({ searchParams }: ProfilePageProps) {
           ) : (
             <div className="p-4">
               <div className="rounded-md border border-dashed border-line bg-surfaceWarm p-6">
-                <p className="text-lg font-black text-ink">No COD Mobile handle connected</p>
+                <p className="text-lg font-black text-ink">No game account connected</p>
                 <p className="mt-2 text-sm leading-6 text-muted">
-                  Add the exact COD Mobile name players see in-game. If you know your UID or Player ID, add it too.
+                  Add the exact in-game name players see in your selected title. If you know the UID, Player ID, Riot ID, Epic name, or equivalent, add it too.
                 </p>
               </div>
             </div>
           )}
           <form action={upsertGameAccountAction} className="grid gap-4 border-t border-line p-4 md:grid-cols-2" id="game-accounts">
             <label className="grid gap-2 text-sm font-bold text-ink">
-              COD Mobile handle
+              Game
+              <select
+                className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action"
+                defaultValue={betaLeadGame?.slug ?? ""}
+                name="game_slug"
+                required
+              >
+                {games.map((game) => (
+                  <option key={game.id} value={game.slug}>
+                    {game.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="grid gap-2 text-sm font-bold text-ink">
+              In-game handle
               <input
                 className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action"
                 maxLength={80}
@@ -483,7 +504,7 @@ export default async function ProfilePage({ searchParams }: ProfilePageProps) {
               <span className="text-xs leading-5 text-muted">This is not your email or Skillsroom username.</span>
             </label>
             <label className="grid gap-2 text-sm font-bold text-ink">
-              COD Mobile UID / Player ID
+              External player ID
               <input
                 className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action"
                 maxLength={120}
@@ -502,11 +523,11 @@ export default async function ProfilePage({ searchParams }: ProfilePageProps) {
               />
             </label>
             <div className="rounded-md border border-cyan bg-cyanSoft p-4 text-sm leading-6 text-muted">
-              <span className="font-black text-ink">Primary account:</span> this COD Mobile handle will be used for room matching,
-              opponent checks, screenshots, and admin evidence review.
+              <span className="font-black text-ink">Primary account:</span> this handle will be used for room matching,
+              opponent checks, screenshots, and admin evidence review in the selected game.
             </div>
             <div className="md:col-span-2">
-              <Button type="submit">Save COD handle</Button>
+              <Button type="submit">Save game account</Button>
             </div>
           </form>
         </Panel>

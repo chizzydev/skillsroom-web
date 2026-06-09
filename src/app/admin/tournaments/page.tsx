@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { AdminEmptyState } from "@/components/admin/AdminEmptyState";
+import { CatalogRulesetFields } from "@/components/catalog/CatalogRulesetFields";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { AdminShell } from "@/components/layout/AdminShell";
 import { LiveUpdateStream } from "@/components/realtime/LiveUpdateStream";
@@ -229,7 +230,6 @@ export default async function AdminTournamentsPage({
   }
 
   const selectedGame = games[0] ?? null;
-  const selectedRulesets = selectedGame ? rulesets.filter((ruleset) => ruleset.game_id === selectedGame.id) : [];
   const createdTournament = created ? tournaments.find((tournament) => tournament.id === created) : null;
   const seededTournament = seeded ? tournaments.find((tournament) => tournament.id === seeded) : null;
   const structuredTournament = structured ? tournaments.find((tournament) => tournament.id === structured) : null;
@@ -934,27 +934,14 @@ export default async function AdminTournamentsPage({
                     Title
                     <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="title" placeholder="Friday Night Masters" required />
                   </label>
-                  <label className="grid gap-2 text-sm font-bold text-ink">
-                    Game
-                    <select className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" defaultValue={selectedGame.slug} name="game_slug">
-                      {games.map((game) => (
-                        <option key={game.id} value={game.slug}>
-                          {game.name} · {game.platform}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label className="grid gap-2 text-sm font-bold text-ink">
-                    Ruleset
-                    <select className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" defaultValue={selectedRulesets[0]?.slug ?? ""} name="ruleset_slug">
-                      <option value="">No fixed ruleset</option>
-                      {rulesets.map((ruleset) => (
-                        <option key={ruleset.id} value={ruleset.slug}>
-                          {ruleset.title}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
+                  <CatalogRulesetFields
+                    flexibleLabel="No fixed ruleset"
+                    games={games}
+                    includeFlexibleOption
+                    initialGameSlug={selectedGame.slug}
+                    initialRulesetSlug=""
+                    rulesets={rulesets}
+                  />
                   <label className="grid gap-2 text-sm font-bold text-ink">
                     Format
                     <select className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="format">

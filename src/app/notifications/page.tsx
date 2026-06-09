@@ -163,7 +163,7 @@ export default async function NotificationsPage({ searchParams }: { searchParams
                     <div className="min-w-0">
                       <p className="font-black text-ink">{inviteSender(row)}</p>
                       <p className="mt-1 text-sm font-bold text-muted">
-                        {row.room_title || "COD Mobile room"} · {row.room_code || row.match_room_id}
+                        {row.room_title || "Private room"} · {row.room_code || row.match_room_id}
                       </p>
                     </div>
                   )

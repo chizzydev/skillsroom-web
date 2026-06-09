@@ -321,7 +321,7 @@ export default async function MatchDetailPage({
             <div className="min-w-0">
               <Badge tone={statusTone(room.status)}>{matchStatusLabel(room.status)}</Badge>
               <h1 className="mt-4 max-w-4xl text-3xl font-black leading-tight md:text-5xl">
-                {room.title ?? "COD Mobile private room"}
+                {room.title ?? "Private match room"}
               </h1>
               <div className="mt-4 flex flex-wrap gap-2 text-sm font-bold text-slate-300">
                 <span className="rounded-md border border-white/10 bg-white/5 px-3 py-2 font-mono text-white">{room.room_code}</span>
@@ -781,7 +781,7 @@ export default async function MatchDetailPage({
                   className="min-h-24 rounded-md border border-line bg-white px-3 py-2 text-sm outline-none focus:border-action"
                   maxLength={240}
                   name="message"
-                  placeholder={`Join ${room.room_code} for COD Mobile.`}
+                  placeholder={`Join ${room.room_code} on Skillsroom.`}
                 />
               </label>
               <SubmitButton disabled={room.status !== "open" || participants.length >= room.max_participants} idleLabel="Send invite" pendingLabel="Sending invite..." />
@@ -861,7 +861,7 @@ export default async function MatchDetailPage({
             <div className="border-b border-line p-4">
               <p className="font-mono text-xs font-black uppercase tracking-[0.12em] text-cyan">Evidence checklist</p>
               <ul className="mt-3 grid gap-2 text-sm leading-6 text-muted">
-                <li>Pre-match lobby screenshot showing both COD handles.</li>
+                <li>Pre-match lobby screenshot showing both player handles.</li>
                 <li>Final scoreboard screenshot or short screen recording.</li>
                 <li>Score summary must match the uploaded evidence.</li>
                 <li>Do not crop out usernames, room code, or final result.</li>

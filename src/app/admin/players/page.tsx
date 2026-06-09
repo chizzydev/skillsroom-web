@@ -63,7 +63,7 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams?
         ) : null}
         {params?.game_account_reviewed ? (
           <div className="rounded-md border border-success bg-successSoft p-4 text-sm font-bold text-success">
-            COD handle review saved.
+            Game-account review saved.
           </div>
         ) : null}
 
@@ -71,13 +71,13 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams?
           <StatusPanel detail="Ranked records" label="Players" tone="cyan" value={leaderboard.length.toString()} />
           <StatusPanel detail="Completed matches" label="Active Records" tone="success" value={readyPlayers.toString()} />
           <StatusPanel detail="Lost disputes/no-shows" label="Risk Signals" tone={riskSignals > 0 ? "warning" : "success"} value={riskSignals.toString()} />
-          <StatusPanel detail="COD handle checks" label="Pending Handles" tone={pendingHandles > 0 ? "warning" : "success"} value={pendingHandles.toString()} />
+          <StatusPanel detail="Game-account checks" label="Pending Handles" tone={pendingHandles > 0 ? "warning" : "success"} value={pendingHandles.toString()} />
         </div>
 
         <Panel>
           <PanelHeader
-            description="Verify the player's COD Mobile handle/UID when screenshots, lobby proof, or community confirmation make it credible."
-            eyebrow="COD Identity"
+            description="Verify the player's game handle and external ID when screenshots, lobby proof, or community confirmation make it credible."
+            eyebrow="Game Identity"
             title="Handle verification queue"
           />
           {gameAccounts.length ? (
@@ -93,7 +93,7 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams?
                     </div>
                   )
                 },
-                { key: "handle", label: "COD Handle", render: (row) => <span className="font-mono font-bold text-ink">{row.handle}</span> },
+                { key: "handle", label: "Handle", render: (row) => <span className="font-mono font-bold text-ink">{row.handle}</span> },
                 { key: "external_uid", label: "UID", render: (row) => <span className="font-mono text-muted">{row.external_uid ?? "Not supplied"}</span> },
                 { key: "status", label: "Status", render: (row) => <Badge tone={accountTone(row.status)}>{row.status}</Badge> },
                 {
@@ -124,8 +124,8 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams?
           ) : (
             <div className="p-4">
               <AdminEmptyState
-                description="COD handles appear here after players add them from their profile."
-                title="No COD handles submitted"
+                description="Game accounts appear here after players add them from their profile."
+                title="No game accounts submitted"
               />
             </div>
           )}

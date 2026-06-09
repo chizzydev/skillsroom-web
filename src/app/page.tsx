@@ -88,7 +88,7 @@ function RoomCard({ room }: { room: MatchRoom }) {
           <Badge tone={statusTone(room.status)}>{matchStatusLabel(room.status)}</Badge>
         </div>
         <Link className="mt-3 block text-lg font-black text-ink hover:text-action" href={`/matches/${room.id}`}>
-          {room.title ?? "COD Mobile private room"}
+          {room.title ?? "Private match room"}
         </Link>
         <div className="mt-3 grid gap-2 text-sm font-bold text-muted sm:grid-cols-3">
           <span>{formatEntryAmount(room)} entry</span>
@@ -290,7 +290,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
         <section className="min-w-0 rounded-lg border border-line bg-navy-900 p-5 text-white shadow-panel md:p-7">
           <div className="grid min-w-0 gap-5 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-end">
             <div className="min-w-0">
-              <Badge tone="cyan">COD Mobile closed beta</Badge>
+              <Badge tone="cyan">Free Fire beta lead · multi-game catalog</Badge>
               <h1 className="mt-4 max-w-4xl text-3xl font-black leading-tight sm:text-4xl lg:text-5xl">
                 Find a fair room. Fund once. Play under clear rules.
               </h1>
@@ -384,7 +384,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
                   <div className="max-w-md">
                     <h3 className="text-lg font-black text-ink">No active rooms yet</h3>
                     <p className="mt-2 text-sm leading-6 text-muted">
-                      Create the first COD Mobile room or share a room code from your community when one is ready.
+                      Create the first room for your game or share a room code from your community when one is ready.
                     </p>
                     <Link
                       className="mt-4 inline-flex min-h-10 items-center justify-center rounded-md bg-action px-4 text-sm font-black text-navy-950 shadow-action hover:bg-actionHover"
@@ -423,7 +423,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
                   Match entries are checked before play. Results need evidence before settlement.
                 </p>
                 <p className="rounded-md border border-line bg-surfaceWarm p-3">
-                  Keep your COD Mobile handle and screenshots clear so admins can review fast.
+                  Keep your in-game handle and screenshots clear so admins can review fast.
                 </p>
               </div>
             </Panel>

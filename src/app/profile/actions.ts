@@ -37,10 +37,10 @@ export async function updateProfileAction(formData: FormData) {
 export async function upsertGameAccountAction(formData: FormData) {
   try {
     await upsertGameAccount({
-      game_slug: "cod-mobile",
+      game_slug: String(formData.get("game_slug") || "free-fire").trim(),
       handle: String(formData.get("handle") || "").trim(),
       external_uid: cleanOptional(formData.get("external_uid")),
-      platform: "mobile",
+      platform: String(formData.get("platform") || "mobile").trim(),
       region: String(formData.get("region") || "NG").trim(),
       is_primary: true
     });
