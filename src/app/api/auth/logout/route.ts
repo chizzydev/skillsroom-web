@@ -1,7 +1,8 @@
-import { NextResponse, type NextRequest } from "next/server";
+import type { NextRequest } from "next/server";
 import { apiBaseUrl } from "@/lib/api";
 import { buildApiProxyHeaders } from "@/lib/api-proxy";
 import { clearAuthCookies, readRefreshToken } from "@/lib/auth-session";
+import { redirectAfterPost } from "@/lib/redirect-response";
 
 export async function POST(request: NextRequest) {
   const refreshToken = readRefreshToken(request);
@@ -13,7 +14,7 @@ export async function POST(request: NextRequest) {
     }).catch(() => undefined);
   }
 
-  const response = NextResponse.redirect(new URL("/sign-in", request.url));
+  const response = redirectAfterPost(new URL("/sign-in", request.url));
   clearAuthCookies(response);
   return response;
 }

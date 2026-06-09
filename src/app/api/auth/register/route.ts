@@ -1,7 +1,8 @@
-import { NextResponse, type NextRequest } from "next/server";
+import type { NextRequest } from "next/server";
 import { apiBaseUrl } from "@/lib/api";
 import { buildApiProxyHeaders } from "@/lib/api-proxy";
 import { setAuthCookies } from "@/lib/auth-session";
+import { redirectAfterPost } from "@/lib/redirect-response";
 
 export async function POST(request: NextRequest) {
   const formData = await request.formData();
@@ -14,7 +15,7 @@ export async function POST(request: NextRequest) {
     registerUrl.searchParams.set("error", "password_mismatch");
     registerUrl.searchParams.set("redirect", redirectTo);
     if (referralCode) registerUrl.searchParams.set("ref", referralCode);
-    return NextResponse.redirect(registerUrl);
+    return redirectAfterPost(registerUrl);
   }
 
   const response = await fetch(`${apiBaseUrl()}/auth/register`, {
@@ -34,7 +35,7 @@ export async function POST(request: NextRequest) {
     registerUrl.searchParams.set("error", "register_failed");
     registerUrl.searchParams.set("redirect", redirectTo);
     if (referralCode) registerUrl.searchParams.set("ref", referralCode);
-    return NextResponse.redirect(registerUrl);
+    return redirectAfterPost(registerUrl);
   }
 
   const payload = (await response.json()) as {
@@ -45,7 +46,7 @@ export async function POST(request: NextRequest) {
       refresh_token_expires_at: string;
     };
   };
-  const nextResponse = NextResponse.redirect(new URL(redirectTo, request.url));
+  const nextResponse = redirectAfterPost(new URL(redirectTo, request.url));
   setAuthCookies(nextResponse, payload.data);
   return nextResponse;
 }

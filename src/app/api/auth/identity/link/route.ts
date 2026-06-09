@@ -1,6 +1,7 @@
-import { NextResponse, type NextRequest } from "next/server";
+import type { NextRequest } from "next/server";
 import { apiBaseUrl } from "@/lib/api";
 import { buildApiProxyHeaders } from "@/lib/api-proxy";
+import { redirectAfterPost } from "@/lib/redirect-response";
 
 export async function POST(request: NextRequest) {
   const formData = await request.formData();
@@ -17,15 +18,15 @@ export async function POST(request: NextRequest) {
   } catch {
     const profileUrl = new URL(redirectTo, request.url);
     profileUrl.searchParams.set("google", "link_failed");
-    return NextResponse.redirect(profileUrl);
+    return redirectAfterPost(profileUrl);
   }
 
   const nextUrl = new URL(redirectTo, request.url);
   if (!response.ok) {
     nextUrl.searchParams.set("google", "link_failed");
-    return NextResponse.redirect(nextUrl);
+    return redirectAfterPost(nextUrl);
   }
 
   nextUrl.searchParams.set("google", "linked");
-  return NextResponse.redirect(nextUrl);
+  return redirectAfterPost(nextUrl);
 }
