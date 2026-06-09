@@ -1,12 +1,14 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { AppShell } from "@/components/layout/AppShell";
+import { LiveUpdateStream } from "@/components/realtime/LiveUpdateStream";
 import { Badge, type BadgeTone } from "@/components/ui/Badge";
 import { DataTable } from "@/components/ui/DataTable";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Panel, PanelHeader } from "@/components/ui/Panel";
 import { ManualPaymentPanel } from "@/components/payments/ManualPaymentPanel";
 import { StatusPanel } from "@/components/ui/StatusPanel";
+import { SubmitButton } from "@/components/ui/SubmitButton";
 import { Timeline } from "@/components/ui/Timeline";
 import { canAccessAdmin, getCurrentUser } from "@/lib/auth-bridge";
 import {
@@ -291,7 +293,7 @@ function configuredTiebreakers(detail: TournamentDetail) {
 function registrationAction(tournament: TournamentDetail) {
   if (tournament.status === "registration_open") {
     const remaining = Math.max(0, tournament.max_entries - (tournament.registered_entry_count ?? 0));
-    return [`${remaining} slots available`, "Registration workflow starts in the next phase."] as const;
+    return [`${remaining} slots available`, "Register here while entries are open, then complete check-in before seeding starts."] as const;
   }
   if (tournament.status === "published") return ["Registration not open", "Operators have published the event but not opened entries yet."] as const;
   if (tournament.status === "registration_locked") return ["Registration locked", "Entrants are being checked in, seeded, or grouped."] as const;
@@ -443,6 +445,8 @@ export default async function TournamentDetailPage({
             </div>
           </div>
         </section>
+
+        <LiveUpdateStream eventTypePrefixes={["tournament.", "notification."]} label="Tournament live" tournamentId={detail.id} />
 
         <div className="grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <StatusPanel detail={registrationDetail} label="Registration" tone="cyan" value={registrationTitle} />
@@ -666,9 +670,7 @@ export default async function TournamentDetailPage({
                       Featured stream
                     </label>
                   </div>
-                  <button className="inline-flex min-h-10 items-center justify-center rounded-md bg-action px-4 text-sm font-black text-navy-950 shadow-action hover:bg-actionHover" type="submit">
-                    Save livestream
-                  </button>
+                  <SubmitButton idleLabel="Save livestream" pendingLabel="Saving livestream..." />
                 </form>
 
                 <div className="grid gap-3 rounded-md border border-line bg-white p-4">
@@ -686,9 +688,7 @@ export default async function TournamentDetailPage({
                             <form action={archiveTournamentLivestreamAction}>
                               <input name="tournament_id" type="hidden" value={detail.id} />
                               <input name="livestream_id" type="hidden" value={item.id} />
-                              <button className="inline-flex min-h-9 items-center justify-center rounded-md border border-line bg-white px-3 text-xs font-black text-ink hover:bg-surfaceHigh" type="submit">
-                                Archive
-                              </button>
+                              <SubmitButton idleLabel="Archive" pendingLabel="Archiving..." size="sm" variant="secondary" />
                             </form>
                           ) : null}
                         </div>
@@ -759,9 +759,7 @@ export default async function TournamentDetailPage({
                     <input name="publish_now" type="checkbox" />
                     Publish immediately
                   </label>
-                  <button className="inline-flex min-h-10 items-center justify-center rounded-md bg-action px-4 text-sm font-black text-navy-950 shadow-action hover:bg-actionHover" type="submit">
-                    Save update
-                  </button>
+                  <SubmitButton idleLabel="Save update" pendingLabel="Saving update..." />
                 </form>
 
                 <div className="grid gap-3 rounded-md border border-line bg-white p-4">
@@ -779,18 +777,14 @@ export default async function TournamentDetailPage({
                             <form action={publishTournamentAnnouncementAction}>
                               <input name="tournament_id" type="hidden" value={detail.id} />
                               <input name="announcement_id" type="hidden" value={item.id} />
-                              <button className="inline-flex min-h-9 items-center justify-center rounded-md border border-line bg-white px-3 text-xs font-black text-ink hover:bg-surfaceHigh" type="submit">
-                                Publish
-                              </button>
+                              <SubmitButton idleLabel="Publish" pendingLabel="Publishing..." size="sm" variant="secondary" />
                             </form>
                           ) : null}
                           {item.status !== "archived" ? (
                             <form action={archiveTournamentAnnouncementAction}>
                               <input name="tournament_id" type="hidden" value={detail.id} />
                               <input name="announcement_id" type="hidden" value={item.id} />
-                              <button className="inline-flex min-h-9 items-center justify-center rounded-md border border-line bg-white px-3 text-xs font-black text-ink hover:bg-surfaceHigh" type="submit">
-                                Archive
-                              </button>
+                              <SubmitButton idleLabel="Archive" pendingLabel="Archiving..." size="sm" variant="secondary" />
                             </form>
                           ) : null}
                         </div>
@@ -842,9 +836,7 @@ export default async function TournamentDetailPage({
                 Notes
                 <textarea className="min-h-20 rounded-md border border-line bg-white px-3 py-2 text-sm outline-none focus:border-action" name="notes" />
               </label>
-              <button className="inline-flex min-h-10 items-center justify-center rounded-md bg-action px-4 text-sm font-black text-navy-950 shadow-action transition hover:bg-actionHover" type="submit">
-                Submit contribution
-              </button>
+              <SubmitButton idleLabel="Submit contribution" pendingLabel="Submitting contribution..." />
             </form>
           </Panel>
         </div>
@@ -929,26 +921,25 @@ export default async function TournamentDetailPage({
                   />
                 </label>
               ) : null}
-              <button
-                className="inline-flex min-h-10 items-center justify-center rounded-md bg-action px-4 text-sm font-black text-navy-950 shadow-action transition hover:bg-actionHover disabled:cursor-not-allowed disabled:opacity-50"
+              <SubmitButton
+                className="disabled:opacity-50"
                 disabled={!registrationOpen || Boolean(myEntry)}
-                type="submit"
-              >
-                {myEntry ? "Already registered" : registrationOpen ? "Register" : "Registration closed"}
-              </button>
+                idleLabel={myEntry ? "Already registered" : registrationOpen ? "Register" : "Registration closed"}
+                pendingLabel="Registering..."
+              />
               <p className="text-xs font-bold leading-5 text-muted">
                 Registration requires a complete profile, age confirmation, and a primary game account for this tournament game.
               </p>
             </form>
             <form action={checkInForTournamentAction} className="grid gap-3 border-t border-line p-4">
               <input name="tournament_id" type="hidden" value={detail.id} />
-              <button
-                className="inline-flex min-h-10 items-center justify-center rounded-md border border-line bg-white px-4 text-sm font-black text-ink shadow-tight transition hover:bg-surfaceHigh disabled:cursor-not-allowed disabled:opacity-50"
+              <SubmitButton
+                className="disabled:opacity-50"
                 disabled={!canCheckIn}
-                type="submit"
-              >
-                {myEntry?.status === "checked_in" ? "Checked in" : checkInOpen ? "Check in" : "Check-in closed"}
-              </button>
+                idleLabel={myEntry?.status === "checked_in" ? "Checked in" : checkInOpen ? "Check in" : "Check-in closed"}
+                pendingLabel="Checking in..."
+                variant="secondary"
+              />
               <p className="text-xs font-bold leading-5 text-muted">
                 Check-in confirms you are ready for seeding. Paid or hybrid entries must have approved funding first.
               </p>

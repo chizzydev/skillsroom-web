@@ -23,12 +23,13 @@ The gate is non-mutating. It verifies:
 - Risk Ops evidence legal hold, quarantine, deletion, export, and custody controls
 - evidence provider migration readiness
 
-Expected closed-beta verdict while local storage is active:
+Expected public-launch verdict:
 
-- `ready_with_warnings`
-- warning reason: evidence storage provider is intentionally still `local`
+- `ready`
 - critical findings must be `0`
 - failed checks must be `0`
+
+Localhost development may still report `ready_with_warnings` when evidence migration readiness is intentionally evaluating the `local` provider.
 
 ## Manual Operator Walkthrough
 

@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { AppShell } from "@/components/layout/AppShell";
+import { LiveUpdateStream } from "@/components/realtime/LiveUpdateStream";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { DataTable } from "@/components/ui/DataTable";
@@ -66,6 +67,8 @@ export default async function NotificationsPage({ searchParams }: { searchParams
             In-app notifications are the primary channel. Email can be activated once the provider configuration is present and your preferences allow it.
           </p>
         </section>
+
+        <LiveUpdateStream eventTypePrefixes={["notification.", "room.invite."]} label="Inbox live" />
 
         {(error || loadError) && (
           <div className="rounded-md border border-danger bg-red-50 p-4 text-sm font-bold text-danger">

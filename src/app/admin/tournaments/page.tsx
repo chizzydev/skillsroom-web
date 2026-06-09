@@ -3,6 +3,7 @@ import Link from "next/link";
 import { AdminEmptyState } from "@/components/admin/AdminEmptyState";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { AdminShell } from "@/components/layout/AdminShell";
+import { LiveUpdateStream } from "@/components/realtime/LiveUpdateStream";
 import { Badge, type BadgeTone } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { DataTable } from "@/components/ui/DataTable";
@@ -273,6 +274,8 @@ export default async function AdminTournamentsPage({
           title="Tournament Creation"
           tone="cyan"
         />
+
+        <LiveUpdateStream eventTypePrefixes={["tournament.", "admin.queue.tournament_"]} label="Tournament ops live" />
 
         {(error || loadError || createdTournament || seededTournament || structuredTournament || linkedTournament || scoredTournament || resultReviewedTournament || settlementReservedTournament || refundsReservedTournament || hostGrantedTournament || eventUpdatedTournament) && (
           <div

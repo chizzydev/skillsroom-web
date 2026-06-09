@@ -1,19 +1,41 @@
 # Evidence Retention Policy
 
-Skill Rooms stores uploaded match-room and tournament proof as private local evidence files with JSON sidecar metadata. This policy makes the lifecycle explicit for closed beta.
+Skillsroom stores uploaded match-room and tournament proof as private evidence files with JSON sidecar metadata. This policy makes the lifecycle explicit and keeps production storage durable instead of filesystem-dependent.
 
 ## Storage Provider Adapter
 
 Evidence storage now goes through the `EvidenceStorageProvider` adapter in `src/lib/evidence-storage-provider.ts`.
 
-Current provider:
+Supported providers:
 
-- Provider: `local`
-- Environment selector: `EVIDENCE_STORAGE_PROVIDER=local`
-- Root: `.data/evidence`
-- Quarantine root: `.data/evidence-quarantine`
-- External durability: no
-- Intended use: closed-beta local/dev storage only
+- `local`
+  - intended use: localhost development only
+  - root: `.data/evidence`
+  - quarantine root: `.data/evidence-quarantine`
+  - external durability: no
+- `s3_compatible`
+  - intended use: production or staging durable object storage
+  - required envs:
+    - `EVIDENCE_S3_BUCKET`
+    - `EVIDENCE_S3_REGION`
+    - `EVIDENCE_S3_ACCESS_KEY_ID`
+    - `EVIDENCE_S3_SECRET_ACCESS_KEY`
+  - optional envs:
+    - `EVIDENCE_S3_ENDPOINT`
+    - `EVIDENCE_S3_PREFIX`
+    - `EVIDENCE_S3_FORCE_PATH_STYLE`
+- `cloudflare_r2`
+  - intended use: production or staging durable object storage
+  - required envs:
+    - `EVIDENCE_R2_ACCOUNT_ID`
+    - `EVIDENCE_R2_BUCKET`
+    - `EVIDENCE_R2_ACCESS_KEY_ID`
+    - `EVIDENCE_R2_SECRET_ACCESS_KEY`
+  - optional envs:
+    - `EVIDENCE_R2_PREFIX`
+    - `EVIDENCE_R2_FORCE_PATH_STYLE`
+
+Public deployments must not use `local` unless `ALLOW_UNSAFE_LOCAL_EVIDENCE_STORAGE=true` is explicitly set for a controlled non-production exception.
 
 The provider owns file reads, file writes, metadata reads, metadata writes, object stats, and metadata listing. Upload, serving, retention, legal hold, export, and chain-of-custody flows should not read or write evidence media directly.
 
@@ -31,10 +53,13 @@ This is the final evidence infrastructure phase before tournament launch readine
 
 The app does not switch providers automatically. Migration readiness only verifies that the current sidecars and media can move to a future external provider.
 
-Supported target shapes for the next provider decision:
+Supported target shapes for the current provider decision:
 
 - S3-compatible storage
 - Cloudflare R2
+
+Future target shape:
+
 - Supabase Storage
 
 Run the readiness checker:

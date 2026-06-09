@@ -22,7 +22,7 @@ type GoogleAuthButtonProps = {
   referralCode?: string;
 };
 
-export function GoogleAuthButton({ redirectTo, label, action = "/api/auth/google", referralCode }: GoogleAuthButtonProps) {
+export function GoogleAuthButton({ redirectTo, label, action = "/api/auth/identity/continue", referralCode }: GoogleAuthButtonProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const formRef = useRef<HTMLFormElement | null>(null);
   const initializedRef = useRef(false);

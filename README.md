@@ -22,4 +22,12 @@ npm run launch:check
 ## Auth Note
 
 - Google sign-in needs `NEXT_PUBLIC_GOOGLE_CLIENT_ID`.
-- The exact web origin in use, such as `http://localhost:3100` in development or `https://www.skillsroom.xyz` in production, must also be added to Google Authorized JavaScript origins.
+- The exact web origin in use, such as `http://localhost:3100` in development or `https://skillsroom.xyz` in production, must also be added to Google Authorized JavaScript origins.
+
+## Evidence Storage
+
+- Localhost development may use `EVIDENCE_STORAGE_PROVIDER=local`.
+- Public deployments must use durable object storage:
+  - `EVIDENCE_STORAGE_PROVIDER=s3_compatible`, or
+  - `EVIDENCE_STORAGE_PROVIDER=cloudflare_r2`
+- See `.env.example` for the full storage env set.

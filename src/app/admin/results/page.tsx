@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { AdminEmptyState } from "@/components/admin/AdminEmptyState";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { AdminShell } from "@/components/layout/AdminShell";
+import { LiveUpdateStream } from "@/components/realtime/LiveUpdateStream";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Panel, PanelHeader } from "@/components/ui/Panel";
@@ -42,6 +43,8 @@ export default async function AdminResultsPage({ searchParams }: { searchParams:
           eyebrow="Result Ops"
           title="Evidence and Result Review"
         />
+
+        <LiveUpdateStream eventTypePrefixes={["admin.queue.results.", "admin.queue.tournament_results.", "match.result.", "tournament.match.reviewed."]} label="Results live" />
 
         {(error || loadError) && (
           <div className="rounded-md border border-danger bg-red-50 p-4 text-sm font-bold text-danger">

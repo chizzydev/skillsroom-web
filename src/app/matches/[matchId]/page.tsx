@@ -2,10 +2,11 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { AppShell } from "@/components/layout/AppShell";
 import { ManualPaymentPanel } from "@/components/payments/ManualPaymentPanel";
+import { LiveUpdateStream } from "@/components/realtime/LiveUpdateStream";
 import { PlayerTrustCard } from "@/components/trust/PlayerTrustCard";
 import { Badge } from "@/components/ui/Badge";
-import { Button } from "@/components/ui/Button";
 import { Panel, PanelHeader } from "@/components/ui/Panel";
+import { SubmitButton } from "@/components/ui/SubmitButton";
 import { Timeline } from "@/components/ui/Timeline";
 import { getCurrentUser } from "@/lib/auth-bridge";
 import {
@@ -332,7 +333,7 @@ export default async function MatchDetailPage({
               {canOpen ? (
                 <form action={openMatchRoomAction}>
                   <input name="match_room_id" type="hidden" value={room.id} />
-                  <Button type="submit">Open room</Button>
+                  <SubmitButton idleLabel="Open room" pendingLabel="Opening room..." />
                 </form>
               ) : null}
               <Link className="inline-flex min-h-10 items-center justify-center rounded-md border border-white/10 bg-white px-4 text-sm font-black text-ink hover:bg-surfaceHigh" href="/matches">
@@ -346,6 +347,13 @@ export default async function MatchDetailPage({
             </div>
           </div>
         </section>
+
+        <LiveUpdateStream
+          eventTypePrefixes={["match.", "notification.", "room.invite."]}
+          label="Room live"
+          matchRoomId={room.id}
+          tournamentId={tournamentId ?? undefined}
+        />
 
         {error ? (
           <div className="rounded-md border border-danger bg-red-50 p-4 text-sm font-bold text-danger">{error}</div>
@@ -445,9 +453,11 @@ export default async function MatchDetailPage({
                 </p>
                 <form action={checkInTournamentMatchRoomAction} className="mt-4">
                   <input name="match_room_id" type="hidden" value={room.id} />
-                  <Button disabled={!canTournamentCheckIn} type="submit">
-                    {currentPlayerCheckedIn ? "Checked in" : "Check in"}
-                  </Button>
+                  <SubmitButton
+                    disabled={!canTournamentCheckIn}
+                    idleLabel={currentPlayerCheckedIn ? "Checked in" : "Check in"}
+                    pendingLabel="Checking in..."
+                  />
                 </form>
                 {!currentParticipant ? (
                   <p className="mt-3 text-xs font-bold leading-5 text-muted">Only assigned match participants can check in.</p>
@@ -574,7 +584,7 @@ export default async function MatchDetailPage({
                     Featured stream
                   </label>
                 </div>
-                <Button type="submit">Save livestream</Button>
+                <SubmitButton idleLabel="Save livestream" pendingLabel="Saving livestream..." />
               </form>
 
               <div className="grid gap-3 rounded-md border border-line bg-white p-4">
@@ -592,9 +602,7 @@ export default async function MatchDetailPage({
                           <form action={archiveMatchLivestreamAction}>
                             <input name="match_room_id" type="hidden" value={room.id} />
                             <input name="livestream_id" type="hidden" value={item.id} />
-                            <button className="inline-flex min-h-9 items-center justify-center rounded-md border border-line bg-white px-3 text-xs font-black text-ink hover:bg-surfaceHigh" type="submit">
-                              Archive
-                            </button>
+                            <SubmitButton idleLabel="Archive" pendingLabel="Archiving..." size="sm" variant="secondary" />
                           </form>
                         ) : null}
                       </div>
@@ -714,10 +722,14 @@ export default async function MatchDetailPage({
                 <span className="text-xs leading-5 text-muted">Upload the bank/fintech receipt screenshot. Images up to 8MB.</span>
               </label>
               <label className="grid gap-2 text-sm font-bold text-ink">
+                Proof link <span className="font-bold text-muted">(optional)</span>
+                <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" disabled={!canSubmitFunding} name="proof_url" placeholder="Use if the screenshot is hosted elsewhere" type="url" />
+              </label>
+              <label className="grid gap-2 text-sm font-bold text-ink">
                 Note <span className="font-bold text-muted">(optional)</span>
                 <textarea className="min-h-24 rounded-md border border-line bg-white px-3 py-2 text-sm outline-none focus:border-action" disabled={!canSubmitFunding} name="proof_note" placeholder="Anything admin should know" />
               </label>
-              <Button disabled={!canSubmitFunding} type="submit">Submit funding</Button>
+              <SubmitButton disabled={!canSubmitFunding} idleLabel="Submit funding" pendingLabel="Submitting funding..." />
             </form>
           </Panel>
         </div>
@@ -772,9 +784,7 @@ export default async function MatchDetailPage({
                   placeholder={`Join ${room.room_code} for COD Mobile.`}
                 />
               </label>
-              <Button disabled={room.status !== "open" || participants.length >= room.max_participants} type="submit">
-                Send invite
-              </Button>
+              <SubmitButton disabled={room.status !== "open" || participants.length >= room.max_participants} idleLabel="Send invite" pendingLabel="Sending invite..." />
               {room.status !== "open" ? (
                 <p className="text-xs font-bold leading-5 text-muted">This room must be open before the invited player can accept and join.</p>
               ) : null}
@@ -905,7 +915,7 @@ export default async function MatchDetailPage({
                 Notes
                 <textarea className="min-h-24 rounded-md border border-line bg-white px-3 py-2 text-sm outline-none focus:border-action" disabled={!canSubmitResult} name="evidence_notes" />
               </label>
-              <Button disabled={!canSubmitResult} type="submit">Submit result</Button>
+              <SubmitButton disabled={!canSubmitResult} idleLabel="Submit result" pendingLabel="Submitting result..." />
             </form>
           </Panel>
         </div>
@@ -917,8 +927,8 @@ export default async function MatchDetailPage({
               <input name="match_room_id" type="hidden" value={room.id} />
               <input name="result_claim_id" type="hidden" value={latestClaim.id} />
               <textarea className="min-h-11 rounded-md border border-line bg-white px-3 py-2 text-sm outline-none focus:border-action" name="note" placeholder="Response note" />
-              <Button name="response" type="submit" value="agree">Agree</Button>
-              <Button name="response" type="submit" value="dispute" variant="danger">Dispute</Button>
+              <SubmitButton idleLabel="Agree" name="response" pendingLabel="Submitting..." value="agree" />
+              <SubmitButton idleLabel="Dispute" name="response" pendingLabel="Submitting..." value="dispute" variant="danger" />
             </form>
           </Panel>
         ) : null}

@@ -27,6 +27,11 @@ function withError(path: string, error: unknown) {
   return `${path}?error=${encodeURIComponent(actionErrorMessage(error))}`;
 }
 
+function optionalString(formData: FormData, key: string) {
+  const value = String(formData.get(key) || "").trim();
+  return value || undefined;
+}
+
 export async function createMatchRoomAction(formData: FormData) {
   let roomId: string | null = null;
 
@@ -119,17 +124,18 @@ export async function submitManualFundingAction(formData: FormData) {
       ? await storeEvidenceFile({ file: proofFile, matchRoomId, userId: user.id })
       : null;
 
-    if (!storedProof?.url) {
-      throw new Error("Upload a screenshot of your transfer before submitting funding.");
+    const proofUrl = storedProof?.url ?? optionalString(formData, "proof_url");
+    if (!proofUrl) {
+      throw new Error("Upload a screenshot of your transfer or provide a proof link before submitting funding.");
     }
 
     await submitManualFunding(matchRoomId, {
       amount_minor: Math.round(amountNaira * 100),
-      transfer_reference: String(formData.get("transfer_reference") || "").trim() || undefined,
+      transfer_reference: optionalString(formData, "transfer_reference"),
       sender_account_name: String(formData.get("sender_account_name") || "").trim(),
       sender_bank_name: String(formData.get("sender_bank_name") || "").trim(),
-      proof_url: storedProof.url,
-      proof_note: String(formData.get("proof_note") || "").trim() || undefined
+      proof_url: proofUrl,
+      proof_note: optionalString(formData, "proof_note")
     });
   } catch (error) {
     redirect(withError(`/matches/${matchRoomId}`, error));

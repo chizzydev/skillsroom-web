@@ -1,4 +1,3 @@
-import { redirect } from "next/navigation";
 import Link from "next/link";
 import { AppShell } from "@/components/layout/AppShell";
 import { Badge } from "@/components/ui/Badge";
@@ -120,7 +119,156 @@ function RoomCard({ room }: { room: MatchRoom }) {
 
 export default async function HomePage({ searchParams }: HomePageProps) {
   const user = await getCurrentUser();
-  if (!user) redirect("/sign-in?redirect=/");
+  if (!user) {
+    return (
+      <main className="min-h-screen overflow-x-hidden bg-bg">
+        <header className="border-b border-line bg-white/95 backdrop-blur">
+          <div className="mx-auto flex h-16 max-w-7xl items-center gap-3 px-page">
+            <Link className="flex min-w-0 items-center gap-3 text-lg font-black text-ink" href="/">
+              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-md bg-navy-900 text-sm text-action shadow-tight">SR</span>
+              <span className="truncate">Skillsroom</span>
+            </Link>
+            <nav className="ml-auto hidden items-center gap-2 md:flex">
+              <Link className="rounded-md px-3 py-2 text-sm font-black text-muted hover:bg-surfaceHigh hover:text-ink" href="/community">
+                Community
+              </Link>
+              <Link className="rounded-md px-3 py-2 text-sm font-black text-muted hover:bg-surfaceHigh hover:text-ink" href="/policies">
+                Policies
+              </Link>
+              <Link className="rounded-md px-3 py-2 text-sm font-black text-muted hover:bg-surfaceHigh hover:text-ink" href="/support">
+                Support
+              </Link>
+              <Link className="inline-flex min-h-10 items-center justify-center rounded-md border border-line bg-white px-4 text-sm font-black text-ink hover:bg-surfaceHigh" href="/sign-in?redirect=/">
+                Sign in
+              </Link>
+              <Link className="inline-flex min-h-10 items-center justify-center rounded-md bg-action px-4 text-sm font-black text-navy-950 shadow-action hover:bg-actionHover" href="/register">
+                Create account
+              </Link>
+            </nav>
+          </div>
+        </header>
+
+        <div className="mx-auto grid max-w-7xl gap-6 px-page py-6 md:py-8">
+          <section className="rounded-lg border border-line bg-navy-900 p-5 text-white shadow-panel md:p-7">
+            <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_24rem] lg:items-end">
+              <div>
+                <Badge tone="cyan">Skill-based competition platform</Badge>
+                <h1 className="mt-4 max-w-4xl text-3xl font-black leading-tight sm:text-4xl lg:text-5xl">
+                  Structured rooms, evidence review, and serious tournament play.
+                </h1>
+                <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-300 md:text-base">
+                  Skillsroom helps players and operators run private match rooms and competitive events with clear rules,
+                  visible dispute handling, and controlled settlement workflows.
+                </p>
+                <div className="mt-5 grid gap-2 sm:flex sm:flex-wrap">
+                  <Link
+                    className="inline-flex min-h-10 w-full items-center justify-center rounded-md bg-action px-4 text-sm font-black text-navy-950 shadow-action hover:bg-actionHover sm:w-auto"
+                    href="/register"
+                  >
+                    Create account
+                  </Link>
+                  <Link
+                    className="inline-flex min-h-10 w-full items-center justify-center rounded-md border border-white/10 bg-white px-4 text-sm font-black text-ink hover:bg-surfaceHigh sm:w-auto"
+                    href="/sign-in?redirect=/"
+                  >
+                    Sign in
+                  </Link>
+                  <Link
+                    className="inline-flex min-h-10 w-full items-center justify-center rounded-md border border-white/10 bg-white/12 px-4 text-sm font-black text-white hover:bg-white/18 sm:w-auto"
+                    href="/community"
+                  >
+                    View public community
+                  </Link>
+                </div>
+              </div>
+              <div className="rounded-lg border border-white/10 bg-white/5 p-4">
+                <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-300">How trust works</p>
+                <div className="mt-3 grid gap-3 text-sm leading-6 text-slate-200">
+                  <p className="rounded-md border border-white/10 bg-white/5 p-3">
+                    Players join rooms and tournaments under visible rules instead of hidden chats and loose transfers.
+                  </p>
+                  <p className="rounded-md border border-white/10 bg-white/5 p-3">
+                    Funding proof, evidence, disputes, and operator decisions stay attached to the match or tournament record.
+                  </p>
+                  <p className="rounded-md border border-white/10 bg-white/5 p-3">
+                    Public policies, support pages, and community surfaces remain available before sign-in so new players can inspect the platform first.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_22rem]">
+            <Panel>
+              <PanelHeader
+                eyebrow="Product"
+                title="What players can do here"
+                description="Skillsroom is built for competitive gaming, not chance-based betting."
+              />
+              <div className="grid gap-3 p-4 md:grid-cols-2">
+                <div className="rounded-md border border-line bg-surfaceWarm p-4">
+                  <p className="text-sm font-black text-ink">Private match rooms</p>
+                  <p className="mt-2 text-sm leading-6 text-muted">
+                    Create or join head-to-head rooms, submit transfer proof, play, and move through result review with evidence attached.
+                  </p>
+                </div>
+                <div className="rounded-md border border-line bg-surfaceWarm p-4">
+                  <p className="text-sm font-black text-ink">Tournament operations</p>
+                  <p className="mt-2 text-sm leading-6 text-muted">
+                    Run brackets, Swiss, round robin, group stages, leagues, and cumulative-score formats with operator oversight.
+                  </p>
+                </div>
+                <div className="rounded-md border border-line bg-surfaceWarm p-4">
+                  <p className="text-sm font-black text-ink">Evidence and disputes</p>
+                  <p className="mt-2 text-sm leading-6 text-muted">
+                    Keep screenshots, clips, and decision history connected to the exact room or tournament match under review.
+                  </p>
+                </div>
+                <div className="rounded-md border border-line bg-surfaceWarm p-4">
+                  <p className="text-sm font-black text-ink">Public trust surfaces</p>
+                  <p className="mt-2 text-sm leading-6 text-muted">
+                    Review community pages, policies, winner pages, and public competition context before you ever create an account.
+                  </p>
+                </div>
+              </div>
+            </Panel>
+
+            <div className="grid gap-6">
+              <Panel>
+                <PanelHeader eyebrow="Inspect first" title="Public pages" />
+                <div className="grid gap-2 p-4">
+                  <Link className="rounded-md border border-line bg-white px-4 py-3 text-sm font-black text-ink hover:bg-surfaceHigh" href="/community">
+                    Community and leaderboards
+                  </Link>
+                  <Link className="rounded-md border border-line bg-white px-4 py-3 text-sm font-black text-ink hover:bg-surfaceHigh" href="/community/highlights">
+                    Highlights and winner pages
+                  </Link>
+                  <Link className="rounded-md border border-line bg-white px-4 py-3 text-sm font-black text-ink hover:bg-surfaceHigh" href="/policies">
+                    Policies and eligibility
+                  </Link>
+                  <Link className="rounded-md border border-line bg-white px-4 py-3 text-sm font-black text-ink hover:bg-surfaceHigh" href="/support">
+                    Support and contact
+                  </Link>
+                </div>
+              </Panel>
+
+              <Panel>
+                <PanelHeader eyebrow="Account" title="Ready to continue?" />
+                <div className="grid gap-2 p-4">
+                  <Link className="inline-flex min-h-10 items-center justify-center rounded-md bg-action px-4 text-sm font-black text-navy-950 shadow-action hover:bg-actionHover" href="/register">
+                    Create account
+                  </Link>
+                  <Link className="inline-flex min-h-10 items-center justify-center rounded-md border border-line bg-white px-4 text-sm font-black text-ink hover:bg-surfaceHigh" href="/sign-in?redirect=/">
+                    Sign in
+                  </Link>
+                </div>
+              </Panel>
+            </div>
+          </div>
+        </div>
+      </main>
+    );
+  }
 
   const params = await searchParams;
   let rooms: MatchRoom[] = [];

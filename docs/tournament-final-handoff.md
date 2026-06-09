@@ -57,12 +57,10 @@ npm run evidence:migration:check
 
 Expected closed-beta warnings:
 
-- `tournament:operator-qa` may return `ready_with_warnings` while evidence storage is local.
-- `tournament:launch-checklist` may return `ready_with_warnings` while evidence storage is local.
 - `tournament:dry-run-check` returns `ready_for_manual_rehearsal` until an authenticated operator completes the dry-run transcript.
-- Evidence migration readiness may return `ready_with_warnings` while the active provider remains local.
+- `evidence:migration:check` may return `ready_with_warnings` only in localhost development when the active provider is intentionally still `local`.
 
-These warnings are acceptable only when failed checks are `0` and critical evidence findings are `0`.
+For public launch, `tournament:operator-qa` and `tournament:launch-checklist` should both resolve to `ready`.
 
 ## Manual Handoff
 

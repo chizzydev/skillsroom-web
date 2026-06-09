@@ -437,7 +437,7 @@ export default async function ProfilePage({ searchParams }: ProfilePageProps) {
                 Linked and ready for future sign-ins.
               </div>
             ) : (
-              <GoogleAuthButton action="/api/auth/google/link" label="Link Google account" redirectTo="/profile" />
+              <GoogleAuthButton action="/api/auth/identity/link" label="Link Google account" redirectTo="/profile" />
             )}
           </div>
         </Panel>

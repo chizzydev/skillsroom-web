@@ -1,6 +1,15 @@
 # Skill Rooms Web Implementation Status
 
-Last updated: 2026-06-01
+Last updated: 2026-06-09
+
+## Realtime Product Feel
+
+- Added same-origin realtime proxy route at `/api/community/realtime/stream` so browser sessions can subscribe without exposing access tokens to client-side header logic.
+- Added shared `LiveUpdateStream` listener component with reconnect state, visibility-aware deferred refresh, and debounced `router.refresh()` behavior.
+- Added typed live toast narration on top of the stream so pages now explain what changed instead of only silently refreshing.
+- Toast narration is scoped to real event types across matches, tournaments, moderation queues, settlements, and inbox activity, with hidden-tab catch-up summaries when a player returns.
+- Wired live refresh UX into notifications, match workspace, tournament detail, admin command center, and admin funding/results/settlements/risk/tournament lanes.
+- Current realtime behavior is durable event driven, not blind polling, and is now attached to actual funding, dispute, settlement, moderation, and tournament lifecycle mutations.
 
 ## V3 Recovery Track
 
@@ -2005,7 +2014,7 @@ npm run evidence:deletion:check
 npm run evidence:migration:check
 ```
 
-Result: all passed. The migration checker returned `ready_with_warnings` because the active provider is intentionally still local, with zero critical findings.
+Result: all passed. The migration checker remained available for localhost/provider-change rehearsals, while public launch now expects an external evidence provider with zero critical findings.
 
 ## Completed In Tournament Engine Phase T42
 
@@ -2034,7 +2043,7 @@ npm run launch:check
 npm run tournament:operator-qa
 ```
 
-Result: all passed. The operator QA gate returned `ready_with_warnings`; the only warning is expected because closed beta still uses the local evidence storage provider. Failed checks were `0` and critical evidence findings were `0`.
+Result: all passed. The operator QA gate now expects `ready` for public launch, with zero failed checks and zero critical evidence findings.
 
 ## Completed In Tournament Engine Phase T43
 
@@ -2064,7 +2073,7 @@ npm run tournament:operator-qa
 npm run tournament:launch-checklist
 ```
 
-Result: all passed. The launch checklist returned `ready_with_warnings`; the only warning is the accepted closed-beta local evidence provider exception.
+Result: all passed. The launch checklist now expects `ready` for public launch, backed by an external evidence storage provider.
 
 ## Completed In Tournament Engine Phase T44
 
@@ -2125,7 +2134,7 @@ npm run evidence:deletion:check
 npm run evidence:migration:check
 ```
 
-Result: all passed. Expected warnings remain limited to local evidence provider readiness and manual dry-run rehearsal pending.
+Result: all passed. Expected warnings are now limited to manual dry-run rehearsal when operators have not yet completed the authenticated transcript.
 
 ## Setup Commands For A Fresh Checkout
 
@@ -2211,7 +2220,7 @@ Documentation-only phase. No code changes were required.
   - no admin notes
   - no fake payout-completed messaging
   - no static preview cards on real routes
-- Public winner pages include share-ready URLs and links back into ranking/highlights surfaces, while actual OG/share-card generation remains the next phase.
+- Public winner pages include share-ready URLs, generated OG/share cards, and links back into ranking/highlights surfaces.
 
 ## Completed In Community + Virality Phase C4
 
@@ -2439,6 +2448,24 @@ Community + Virality is complete through C10. New community growth work should b
 - Improved auth page small-screen layout and Google failure messaging.
 - Improved profile mobile wrapping for referral and linked-Google surfaces.
 
+## Completed In Auth Trust-Surface Hardening
+
+- Renamed the primary public Google session-completion route to `/api/auth/identity/continue` and Google linking route to `/api/auth/identity/link`.
+- Kept temporary compatibility bridges on the old `/api/auth/google` paths while the UI now points only to the neutral identity routes.
+- Stopped forcing unauthenticated visitors directly into sign-in from `/`; the home page now introduces Skillsroom publicly before credentials are requested.
+- Added stronger pre-auth trust context on sign-in and registration:
+  - what the platform is
+  - what workflows it controls
+  - where to inspect public community, policies, rules, and support pages first
+- Reduced the visual emphasis on closed-beta gating language in the auth entry experience so the domain reads more like a real product than a hidden credential wall.
+
+## Auth Trust-Surface Hardening Verification
+
+- `npm run typecheck`
+- `npm run lint`
+- `npm run build`
+- live route verification recommended for `/`, `/sign-in`, `/register`, and the new identity auth routes after deploy
+
 ## UI/Auth Polish + Email Readiness Verification
 
 - `npm run typecheck`
@@ -2446,3 +2473,32 @@ Community + Virality is complete through C10. New community growth work should b
 - `npm run build`
 - `npm run launch:check`
 - live smoke for `/`, `/sign-in`, `/matches`, `/profile`, `/notifications`
+
+## Completed In Production Evidence Persistence Upgrade
+
+- Replaced the evidence-storage placeholder boundary with real durable provider support.
+- Added production-capable providers:
+  - `s3_compatible`
+  - `cloudflare_r2`
+- Kept `local` for localhost development only.
+- Public deployments now fail closed if evidence storage remains `local` without an explicit unsafe override.
+- Added production env documentation for:
+  - bucket
+  - region/endpoint
+  - access key
+  - secret key
+  - optional key prefix
+  - optional path-style toggle
+- Launch check now verifies that public deployments resolve to an external evidence storage provider.
+- Funding proof UX now permits either:
+  - direct app-hosted upload, or
+  - an external proof link when operators need it
+- Added reusable pending-submit states across auth, room, and tournament forms so users see immediate action feedback instead of dead clicks.
+
+## Production Evidence Persistence Verification
+
+- `npm install`
+- `npm run typecheck`
+- `npm run lint`
+- `npm run build`
+- `npm run launch:check`

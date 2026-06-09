@@ -23,7 +23,7 @@ npm run evidence:deletion:check
 npm run evidence:migration:check
 ```
 
-Closed beta may launch with `ready_with_warnings` only when the local evidence storage provider warning is accepted, failed checks are `0`, and critical evidence findings are `0`.
+Closed beta may launch only when the checklist returns `ready`, failed checks are `0`, and the public deployment is backed by an external evidence storage provider.
 
 ## Product/Ops Sign-Off
 

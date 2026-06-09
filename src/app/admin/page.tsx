@@ -4,6 +4,7 @@ import { AdminEmptyState } from "@/components/admin/AdminEmptyState";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { AdminQueueCard } from "@/components/admin/AdminQueueCard";
 import { AdminShell } from "@/components/layout/AdminShell";
+import { LiveUpdateStream } from "@/components/realtime/LiveUpdateStream";
 import { Badge, type BadgeTone } from "@/components/ui/Badge";
 import { DataTable } from "@/components/ui/DataTable";
 import { Panel, PanelHeader } from "@/components/ui/Panel";
@@ -206,6 +207,8 @@ export default async function AdminPage({
           eyebrow="Operations"
           title="Admin Command Center"
         />
+
+        <LiveUpdateStream eventTypePrefixes={["admin.queue.", "match.", "tournament.", "notification."]} label="Ops live" />
 
         {(error || loadError || announcementSaved || announcementPublished || announcementArchived) ? (
           <div

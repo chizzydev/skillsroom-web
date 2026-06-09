@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { AdminEmptyState } from "@/components/admin/AdminEmptyState";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { AdminShell } from "@/components/layout/AdminShell";
+import { LiveUpdateStream } from "@/components/realtime/LiveUpdateStream";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Panel, PanelHeader } from "@/components/ui/Panel";
@@ -40,6 +41,8 @@ export default async function AdminFundingPage({ searchParams }: { searchParams:
           title="Manual Funding Queue"
           tone="warning"
         />
+
+        <LiveUpdateStream eventTypePrefixes={["admin.queue.funding.", "match.funding."]} label="Funding live" />
 
         {(error || loadError) && (
           <div className="rounded-md border border-danger bg-red-50 p-4 text-sm font-bold text-danger">

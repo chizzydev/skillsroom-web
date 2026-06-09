@@ -115,7 +115,7 @@ async function main() {
       "/notifications"
     ]),
     docContentCheck("launch_evidence", "Evidence launch coverage", "docs/tournament-closed-beta-launch-checklist.md", [
-      "local evidence storage provider warning is accepted",
+      "external evidence storage provider is active",
       "legal hold",
       "chain-of-custody",
       "provider migration"
@@ -127,14 +127,7 @@ async function main() {
     ])
   ]);
 
-  const localEvidenceWarning: LaunchCheck = {
-    id: "local_evidence_provider",
-    label: "Closed-beta evidence provider exception",
-    status: "warn",
-    detail: "Closed beta intentionally permits the local evidence storage provider only when evidence migration readiness has zero critical findings."
-  };
-
-  const allChecks = [...checks, localEvidenceWarning];
+  const allChecks = [...checks];
   const summary = allChecks.reduce(
     (totals, check) => {
       totals[check.status] += 1;
