@@ -34,10 +34,10 @@ function countStatus<T extends { status: string }>(rows: T[], status: string) {
   return rows.filter((row) => row.status === status).length.toString();
 }
 
-export default async function AdminSettlementsPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
+export default async function AdminSettlementsPage({ searchParams }: { searchParams: Promise<{ error?: string; success?: string }> }) {
   const user = await getCurrentUser();
   if (!user || !canAccessAdmin(user) || !["admin", "owner"].includes(user.role)) redirect("/sign-in?redirect=/admin/settlements");
-  const { error } = await searchParams;
+  const { error, success } = await searchParams;
 
   let settlements: MatchSettlement[] = [];
   let payouts: MatchPayout[] = [];
@@ -68,11 +68,16 @@ export default async function AdminSettlementsPage({ searchParams }: { searchPar
 
         <LiveUpdateStream eventTypePrefixes={["admin.queue.settlements.", "admin.queue.refunds.", "admin.queue.tournament_settlements.", "admin.queue.tournament_refunds.", "match.settlement.", "match.payout.", "match.refund.", "tournament.settlement.", "tournament.refunds."]} label="Money ops live" />
 
-        {(error || loadError) && (
-          <div className="rounded-md border border-danger bg-red-50 p-4 text-sm font-bold text-danger">
-            {error ?? loadError}
+        {(error || loadError || success) ? (
+          <div
+            className={[
+              "rounded-md border p-4 text-sm font-bold",
+              error || loadError ? "border-danger bg-red-50 text-danger" : "border-success bg-emerald-50 text-success"
+            ].join(" ")}
+          >
+            {error ?? loadError ?? success}
           </div>
-        )}
+        ) : null}
 
         <div className="grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <StatusPanel detail="Reserved" label="Settlements" tone="success" value={countStatus(settlements, "payout_pending")} />

@@ -10,13 +10,21 @@ function actionErrorMessage(error: unknown) {
   return "The result review could not be completed.";
 }
 
+const resultSuccessMessages: Record<ResultReviewDecision, string> = {
+  approve_claim: "Result claim approved.",
+  reject_claim: "Result claim rejected.",
+  mark_disputed: "Result claim moved to dispute review.",
+  void_match: "Match was voided."
+};
+
 export async function reviewResultClaimAction(formData: FormData) {
   const claimId = String(formData.get("claim_id") || "");
+  const decision = String(formData.get("decision") || "mark_disputed") as ResultReviewDecision;
 
   try {
     const stepUpToken = await requireAdminStepUpToken();
     await reviewResultClaim(claimId, {
-      decision: String(formData.get("decision") || "mark_disputed") as ResultReviewDecision,
+      decision,
       note: String(formData.get("note") || "").trim() || undefined,
       stepUpToken
     });
@@ -24,5 +32,5 @@ export async function reviewResultClaimAction(formData: FormData) {
     redirect(`/admin/results?error=${encodeURIComponent(actionErrorMessage(error))}`);
   }
 
-  redirect("/admin/results");
+  redirect(`/admin/results?success=${encodeURIComponent(resultSuccessMessages[decision] ?? "Result review completed.")}`);
 }

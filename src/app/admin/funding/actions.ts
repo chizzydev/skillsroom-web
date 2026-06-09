@@ -10,13 +10,20 @@ function actionErrorMessage(error: unknown) {
   return "The funding review could not be completed.";
 }
 
+function withSuccess(decision: "approve" | "reject") {
+  return `/admin/funding?success=${encodeURIComponent(
+    decision === "approve" ? "Funding submission approved." : "Funding submission rejected."
+  )}`;
+}
+
 export async function reviewFundingSubmissionAction(formData: FormData) {
+  const decision = String(formData.get("decision")) === "reject" ? "reject" : "approve";
   const submissionId = String(formData.get("submission_id") || "");
 
   try {
     const stepUpToken = await requireAdminStepUpToken();
     await reviewFundingSubmission(submissionId, {
-      decision: String(formData.get("decision")) === "reject" ? "reject" : "approve",
+      decision,
       note: String(formData.get("note") || "").trim() || undefined,
       stepUpToken
     });
@@ -24,5 +31,5 @@ export async function reviewFundingSubmissionAction(formData: FormData) {
     redirect(`/admin/funding?error=${encodeURIComponent(actionErrorMessage(error))}`);
   }
 
-  redirect("/admin/funding");
+  redirect(withSuccess(decision));
 }

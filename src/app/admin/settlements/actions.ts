@@ -14,6 +14,10 @@ function withError(error: unknown) {
   return `/admin/settlements?error=${encodeURIComponent(actionErrorMessage(error))}`;
 }
 
+function withSuccess(message: string) {
+  return `/admin/settlements?success=${encodeURIComponent(message)}`;
+}
+
 export async function reserveSettlementAction(formData: FormData) {
   try {
     const stepUpToken = await requireAdminStepUpToken();
@@ -26,7 +30,7 @@ export async function reserveSettlementAction(formData: FormData) {
     redirect(withError(error));
   }
 
-  redirect("/admin/settlements");
+  redirect(withSuccess("Settlement reserved and payout queue created."));
 }
 
 export async function completePayoutAction(formData: FormData) {
@@ -40,7 +44,7 @@ export async function completePayoutAction(formData: FormData) {
     redirect(withError(error));
   }
 
-  redirect("/admin/settlements");
+  redirect(withSuccess("Payout marked as completed."));
 }
 
 export async function reserveRefundsAction(formData: FormData) {
@@ -55,7 +59,7 @@ export async function reserveRefundsAction(formData: FormData) {
     redirect(withError(error));
   }
 
-  redirect("/admin/settlements");
+  redirect(withSuccess("Refund queue created."));
 }
 
 export async function completeRefundAction(formData: FormData) {
@@ -69,5 +73,5 @@ export async function completeRefundAction(formData: FormData) {
     redirect(withError(error));
   }
 
-  redirect("/admin/settlements");
+  redirect(withSuccess("Refund marked as completed."));
 }
