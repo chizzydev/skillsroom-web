@@ -137,7 +137,7 @@ export type MatchResultClaim = {
   claimed_winner_participant_id: string;
   claimed_winner_user_id: string;
   status: ResultClaimStatus;
-  score_summary: string;
+  score_summary: string | null;
   note: string | null;
   submitted_at: string;
   resolved_by_user_id: string | null;
@@ -693,7 +693,7 @@ export type CommunityMatchWinnerPage = {
     rank_path: string | null;
   } | null;
   result: {
-    score_summary: string;
+    score_summary: string | null;
     approved_at: string | null;
     status_label: string;
     settlement_status: string | null;
@@ -1762,6 +1762,13 @@ export function checkInTournamentMatchRoom(matchRoomId: string) {
   );
 }
 
+export function startMatchPlay(matchRoomId: string) {
+  return apiRequest<{ room: MatchRoom }>(`/match-rooms/${encodeURIComponent(matchRoomId)}/start-play`, {
+    method: "POST",
+    body: JSON.stringify({})
+  });
+}
+
 export function getRoomFunding(matchRoomId: string) {
   return apiRequest<RoomFundingOverview>(`/match-rooms/${matchRoomId}/funding`);
 }
@@ -1808,7 +1815,7 @@ export function submitResultClaim(
   matchRoomId: string,
   input: {
     claimed_winner_participant_id: string;
-    score_summary: string;
+    score_summary?: string;
     note?: string;
     evidence: Array<{
       evidence_type: EvidenceItemType;

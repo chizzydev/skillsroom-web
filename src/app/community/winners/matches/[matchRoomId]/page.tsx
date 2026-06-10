@@ -13,6 +13,10 @@ type MatchWinnerPageProps = {
   params: Promise<{ matchRoomId: string }>;
 };
 
+function scoreSummaryLabel(value: string | null | undefined) {
+  return value && value.trim().length ? value : "No score line supplied";
+}
+
 export async function generateMetadata({ params }: MatchWinnerPageProps): Promise<Metadata> {
   const { matchRoomId } = await params;
   try {
@@ -79,7 +83,7 @@ export default async function MatchWinnerPage({ params }: MatchWinnerPageProps) 
             <div className="grid gap-3 p-4">
               <div className="rounded-md border border-line bg-white p-4">
                 <p className="text-xs font-black uppercase tracking-[0.12em] text-muted">Score</p>
-                <p className="mt-2 font-black text-ink">{winnerPage.result.score_summary}</p>
+                <p className="mt-2 font-black text-ink">{scoreSummaryLabel(winnerPage.result.score_summary)}</p>
               </div>
               <div className="rounded-md border border-line bg-white p-4">
                 <p className="text-xs font-black uppercase tracking-[0.12em] text-muted">Opponent</p>

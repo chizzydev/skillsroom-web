@@ -25,7 +25,7 @@ export function Timeline({ items }: { items: TimelineItem[] }) {
           <div className="pb-4">
             <div className="flex flex-wrap items-center gap-2">
               <strong className="text-sm font-black text-ink">{item.label}</strong>
-              {item.status === "current" ? <Badge tone="cyan">Now</Badge> : null}
+              {item.status === "current" ? <Badge tone="cyan">Current</Badge> : null}
               {item.status === "risk" ? <Badge tone="danger">Risk</Badge> : null}
             </div>
             <p className="mt-1 text-sm leading-6 text-muted">{item.detail}</p>

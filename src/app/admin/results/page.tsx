@@ -24,6 +24,10 @@ function displayLabel(value: string) {
     .join(" ");
 }
 
+function scoreSummaryLabel(value: string | null | undefined) {
+  return value && value.trim().length ? value : "No score line supplied";
+}
+
 export default async function AdminResultsPage({ searchParams }: { searchParams: Promise<{ error?: string; success?: string }> }) {
   const user = await getCurrentUser();
   if (!canAccessAdmin(user)) redirect("/sign-in?redirect=/admin/results");
@@ -74,7 +78,7 @@ export default async function AdminResultsPage({ searchParams }: { searchParams:
                           <Badge tone={claim.status === "opponent_disputed" ? "danger" : "warning"}>{displayLabel(claim.status)}</Badge>
                           <span className="font-mono text-xs font-bold text-dim">{new Date(claim.submitted_at).toLocaleString("en-NG")}</span>
                         </div>
-                        <h2 className="mt-3 text-lg font-black text-ink">{claim.score_summary}</h2>
+                        <h2 className="mt-3 text-lg font-black text-ink">{scoreSummaryLabel(claim.score_summary)}</h2>
                         <p className="mt-1 font-mono text-xs font-bold text-muted">Room {claim.match_room_id}</p>
                       </div>
                       <div className="rounded-md border border-line bg-surfaceWarm p-3">

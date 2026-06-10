@@ -11,6 +11,7 @@ import {
   checkInTournamentMatchRoom,
   joinMatchRoom,
   openMatchRoom,
+  startMatchPlay,
   submitManualFunding,
   submitResultClaim,
   respondToResultClaim,
@@ -109,6 +110,18 @@ export async function checkInTournamentMatchRoomAction(formData: FormData) {
   redirect(`/matches/${matchRoomId}?checked_in=1`);
 }
 
+export async function startMatchPlayAction(formData: FormData) {
+  const matchRoomId = String(formData.get("match_room_id") || "");
+
+  try {
+    await startMatchPlay(matchRoomId);
+  } catch (error) {
+    redirect(withError(`/matches/${matchRoomId}`, error));
+  }
+
+  redirect(`/matches/${matchRoomId}?play_started=1`);
+}
+
 export async function submitManualFundingAction(formData: FormData) {
   const matchRoomId = String(formData.get("match_room_id") || "");
 
@@ -161,8 +174,8 @@ export async function submitResultClaimAction(formData: FormData) {
     const uri = String(formData.get("evidence_uri") || "").trim();
     await submitResultClaim(matchRoomId, {
       claimed_winner_participant_id: String(formData.get("claimed_winner_participant_id") || ""),
-      score_summary: String(formData.get("score_summary") || "").trim(),
-      note: String(formData.get("note") || "").trim() || undefined,
+      score_summary: optionalString(formData, "score_summary"),
+      note: optionalString(formData, "note"),
       evidence: [
         {
           evidence_type: storedEvidence?.evidenceType ?? evidenceType,

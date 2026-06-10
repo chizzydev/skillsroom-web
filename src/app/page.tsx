@@ -174,7 +174,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
                     Sign in
                   </Link>
                   <Link
-                    className="inline-flex min-h-10 w-full items-center justify-center rounded-md border border-white/10 bg-white/12 px-4 text-sm font-black text-white hover:bg-white/18 sm:w-auto"
+                    className="inline-flex min-h-10 w-full items-center justify-center rounded-md border border-white/10 bg-white px-4 text-sm font-black text-ink hover:bg-surfaceHigh sm:w-auto"
                     href="/community"
                   >
                     View public community
@@ -290,7 +290,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
         <section className="min-w-0 rounded-lg border border-line bg-navy-900 p-5 text-white shadow-panel md:p-7">
           <div className="grid min-w-0 gap-5 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-end">
             <div className="min-w-0">
-              <Badge tone="cyan">Free Fire beta lead · multi-game catalog</Badge>
+              <Badge tone="cyan">Free Fire beta lead - multi-game catalog</Badge>
               <h1 className="mt-4 max-w-4xl text-3xl font-black leading-tight sm:text-4xl lg:text-5xl">
                 Find a fair room. Fund once. Play under clear rules.
               </h1>
@@ -311,7 +311,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
                   Create room
                 </Link>
                 <Link
-                  className="inline-flex min-h-10 w-full items-center justify-center rounded-md border border-white/10 bg-white px-4 text-sm font-black text-ink hover:bg-surfaceHigh sm:w-auto sm:bg-white/12 sm:text-white sm:hover:bg-white/18"
+                  className="inline-flex min-h-10 w-full items-center justify-center rounded-md border border-white/10 bg-white px-4 text-sm font-black text-ink hover:bg-surfaceHigh sm:w-auto"
                   href="/community"
                 >
                   Community pulse

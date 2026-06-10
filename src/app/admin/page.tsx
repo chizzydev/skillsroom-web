@@ -42,6 +42,10 @@ type WorkItem = {
   href: string;
 };
 
+function scoreSummaryLabel(value: string | null | undefined) {
+  return value && value.trim().length ? value : "No score line supplied";
+}
+
 function money(currency: string, amountMinor: number) {
   return formatEntryAmount({ currency, entry_amount_minor: amountMinor });
 }
@@ -65,7 +69,7 @@ function fromResult(row: MatchResultClaim): WorkItem {
     type: "Result claim",
     room: row.match_room_id,
     actor: row.claimant_user_id,
-    amount: row.score_summary,
+    amount: scoreSummaryLabel(row.score_summary),
     priority: "Evidence check",
     tone: "cyan",
     href: "/admin/results"

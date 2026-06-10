@@ -41,6 +41,7 @@ import {
   createRoomInviteAction,
   openMatchRoomAction,
   respondToResultClaimAction,
+  startMatchPlayAction,
   submitManualFundingAction,
   submitResultClaimAction
 } from "../actions";
@@ -78,8 +79,8 @@ function nextAction(room: MatchRoom, participantCount: number) {
     ? (["Share the room code", "Send the code to an opponent or wait for a player to join from the lobby."] as const)
     : (["Confirm funding", "Both players are in. Funding proof is the next checkpoint."] as const);
   if (["awaiting_funding", "funding_review"].includes(room.status)) return ["Submit or wait for funding review", "Both entries must be approved before the match starts."] as const;
-  if (room.status === "funded") return ["Play the match", "The room is funded. Follow the ruleset and keep proof ready."] as const;
-  if (room.status === "active") return ["Submit the result", "Upload the score and evidence when the match is done."] as const;
+  if (room.status === "funded") return ["Start the match", "Funding is approved. Start live play when both players are ready, then submit evidence after the match ends."] as const;
+  if (room.status === "active") return ["Match is live", "Play is active. Submit result evidence when the match is done."] as const;
   if (room.status === "awaiting_results") return ["Result evidence needed", "A player should submit the final score and scoreboard proof."] as const;
   if (room.status === "under_review") return ["Admin review in progress", "Evidence and responses are being checked before settlement."] as const;
   if (room.status === "disputed") return ["Dispute review", "Settlement is paused until an operator resolves the dispute."] as const;
@@ -138,6 +139,25 @@ function primaryHandleLabel(trust?: PlayerTrustSummary | null) {
 function metadataString(metadata: Record<string, unknown> | undefined, key: string) {
   const value = metadata?.[key];
   return typeof value === "string" && value.length ? value : null;
+}
+
+function scoreSummaryLabel(value: string | null | undefined) {
+  return value && value.trim().length ? value : "No score line supplied";
+}
+
+function resultReadinessMessage(room: MatchRoom, canStartPlay: boolean) {
+  if (room.status === "funded") {
+    return canStartPlay
+      ? "Funding is complete. Start live play first, then submit result evidence when the match ends."
+      : "Funding is complete, but this room still needs an eligible player or operator to start live play before result evidence opens.";
+  }
+  if (room.status === "open" || room.status === "awaiting_funding" || room.status === "funding_review") {
+    return "Result evidence stays locked until funding is fully approved and live play has started.";
+  }
+  if (room.status === "draft") {
+    return "Open the room, fill both slots, and finish funding before result evidence becomes available.";
+  }
+  return "Result evidence becomes available once the room reaches live play.";
 }
 
 function hasEmbeddableLivestream(links: CommunityLivestreamLink[]) {
@@ -201,7 +221,7 @@ export default async function MatchDetailPage({
   searchParams
 }: {
   params: Promise<{ matchId: string }>;
-  searchParams: Promise<{ error?: string; invite_sent?: string; checked_in?: string; livestream_saved?: string; livestream_archived?: string }>;
+  searchParams: Promise<{ error?: string; invite_sent?: string; checked_in?: string; livestream_saved?: string; livestream_archived?: string; play_started?: string }>;
 }) {
   const user = await getCurrentUser();
   if (!user) redirect("/sign-in?redirect=/matches");
@@ -211,7 +231,8 @@ export default async function MatchDetailPage({
     invite_sent: inviteSent,
     checked_in: checkedInSuccess,
     livestream_saved: livestreamSaved,
-    livestream_archived: livestreamArchived
+    livestream_archived: livestreamArchived,
+    play_started: playStarted
   } = await searchParams;
 
   let data: MatchTimeline | null = null;
@@ -294,7 +315,12 @@ export default async function MatchDetailPage({
     roomAllowsFundingSubmission &&
     Boolean(currentParticipant) &&
     (currentFundingStatus === "pending" || currentFundingStatus === "rejected");
-  const canSubmitResult = ["funded", "active", "awaiting_results", "under_review"].includes(room.status);
+  const canStartPlay =
+    room.status === "funded" &&
+    participants.length === room.max_participants &&
+    allJoinedParticipantsApproved &&
+    (Boolean(currentParticipant) || ["moderator", "admin", "owner"].includes(user.role));
+  const canSubmitResult = ["active", "awaiting_results", "under_review", "disputed"].includes(room.status);
   const canTournamentCheckIn =
     isTournamentRoom &&
     Boolean(currentParticipant) &&
@@ -350,6 +376,12 @@ export default async function MatchDetailPage({
               <Link className="inline-flex min-h-10 items-center justify-center rounded-md border border-white/10 bg-white px-4 text-sm font-black text-ink hover:bg-surfaceHigh" href="/matches">
                 All rooms
               </Link>
+              {canStartPlay ? (
+                <form action={startMatchPlayAction}>
+                  <input name="match_room_id" type="hidden" value={room.id} />
+                  <SubmitButton idleLabel="Start match" pendingLabel="Starting match..." />
+                </form>
+              ) : null}
               {canSubmitResult ? (
                 <a className="inline-flex min-h-10 items-center justify-center rounded-md bg-action px-4 text-sm font-black text-navy-950 shadow-action hover:bg-actionHover" href="#result">
                   Submit result
@@ -366,11 +398,12 @@ export default async function MatchDetailPage({
           tournamentId={tournamentId ?? undefined}
         />
 
-        {error ? <TransientStatusBanner clearKeys={["error"]} durationMs={8000} message={error} /> : null}
-        {inviteSent ? <TransientStatusBanner clearKeys={["invite_sent"]} durationMs={7000} message="Invite sent. The player will see it in their notifications." tone="success" /> : null}
-        {checkedInSuccess ? <TransientStatusBanner clearKeys={["checked_in"]} durationMs={7000} message="Tournament match check-in recorded." tone="success" /> : null}
-        {livestreamSaved ? <TransientStatusBanner clearKeys={["livestream_saved"]} durationMs={7000} message="Livestream link saved." tone="success" /> : null}
-        {livestreamArchived ? <TransientStatusBanner clearKeys={["livestream_archived"]} durationMs={7000} message="Livestream archived." tone="success" /> : null}
+        {error ? <TransientStatusBanner clearKeys={["error"]} durationMs={10000} message={error} /> : null}
+        {inviteSent ? <TransientStatusBanner clearKeys={["invite_sent"]} durationMs={9000} message="Invite sent. The player will see it in their notifications." tone="success" /> : null}
+        {checkedInSuccess ? <TransientStatusBanner clearKeys={["checked_in"]} durationMs={9000} message="Tournament match check-in recorded." tone="success" /> : null}
+        {livestreamSaved ? <TransientStatusBanner clearKeys={["livestream_saved"]} durationMs={9000} message="Livestream link saved." tone="success" /> : null}
+        {livestreamArchived ? <TransientStatusBanner clearKeys={["livestream_archived"]} durationMs={9000} message="Livestream archived." tone="success" /> : null}
+        {playStarted ? <TransientStatusBanner clearKeys={["play_started"]} durationMs={10000} message="Match play started. Submit result evidence after the game is complete." tone="success" /> : null}
 
         <div className="grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <Panel className="p-4">
@@ -658,6 +691,25 @@ export default async function MatchDetailPage({
           </Panel>
         </div>
 
+        {canStartPlay ? (
+          <Panel>
+            <PanelHeader
+              eyebrow="Play"
+              title="Start live play"
+              description="Funding is complete. Start the match when both players are ready so the room enters live play and result evidence opens at the correct checkpoint."
+            />
+            <div className="grid gap-4 p-4 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
+              <p className="text-sm leading-6 text-muted">
+                This writes the official play-start event to the room audit trail, so players, admins, and live updates all follow the same state transition.
+              </p>
+              <form action={startMatchPlayAction}>
+                <input name="match_room_id" type="hidden" value={room.id} />
+                <SubmitButton idleLabel="Start match now" pendingLabel="Starting match..." />
+              </form>
+            </div>
+          </Panel>
+        ) : null}
+
         {!isTournamentRoom ? (
         <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1fr)_24rem]" id="funding">
           <Panel>
@@ -686,12 +738,12 @@ export default async function MatchDetailPage({
             <PanelHeader eyebrow="Submit Funding" title="Transfer proof" description="Amount, sender bank, account name, and screenshot are enough for review." />
             <form action={submitManualFundingAction} className="grid gap-3 p-4">
               {currentParticipant ? (
-                currentFundingStatus === "approved" && ["awaiting_funding", "funding_review"].includes(room.status) ? (
+                currentFundingStatus === "approved" && ["awaiting_funding", "funding_review", "funded"].includes(room.status) ? (
                   <TransientStatusBanner
                     clearKeys={[]}
                     message={
-                      allJoinedParticipantsApproved
-                        ? "Both funding approvals are in. This room is refreshing into the play stage now."
+                      room.status === "funded" || allJoinedParticipantsApproved
+                        ? "Both funding approvals are in. Start the match when both players are ready."
                         : "Your own funding is already approved. We are waiting for the other player so the room can move forward."
                     }
                     tone="success"
@@ -749,7 +801,11 @@ export default async function MatchDetailPage({
               </label>
               <SubmitButton disabled={!canSubmitFunding} idleLabel="Submit funding" pendingLabel="Submitting funding..." />
               {!canSubmitFunding && currentFundingStatus === "approved" ? (
-                <p className="text-xs font-bold leading-5 text-muted">Your slot is already approved. The room will stay in funding review until the opponent is approved too.</p>
+                <p className="text-xs font-bold leading-5 text-muted">
+                  {room.status === "funded"
+                    ? "Your slot is approved. Start live play when both players are ready."
+                    : "Your slot is already approved. The room will stay in funding review until the opponent is approved too."}
+                </p>
               ) : null}
               {!canSubmitFunding && currentFundingStatus === "submitted" ? (
                 <p className="text-xs font-bold leading-5 text-muted">A submission already exists for your slot, so this form stays locked until admin reviews it.</p>
@@ -847,7 +903,7 @@ export default async function MatchDetailPage({
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div>
                         <p className="font-mono text-xs font-bold uppercase tracking-[0.12em] text-dim">Score claim</p>
-                        <p className="mt-2 text-xl font-black text-ink">{claim.score_summary}</p>
+                        <p className="mt-2 text-xl font-black text-ink">{scoreSummaryLabel(claim.score_summary)}</p>
                       </div>
                       <Badge tone={resultTone(claim.status)}>{displayLabel(claim.status)}</Badge>
                     </div>
@@ -877,73 +933,96 @@ export default async function MatchDetailPage({
               ) : (
                 <div className="rounded-lg border border-dashed border-line bg-surfaceWarm p-6">
                   <p className="text-lg font-black text-ink">No result claim yet</p>
-                  <p className="mt-2 text-sm leading-6 text-muted">When the match is done, submit the winner, score, and evidence link here.</p>
+                  <p className="mt-2 text-sm leading-6 text-muted">When the match is done, submit the winner, optional score summary, and evidence here.</p>
                 </div>
               )}
             </div>
           </Panel>
 
           <Panel>
-            <PanelHeader eyebrow="Submit Result" title="Winner claim" />
+            <PanelHeader
+              eyebrow={canSubmitResult ? "Submit Result" : "Result Gate"}
+              title={canSubmitResult ? "Winner claim" : "Result evidence will open after play starts"}
+            />
             <div className="border-b border-line p-4">
               <p className="font-mono text-xs font-black uppercase tracking-[0.12em] text-cyan">Evidence checklist</p>
               <ul className="mt-3 grid gap-2 text-sm leading-6 text-muted">
                 <li>Pre-match lobby screenshot showing both player handles.</li>
                 <li>Final scoreboard screenshot or short screen recording.</li>
-                <li>Score summary must match the uploaded evidence.</li>
+                <li>Add a score line only when the game actually produces one.</li>
                 <li>Do not crop out usernames, room code, or final result.</li>
               </ul>
             </div>
-            <form action={submitResultClaimAction} className="grid gap-3 p-4">
-              <input name="match_room_id" type="hidden" value={room.id} />
-              <label className="grid gap-2 text-sm font-bold text-ink">
-                Claimed winner
-                <select className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" disabled={!canSubmitResult} name="claimed_winner_participant_id" required>
-                  {(results?.participants ?? participants).map((participant) => (
-                    <option key={participant.id} value={participant.id}>
-                      {participant.slot.replace("_", " ")} - {participantName(participant)}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="grid gap-2 text-sm font-bold text-ink">
-                Score
-                <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" disabled={!canSubmitResult} name="score_summary" placeholder="2-1" required />
-              </label>
-              <label className="grid gap-2 text-sm font-bold text-ink">
-                Evidence type
-                <select className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" disabled={!canSubmitResult} name="evidence_type">
-                  <option value="screenshot">Screenshot</option>
-                  <option value="video">Video</option>
-                  <option value="link">Link</option>
-                  <option value="note">Note only</option>
-                </select>
-              </label>
-              <label className="grid gap-2 text-sm font-bold text-ink">
-                Upload evidence
-                <input
-                  accept="image/png,image/jpeg,image/webp,video/mp4,video/webm,video/quicktime"
-                  className="min-h-11 rounded-md border border-line bg-white px-3 py-2 text-sm outline-none file:mr-3 file:rounded-sm file:border-0 file:bg-surfaceHigh file:px-3 file:py-2 file:text-xs file:font-black file:text-ink focus:border-action"
-                  disabled={!canSubmitResult}
-                  name="evidence_file"
-                  type="file"
-                />
-                <span className="text-xs leading-5 text-muted">Images up to 8MB. Videos up to 80MB.</span>
-              </label>
-              <label className="grid gap-2 text-sm font-bold text-ink">
-                Evidence link
-                <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" disabled={!canSubmitResult} name="evidence_uri" placeholder="Use only if the file is hosted elsewhere" type="url" />
-              </label>
-              <label className="grid gap-2 text-sm font-bold text-ink">
-                Evidence title
-                <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" defaultValue="Final scoreboard" disabled={!canSubmitResult} name="evidence_title" required />
-              </label>
-              <label className="grid gap-2 text-sm font-bold text-ink">
-                Notes
-                <textarea className="min-h-24 rounded-md border border-line bg-white px-3 py-2 text-sm outline-none focus:border-action" disabled={!canSubmitResult} name="evidence_notes" />
-              </label>
-              <SubmitButton disabled={!canSubmitResult} idleLabel="Submit result" pendingLabel="Submitting result..." />
-            </form>
+            {canSubmitResult ? (
+              <form action={submitResultClaimAction} className="grid gap-3 p-4">
+                <input name="match_room_id" type="hidden" value={room.id} />
+                <label className="grid gap-2 text-sm font-bold text-ink">
+                  Claimed winner
+                  <select className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="claimed_winner_participant_id" required>
+                    {(results?.participants ?? participants).map((participant) => (
+                      <option key={participant.id} value={participant.id}>
+                        {participant.slot.replace("_", " ")} - {participantName(participant)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="grid gap-2 text-sm font-bold text-ink">
+                  Score summary <span className="font-bold text-muted">(optional)</span>
+                  <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="score_summary" placeholder="2-1, Booyah, placement result, forfeit" />
+                </label>
+                <label className="grid gap-2 text-sm font-bold text-ink">
+                  Evidence type
+                  <select className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="evidence_type">
+                    <option value="screenshot">Screenshot</option>
+                    <option value="video">Video</option>
+                    <option value="link">Link</option>
+                    <option value="note">Note only</option>
+                  </select>
+                </label>
+                <label className="grid gap-2 text-sm font-bold text-ink">
+                  Upload evidence
+                  <input
+                    accept="image/png,image/jpeg,image/webp,video/mp4,video/webm,video/quicktime"
+                    className="min-h-11 rounded-md border border-line bg-white px-3 py-2 text-sm outline-none file:mr-3 file:rounded-sm file:border-0 file:bg-surfaceHigh file:px-3 file:py-2 file:text-xs file:font-black file:text-ink focus:border-action"
+                    name="evidence_file"
+                    type="file"
+                  />
+                  <span className="text-xs leading-5 text-muted">Images up to 8MB. Videos up to 80MB.</span>
+                </label>
+                <label className="grid gap-2 text-sm font-bold text-ink">
+                  Evidence link
+                  <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="evidence_uri" placeholder="Use only if the file is hosted elsewhere" type="url" />
+                </label>
+                <label className="grid gap-2 text-sm font-bold text-ink">
+                  Claim note <span className="font-bold text-muted">(optional)</span>
+                  <textarea className="min-h-24 rounded-md border border-line bg-white px-3 py-2 text-sm outline-none focus:border-action" name="note" placeholder="Short result context for review, for example overtime, disconnect, or forfeit." />
+                </label>
+                <label className="grid gap-2 text-sm font-bold text-ink">
+                  Evidence title
+                  <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" defaultValue="Final scoreboard" name="evidence_title" required />
+                </label>
+                <label className="grid gap-2 text-sm font-bold text-ink">
+                  Evidence notes
+                  <textarea className="min-h-24 rounded-md border border-line bg-white px-3 py-2 text-sm outline-none focus:border-action" name="evidence_notes" />
+                </label>
+                <SubmitButton idleLabel="Submit result" pendingLabel="Submitting result..." />
+              </form>
+            ) : (
+              <div className="grid gap-4 p-4">
+                <div className="rounded-md border border-cyan-200 bg-cyanSoft p-4 text-sm font-bold text-cyan">
+                  {resultReadinessMessage(room, canStartPlay)}
+                </div>
+                {canStartPlay ? (
+                  <form action={startMatchPlayAction} className="grid gap-3 sm:max-w-xs">
+                    <input name="match_room_id" type="hidden" value={room.id} />
+                    <SubmitButton idleLabel="Start match now" pendingLabel="Starting match..." />
+                  </form>
+                ) : null}
+                <p className="text-xs font-bold leading-5 text-muted">
+                  Score summaries stay optional because some games resolve through placement, eliminations, survival, forfeit, or other non-scoreline outcomes.
+                </p>
+              </div>
+            )}
           </Panel>
         </div>
 
