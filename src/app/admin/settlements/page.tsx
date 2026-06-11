@@ -24,7 +24,9 @@ import {
   completePayoutAction,
   completeRefundAction,
   reserveRefundsAction,
-  reserveSettlementAction
+  reserveSettlementAction,
+  updatePayoutInstructionsAction,
+  updateRefundInstructionsAction
 } from "./actions";
 
 function money(currency: string, amountMinor: number) {
@@ -131,7 +133,7 @@ export default async function AdminSettlementsPage({ searchParams }: { searchPar
                       <div className="grid gap-1 text-xs text-muted">
                         <span className="font-bold text-ink">{row.recipient_name || "Instructions missing"}</span>
                         <span>{row.bank_name || "Bank not set"}</span>
-                        <span className="font-mono">{row.account_number_masked || "No account number"}</span>
+                        <span className="font-mono">{row.account_number || row.account_number_masked || "No account number"}</span>
                       </div>
                     )
                   },
@@ -178,6 +180,43 @@ export default async function AdminSettlementsPage({ searchParams }: { searchPar
               </label>
               <FormActionButton idleLabel="Complete payout" pendingLabel="Completing payout..." />
             </form>
+            <div className="border-t border-line px-4 pb-4 pt-2">
+              <PanelHeader
+                eyebrow="Repair"
+                title="Fix payout instructions"
+                description="Use fallback to copy the latest approved funding instructions or current payout profile, or save corrected bank details directly onto this queued payout."
+              />
+            </div>
+            <form action={updatePayoutInstructionsAction} className="grid gap-3 px-4 pb-4">
+              <label className="grid gap-2 text-sm font-bold text-ink">
+                Payout ID
+                <input className="min-h-11 rounded-md border border-line bg-white px-3 font-mono text-sm outline-none focus:border-action" name="payout_id" required />
+              </label>
+              <label className="grid gap-2 text-sm font-bold text-ink">
+                Recipient name
+                <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="recipient_name" />
+              </label>
+              <label className="grid gap-2 text-sm font-bold text-ink">
+                Bank name
+                <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="bank_name" />
+              </label>
+              <label className="grid gap-2 text-sm font-bold text-ink">
+                Account number
+                <input className="min-h-11 rounded-md border border-line bg-white px-3 font-mono text-sm outline-none focus:border-action" name="account_number" inputMode="numeric" />
+              </label>
+              <label className="grid gap-2 text-sm font-bold text-ink">
+                Bank code <span className="font-bold text-muted">(optional)</span>
+                <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="bank_code" />
+              </label>
+              <label className="grid gap-2 text-sm font-bold text-ink">
+                Ops note <span className="font-bold text-muted">(optional)</span>
+                <textarea className="min-h-24 rounded-md border border-line bg-white px-3 py-2 text-sm outline-none focus:border-action" name="payout_note" />
+              </label>
+              <div className="grid gap-2 sm:grid-cols-2">
+                <FormActionButton idleLabel="Apply funding/profile fallback" pendingLabel="Applying fallback..." name="use_fallback" value="true" variant="secondary" />
+                <FormActionButton idleLabel="Save payout instructions" pendingLabel="Saving instructions..." />
+              </div>
+            </form>
           </Panel>
         </div>
 
@@ -207,7 +246,7 @@ export default async function AdminSettlementsPage({ searchParams }: { searchPar
                       <div className="grid gap-1 text-xs text-muted">
                         <span className="font-bold text-ink">{row.recipient_name || "Instructions missing"}</span>
                         <span>{row.bank_name || "Bank not set"}</span>
-                        <span className="font-mono">{row.account_number_masked || "No account number"}</span>
+                        <span className="font-mono">{row.account_number || row.account_number_masked || "No account number"}</span>
                       </div>
                     )
                   },
@@ -253,6 +292,43 @@ export default async function AdminSettlementsPage({ searchParams }: { searchPar
                 <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="refund_reference" />
               </label>
               <FormActionButton idleLabel="Complete refund" pendingLabel="Completing refund..." variant="secondary" />
+            </form>
+            <div className="border-t border-line px-4 pb-4 pt-2">
+              <PanelHeader
+                eyebrow="Repair"
+                title="Fix refund instructions"
+                description="Repair a queued refund from the latest approved funding instructions or save corrected bank details directly onto the refund record."
+              />
+            </div>
+            <form action={updateRefundInstructionsAction} className="grid gap-3 px-4 pb-4">
+              <label className="grid gap-2 text-sm font-bold text-ink">
+                Refund ID
+                <input className="min-h-11 rounded-md border border-line bg-white px-3 font-mono text-sm outline-none focus:border-action" name="refund_id" required />
+              </label>
+              <label className="grid gap-2 text-sm font-bold text-ink">
+                Recipient name
+                <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="recipient_name" />
+              </label>
+              <label className="grid gap-2 text-sm font-bold text-ink">
+                Bank name
+                <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="bank_name" />
+              </label>
+              <label className="grid gap-2 text-sm font-bold text-ink">
+                Account number
+                <input className="min-h-11 rounded-md border border-line bg-white px-3 font-mono text-sm outline-none focus:border-action" name="account_number" inputMode="numeric" />
+              </label>
+              <label className="grid gap-2 text-sm font-bold text-ink">
+                Bank code <span className="font-bold text-muted">(optional)</span>
+                <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="bank_code" />
+              </label>
+              <label className="grid gap-2 text-sm font-bold text-ink">
+                Ops note <span className="font-bold text-muted">(optional)</span>
+                <textarea className="min-h-24 rounded-md border border-line bg-white px-3 py-2 text-sm outline-none focus:border-action" name="payout_note" />
+              </label>
+              <div className="grid gap-2 sm:grid-cols-2">
+                <FormActionButton idleLabel="Apply funding/profile fallback" pendingLabel="Applying fallback..." name="use_fallback" value="true" variant="secondary" />
+                <FormActionButton idleLabel="Save refund instructions" pendingLabel="Saving instructions..." />
+              </div>
             </form>
           </Panel>
         </div>

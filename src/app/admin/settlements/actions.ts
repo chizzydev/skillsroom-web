@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { requireAdminStepUpToken } from "@/lib/admin-step-up-session";
 import { getCurrentUser } from "@/lib/auth-bridge";
 import { storeEvidenceFile } from "@/lib/evidence-storage";
-import { ApiRequestError, completePayout, completeRefund, reserveRefunds, reserveSettlement } from "@/lib/match-room-api";
+import { ApiRequestError, completePayout, completeRefund, reserveRefunds, reserveSettlement, updatePayoutInstructions, updateRefundInstructions } from "@/lib/match-room-api";
 
 function actionErrorMessage(error: unknown) {
   if (error instanceof ApiRequestError) return error.message;
@@ -73,6 +73,27 @@ export async function completePayoutAction(formData: FormData) {
   redirect(withSuccess("Payout marked as completed."));
 }
 
+export async function updatePayoutInstructionsAction(formData: FormData) {
+  try {
+    const stepUpToken = await requireAdminStepUpToken();
+    const payoutId = String(formData.get("payout_id") || "").trim();
+    const useFallback = String(formData.get("use_fallback") || "").trim() === "true";
+    await updatePayoutInstructions(payoutId, {
+      recipient_name: optionalString(formData, "recipient_name"),
+      bank_name: optionalString(formData, "bank_name"),
+      account_number: optionalString(formData, "account_number"),
+      bank_code: optionalString(formData, "bank_code"),
+      payout_note: optionalString(formData, "payout_note"),
+      use_fallback: useFallback,
+      stepUpToken
+    });
+  } catch (error) {
+    redirect(withError(error));
+  }
+
+  redirect(withSuccess("Payout instructions saved."));
+}
+
 export async function reserveRefundsAction(formData: FormData) {
   try {
     const stepUpToken = await requireAdminStepUpToken();
@@ -114,4 +135,25 @@ export async function completeRefundAction(formData: FormData) {
   }
 
   redirect(withSuccess("Refund marked as completed."));
+}
+
+export async function updateRefundInstructionsAction(formData: FormData) {
+  try {
+    const stepUpToken = await requireAdminStepUpToken();
+    const refundId = String(formData.get("refund_id") || "").trim();
+    const useFallback = String(formData.get("use_fallback") || "").trim() === "true";
+    await updateRefundInstructions(refundId, {
+      recipient_name: optionalString(formData, "recipient_name"),
+      bank_name: optionalString(formData, "bank_name"),
+      account_number: optionalString(formData, "account_number"),
+      bank_code: optionalString(formData, "bank_code"),
+      payout_note: optionalString(formData, "payout_note"),
+      use_fallback: useFallback,
+      stepUpToken
+    });
+  } catch (error) {
+    redirect(withError(error));
+  }
+
+  redirect(withSuccess("Refund instructions saved."));
 }

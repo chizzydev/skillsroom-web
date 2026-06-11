@@ -86,7 +86,10 @@ export type ManualFundingSubmission = {
   sender_bank_name: string | null;
   payout_recipient_name?: string | null;
   payout_bank_name?: string | null;
+  payout_account_number?: string | null;
   payout_account_number_masked?: string | null;
+  payout_bank_code?: string | null;
+  payout_note?: string | null;
   proof_url: string | null;
   proof_note: string | null;
   status: ManualFundingSubmissionStatus;
@@ -232,6 +235,7 @@ export type MatchPayout = {
   failure_note?: string | null;
   recipient_name: string | null;
   bank_name: string | null;
+  account_number: string | null;
   account_number_masked: string | null;
   bank_code: string | null;
   payout_note: string | null;
@@ -264,6 +268,7 @@ export type MatchRefund = {
   failure_note?: string | null;
   recipient_name: string | null;
   bank_name: string | null;
+  account_number: string | null;
   account_number_masked: string | null;
   bank_code: string | null;
   payout_note: string | null;
@@ -1975,6 +1980,32 @@ export function completePayout(
   );
 }
 
+export function updatePayoutInstructions(
+  payoutId: string,
+  input: {
+    recipient_name?: string;
+    bank_name?: string;
+    account_number?: string;
+    bank_code?: string;
+    payout_note?: string;
+    use_fallback?: boolean;
+    stepUpToken: string;
+  }
+) {
+  return apiRequest<{ payout: MatchPayout }>(`/admin/settlements/payouts/${payoutId}/instructions`, {
+    method: "POST",
+    headers: { "x-admin-step-up": input.stepUpToken },
+    body: JSON.stringify({
+      recipient_name: input.recipient_name,
+      bank_name: input.bank_name,
+      account_number: input.account_number,
+      bank_code: input.bank_code,
+      payout_note: input.payout_note,
+      use_fallback: input.use_fallback
+    })
+  });
+}
+
 export function listRefunds(status?: RefundStatus) {
   const query = status ? `?status=${encodeURIComponent(status)}` : "";
   return apiRequest<{ refunds: MatchRefund[] }>(`/admin/settlements/refunds${query}`);
@@ -1998,6 +2029,32 @@ export function completeRefund(
     body: JSON.stringify({
       refund_reference: input.refund_reference,
       completion_proof_url: input.completion_proof_url
+    })
+  });
+}
+
+export function updateRefundInstructions(
+  refundId: string,
+  input: {
+    recipient_name?: string;
+    bank_name?: string;
+    account_number?: string;
+    bank_code?: string;
+    payout_note?: string;
+    use_fallback?: boolean;
+    stepUpToken: string;
+  }
+) {
+  return apiRequest<{ refund: MatchRefund }>(`/admin/settlements/refunds/${refundId}/instructions`, {
+    method: "POST",
+    headers: { "x-admin-step-up": input.stepUpToken },
+    body: JSON.stringify({
+      recipient_name: input.recipient_name,
+      bank_name: input.bank_name,
+      account_number: input.account_number,
+      bank_code: input.bank_code,
+      payout_note: input.payout_note,
+      use_fallback: input.use_fallback
     })
   });
 }
