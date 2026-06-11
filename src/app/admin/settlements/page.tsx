@@ -5,6 +5,7 @@ import { AdminStepUpPanel } from "@/components/admin/AdminStepUpPanel";
 import { AdminShell } from "@/components/layout/AdminShell";
 import { LiveUpdateStream } from "@/components/realtime/LiveUpdateStream";
 import { Badge } from "@/components/ui/Badge";
+import { CopyTextButton } from "@/components/ui/CopyTextButton";
 import { DataTable } from "@/components/ui/DataTable";
 import { FormActionButton } from "@/components/ui/FormActionButton";
 import { Panel, PanelHeader } from "@/components/ui/Panel";
@@ -56,7 +57,10 @@ function RoomCodeLabel({ roomCode }: { roomCode?: string | null }) {
   return (
     <div className="grid gap-1">
       <span className="font-mono text-[11px] font-black uppercase tracking-[0.12em] text-dim">Room code</span>
-      <span className="font-mono text-xs font-bold text-muted">{roomCode}</span>
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="font-mono text-xs font-bold text-muted">{roomCode}</span>
+        <CopyTextButton label="room code" value={roomCode} />
+      </div>
     </div>
   );
 }
@@ -66,7 +70,29 @@ function MatchRoomIdLabel({ matchRoomId }: { matchRoomId?: string | null }) {
   return (
     <div className="grid gap-1">
       <span className="font-mono text-[11px] font-black uppercase tracking-[0.12em] text-dim">Match room ID</span>
-      <span className="font-mono text-xs font-bold text-muted [overflow-wrap:anywhere]">{matchRoomId}</span>
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="font-mono text-xs font-bold text-muted [overflow-wrap:anywhere]">{matchRoomId}</span>
+        <CopyTextButton label="match room ID" value={matchRoomId} />
+      </div>
+    </div>
+  );
+}
+
+function IdentifierLabel({
+  label,
+  value
+}: {
+  label: string;
+  value?: string | null;
+}) {
+  if (!value) return null;
+  return (
+    <div className="grid gap-1">
+      <span className="font-mono text-[11px] font-black uppercase tracking-[0.12em] text-dim">{label}</span>
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="font-mono text-xs font-bold text-muted [overflow-wrap:anywhere]">{value}</span>
+        <CopyTextButton label={label} value={value} />
+      </div>
     </div>
   );
 }
@@ -159,7 +185,7 @@ export default async function AdminSettlementsPage({ searchParams }: { searchPar
                     )
                   },
                   { key: "status", label: "Status", render: (row) => <Badge tone={row.instruction_status === "ready" ? "warning" : "danger"}>{row.instruction_status === "ready" ? row.status : "needs instructions"}</Badge> },
-                  { key: "id", label: "Payout ID", render: (row) => <span className="font-mono text-xs text-muted">{row.id}</span> }
+                  { key: "id", label: "Payout ID", render: (row) => <IdentifierLabel label="Payout ID" value={row.id} /> }
                 ]}
                 rows={queuedPayouts}
               />
@@ -176,7 +202,7 @@ export default async function AdminSettlementsPage({ searchParams }: { searchPar
               <label className="grid gap-2 text-sm font-bold text-ink">
                 Match room ID
                 <input className="min-h-11 rounded-md border border-line bg-white px-3 font-mono text-sm outline-none focus:border-action" name="match_room_id" required />
-                <span className="text-xs leading-5 text-muted">Use the internal room ID, not the short room code like FCSN2HU.</span>
+                <span className="text-xs leading-5 text-muted">Use the Match room ID shown on the payout row. Room code is a separate player-facing identifier.</span>
               </label>
               <label className="grid gap-2 text-sm font-bold text-ink">
                 Payout ID
@@ -274,7 +300,7 @@ export default async function AdminSettlementsPage({ searchParams }: { searchPar
                     )
                   },
                   { key: "reason", label: "Reason", render: (row) => <span className="text-muted">{row.reason}</span> },
-                  { key: "id", label: "Refund ID", render: (row) => <span className="font-mono text-xs text-muted">{row.id}</span> }
+                  { key: "id", label: "Refund ID", render: (row) => <IdentifierLabel label="Refund ID" value={row.id} /> }
                 ]}
                 rows={queuedRefunds}
               />
@@ -291,7 +317,7 @@ export default async function AdminSettlementsPage({ searchParams }: { searchPar
               <label className="grid gap-2 text-sm font-bold text-ink">
                 Match room ID
                 <input className="min-h-11 rounded-md border border-line bg-white px-3 font-mono text-sm outline-none focus:border-action" name="match_room_id" required />
-                <span className="text-xs leading-5 text-muted">Use the internal room ID, not the short room code like FCSN2HU.</span>
+                <span className="text-xs leading-5 text-muted">Use the Match room ID shown on the refund row. Room code is a separate player-facing identifier.</span>
               </label>
               <label className="grid gap-2 text-sm font-bold text-ink">
                 Refund ID
@@ -364,7 +390,7 @@ export default async function AdminSettlementsPage({ searchParams }: { searchPar
               <label className="grid gap-2 text-sm font-bold text-ink">
                 Match room ID
                 <input className="min-h-11 rounded-md border border-line bg-white px-3 font-mono text-sm outline-none focus:border-action" name="match_room_id" required />
-                <span className="text-xs leading-5 text-muted">Use the internal room ID. Room codes are for player-facing lookup only.</span>
+                <span className="text-xs leading-5 text-muted">Use the Match room ID for settlement reservation. Room code is separate and player-facing.</span>
               </label>
               <label className="grid gap-2 text-sm font-bold text-ink">
                 Notes
@@ -377,7 +403,7 @@ export default async function AdminSettlementsPage({ searchParams }: { searchPar
               <label className="grid gap-2 text-sm font-bold text-ink">
                 Match room ID
                 <input className="min-h-11 rounded-md border border-line bg-white px-3 font-mono text-sm outline-none focus:border-action" name="match_room_id" required />
-                <span className="text-xs leading-5 text-muted">Use the internal room ID. Room codes are for player-facing lookup only.</span>
+                <span className="text-xs leading-5 text-muted">Use the Match room ID for refund reservation. Room code is separate and player-facing.</span>
               </label>
               <label className="grid gap-2 text-sm font-bold text-ink">
                 Refund reason

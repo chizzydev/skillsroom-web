@@ -61,7 +61,11 @@ export async function completePayoutAction(formData: FormData) {
     if (!completionProofUrl) {
       throw new Error("Upload the transfer proof screenshot or video, or provide a hosted proof link.");
     }
-    await completePayout(String(formData.get("payout_id") || ""), {
+    const payoutId = String(formData.get("payout_id") || "").trim();
+    if (!payoutId) {
+      throw new Error("Payout ID is required.");
+    }
+    await completePayout(payoutId, {
       payout_reference: optionalString(formData, "payout_reference"),
       completion_proof_url: completionProofUrl,
       stepUpToken
@@ -125,7 +129,11 @@ export async function completeRefundAction(formData: FormData) {
     if (!completionProofUrl) {
       throw new Error("Upload the refund proof screenshot or video, or provide a hosted proof link.");
     }
-    await completeRefund(String(formData.get("refund_id") || ""), {
+    const refundId = String(formData.get("refund_id") || "").trim();
+    if (!refundId) {
+      throw new Error("Refund ID is required.");
+    }
+    await completeRefund(refundId, {
       refund_reference: optionalString(formData, "refund_reference"),
       completion_proof_url: completionProofUrl,
       stepUpToken
