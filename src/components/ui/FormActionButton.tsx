@@ -1,6 +1,6 @@
 "use client";
 
-import type { ButtonHTMLAttributes } from "react";
+import { useEffect, useState, type ButtonHTMLAttributes, type MouseEvent } from "react";
 import { useFormStatus } from "react-dom";
 import { Button } from "./Button";
 
@@ -36,7 +36,23 @@ export function FormActionButton({
   ...props
 }: FormActionButtonProps) {
   const { pending, data } = useFormStatus();
-  const activePending = pending && matchesPendingSubmitter(data, typeof name === "string" ? name : undefined, value);
+  const [clickedPending, setClickedPending] = useState(false);
+  const activePending = (pending && matchesPendingSubmitter(data, typeof name === "string" ? name : undefined, value)) || clickedPending;
+
+  useEffect(() => {
+    if (pending) return;
+    if (!clickedPending) return;
+    const timer = window.setTimeout(() => setClickedPending(false), 12000);
+    return () => window.clearTimeout(timer);
+  }, [clickedPending, pending]);
+
+  function handleClick(event: MouseEvent<HTMLButtonElement>) {
+    props.onClick?.(event);
+    if (event.defaultPrevented || disabled) return;
+    const form = event.currentTarget.form;
+    if (form && !form.reportValidity()) return;
+    setClickedPending(true);
+  }
 
   return (
     <Button
@@ -44,6 +60,7 @@ export function FormActionButton({
       className={className}
       disabled={disabled || pending}
       fullWidth={fullWidth}
+      onClick={handleClick}
       name={name}
       size={size}
       type="submit"
