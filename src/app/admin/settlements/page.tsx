@@ -18,17 +18,27 @@ import {
   listPayouts,
   listRefunds,
   listSettlements,
+  listTournamentPayouts,
+  listTournamentRefunds,
+  listTournamentSettlements,
   type MatchPayout,
   type MatchRefund,
-  type MatchSettlement
+  type MatchSettlement,
+  type TournamentPayout,
+  type TournamentRefund,
+  type TournamentSettlement
 } from "@/lib/match-room-api";
 import {
   completePayoutAction,
   completeRefundAction,
+  completeTournamentPayoutAction,
+  completeTournamentRefundAction,
   reserveRefundsAction,
   reserveSettlementAction,
   updatePayoutInstructionsAction,
-  updateRefundInstructionsAction
+  updateRefundInstructionsAction,
+  updateTournamentPayoutInstructionsAction,
+  updateTournamentRefundInstructionsAction
 } from "./actions";
 
 function money(currency: string, amountMinor: number) {
@@ -44,10 +54,6 @@ function loadErrorMessage(label: string, error: unknown) {
   return `${label} could not load.`;
 }
 
-function countStatus<T extends { status: string }>(rows: T[], status: string) {
-  return rows.filter((row) => row.status === status).length.toString();
-}
-
 function playerLabel(row: {
   display_name?: string | null;
   username?: string | null;
@@ -60,6 +66,27 @@ function playerLabel(row: {
 
 function winnerLabel(row: MatchSettlement) {
   return row.winner_display_name || row.winner_username || row.winner_primary_game_handle || row.winner_primary_game_external_uid || row.winner_user_id;
+}
+
+function tournamentWinnerLabel(row: TournamentPayout) {
+  return row.entry_display_name || row.display_name || row.username || row.primary_game_handle || row.primary_game_external_uid || row.user_id;
+}
+
+function tournamentRefundLabel(row: TournamentRefund) {
+  return row.entry_display_name || row.display_name || row.username || row.primary_game_handle || row.primary_game_external_uid || row.user_id;
+}
+
+function TournamentIdLabel({ tournamentId }: { tournamentId?: string | null }) {
+  if (!tournamentId) return null;
+  return (
+    <div className="grid gap-1">
+      <span className="font-mono text-[11px] font-black uppercase tracking-[0.12em] text-dim">Tournament ID</span>
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="font-mono text-xs font-bold text-muted [overflow-wrap:anywhere]">{tournamentId}</span>
+        <CopyTextButton label="tournament ID" value={tournamentId} />
+      </div>
+    </div>
+  );
 }
 
 function RoomCodeLabel({ roomCode }: { roomCode?: string | null }) {
@@ -115,11 +142,17 @@ export default async function AdminSettlementsPage({ searchParams }: { searchPar
   let settlements: MatchSettlement[] = [];
   let payouts: MatchPayout[] = [];
   let refunds: MatchRefund[] = [];
+  let tournamentSettlements: TournamentSettlement[] = [];
+  let tournamentPayouts: TournamentPayout[] = [];
+  let tournamentRefunds: TournamentRefund[] = [];
   const loadErrors: string[] = [];
-  const [settlementResult, payoutResult, refundResult] = await Promise.allSettled([
+  const [settlementResult, payoutResult, refundResult, tournamentSettlementResult, tournamentPayoutResult, tournamentRefundResult] = await Promise.allSettled([
     listSettlements(),
     listPayouts(),
-    listRefunds()
+    listRefunds(),
+    listTournamentSettlements(),
+    listTournamentPayouts(),
+    listTournamentRefunds()
   ]);
 
   if (settlementResult.status === "fulfilled") {
@@ -140,12 +173,36 @@ export default async function AdminSettlementsPage({ searchParams }: { searchPar
     loadErrors.push(loadErrorMessage("Refund queue", refundResult.reason));
   }
 
+  if (tournamentSettlementResult.status === "fulfilled") {
+    tournamentSettlements = tournamentSettlementResult.value.settlements;
+  } else {
+    loadErrors.push(loadErrorMessage("Tournament settlement history", tournamentSettlementResult.reason));
+  }
+
+  if (tournamentPayoutResult.status === "fulfilled") {
+    tournamentPayouts = tournamentPayoutResult.value.payouts;
+  } else {
+    loadErrors.push(loadErrorMessage("Tournament payout queue", tournamentPayoutResult.reason));
+  }
+
+  if (tournamentRefundResult.status === "fulfilled") {
+    tournamentRefunds = tournamentRefundResult.value.refunds;
+  } else {
+    loadErrors.push(loadErrorMessage("Tournament refund queue", tournamentRefundResult.reason));
+  }
+
   const queuedSettlements = settlements.filter((row) => row.status === "payout_pending");
   const completedSettlements = settlements.filter((row) => row.status === "completed").slice(0, 12);
   const queuedPayouts = payouts.filter((row) => row.status === "queued");
   const completedPayouts = payouts.filter((row) => row.status === "completed").slice(0, 12);
   const queuedRefunds = refunds.filter((row) => row.status === "queued");
   const completedRefunds = refunds.filter((row) => row.status === "completed").slice(0, 12);
+  const queuedTournamentSettlements = tournamentSettlements.filter((row) => row.status === "payout_pending");
+  const completedTournamentSettlements = tournamentSettlements.filter((row) => row.status === "completed").slice(0, 12);
+  const queuedTournamentPayouts = tournamentPayouts.filter((row) => row.status === "queued");
+  const completedTournamentPayouts = tournamentPayouts.filter((row) => row.status === "completed").slice(0, 12);
+  const queuedTournamentRefunds = tournamentRefunds.filter((row) => row.status === "queued");
+  const completedTournamentRefunds = tournamentRefunds.filter((row) => row.status === "completed").slice(0, 12);
 
   return (
     <AdminShell active="settlements">
@@ -157,7 +214,7 @@ export default async function AdminSettlementsPage({ searchParams }: { searchPar
           tone="success"
         />
 
-        <LiveUpdateStream eventTypePrefixes={["admin.queue.settlements.", "admin.queue.refunds.", "admin.queue.tournament_settlements.", "admin.queue.tournament_refunds.", "match.settlement.", "match.payout.", "match.refund.", "tournament.settlement.", "tournament.refunds."]} label="Money ops live" />
+        <LiveUpdateStream eventTypePrefixes={["admin.queue.settlements.", "admin.queue.refunds.", "admin.queue.tournament_settlements.", "admin.queue.tournament_refunds.", "match.settlement.", "match.payout.", "match.refund.", "tournament.settlement.", "tournament.payout.", "tournament.refund.", "tournament.refunds."]} label="Money ops live" />
 
         {error ? <TransientStatusBanner clearKeys={["error"]} durationMs={12000} message={error} /> : null}
         {success ? <TransientStatusBanner clearKeys={["success"]} durationMs={12000} message={success} tone="success" /> : null}
@@ -170,10 +227,10 @@ export default async function AdminSettlementsPage({ searchParams }: { searchPar
         ) : null}
 
         <div className="grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <StatusPanel detail="Reserved" label="Settlements" tone="success" value={countStatus(queuedSettlements, "payout_pending")} />
-          <StatusPanel detail="Manual transfer" label="Payout Queue" tone="warning" value={countStatus(queuedPayouts, "queued")} />
-          <StatusPanel detail="Manual return" label="Refund Queue" tone="danger" value={countStatus(queuedRefunds, "queued")} />
-          <StatusPanel detail="Step-up required" label="Money Actions" tone="cyan" value={(queuedPayouts.length + queuedRefunds.length).toString()} />
+          <StatusPanel detail="Match + tournament" label="Settlements" tone="success" value={(queuedSettlements.length + queuedTournamentSettlements.length).toString()} />
+          <StatusPanel detail="Manual transfer" label="Payout Queue" tone="warning" value={(queuedPayouts.length + queuedTournamentPayouts.length).toString()} />
+          <StatusPanel detail="Manual return" label="Refund Queue" tone="danger" value={(queuedRefunds.length + queuedTournamentRefunds.length).toString()} />
+          <StatusPanel detail="Step-up required" label="Money Actions" tone="cyan" value={(queuedPayouts.length + queuedRefunds.length + queuedTournamentPayouts.length + queuedTournamentRefunds.length).toString()} />
         </div>
 
         <AdminStepUpPanel returnTo="/admin/settlements" />
@@ -408,6 +465,226 @@ export default async function AdminSettlementsPage({ searchParams }: { searchPar
           </Panel>
         </div>
 
+        <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1fr)_420px]">
+          <Panel>
+            <PanelHeader eyebrow="Tournament Payouts" title="Queued tournament winner payouts" description="Tournament prize rows now use the same long-term settlement discipline as one-on-one matches." />
+            {queuedTournamentPayouts.length ? (
+              <DataTable
+                columns={[
+                  { key: "created_at", label: "Queued", render: (row) => <span className="font-mono text-xs font-bold text-muted">{new Date(row.created_at).toLocaleString("en-NG")}</span> },
+                  {
+                    key: "winner",
+                    label: "Winner",
+                    render: (row) => (
+                      <div className="grid gap-1">
+                        <span className="font-bold text-ink">{tournamentWinnerLabel(row)}</span>
+                        <TournamentIdLabel tournamentId={row.tournament_id} />
+                        <IdentifierLabel label="Entry ID" value={row.entry_id} />
+                      </div>
+                    )
+                  },
+                  { key: "tournament_title", label: "Tournament", render: (row) => <span className="text-muted">{row.tournament_title || "Tournament"}</span> },
+                  { key: "amount_minor", label: "Amount", render: (row) => <span className="font-mono font-bold text-ink">{money(row.currency, row.amount_minor)}</span> },
+                  {
+                    key: "instructions",
+                    label: "Instructions",
+                    render: (row) => (
+                      <div className="grid gap-1 text-xs text-muted">
+                        <span className="font-bold text-ink">{row.recipient_name || "Instructions missing"}</span>
+                        <span>{row.bank_name || "Bank not set"}</span>
+                        <span className="font-mono">{row.account_number || row.account_number_masked || "No account number"}</span>
+                      </div>
+                    )
+                  },
+                  { key: "status", label: "Status", render: (row) => <Badge tone={row.instruction_status === "ready" ? "warning" : "danger"}>{row.instruction_status === "ready" ? row.status : "needs instructions"}</Badge> },
+                  { key: "id", label: "Payout ID", render: (row) => <IdentifierLabel label="Payout ID" value={row.id} /> }
+                ]}
+                rows={queuedTournamentPayouts}
+              />
+            ) : (
+              <div className="p-4">
+                <AdminEmptyState description="No tournament payout is waiting for manual transfer confirmation." title="Tournament payout queue is clear" />
+              </div>
+            )}
+          </Panel>
+
+          <Panel>
+            <PanelHeader eyebrow="Complete Tournament Payout" title="Manual tournament payout confirmation" />
+            <form action={completeTournamentPayoutAction} className="grid gap-3 p-4">
+              <label className="grid gap-2 text-sm font-bold text-ink">
+                Tournament ID
+                <input className="min-h-11 rounded-md border border-line bg-white px-3 font-mono text-sm outline-none focus:border-action" name="tournament_id" required />
+                <span className="text-xs leading-5 text-muted">Use the Tournament ID shown on the payout row so the proof record stays tied to the correct event.</span>
+              </label>
+              <label className="grid gap-2 text-sm font-bold text-ink">
+                Payout ID
+                <input className="min-h-11 rounded-md border border-line bg-white px-3 font-mono text-sm outline-none focus:border-action" name="payout_id" required />
+              </label>
+              <label className="grid gap-2 text-sm font-bold text-ink">
+                Transfer proof screenshot or video
+                <input
+                  accept="image/png,image/jpeg,image/webp,video/mp4,video/webm,video/quicktime"
+                  className="min-h-11 rounded-md border border-line bg-white px-3 py-2 text-sm outline-none file:mr-3 file:rounded-sm file:border-0 file:bg-surfaceHigh file:px-3 file:py-2 file:text-xs file:font-black file:text-ink focus:border-action"
+                  name="completion_proof_file"
+                  type="file"
+                />
+              </label>
+              <label className="grid gap-2 text-sm font-bold text-ink">
+                Transfer proof link <span className="font-bold text-muted">(optional fallback)</span>
+                <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="completion_proof_url" type="url" />
+              </label>
+              <label className="grid gap-2 text-sm font-bold text-ink">
+                Bank payout reference <span className="font-bold text-muted">(optional)</span>
+                <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="payout_reference" />
+              </label>
+              <FormActionButton idleLabel="Complete tournament payout" pendingLabel="Completing tournament payout..." />
+            </form>
+            <div className="border-t border-line px-4 pb-4 pt-2">
+              <PanelHeader eyebrow="Repair" title="Fix tournament payout instructions" description="Apply contribution/profile fallback or save corrected payout instructions directly on the queued tournament payout." />
+            </div>
+            <form action={updateTournamentPayoutInstructionsAction} className="grid gap-3 px-4 pb-4">
+              <label className="grid gap-2 text-sm font-bold text-ink">
+                Payout ID
+                <input className="min-h-11 rounded-md border border-line bg-white px-3 font-mono text-sm outline-none focus:border-action" name="payout_id" required />
+              </label>
+              <label className="grid gap-2 text-sm font-bold text-ink">
+                Recipient name
+                <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="recipient_name" />
+              </label>
+              <label className="grid gap-2 text-sm font-bold text-ink">
+                Bank name
+                <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="bank_name" />
+              </label>
+              <label className="grid gap-2 text-sm font-bold text-ink">
+                Account number
+                <input className="min-h-11 rounded-md border border-line bg-white px-3 font-mono text-sm outline-none focus:border-action" name="account_number" inputMode="numeric" />
+              </label>
+              <label className="grid gap-2 text-sm font-bold text-ink">
+                Bank code <span className="font-bold text-muted">(optional)</span>
+                <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="bank_code" />
+              </label>
+              <label className="grid gap-2 text-sm font-bold text-ink">
+                Ops note <span className="font-bold text-muted">(optional)</span>
+                <textarea className="min-h-24 rounded-md border border-line bg-white px-3 py-2 text-sm outline-none focus:border-action" name="payout_note" />
+              </label>
+              <div className="grid gap-2 sm:grid-cols-2">
+                <FormActionButton idleLabel="Apply contribution/profile fallback" pendingLabel="Applying fallback..." name="use_fallback" value="true" variant="secondary" />
+                <FormActionButton idleLabel="Save tournament instructions" pendingLabel="Saving instructions..." />
+              </div>
+            </form>
+          </Panel>
+        </div>
+
+        <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1fr)_420px]">
+          <Panel>
+            <PanelHeader eyebrow="Tournament Refunds" title="Queued tournament refunds" description="Refund tournament contributions through the same explicit proof-backed ops trail." />
+            {queuedTournamentRefunds.length ? (
+              <DataTable
+                columns={[
+                  { key: "created_at", label: "Queued", render: (row) => <span className="font-mono text-xs font-bold text-muted">{new Date(row.created_at).toLocaleString("en-NG")}</span> },
+                  {
+                    key: "user_id",
+                    label: "Recipient",
+                    render: (row) => (
+                      <div className="grid gap-1">
+                        <span className="font-bold text-ink">{tournamentRefundLabel(row)}</span>
+                        <TournamentIdLabel tournamentId={row.tournament_id} />
+                        <IdentifierLabel label="Entry ID" value={row.entry_id} />
+                      </div>
+                    )
+                  },
+                  { key: "tournament_title", label: "Tournament", render: (row) => <span className="text-muted">{row.tournament_title || "Tournament"}</span> },
+                  { key: "amount_minor", label: "Amount", render: (row) => <span className="font-mono font-bold text-ink">{money(row.currency, row.amount_minor)}</span> },
+                  {
+                    key: "instructions",
+                    label: "Instructions",
+                    render: (row) => (
+                      <div className="grid gap-1 text-xs text-muted">
+                        <span className="font-bold text-ink">{row.recipient_name || "Instructions missing"}</span>
+                        <span>{row.bank_name || "Bank not set"}</span>
+                        <span className="font-mono">{row.account_number || row.account_number_masked || "No account number"}</span>
+                      </div>
+                    )
+                  },
+                  { key: "reason", label: "Reason", render: (row) => <span className="text-muted">{row.reason}</span> },
+                  { key: "id", label: "Refund ID", render: (row) => <IdentifierLabel label="Refund ID" value={row.id} /> }
+                ]}
+                rows={queuedTournamentRefunds}
+              />
+            ) : (
+              <div className="p-4">
+                <AdminEmptyState description="No tournament refund is waiting for manual return confirmation." title="Tournament refund queue is clear" />
+              </div>
+            )}
+          </Panel>
+
+          <Panel>
+            <PanelHeader eyebrow="Complete Tournament Refund" title="Manual tournament refund confirmation" />
+            <form action={completeTournamentRefundAction} className="grid gap-3 p-4">
+              <label className="grid gap-2 text-sm font-bold text-ink">
+                Tournament ID
+                <input className="min-h-11 rounded-md border border-line bg-white px-3 font-mono text-sm outline-none focus:border-action" name="tournament_id" required />
+                <span className="text-xs leading-5 text-muted">Use the Tournament ID shown on the refund row so the proof record stays tied to the correct event.</span>
+              </label>
+              <label className="grid gap-2 text-sm font-bold text-ink">
+                Refund ID
+                <input className="min-h-11 rounded-md border border-line bg-white px-3 font-mono text-sm outline-none focus:border-action" name="refund_id" required />
+              </label>
+              <label className="grid gap-2 text-sm font-bold text-ink">
+                Transfer proof screenshot or video
+                <input
+                  accept="image/png,image/jpeg,image/webp,video/mp4,video/webm,video/quicktime"
+                  className="min-h-11 rounded-md border border-line bg-white px-3 py-2 text-sm outline-none file:mr-3 file:rounded-sm file:border-0 file:bg-surfaceHigh file:px-3 file:py-2 file:text-xs file:font-black file:text-ink focus:border-action"
+                  name="completion_proof_file"
+                  type="file"
+                />
+              </label>
+              <label className="grid gap-2 text-sm font-bold text-ink">
+                Transfer proof link <span className="font-bold text-muted">(optional fallback)</span>
+                <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="completion_proof_url" type="url" />
+              </label>
+              <label className="grid gap-2 text-sm font-bold text-ink">
+                Bank refund reference <span className="font-bold text-muted">(optional)</span>
+                <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="refund_reference" />
+              </label>
+              <FormActionButton idleLabel="Complete tournament refund" pendingLabel="Completing tournament refund..." variant="secondary" />
+            </form>
+            <div className="border-t border-line px-4 pb-4 pt-2">
+              <PanelHeader eyebrow="Repair" title="Fix tournament refund instructions" description="Apply contribution/profile fallback or save corrected refund instructions directly on the queued refund row." />
+            </div>
+            <form action={updateTournamentRefundInstructionsAction} className="grid gap-3 px-4 pb-4">
+              <label className="grid gap-2 text-sm font-bold text-ink">
+                Refund ID
+                <input className="min-h-11 rounded-md border border-line bg-white px-3 font-mono text-sm outline-none focus:border-action" name="refund_id" required />
+              </label>
+              <label className="grid gap-2 text-sm font-bold text-ink">
+                Recipient name
+                <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="recipient_name" />
+              </label>
+              <label className="grid gap-2 text-sm font-bold text-ink">
+                Bank name
+                <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="bank_name" />
+              </label>
+              <label className="grid gap-2 text-sm font-bold text-ink">
+                Account number
+                <input className="min-h-11 rounded-md border border-line bg-white px-3 font-mono text-sm outline-none focus:border-action" name="account_number" inputMode="numeric" />
+              </label>
+              <label className="grid gap-2 text-sm font-bold text-ink">
+                Bank code <span className="font-bold text-muted">(optional)</span>
+                <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="bank_code" />
+              </label>
+              <label className="grid gap-2 text-sm font-bold text-ink">
+                Ops note <span className="font-bold text-muted">(optional)</span>
+                <textarea className="min-h-24 rounded-md border border-line bg-white px-3 py-2 text-sm outline-none focus:border-action" name="payout_note" />
+              </label>
+              <div className="grid gap-2 sm:grid-cols-2">
+                <FormActionButton idleLabel="Apply contribution/profile fallback" pendingLabel="Applying fallback..." name="use_fallback" value="true" variant="secondary" />
+                <FormActionButton idleLabel="Save tournament refund instructions" pendingLabel="Saving instructions..." />
+              </div>
+            </form>
+          </Panel>
+        </div>
+
         <Panel>
           <PanelHeader eyebrow="Reserve" title="Create payout or refund queues" description="Approved room results now auto-queue payouts. Use manual reserve only for recovery or backfill cases." />
           <div className="grid gap-6 p-4 xl:grid-cols-2">
@@ -475,14 +752,62 @@ export default async function AdminSettlementsPage({ searchParams }: { searchPar
             <div className="grid gap-4 p-4">
               <div className="rounded-md border border-line bg-white p-4">
                 <p className="text-xs font-black uppercase tracking-[0.12em] text-muted">Completed payouts</p>
-                <p className="mt-2 text-2xl font-black text-ink">{completedPayouts.length}</p>
+                <p className="mt-2 text-2xl font-black text-ink">{completedPayouts.length + completedTournamentPayouts.length}</p>
               </div>
               <div className="rounded-md border border-line bg-white p-4">
                 <p className="text-xs font-black uppercase tracking-[0.12em] text-muted">Completed refunds</p>
-                <p className="mt-2 text-2xl font-black text-ink">{completedRefunds.length}</p>
+                <p className="mt-2 text-2xl font-black text-ink">{completedRefunds.length + completedTournamentRefunds.length}</p>
               </div>
               <div className="rounded-md border border-line bg-surfaceWarm p-4 text-sm leading-6 text-muted">
-                Payout and refund rows now snapshot recipient instructions at queue time, so the ops trail stays readable even if players update their profile later.
+                Match and tournament payout rows now snapshot recipient instructions at queue time, so the ops trail stays readable even if players update their profile later.
+              </div>
+            </div>
+          </Panel>
+        </div>
+
+        <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1fr)_420px]">
+          <Panel>
+            <PanelHeader eyebrow="Tournament History" title="Recent tournament settlements" description="Tournament settlement records stay visible for audit, payout reconciliation, and refund review." />
+            {tournamentSettlements.length ? (
+              <DataTable
+                columns={[
+                  { key: "reserved_at", label: "Reserved", render: (row) => <span className="font-mono text-xs font-bold text-muted">{new Date(row.reserved_at).toLocaleString("en-NG")}</span> },
+                  {
+                    key: "tournament_id",
+                    label: "Tournament",
+                    render: (row) => (
+                      <div className="grid gap-1">
+                        <span className="font-bold text-ink">{String(row.metadata?.tournament_title ?? "Tournament settlement")}</span>
+                        <TournamentIdLabel tournamentId={row.tournament_id} />
+                      </div>
+                    )
+                  },
+                  { key: "payout_pool_minor", label: "Payout pool", render: (row) => <span className="font-mono font-bold text-ink">{money(row.currency, row.payout_pool_minor)}</span> },
+                  { key: "commission_minor", label: "Commission", render: (row) => <span className="font-mono text-sm font-bold text-muted">{money(row.currency, row.commission_minor)}</span> },
+                  { key: "status", label: "Status", render: (row) => <Badge tone={row.status === "completed" ? "success" : "warning"}>{row.status}</Badge> }
+                ]}
+                rows={[...queuedTournamentSettlements, ...completedTournamentSettlements]}
+              />
+            ) : (
+              <div className="p-4">
+                <AdminEmptyState description="Approved tournament results will appear here as soon as they reserve into payout workflow." title="No tournament settlement records yet" />
+              </div>
+            )}
+          </Panel>
+
+          <Panel>
+            <PanelHeader eyebrow="Tournament Closes" title="Recent tournament money closes" />
+            <div className="grid gap-4 p-4">
+              <div className="rounded-md border border-line bg-white p-4">
+                <p className="text-xs font-black uppercase tracking-[0.12em] text-muted">Completed tournament payouts</p>
+                <p className="mt-2 text-2xl font-black text-ink">{completedTournamentPayouts.length}</p>
+              </div>
+              <div className="rounded-md border border-line bg-white p-4">
+                <p className="text-xs font-black uppercase tracking-[0.12em] text-muted">Completed tournament refunds</p>
+                <p className="mt-2 text-2xl font-black text-ink">{completedTournamentRefunds.length}</p>
+              </div>
+              <div className="rounded-md border border-line bg-surfaceWarm p-4 text-sm leading-6 text-muted">
+                Legacy tournament rows can be repaired inline, but new tournament contributions now capture payout instructions up front so we stop re-solving the same ops gap later.
               </div>
             </div>
           </Panel>

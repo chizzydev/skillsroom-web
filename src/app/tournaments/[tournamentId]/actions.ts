@@ -27,6 +27,12 @@ function optionalString(formData: FormData, key: string) {
   return value || undefined;
 }
 
+function normalizeAccountNumber(value: string | undefined) {
+  if (!value) return undefined;
+  const normalized = value.replace(/\D+/g, "").trim();
+  return normalized || undefined;
+}
+
 export async function registerForTournamentAction(formData: FormData) {
   const tournamentId = String(formData.get("tournament_id") || "");
 
@@ -71,6 +77,11 @@ export async function submitTournamentContributionAction(formData: FormData) {
       amount_minor: Math.round(amountNaira * 100),
       external_reference: optionalString(formData, "external_reference"),
       proof_url: storedProof?.url ?? optionalString(formData, "proof_url"),
+      payout_recipient_name: optionalString(formData, "payout_recipient_name"),
+      payout_bank_name: optionalString(formData, "payout_bank_name"),
+      payout_account_number: normalizeAccountNumber(optionalString(formData, "payout_account_number")),
+      payout_bank_code: optionalString(formData, "payout_bank_code"),
+      payout_note: optionalString(formData, "payout_note"),
       notes: optionalString(formData, "notes")
     });
   } catch (error) {

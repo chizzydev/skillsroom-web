@@ -95,6 +95,7 @@ function lifecycleDetail(status: TournamentStatus) {
     settlement_pending: "Results are accepted and prizes/refunds are next.",
     completed: "Event is finished and retained for audit.",
     cancelled: "Event was cancelled before completion.",
+    refunded: "Approved refunds were completed instead of settling prizes.",
     voided: "Event outcome is invalidated for audit."
   };
   return details[status];
@@ -404,6 +405,7 @@ export default async function TournamentDetailPage({
     "awaiting_results",
     "under_review",
     "settlement_pending",
+    "refunded",
     "completed"
   ]);
 
@@ -831,6 +833,53 @@ export default async function TournamentDetailPage({
               <label className="grid gap-2 text-sm font-bold text-ink">
                 Proof link
                 <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="proof_url" placeholder="Use if proof is hosted elsewhere" type="url" />
+              </label>
+              <div className="rounded-md border border-cyan/40 bg-cyan-50 p-4 text-sm leading-6 text-muted">
+                <p className="font-black text-ink">Winner payout details</p>
+                <p className="mt-1">
+                  Save the bank account that should receive any tournament payout or refund for this entry so ops can settle approved winnings without manual repair work later.
+                </p>
+              </div>
+              <label className="grid gap-2 text-sm font-bold text-ink">
+                Payout recipient name
+                <input
+                  className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action"
+                  name="payout_recipient_name"
+                  placeholder="Account holder name for payout or refund"
+                />
+              </label>
+              <label className="grid gap-2 text-sm font-bold text-ink">
+                Payout bank
+                <input
+                  className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action"
+                  name="payout_bank_name"
+                  placeholder="OPay, GTBank, PalmPay..."
+                />
+              </label>
+              <label className="grid gap-2 text-sm font-bold text-ink">
+                Payout account number
+                <input
+                  className="min-h-11 rounded-md border border-line bg-white px-3 font-mono text-sm outline-none focus:border-action"
+                  inputMode="numeric"
+                  name="payout_account_number"
+                  placeholder="Destination account number"
+                />
+              </label>
+              <label className="grid gap-2 text-sm font-bold text-ink">
+                Payout bank code <span className="font-bold text-muted">(optional)</span>
+                <input
+                  className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action"
+                  name="payout_bank_code"
+                  placeholder="Optional settlement rail code"
+                />
+              </label>
+              <label className="grid gap-2 text-sm font-bold text-ink">
+                Payout note <span className="font-bold text-muted">(optional)</span>
+                <textarea
+                  className="min-h-20 rounded-md border border-line bg-white px-3 py-2 text-sm outline-none focus:border-action"
+                  name="payout_note"
+                  placeholder="Anything ops should know about this payout account"
+                />
               </label>
               <label className="grid gap-2 text-sm font-bold text-ink">
                 Notes

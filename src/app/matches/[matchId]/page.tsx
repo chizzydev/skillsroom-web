@@ -906,7 +906,7 @@ export default async function MatchDetailPage({
                 <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" disabled={!canSubmitFunding} name="sender_account_name" placeholder="Name shown on the transfer" required />
               </label>
               <div className="rounded-md border border-cyan bg-cyanSoft p-4 text-sm leading-6 text-muted">
-                <span className="font-black text-ink">Winner payout details:</span> save the bank account that should receive any winner payout or refund for this room.
+                <span className="font-black text-ink">Winner payout details</span>
               </div>
               <label className="grid gap-2 text-sm font-bold text-ink">
                 Payout recipient name

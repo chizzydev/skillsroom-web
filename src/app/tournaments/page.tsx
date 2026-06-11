@@ -29,6 +29,7 @@ const visibleStatuses: TournamentStatus[] = [
   "under_review",
   "disputed",
   "settlement_pending",
+  "refunded",
   "completed"
 ];
 
@@ -41,7 +42,7 @@ const formatGroups: Array<{ formats: TournamentFormat[]; label: string }> = [
 ];
 
 function statusTone(status: TournamentStatus): BadgeTone {
-  if (status === "completed") return "success";
+  if (["completed", "refunded"].includes(status)) return "success";
   if (["disputed", "under_review"].includes(status)) return "danger";
   if (["registration_open", "in_progress", "seeding"].includes(status)) return "cyan";
   return "warning";
@@ -88,10 +89,11 @@ function sortTournaments(tournaments: Tournament[]) {
     under_review: 7,
     disputed: 8,
     settlement_pending: 9,
-    completed: 10,
-    draft: 11,
-    cancelled: 12,
-    voided: 13
+    refunded: 10,
+    completed: 11,
+    draft: 12,
+    cancelled: 13,
+    voided: 14
   };
 
   return [...tournaments].sort((left, right) => {

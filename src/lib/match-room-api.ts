@@ -927,6 +927,7 @@ export type TournamentStatus =
   | "settlement_pending"
   | "completed"
   | "cancelled"
+  | "refunded"
   | "voided";
 export type TournamentEntryType = "solo" | "team";
 export type TournamentFeeMode = "free" | "paid" | "sponsored" | "hybrid";
@@ -1144,10 +1145,25 @@ export type TournamentPayout = {
   completed_by_user_id: string | null;
   completed_at: string | null;
   payout_reference: string | null;
+  completion_proof_url: string | null;
   failure_note: string | null;
+  recipient_name: string | null;
+  bank_name: string | null;
+  account_number: string | null;
+  account_number_masked: string | null;
+  bank_code: string | null;
+  payout_note: string | null;
+  instruction_status: "ready" | "missing";
   metadata: Record<string, unknown>;
   created_at: string;
   updated_at: string;
+  tournament_title?: string | null;
+  entry_display_name?: string | null;
+  username?: string | null;
+  display_name?: string | null;
+  primary_game_handle?: string | null;
+  primary_game_external_uid?: string | null;
+  settlement_status?: string | null;
 };
 
 export type TournamentRefund = {
@@ -1164,10 +1180,24 @@ export type TournamentRefund = {
   completed_by_user_id: string | null;
   completed_at: string | null;
   refund_reference: string | null;
+  completion_proof_url: string | null;
   failure_note: string | null;
+  recipient_name: string | null;
+  bank_name: string | null;
+  account_number: string | null;
+  account_number_masked: string | null;
+  bank_code: string | null;
+  payout_note: string | null;
+  instruction_status: "ready" | "missing";
   metadata: Record<string, unknown>;
   created_at: string;
   updated_at: string;
+  tournament_title?: string | null;
+  entry_display_name?: string | null;
+  username?: string | null;
+  display_name?: string | null;
+  primary_game_handle?: string | null;
+  primary_game_external_uid?: string | null;
 };
 
 export type TournamentStanding = {
@@ -1208,6 +1238,12 @@ export type TournamentPrizeContribution = {
   amount_minor: number;
   external_reference: string | null;
   proof_url: string | null;
+  payout_recipient_name: string | null;
+  payout_bank_name: string | null;
+  payout_account_number: string | null;
+  payout_account_number_masked: string | null;
+  payout_bank_code: string | null;
+  payout_note: string | null;
   notes: string | null;
   created_at: string;
   tournament_title?: string;
@@ -1537,6 +1573,11 @@ export function submitTournamentContribution(
     amount_minor: number;
     external_reference?: string;
     proof_url?: string;
+    payout_recipient_name?: string;
+    payout_bank_name?: string;
+    payout_account_number?: string;
+    payout_bank_code?: string;
+    payout_note?: string;
     notes?: string;
   }
 ) {
@@ -1713,6 +1754,113 @@ export function reserveTournamentRefunds(
       method: "POST",
       headers: { "x-admin-step-up": input.stepUpToken },
       body: JSON.stringify({ reason: input.reason })
+    }
+  );
+}
+
+export function listTournamentSettlements(status?: string) {
+  const query = status ? `?status=${encodeURIComponent(status)}` : "";
+  return apiRequest<{ settlements: TournamentSettlement[] }>(`/admin/settlements/tournament-settlements${query}`);
+}
+
+export function listTournamentPayouts(status?: string) {
+  const query = status ? `?status=${encodeURIComponent(status)}` : "";
+  return apiRequest<{ payouts: TournamentPayout[] }>(`/admin/settlements/tournament-payouts${query}`);
+}
+
+export function completeTournamentPayout(
+  payoutId: string,
+  input: { payout_reference?: string; completion_proof_url: string; stepUpToken: string }
+) {
+  return apiRequest<{ settlement: TournamentSettlement; payout: TournamentPayout }>(
+    `/admin/settlements/tournament-payouts/${encodeURIComponent(payoutId)}/complete`,
+    {
+      method: "POST",
+      headers: { "x-admin-step-up": input.stepUpToken },
+      body: JSON.stringify({
+        payout_reference: input.payout_reference,
+        completion_proof_url: input.completion_proof_url
+      })
+    }
+  );
+}
+
+export function updateTournamentPayoutInstructions(
+  payoutId: string,
+  input: {
+    recipient_name?: string;
+    bank_name?: string;
+    account_number?: string;
+    bank_code?: string;
+    payout_note?: string;
+    use_fallback?: boolean;
+    stepUpToken: string;
+  }
+) {
+  return apiRequest<{ payout: TournamentPayout }>(
+    `/admin/settlements/tournament-payouts/${encodeURIComponent(payoutId)}/instructions`,
+    {
+      method: "POST",
+      headers: { "x-admin-step-up": input.stepUpToken },
+      body: JSON.stringify({
+        recipient_name: input.recipient_name,
+        bank_name: input.bank_name,
+        account_number: input.account_number,
+        bank_code: input.bank_code,
+        payout_note: input.payout_note,
+        use_fallback: input.use_fallback
+      })
+    }
+  );
+}
+
+export function listTournamentRefunds(status?: string) {
+  const query = status ? `?status=${encodeURIComponent(status)}` : "";
+  return apiRequest<{ refunds: TournamentRefund[] }>(`/admin/settlements/tournament-refunds${query}`);
+}
+
+export function completeTournamentRefund(
+  refundId: string,
+  input: { refund_reference?: string; completion_proof_url: string; stepUpToken: string }
+) {
+  return apiRequest<{ refund: TournamentRefund }>(
+    `/admin/settlements/tournament-refunds/${encodeURIComponent(refundId)}/complete`,
+    {
+      method: "POST",
+      headers: { "x-admin-step-up": input.stepUpToken },
+      body: JSON.stringify({
+        refund_reference: input.refund_reference,
+        completion_proof_url: input.completion_proof_url
+      })
+    }
+  );
+}
+
+export function updateTournamentRefundInstructions(
+  refundId: string,
+  input: {
+    recipient_name?: string;
+    bank_name?: string;
+    account_number?: string;
+    bank_code?: string;
+    payout_note?: string;
+    use_fallback?: boolean;
+    stepUpToken: string;
+  }
+) {
+  return apiRequest<{ refund: TournamentRefund }>(
+    `/admin/settlements/tournament-refunds/${encodeURIComponent(refundId)}/instructions`,
+    {
+      method: "POST",
+      headers: { "x-admin-step-up": input.stepUpToken },
+      body: JSON.stringify({
+        recipient_name: input.recipient_name,
+        bank_name: input.bank_name,
+        account_number: input.account_number,
+        bank_code: input.bank_code,
+        payout_note: input.payout_note,
+        use_fallback: input.use_fallback
+      })
     }
   );
 }
