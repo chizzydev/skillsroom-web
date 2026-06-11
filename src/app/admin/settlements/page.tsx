@@ -151,12 +151,30 @@ export default async function AdminSettlementsPage({ searchParams }: { searchPar
             <PanelHeader eyebrow="Complete Payout" title="Manual payout confirmation" />
             <form action={completePayoutAction} className="grid gap-3 p-4">
               <label className="grid gap-2 text-sm font-bold text-ink">
+                Match room ID
+                <input className="min-h-11 rounded-md border border-line bg-white px-3 font-mono text-sm outline-none focus:border-action" name="match_room_id" required />
+              </label>
+              <label className="grid gap-2 text-sm font-bold text-ink">
                 Payout ID
                 <input className="min-h-11 rounded-md border border-line bg-white px-3 font-mono text-sm outline-none focus:border-action" name="payout_id" required />
               </label>
               <label className="grid gap-2 text-sm font-bold text-ink">
-                Bank payout reference
-                <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="payout_reference" required />
+                Transfer proof screenshot or video
+                <input
+                  accept="image/png,image/jpeg,image/webp,video/mp4,video/webm,video/quicktime"
+                  className="min-h-11 rounded-md border border-line bg-white px-3 py-2 text-sm outline-none file:mr-3 file:rounded-sm file:border-0 file:bg-surfaceHigh file:px-3 file:py-2 file:text-xs file:font-black file:text-ink focus:border-action"
+                  name="completion_proof_file"
+                  type="file"
+                />
+                <span className="text-xs leading-5 text-muted">Upload the payout slip screenshot or short transfer proof video. Images up to 8MB. Videos up to 80MB.</span>
+              </label>
+              <label className="grid gap-2 text-sm font-bold text-ink">
+                Transfer proof link <span className="font-bold text-muted">(optional fallback)</span>
+                <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="completion_proof_url" type="url" />
+              </label>
+              <label className="grid gap-2 text-sm font-bold text-ink">
+                Bank payout reference <span className="font-bold text-muted">(optional)</span>
+                <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="payout_reference" />
               </label>
               <FormActionButton idleLabel="Complete payout" pendingLabel="Completing payout..." />
             </form>
@@ -209,12 +227,30 @@ export default async function AdminSettlementsPage({ searchParams }: { searchPar
             <PanelHeader eyebrow="Complete Refund" title="Manual refund confirmation" />
             <form action={completeRefundAction} className="grid gap-3 p-4">
               <label className="grid gap-2 text-sm font-bold text-ink">
+                Match room ID
+                <input className="min-h-11 rounded-md border border-line bg-white px-3 font-mono text-sm outline-none focus:border-action" name="match_room_id" required />
+              </label>
+              <label className="grid gap-2 text-sm font-bold text-ink">
                 Refund ID
                 <input className="min-h-11 rounded-md border border-line bg-white px-3 font-mono text-sm outline-none focus:border-action" name="refund_id" required />
               </label>
               <label className="grid gap-2 text-sm font-bold text-ink">
-                Bank refund reference
-                <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="refund_reference" required />
+                Transfer proof screenshot or video
+                <input
+                  accept="image/png,image/jpeg,image/webp,video/mp4,video/webm,video/quicktime"
+                  className="min-h-11 rounded-md border border-line bg-white px-3 py-2 text-sm outline-none file:mr-3 file:rounded-sm file:border-0 file:bg-surfaceHigh file:px-3 file:py-2 file:text-xs file:font-black file:text-ink focus:border-action"
+                  name="completion_proof_file"
+                  type="file"
+                />
+                <span className="text-xs leading-5 text-muted">Upload the refund slip screenshot or short transfer proof video. Images up to 8MB. Videos up to 80MB.</span>
+              </label>
+              <label className="grid gap-2 text-sm font-bold text-ink">
+                Transfer proof link <span className="font-bold text-muted">(optional fallback)</span>
+                <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="completion_proof_url" type="url" />
+              </label>
+              <label className="grid gap-2 text-sm font-bold text-ink">
+                Bank refund reference <span className="font-bold text-muted">(optional)</span>
+                <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="refund_reference" />
               </label>
               <FormActionButton idleLabel="Complete refund" pendingLabel="Completing refund..." variant="secondary" />
             </form>

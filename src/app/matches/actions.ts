@@ -152,6 +152,11 @@ export async function submitManualFundingAction(formData: FormData) {
       transfer_reference: optionalString(formData, "transfer_reference"),
       sender_account_name: String(formData.get("sender_account_name") || "").trim(),
       sender_bank_name: String(formData.get("sender_bank_name") || "").trim(),
+      payout_recipient_name: optionalString(formData, "payout_recipient_name"),
+      payout_bank_name: optionalString(formData, "payout_bank_name"),
+      payout_account_number: optionalString(formData, "payout_account_number")?.replace(/\s+/g, ""),
+      payout_bank_code: optionalString(formData, "payout_bank_code"),
+      payout_note: optionalString(formData, "payout_note"),
       proof_url: proofUrl,
       proof_note: optionalString(formData, "proof_note")
     });

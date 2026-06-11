@@ -816,6 +816,29 @@ export default async function MatchDetailPage({
                 Account name
                 <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" disabled={!canSubmitFunding} name="sender_account_name" placeholder="Name shown on the transfer" required />
               </label>
+              <div className="rounded-md border border-cyan bg-cyanSoft p-4 text-sm leading-6 text-muted">
+                <span className="font-black text-ink">Winner payout details:</span> save the bank account that should receive any winner payout or refund for this room. These details snapshot into ops settlement records when the room is approved.
+              </div>
+              <label className="grid gap-2 text-sm font-bold text-ink">
+                Payout recipient name
+                <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" disabled={!canSubmitFunding} name="payout_recipient_name" placeholder="Account holder name for payout or refund" required />
+              </label>
+              <label className="grid gap-2 text-sm font-bold text-ink">
+                Payout bank
+                <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" disabled={!canSubmitFunding} name="payout_bank_name" placeholder="OPay, GTBank, PalmPay..." required />
+              </label>
+              <label className="grid gap-2 text-sm font-bold text-ink">
+                Payout account number
+                <input className="min-h-11 rounded-md border border-line bg-white px-3 font-mono text-sm outline-none focus:border-action" disabled={!canSubmitFunding} inputMode="numeric" name="payout_account_number" pattern="[0-9]{6,20}" placeholder="Destination account number" required />
+              </label>
+              <label className="grid gap-2 text-sm font-bold text-ink">
+                Payout bank code <span className="font-bold text-muted">(optional)</span>
+                <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" disabled={!canSubmitFunding} name="payout_bank_code" placeholder="Routing or bank code if needed" />
+              </label>
+              <label className="grid gap-2 text-sm font-bold text-ink">
+                Payout note <span className="font-bold text-muted">(optional)</span>
+                <textarea className="min-h-24 rounded-md border border-line bg-white px-3 py-2 text-sm outline-none focus:border-action" disabled={!canSubmitFunding} name="payout_note" placeholder="Optional instruction for ops, like preferred account label." />
+              </label>
               <label className="grid gap-2 text-sm font-bold text-ink">
                 Transfer screenshot
                 <input

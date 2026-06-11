@@ -2,6 +2,8 @@
 
 import { redirect } from "next/navigation";
 import { requireAdminStepUpToken } from "@/lib/admin-step-up-session";
+import { getCurrentUser } from "@/lib/auth-bridge";
+import { storeEvidenceFile } from "@/lib/evidence-storage";
 import { ApiRequestError, completePayout, completeRefund, reserveRefunds, reserveSettlement } from "@/lib/match-room-api";
 
 function actionErrorMessage(error: unknown) {
@@ -16,6 +18,16 @@ function withError(error: unknown) {
 
 function withSuccess(message: string) {
   return `/admin/settlements?success=${encodeURIComponent(message)}`;
+}
+
+function optionalString(formData: FormData, key: string) {
+  const value = String(formData.get(key) || "").trim();
+  return value || undefined;
+}
+
+function uploadedFile(formData: FormData, key: string) {
+  const value = formData.get(key);
+  return value instanceof File && value.size > 0 ? value : null;
 }
 
 export async function reserveSettlementAction(formData: FormData) {
@@ -35,9 +47,23 @@ export async function reserveSettlementAction(formData: FormData) {
 
 export async function completePayoutAction(formData: FormData) {
   try {
+    const user = await getCurrentUser();
+    if (!user) {
+      throw new Error("Sign in again before confirming payout proof.");
+    }
     const stepUpToken = await requireAdminStepUpToken();
+    const matchRoomId = String(formData.get("match_room_id") || "").trim();
+    const proofFile = uploadedFile(formData, "completion_proof_file");
+    const storedProof = proofFile
+      ? await storeEvidenceFile({ file: proofFile, matchRoomId, userId: user.id })
+      : null;
+    const completionProofUrl = storedProof?.url ?? optionalString(formData, "completion_proof_url");
+    if (!completionProofUrl) {
+      throw new Error("Upload the transfer proof screenshot or video, or provide a hosted proof link.");
+    }
     await completePayout(String(formData.get("payout_id") || ""), {
-      payout_reference: String(formData.get("payout_reference") || "").trim(),
+      payout_reference: optionalString(formData, "payout_reference"),
+      completion_proof_url: completionProofUrl,
       stepUpToken
     });
   } catch (error) {
@@ -64,9 +90,23 @@ export async function reserveRefundsAction(formData: FormData) {
 
 export async function completeRefundAction(formData: FormData) {
   try {
+    const user = await getCurrentUser();
+    if (!user) {
+      throw new Error("Sign in again before confirming refund proof.");
+    }
     const stepUpToken = await requireAdminStepUpToken();
+    const matchRoomId = String(formData.get("match_room_id") || "").trim();
+    const proofFile = uploadedFile(formData, "completion_proof_file");
+    const storedProof = proofFile
+      ? await storeEvidenceFile({ file: proofFile, matchRoomId, userId: user.id })
+      : null;
+    const completionProofUrl = storedProof?.url ?? optionalString(formData, "completion_proof_url");
+    if (!completionProofUrl) {
+      throw new Error("Upload the refund proof screenshot or video, or provide a hosted proof link.");
+    }
     await completeRefund(String(formData.get("refund_id") || ""), {
-      refund_reference: String(formData.get("refund_reference") || "").trim(),
+      refund_reference: optionalString(formData, "refund_reference"),
+      completion_proof_url: completionProofUrl,
       stepUpToken
     });
   } catch (error) {

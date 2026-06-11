@@ -84,6 +84,9 @@ export type ManualFundingSubmission = {
   transfer_reference: string;
   sender_account_name: string | null;
   sender_bank_name: string | null;
+  payout_recipient_name?: string | null;
+  payout_bank_name?: string | null;
+  payout_account_number_masked?: string | null;
   proof_url: string | null;
   proof_note: string | null;
   status: ManualFundingSubmissionStatus;
@@ -225,6 +228,7 @@ export type MatchPayout = {
   completed_by_user_id: string | null;
   completed_at: string | null;
   payout_reference: string | null;
+  completion_proof_url: string | null;
   failure_note?: string | null;
   recipient_name: string | null;
   bank_name: string | null;
@@ -256,6 +260,7 @@ export type MatchRefund = {
   completed_by_user_id: string | null;
   completed_at: string | null;
   refund_reference: string | null;
+  completion_proof_url: string | null;
   failure_note?: string | null;
   recipient_name: string | null;
   bank_name: string | null;
@@ -1843,6 +1848,11 @@ export function submitManualFunding(
     transfer_reference?: string;
     sender_account_name: string;
     sender_bank_name: string;
+    payout_recipient_name?: string;
+    payout_bank_name?: string;
+    payout_account_number?: string;
+    payout_bank_code?: string;
+    payout_note?: string;
     proof_url: string;
     proof_note?: string;
   }
@@ -1950,14 +1960,17 @@ export function listPayouts(status?: PayoutStatus) {
 
 export function completePayout(
   payoutId: string,
-  input: { payout_reference: string; stepUpToken: string }
+  input: { payout_reference?: string; completion_proof_url: string; stepUpToken: string }
 ) {
   return apiRequest<{ settlement: MatchSettlement; payout: MatchPayout }>(
     `/admin/settlements/payouts/${payoutId}/complete`,
     {
       method: "POST",
       headers: { "x-admin-step-up": input.stepUpToken },
-      body: JSON.stringify({ payout_reference: input.payout_reference })
+      body: JSON.stringify({
+        payout_reference: input.payout_reference,
+        completion_proof_url: input.completion_proof_url
+      })
     }
   );
 }
@@ -1977,12 +1990,15 @@ export function reserveRefunds(input: { match_room_id: string; reason: string; s
 
 export function completeRefund(
   refundId: string,
-  input: { refund_reference: string; stepUpToken: string }
+  input: { refund_reference?: string; completion_proof_url: string; stepUpToken: string }
 ) {
   return apiRequest<{ refund: MatchRefund }>(`/admin/settlements/refunds/${refundId}/complete`, {
     method: "POST",
     headers: { "x-admin-step-up": input.stepUpToken },
-    body: JSON.stringify({ refund_reference: input.refund_reference })
+    body: JSON.stringify({
+      refund_reference: input.refund_reference,
+      completion_proof_url: input.completion_proof_url
+    })
   });
 }
 
