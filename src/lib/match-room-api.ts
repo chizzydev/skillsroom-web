@@ -1287,14 +1287,15 @@ export class ApiRequestError extends Error {
   constructor(
     message: string,
     public readonly status: number,
-    public readonly code?: string
+    public readonly code?: string,
+    public readonly requestId?: string
   ) {
     super(message);
   }
 }
 
 type ApiSuccess<T> = { ok: true; data: T };
-type ApiFailure = { ok: false; error?: { code?: string; message?: string } };
+type ApiFailure = { ok: false; error?: { code?: string; message?: string; requestId?: string } };
 
 function appOrigin() {
   return process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3100";
@@ -1324,7 +1325,8 @@ async function apiRequest<T>(path: string, init: RequestInit = {}): Promise<T> {
     throw new ApiRequestError(
       failure?.error?.message ?? `API request failed with status ${response.status}.`,
       response.status,
-      failure?.error?.code
+      failure?.error?.code,
+      failure?.error?.requestId
     );
   }
 
@@ -1349,7 +1351,8 @@ async function publicApiRequest<T>(path: string, init: RequestInit = {}): Promis
     throw new ApiRequestError(
       failure?.error?.message ?? `API request failed with status ${response.status}.`,
       response.status,
-      failure?.error?.code
+      failure?.error?.code,
+      failure?.error?.requestId
     );
   }
 

@@ -13,6 +13,7 @@ import { StatusPanel } from "@/components/ui/StatusPanel";
 import { TransientStatusBanner } from "@/components/ui/TransientStatusBanner";
 import { canAccessAdmin, getCurrentUser } from "@/lib/auth-bridge";
 import {
+  ApiRequestError,
   formatEntryAmount,
   listPayouts,
   listRefunds,
@@ -32,6 +33,15 @@ import {
 
 function money(currency: string, amountMinor: number) {
   return formatEntryAmount({ currency, entry_amount_minor: amountMinor });
+}
+
+function loadErrorMessage(label: string, error: unknown) {
+  if (error instanceof ApiRequestError) {
+    const requestId = error.requestId ? ` Request ID: ${error.requestId}` : "";
+    return `${label} could not load. ${error.message}${requestId}`;
+  }
+  if (error instanceof Error) return `${label} could not load. ${error.message}`;
+  return `${label} could not load.`;
 }
 
 function countStatus<T extends { status: string }>(rows: T[], status: string) {
@@ -105,18 +115,29 @@ export default async function AdminSettlementsPage({ searchParams }: { searchPar
   let settlements: MatchSettlement[] = [];
   let payouts: MatchPayout[] = [];
   let refunds: MatchRefund[] = [];
-  let loadError: string | null = null;
-  try {
-    const settlementResult = await listSettlements();
-    const [payoutResult, refundResult] = await Promise.all([
-      listPayouts(),
-      listRefunds()
-    ]);
-    settlements = settlementResult.settlements;
-    payouts = payoutResult.payouts;
-    refunds = refundResult.refunds;
-  } catch {
-    loadError = "Unable to load settlement queues.";
+  const loadErrors: string[] = [];
+  const [settlementResult, payoutResult, refundResult] = await Promise.allSettled([
+    listSettlements(),
+    listPayouts(),
+    listRefunds()
+  ]);
+
+  if (settlementResult.status === "fulfilled") {
+    settlements = settlementResult.value.settlements;
+  } else {
+    loadErrors.push(loadErrorMessage("Settlement history", settlementResult.reason));
+  }
+
+  if (payoutResult.status === "fulfilled") {
+    payouts = payoutResult.value.payouts;
+  } else {
+    loadErrors.push(loadErrorMessage("Payout queue", payoutResult.reason));
+  }
+
+  if (refundResult.status === "fulfilled") {
+    refunds = refundResult.value.refunds;
+  } else {
+    loadErrors.push(loadErrorMessage("Refund queue", refundResult.reason));
   }
 
   const queuedSettlements = settlements.filter((row) => row.status === "payout_pending");
@@ -140,8 +161,12 @@ export default async function AdminSettlementsPage({ searchParams }: { searchPar
 
         {error ? <TransientStatusBanner clearKeys={["error"]} durationMs={12000} message={error} /> : null}
         {success ? <TransientStatusBanner clearKeys={["success"]} durationMs={12000} message={success} tone="success" /> : null}
-        {loadError ? (
-          <div className="rounded-md border border-danger bg-red-50 p-4 text-sm font-bold text-danger">{loadError}</div>
+        {loadErrors.length ? (
+          <div className="grid gap-2 rounded-md border border-danger bg-red-50 p-4 text-sm font-bold text-danger">
+            {loadErrors.map((message) => (
+              <p key={message}>{message}</p>
+            ))}
+          </div>
         ) : null}
 
         <div className="grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-4">

@@ -7,7 +7,9 @@ import { storeEvidenceFile } from "@/lib/evidence-storage";
 import { ApiRequestError, completePayout, completeRefund, reserveRefunds, reserveSettlement, updatePayoutInstructions, updateRefundInstructions } from "@/lib/match-room-api";
 
 function actionErrorMessage(error: unknown) {
-  if (error instanceof ApiRequestError) return error.message;
+  if (error instanceof ApiRequestError) {
+    return error.requestId ? `${error.message} Request ID: ${error.requestId}` : error.message;
+  }
   if (error instanceof Error) return error.message;
   return "The settlement action could not be completed.";
 }
@@ -53,13 +55,10 @@ export async function reserveSettlementAction(formData: FormData) {
     });
   } catch (error) {
     logSettlementActionFailure(
-      "complete_payout",
+      "reserve_settlement",
       {
         matchRoomId: normalizedIdentifier(formData, "match_room_id"),
-        payoutId: normalizedIdentifier(formData, "payout_id"),
-        hasProofFile: Boolean(uploadedFile(formData, "completion_proof_file")),
-        hasProofUrl: Boolean(optionalString(formData, "completion_proof_url")),
-        hasPayoutReference: Boolean(optionalString(formData, "payout_reference"))
+        hasNotes: Boolean(optionalString(formData, "notes"))
       },
       error
     );
@@ -97,13 +96,13 @@ export async function completePayoutAction(formData: FormData) {
     });
   } catch (error) {
     logSettlementActionFailure(
-      "complete_refund",
+      "complete_payout",
       {
         matchRoomId: normalizedIdentifier(formData, "match_room_id"),
-        refundId: normalizedIdentifier(formData, "refund_id"),
+        payoutId: normalizedIdentifier(formData, "payout_id"),
         hasProofFile: Boolean(uploadedFile(formData, "completion_proof_file")),
         hasProofUrl: Boolean(optionalString(formData, "completion_proof_url")),
-        hasRefundReference: Boolean(optionalString(formData, "refund_reference"))
+        hasPayoutReference: Boolean(optionalString(formData, "payout_reference"))
       },
       error
     );
@@ -176,6 +175,17 @@ export async function completeRefundAction(formData: FormData) {
       stepUpToken
     });
   } catch (error) {
+    logSettlementActionFailure(
+      "complete_refund",
+      {
+        matchRoomId: normalizedIdentifier(formData, "match_room_id"),
+        refundId: normalizedIdentifier(formData, "refund_id"),
+        hasProofFile: Boolean(uploadedFile(formData, "completion_proof_file")),
+        hasProofUrl: Boolean(optionalString(formData, "completion_proof_url")),
+        hasRefundReference: Boolean(optionalString(formData, "refund_reference"))
+      },
+      error
+    );
     redirect(withError(error));
   }
 
