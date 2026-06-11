@@ -28,7 +28,8 @@ const actionStatuses: MatchRoomStatus[] = [
   "awaiting_results",
   "under_review",
   "disputed",
-  "settlement_pending"
+  "settlement_pending",
+  "completed"
 ];
 
 const roomSteps = [
@@ -78,6 +79,12 @@ function sortRooms(rooms: MatchRoom[]) {
 function RoomCard({ room }: { room: MatchRoom }) {
   const playerCount = room.participant_count ?? 0;
   const isJoinable = room.status === "open" && playerCount < room.max_participants;
+  const roomActivityLabel =
+    room.status === "completed"
+      ? "Completed and retained for activity history"
+      : isJoinable
+        ? "Ready for opponent"
+        : "Action in progress";
 
   return (
     <article className="grid gap-4 border-b border-line p-4 last:border-b-0 md:grid-cols-[1fr_auto] md:items-center">
@@ -96,7 +103,7 @@ function RoomCard({ room }: { room: MatchRoom }) {
           <span>
             {playerCount}/{room.max_participants} players
           </span>
-          <span>{isJoinable ? "Ready for opponent" : "Action in progress"}</span>
+          <span>{roomActivityLabel}</span>
         </div>
       </div>
       <div className="flex flex-wrap gap-2 md:justify-end">

@@ -11,7 +11,7 @@ import { getCurrentUser } from "@/lib/auth-bridge";
 import { formatEntryAmount, listMatchRooms, matchStatusLabel, type MatchRoom, type MatchRoomStatus } from "@/lib/match-room-api";
 import { joinMatchRoomAction } from "./actions";
 
-const lobbyStatuses: MatchRoomStatus[] = ["open", "awaiting_funding", "funding_review", "active", "under_review", "disputed"];
+const lobbyStatuses: MatchRoomStatus[] = ["open", "awaiting_funding", "funding_review", "active", "under_review", "disputed", "settlement_pending", "completed"];
 
 function statusTone(status: MatchRoomStatus) {
   if (status === "open") return "cyan" as const;

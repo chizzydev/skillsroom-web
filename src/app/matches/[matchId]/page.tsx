@@ -12,6 +12,7 @@ import { TransientStatusBanner } from "@/components/ui/TransientStatusBanner";
 import { getCurrentUser } from "@/lib/auth-bridge";
 import {
   formatEntryAmount,
+  getMatchWinnerPage,
   listAccessibleLivestreams,
   listManageableLivestreams,
   getTournamentDetail,
@@ -21,6 +22,7 @@ import {
   getRoomResults,
   matchStatusLabel,
   type CommunityLivestreamLink,
+  type CommunityMatchWinnerPage,
   type ManualFundingSubmission,
   type MatchParticipant,
   type MatchResultClaim,
@@ -278,16 +280,13 @@ export default async function MatchDetailPage({
   let funding: RoomFundingOverview | null = null;
   let results: RoomResultOverview | null = null;
   let tournamentDetail: TournamentDetail | null = null;
+  let publicWinnerPage: CommunityMatchWinnerPage | null = null;
   let livestreams: CommunityLivestreamLink[] = [];
   let manageableLivestreams: CommunityLivestreamLink[] = [];
   let loadError: string | null = null;
 
   try {
     data = await getMatchRoomTimeline(matchId);
-    funding = await getRoomFunding(matchId);
-    results = await getRoomResults(matchId);
-    const livestreamResult = await listAccessibleLivestreams({ target_type: "match_room", match_room_id: matchId });
-    livestreams = livestreamResult.livestreams;
     const tournamentId = metadataString(data.room.metadata, "tournament_id");
     if (tournamentId) {
       const tournamentResult = await getTournamentDetail(tournamentId);
@@ -321,12 +320,36 @@ export default async function MatchDetailPage({
     tournamentMatchContext(tournamentDetail, tournamentMatchId);
   const tournamentCheckIns = data.tournament_match_check_ins ?? [];
   const currentParticipant = participants.find((participant) => participant.user_id === user.id);
+  const canViewSensitiveInternals =
+    Boolean(currentParticipant) || ["moderator", "admin", "owner", "support"].includes(user.role);
   const allJoinedParticipantsApproved =
     participants.length > 0 && participants.every((participant) => participant.funding_status === "approved");
   const gameName = tournamentDetail?.game_name ?? "the game";
   const currentPlayerCheckedIn = currentParticipant
     ? tournamentCheckIns.some((checkIn) => checkIn.participant_id === currentParticipant.id)
     : false;
+
+  try {
+    const livestreamResult = await listAccessibleLivestreams({ target_type: "match_room", match_room_id: matchId });
+    livestreams = livestreamResult.livestreams;
+  } catch {
+    loadError = loadError ?? "Match room loaded, but livestream links could not be loaded right now.";
+  }
+
+  if (canViewSensitiveInternals) {
+    try {
+      [funding, results] = await Promise.all([getRoomFunding(matchId), getRoomResults(matchId)]);
+    } catch {
+      loadError = loadError ?? "Room summary loaded, but detailed funding or result records could not be loaded right now.";
+    }
+  } else if (["settlement_pending", "completed"].includes(room.status)) {
+    try {
+      publicWinnerPage = await getMatchWinnerPage(matchId);
+    } catch {
+      publicWinnerPage = null;
+    }
+  }
+
   const trustResults = await Promise.all(
     participants.map(async (participant) => {
       try {
@@ -355,8 +378,8 @@ export default async function MatchDetailPage({
     room.status === "funded" &&
     participants.length === room.max_participants &&
     allJoinedParticipantsApproved &&
-    (Boolean(currentParticipant) || ["moderator", "admin", "owner"].includes(user.role));
-  const canSubmitResult = ["active", "awaiting_results", "under_review", "disputed"].includes(room.status);
+    canViewSensitiveInternals;
+  const canSubmitResult = canViewSensitiveInternals && ["active", "awaiting_results", "under_review", "disputed"].includes(room.status);
   const canTournamentCheckIn =
     isTournamentRoom &&
     Boolean(currentParticipant) &&
@@ -463,6 +486,66 @@ export default async function MatchDetailPage({
             <p className="mt-2 text-sm font-bold text-muted">Audit trail enabled</p>
           </Panel>
         </div>
+
+        {!canViewSensitiveInternals ? (
+          <Panel>
+            <PanelHeader
+              eyebrow="Room Activity"
+              title="Public-safe room summary"
+              description="Signed-in users can see that this room happened, who played, and the current outcome. Funding proofs, evidence, moderation notes, and operator actions stay limited to participants and admins."
+            />
+            <div className="grid gap-4 p-4 xl:grid-cols-[minmax(0,1fr)_20rem]">
+              <div className="grid gap-3">
+                <div className="grid gap-3 md:grid-cols-2">
+                  {participants.map((participant) => {
+                    const trust = trustByUserId.get(participant.user_id);
+                    return (
+                      <div className="rounded-md border border-line bg-white p-4" key={participant.id}>
+                        <p className="font-mono text-xs font-black uppercase tracking-[0.12em] text-dim">{participant.slot.replace("_", " ")}</p>
+                        <p className="mt-2 text-lg font-black text-ink">{playerDisplayName(participant, trust)}</p>
+                        <p className="mt-2 text-sm font-bold text-muted">{primaryHandleLabel(trust)}</p>
+                      </div>
+                    );
+                  })}
+                </div>
+                {publicWinnerPage ? (
+                  <div className="rounded-md border border-success/30 bg-green-50 p-4">
+                    <p className="font-mono text-xs font-black uppercase tracking-[0.12em] text-success">Approved outcome</p>
+                    <h2 className="mt-2 text-xl font-black text-ink">{publicWinnerPage.winner.label}</h2>
+                    <p className="mt-2 text-sm leading-6 text-muted">
+                      Defeated {publicWinnerPage.opponent?.label ?? "the verified opponent"} in {publicWinnerPage.room.title ?? publicWinnerPage.room.room_code}.
+                    </p>
+                    <div className="mt-3 grid gap-2 text-sm font-bold text-muted sm:grid-cols-2">
+                      <span>Result: {publicWinnerPage.result.status_label}</span>
+                      <span>Score: {scoreSummaryLabel(publicWinnerPage.result.score_summary)}</span>
+                    </div>
+                    <PendingLink
+                      className="mt-4 inline-flex min-h-10 items-center justify-center rounded-md border border-line bg-white px-4 text-sm font-black text-ink hover:bg-surfaceHigh"
+                      href={publicWinnerPage.share_path}
+                      pendingLabel="Opening winner page..."
+                    >
+                      Open public winner page
+                    </PendingLink>
+                  </div>
+                ) : (
+                  <div className="rounded-md border border-line bg-surfaceWarm p-4 text-sm leading-6 text-muted">
+                    {room.status === "completed" || room.status === "settlement_pending"
+                      ? "This room has reached a finished state. Public-safe winner details will appear here once the approved result summary is available."
+                      : "This room summary is visible, but detailed funding, evidence, and review records stay limited to participants and admins until the room is fully completed."}
+                  </div>
+                )}
+              </div>
+              <div className="rounded-md border border-line bg-surfaceWarm p-4">
+                <p className="font-mono text-xs font-black uppercase tracking-[0.12em] text-cyan">Visibility rules</p>
+                <ul className="mt-3 grid gap-2 text-sm leading-6 text-muted">
+                  <li>Signed-in users can see completed room cards and safe outcome context.</li>
+                  <li>Only participants and admins can open funding proofs, result evidence, and moderation data.</li>
+                  <li>Public sharing belongs on the winner page, not inside the operational room record.</li>
+                </ul>
+              </div>
+            </div>
+          </Panel>
+        ) : null}
 
         {isTournamentRoom ? (
           <Panel>
@@ -746,7 +829,7 @@ export default async function MatchDetailPage({
           </Panel>
         ) : null}
 
-        {!isTournamentRoom ? (
+        {!isTournamentRoom && canViewSensitiveInternals ? (
         <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1fr)_24rem]" id="funding">
           <Panel>
             <PanelHeader
@@ -901,7 +984,7 @@ export default async function MatchDetailPage({
             </div>
           </Panel>
 
-          {!isTournamentRoom ? (
+          {!isTournamentRoom && canViewSensitiveInternals ? (
           <Panel>
             <PanelHeader eyebrow="Invite" title="Invite by username" description="Open the room first, then invite a known player by Skillsroom username." />
             <form action={createRoomInviteAction} className="grid gap-3 p-4">
@@ -949,6 +1032,7 @@ export default async function MatchDetailPage({
           )}
         </div>
 
+        {canViewSensitiveInternals ? (
         <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1fr)_24rem]" id="result">
           <Panel>
             <PanelHeader
@@ -1085,8 +1169,9 @@ export default async function MatchDetailPage({
             )}
           </Panel>
         </div>
+        ) : null}
 
-        {latestClaim ? (
+        {canViewSensitiveInternals && latestClaim ? (
           <Panel>
             <PanelHeader eyebrow="Opponent Response" title="Respond to latest claim" description="Agree when the score is correct. Dispute only when evidence or rules need operator review." />
             <form action={respondToResultClaimAction} className="grid gap-3 p-4 md:grid-cols-[1fr_12rem_12rem]">
@@ -1099,12 +1184,14 @@ export default async function MatchDetailPage({
           </Panel>
         ) : null}
 
-        <Panel>
-          <PanelHeader eyebrow="Audit Trail" title="State history" description="Every important room movement is recorded for support and dispute review." />
-          <div className="p-4">
-            <Timeline items={buildAuditTimeline(data)} />
-          </div>
-        </Panel>
+        {canViewSensitiveInternals ? (
+          <Panel>
+            <PanelHeader eyebrow="Audit Trail" title="State history" description="Every important room movement is recorded for support and dispute review." />
+            <div className="p-4">
+              <Timeline items={buildAuditTimeline(data)} />
+            </div>
+          </Panel>
+        ) : null}
       </section>
     </AppShell>
   );
