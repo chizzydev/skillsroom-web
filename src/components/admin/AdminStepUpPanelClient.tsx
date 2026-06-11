@@ -6,6 +6,7 @@ import { formatLagosDateTime } from "@/lib/date-format";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Panel, PanelHeader } from "@/components/ui/Panel";
+import { SubmitButton } from "@/components/ui/SubmitButton";
 import { clearAdminStepUpAction, confirmAdminStepUpAction } from "./step-up-actions";
 
 type AdminStepUpPanelClientProps = {
@@ -74,7 +75,7 @@ export function AdminStepUpPanelClient({
             </div>
             <form action={clearAdminStepUpAction} className="flex flex-wrap gap-3">
               <input name="return_to" type="hidden" value={returnTo} />
-              <Button type="submit" variant="secondary">Lock sensitive actions</Button>
+              <SubmitButton idleLabel="Lock sensitive actions" pendingLabel="Locking..." variant="secondary" />
             </form>
           </>
         ) : unlocked ? (
@@ -103,7 +104,7 @@ export function AdminStepUpPanelClient({
             <p className="text-xs font-bold text-muted">
               This is for your Skillsroom password confirmation, not a Google popup or one-time code.
             </p>
-            <Button type="submit">Unlock sensitive actions</Button>
+            <SubmitButton idleLabel="Unlock sensitive actions" pendingLabel="Unlocking..." />
           </form>
         )}
       </div>
