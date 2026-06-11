@@ -20,11 +20,12 @@ import {
   type MatchParticipant,
   type MatchResultClaim,
   type MatchTimeline,
-  type PlayerTrustSummary
+  type PlayerTrustSummary,
+  type ResultClaimStatus
 } from "@/lib/match-room-api";
 import { reviewResultClaimAction } from "./actions";
 
-function countStatus(rows: MatchResultClaim[], status: MatchResultClaim["status"]) {
+function countStatus(rows: MatchResultClaim[], status: ResultClaimStatus) {
   return rows.filter((row) => row.status === status).length.toString();
 }
 
@@ -113,6 +114,36 @@ async function loadQueueCard(claim: MatchResultClaim): Promise<AdminResultQueueC
   }
 }
 
+const queueStatuses: Array<{
+  status: ResultClaimStatus;
+  title: string;
+  description: string;
+  emptyTitle: string;
+  emptyDescription: string;
+}> = [
+  {
+    status: "submitted",
+    title: "Submitted result claims",
+    description: "Fresh claims waiting for opponent response or direct operator review.",
+    emptyTitle: "Submitted queue is clear",
+    emptyDescription: "No newly submitted result claims are waiting right now."
+  },
+  {
+    status: "opponent_agreed",
+    title: "Opponent-agreed claims",
+    description: "Claims where the opponent agreed and ops can move directly toward approval or dispute handling.",
+    emptyTitle: "Agreed queue is clear",
+    emptyDescription: "No opponent-agreed result claims are waiting right now."
+  },
+  {
+    status: "opponent_disputed",
+    title: "Disputed claims",
+    description: "Claims that need operator review because the opponent disputed the result or evidence.",
+    emptyTitle: "Dispute queue is clear",
+    emptyDescription: "No disputed result claims are waiting right now."
+  }
+];
+
 export default async function AdminResultsPage({ searchParams }: { searchParams: Promise<{ error?: string; success?: string }> }) {
   const user = await getCurrentUser();
   if (!canAccessAdmin(user)) redirect("/sign-in?redirect=/admin/results");
@@ -121,12 +152,16 @@ export default async function AdminResultsPage({ searchParams }: { searchParams:
   let claims: MatchResultClaim[] = [];
   let loadError: string | null = null;
   try {
-    claims = (await listResultClaims("submitted")).claims;
+    const queueGroups = await Promise.all(queueStatuses.map(async ({ status }) => ({ status, rows: (await listResultClaims(status)).claims })));
+    claims = queueGroups.flatMap((group) => group.rows);
   } catch {
     loadError = "Unable to load result review queue.";
   }
 
   const queueCards = await Promise.all(claims.map(loadQueueCard));
+  const cardsByStatus = new Map<ResultClaimStatus, AdminResultQueueCard[]>(
+    queueStatuses.map(({ status }) => [status, queueCards.filter((card) => card.claim.status === status)])
+  );
 
   return (
     <AdminShell active="results">
@@ -149,15 +184,31 @@ export default async function AdminResultsPage({ searchParams }: { searchParams:
           <StatusPanel detail="Needs review" label="Submitted" tone="warning" value={countStatus(claims, "submitted")} />
           <StatusPanel detail="Opponent agrees" label="Agreed" tone="success" value={countStatus(claims, "opponent_agreed")} />
           <StatusPanel detail="Needs dispute lane" label="Disputed" tone="danger" value={countStatus(claims, "opponent_disputed")} />
-          <StatusPanel detail="Current filter" label="Queue Total" tone="cyan" value={claims.length.toString()} />
+          <StatusPanel detail="All active review lanes" label="Queue Total" tone="cyan" value={claims.length.toString()} />
         </div>
 
         <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1fr)_420px]">
           <Panel>
-            <PanelHeader eyebrow="Queue" title="Submitted result claims" description="Copy the claim ID into the decision panel after reviewing the room evidence." />
+            <PanelHeader eyebrow="Queue" title="Result review lanes" description="Review evidence and copy the claim ID into the decision panel when you are ready to rule." />
             <div className="grid gap-3 p-4">
               {claims.length ? (
-                queueCards.map((card) => {
+                queueStatuses.map(({ status, title, description, emptyTitle, emptyDescription }) => {
+                  const statusCards = cardsByStatus.get(status) ?? [];
+                  return (
+                    <section className="grid gap-3" key={status}>
+                      <div className="rounded-md border border-line bg-surfaceWarm p-4">
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                          <div>
+                            <p className="font-mono text-[11px] font-bold uppercase tracking-[0.12em] text-dim">{displayLabel(status)}</p>
+                            <h2 className="mt-2 text-lg font-black text-ink">{title}</h2>
+                            <p className="mt-1 text-sm leading-6 text-muted">{description}</p>
+                          </div>
+                          <Badge tone={status === "opponent_disputed" ? "danger" : status === "opponent_agreed" ? "success" : "warning"}>
+                            {statusCards.length}
+                          </Badge>
+                        </div>
+                      </div>
+                      {statusCards.length ? statusCards.map((card) => {
                   const claim = card.claim;
                   const claimantParticipant = card.participants.find((item) => item.id === claim.claimant_participant_id);
                   const winnerParticipant = card.participants.find((item) => item.id === claim.claimed_winner_participant_id);
@@ -170,7 +221,7 @@ export default async function AdminResultsPage({ searchParams }: { searchParams:
                     winnerParticipant ? card.trustByUserId.get(winnerParticipant.user_id) : null
                   );
 
-                  return (
+                        return (
                   <article className="rounded-md border border-line bg-white p-4" key={claim.id}>
                     <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                       <div className="min-w-0">
@@ -239,9 +290,15 @@ export default async function AdminResultsPage({ searchParams }: { searchParams:
                     )}
                     {card.loadError ? <p className="mt-3 text-xs font-bold text-danger">{card.loadError}</p> : null}
                   </article>
-                )})
+                        );
+                      }) : (
+                        <AdminEmptyState description={emptyDescription} title={emptyTitle} />
+                      )}
+                    </section>
+                  );
+                })
               ) : (
-                <AdminEmptyState description="No result claims are waiting for operator decision." title="Result review queue is clear" />
+                <AdminEmptyState description="No result claims are waiting in submitted, agreed, or disputed review lanes." title="Result review queue is clear" />
               )}
             </div>
           </Panel>
