@@ -1,8 +1,7 @@
 "use client";
 
 import type { ButtonHTMLAttributes } from "react";
-import { useFormStatus } from "react-dom";
-import { Button } from "./Button";
+import { FormActionButton } from "./FormActionButton";
 
 type SubmitButtonProps = Omit<ButtonHTMLAttributes<HTMLButtonElement>, "type"> & {
   pendingLabel?: string;
@@ -22,20 +21,16 @@ export function SubmitButton({
   className,
   ...props
 }: SubmitButtonProps) {
-  const { pending } = useFormStatus();
-
   return (
-    <Button
-      aria-busy={pending}
+    <FormActionButton
       className={className}
-      disabled={disabled || pending}
+      disabled={disabled}
       fullWidth={fullWidth}
+      idleLabel={idleLabel}
+      pendingLabel={pendingLabel}
       size={size}
-      type="submit"
       variant={variant}
       {...props}
-    >
-      {pending ? pendingLabel : idleLabel}
-    </Button>
+    />
   );
 }

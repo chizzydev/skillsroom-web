@@ -7,10 +7,11 @@ import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { AdminShell } from "@/components/layout/AdminShell";
 import { LiveUpdateStream } from "@/components/realtime/LiveUpdateStream";
 import { Badge, type BadgeTone } from "@/components/ui/Badge";
-import { Button } from "@/components/ui/Button";
 import { DataTable } from "@/components/ui/DataTable";
+import { FormActionButton } from "@/components/ui/FormActionButton";
 import { Panel, PanelHeader } from "@/components/ui/Panel";
 import { StatusPanel } from "@/components/ui/StatusPanel";
+import { SubmitButton } from "@/components/ui/SubmitButton";
 import { canAccessAdmin, getCurrentUser } from "@/lib/auth-bridge";
 import {
   displayEnumLabel,
@@ -501,7 +502,7 @@ export default async function AdminTournamentsPage({
                   <label className="flex items-center gap-2"><input name="view_finances" type="checkbox" defaultChecked /> View finances</label>
                 </div>
                 <textarea className="min-h-20 rounded-md border border-line bg-white px-3 py-2 text-sm outline-none focus:border-action" name="notes" placeholder="Internal approval note" />
-                <Button type="submit">Grant access</Button>
+                <SubmitButton idleLabel="Grant access" pendingLabel="Granting access..." />
               </form>
 
               <form action={updateTournamentHostEventAction} className="grid gap-3 rounded-md border border-line bg-white p-4">
@@ -531,7 +532,7 @@ export default async function AdminTournamentsPage({
                 </div>
                 <textarea className="min-h-20 rounded-md border border-line bg-white px-3 py-2 text-sm outline-none focus:border-action" name="creator_notes" placeholder="Creator or sponsor note" />
                 <label className="flex items-center gap-2 text-sm font-bold text-ink"><input name="featured" type="checkbox" /> Feature this event</label>
-                <Button type="submit">Update event</Button>
+                <SubmitButton idleLabel="Update event" pendingLabel="Updating event..." />
               </form>
             </div>
 
@@ -599,8 +600,8 @@ export default async function AdminTournamentsPage({
                       <input name="contribution_id" type="hidden" value={row.id} />
                       <input className="min-h-9 rounded-md border border-line bg-white px-2 text-xs outline-none focus:border-action" name="note" placeholder="Review note" />
                       <div className="grid grid-cols-2 gap-2">
-                        <button className="min-h-9 rounded-md bg-success px-3 text-xs font-black text-white" name="decision" type="submit" value="approve">Approve</button>
-                        <button className="min-h-9 rounded-md bg-danger px-3 text-xs font-black text-white" name="decision" type="submit" value="reject">Reject</button>
+                        <FormActionButton className="border-0 bg-success text-xs text-white hover:bg-success/90" idleLabel="Approve" name="decision" pendingLabel="Approving..." size="sm" value="approve" />
+                        <FormActionButton className="border-0 bg-danger text-xs text-white hover:bg-red-700" idleLabel="Reject" name="decision" pendingLabel="Rejecting..." size="sm" value="reject" />
                       </div>
                     </form>
                   )
@@ -656,7 +657,7 @@ export default async function AdminTournamentsPage({
               />
             </label>
             <div className="flex flex-wrap items-center gap-3">
-              <Button type="submit">Assign seeds</Button>
+              <SubmitButton idleLabel="Assign seeds" pendingLabel="Assigning seeds..." />
               <p className="text-xs font-bold text-muted">
                 The API rejects waitlisted, unapproved, unregistered, duplicate, or missing manual seed entries.
               </p>
@@ -692,7 +693,7 @@ export default async function AdminTournamentsPage({
               Regenerate existing structure
             </label>
             <div className="flex flex-wrap items-center gap-3">
-              <Button type="submit">Generate stages</Button>
+              <SubmitButton idleLabel="Generate stages" pendingLabel="Generating stages..." />
               <p className="text-xs font-bold text-muted">
                 Requires tournament status to be Seeding with seeded entrants meeting the minimum entry count.
               </p>
@@ -734,7 +735,7 @@ export default async function AdminTournamentsPage({
               </label>
             </div>
             <div className="flex flex-wrap items-center gap-3">
-              <Button type="submit">Link match rooms</Button>
+              <SubmitButton idleLabel="Link match rooms" pendingLabel="Linking match rooms..." />
               <p className="text-xs font-bold text-muted">
                 Linked rooms open as active zero-fee tournament rooms with entrants already attached. Specific match retries safely return existing links.
               </p>
@@ -801,7 +802,7 @@ export default async function AdminTournamentsPage({
               <textarea className="min-h-24 rounded-md border border-line bg-white px-3 py-2 text-sm outline-none focus:border-action" name="note" />
             </label>
             <div className="flex flex-wrap items-center gap-3">
-              <Button type="submit">Save result decision</Button>
+              <SubmitButton idleLabel="Save result decision" pendingLabel="Saving result decision..." />
               <p className="text-xs font-bold text-muted">
                 Confirmed head-to-head results advance brackets when the format supports it. Penalty decisions are audit-logged and reflected on match sides.
               </p>
@@ -831,7 +832,7 @@ export default async function AdminTournamentsPage({
                 Notes
                 <textarea className="min-h-24 rounded-md border border-line bg-white px-3 py-2 text-sm outline-none focus:border-action" name="notes" placeholder="Prize allocation, commission, or payout note" />
               </label>
-              <Button type="submit">Reserve prize payouts</Button>
+              <SubmitButton idleLabel="Reserve prize payouts" pendingLabel="Reserving prize payouts..." />
             </form>
             <form action={reserveTournamentRefundsAction} className="grid gap-3 rounded-md border border-line bg-white p-4">
               <label className="grid gap-2 text-sm font-bold text-ink">
@@ -848,7 +849,7 @@ export default async function AdminTournamentsPage({
                 Refund reason
                 <textarea className="min-h-24 rounded-md border border-line bg-white px-3 py-2 text-sm outline-none focus:border-action" defaultValue="tournament_refund_reserved" name="reason" required />
               </label>
-              <Button type="submit" variant="danger">Reserve entry refunds</Button>
+              <SubmitButton idleLabel="Reserve entry refunds" pendingLabel="Reserving entry refunds..." variant="danger" />
             </form>
           </div>
         </Panel>
@@ -892,7 +893,7 @@ export default async function AdminTournamentsPage({
               />
             </label>
             <div className="flex flex-wrap items-center gap-3">
-              <Button type="submit">Apply scores</Button>
+              <SubmitButton idleLabel="Apply scores" pendingLabel="Applying scores..." />
               <p className="text-xs font-bold text-muted">
                 Include every entrant side in the match. The API rejects duplicates, missing entrants, and already-scored matches.
               </p>
@@ -1059,7 +1060,7 @@ export default async function AdminTournamentsPage({
                 </label>
 
                 <div className="flex flex-wrap gap-2">
-                  <Button type="submit">Create draft tournament</Button>
+                  <SubmitButton idleLabel="Create draft tournament" pendingLabel="Creating draft tournament..." />
                 </div>
               </form>
             ) : (

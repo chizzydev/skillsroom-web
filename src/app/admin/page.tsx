@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { AdminEmptyState } from "@/components/admin/AdminEmptyState";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
@@ -7,6 +6,8 @@ import { AdminShell } from "@/components/layout/AdminShell";
 import { LiveUpdateStream } from "@/components/realtime/LiveUpdateStream";
 import { Badge, type BadgeTone } from "@/components/ui/Badge";
 import { DataTable } from "@/components/ui/DataTable";
+import { FormActionButton } from "@/components/ui/FormActionButton";
+import { PendingLink } from "@/components/ui/PendingLink";
 import { Panel, PanelHeader } from "@/components/ui/Panel";
 import { TransientStatusBanner } from "@/components/ui/TransientStatusBanner";
 import { canAccessAdmin, getCurrentUser } from "@/lib/auth-bridge";
@@ -201,12 +202,13 @@ export default async function AdminPage({
       <section className="grid gap-5">
         <AdminPageHeader
           actions={
-            <Link
+            <PendingLink
               className="inline-flex min-h-11 items-center justify-center rounded-md border border-line bg-white px-4 text-sm font-black text-ink transition hover:border-cyan"
               href="/admin/funding"
+              pendingLabel="Opening funding..."
             >
               Review funding
-            </Link>
+            </PendingLink>
           }
           description="Live operational queues for funding, evidence, settlement, refunds, and risk. Every decision stays tied to a room, player, and audit trail."
           eyebrow="Operations"
@@ -284,9 +286,7 @@ export default async function AdminPage({
                 <input name="publish_now" type="checkbox" />
                 Publish immediately
               </label>
-              <button className="inline-flex min-h-10 items-center justify-center rounded-md bg-action px-4 text-sm font-black text-navy-950 shadow-action hover:bg-actionHover" type="submit">
-                Save announcement
-              </button>
+              <FormActionButton idleLabel="Save announcement" pendingLabel="Saving announcement..." />
             </form>
 
             <div className="grid gap-3 rounded-md border border-line bg-white p-4">
@@ -306,17 +306,13 @@ export default async function AdminPage({
                       {item.status !== "published" ? (
                         <form action={publishAnnouncementAction}>
                           <input name="announcement_id" type="hidden" value={item.id} />
-                          <button className="inline-flex min-h-9 items-center justify-center rounded-md border border-line bg-white px-3 text-xs font-black text-ink hover:bg-surfaceHigh" type="submit">
-                            Publish
-                          </button>
+                          <FormActionButton className="text-xs" idleLabel="Publish" pendingLabel="Publishing..." size="sm" variant="secondary" />
                         </form>
                       ) : null}
                       {item.status !== "archived" ? (
                         <form action={archiveAnnouncementAction}>
                           <input name="announcement_id" type="hidden" value={item.id} />
-                          <button className="inline-flex min-h-9 items-center justify-center rounded-md border border-line bg-white px-3 text-xs font-black text-ink hover:bg-surfaceHigh" type="submit">
-                            Archive
-                          </button>
+                          <FormActionButton className="text-xs" idleLabel="Archive" pendingLabel="Archiving..." size="sm" variant="secondary" />
                         </form>
                       ) : null}
                     </div>
@@ -356,9 +352,9 @@ export default async function AdminPage({
                   key: "href",
                   label: "Action",
                   render: (row) => (
-                    <Link className="text-sm font-black text-cyan hover:text-action" href={row.href}>
+                    <PendingLink className="text-sm font-black text-cyan hover:text-action" href={row.href} pendingLabel="Opening lane...">
                       Open lane
-                    </Link>
+                    </PendingLink>
                   )
                 }
               ]}

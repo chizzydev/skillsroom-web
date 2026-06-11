@@ -4,10 +4,10 @@ import { GoogleAuthButton } from "@/components/auth/GoogleAuthButton";
 import { AppShell } from "@/components/layout/AppShell";
 import { PlayerTrustCard } from "@/components/trust/PlayerTrustCard";
 import { Badge } from "@/components/ui/Badge";
-import { Button } from "@/components/ui/Button";
 import { DataTable } from "@/components/ui/DataTable";
 import { Panel, PanelHeader } from "@/components/ui/Panel";
 import { StatusPanel } from "@/components/ui/StatusPanel";
+import { SubmitButton } from "@/components/ui/SubmitButton";
 import { Timeline } from "@/components/ui/Timeline";
 import { getCurrentUser, getGoogleLinkStatus } from "@/lib/auth-bridge";
 import { getMyCommunityClan, getMyReferralProgram, getPlayerTrustSummary, getProfileMe, listGameCatalog, type Game, type UserGameAccount } from "@/lib/match-room-api";
@@ -278,7 +278,7 @@ export default async function ProfilePage({ searchParams }: ProfilePageProps) {
                 </span>
               </label>
               <div className="md:col-span-2">
-                <Button type="submit">Save profile</Button>
+                <SubmitButton idleLabel="Save profile" pendingLabel="Saving profile..." />
               </div>
             </form>
           </Panel>
@@ -348,7 +348,7 @@ export default async function ProfilePage({ searchParams }: ProfilePageProps) {
                 <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" defaultValue={clan?.banner_url ?? ""} maxLength={500} name="banner_url" placeholder="https://..." />
               </label>
               <div className="md:col-span-2">
-                <Button type="submit">{clan ? "Save clan profile" : "Create clan profile"}</Button>
+                <SubmitButton idleLabel={clan ? "Save clan profile" : "Create clan profile"} pendingLabel={clan ? "Saving clan profile..." : "Creating clan profile..."} />
               </div>
             </form>
           </Panel>
@@ -527,7 +527,7 @@ export default async function ProfilePage({ searchParams }: ProfilePageProps) {
               opponent checks, screenshots, and admin evidence review in the selected game.
             </div>
             <div className="md:col-span-2">
-              <Button type="submit">Save game account</Button>
+              <SubmitButton idleLabel="Save game account" pendingLabel="Saving game account..." />
             </div>
           </form>
         </Panel>

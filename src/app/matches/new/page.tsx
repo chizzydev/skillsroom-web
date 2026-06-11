@@ -3,8 +3,8 @@ import Link from "next/link";
 import { AppShell } from "@/components/layout/AppShell";
 import { CatalogRulesetFields } from "@/components/catalog/CatalogRulesetFields";
 import { Badge } from "@/components/ui/Badge";
-import { Button } from "@/components/ui/Button";
 import { Panel, PanelHeader } from "@/components/ui/Panel";
+import { SubmitButton } from "@/components/ui/SubmitButton";
 import { Timeline } from "@/components/ui/Timeline";
 import { getCurrentUser } from "@/lib/auth-bridge";
 import { listGameCatalog, type Game, type MatchRuleset } from "@/lib/match-room-api";
@@ -87,7 +87,7 @@ export default async function NewMatchPage({ searchParams }: { searchParams: Pro
                 <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="title" placeholder="Room title" />
               </label>
               <div className="flex flex-wrap gap-2 md:col-span-2">
-                <Button type="submit">Create draft</Button>
+                <SubmitButton idleLabel="Create draft" pendingLabel="Creating draft..." />
               </div>
             </form>
             ) : (

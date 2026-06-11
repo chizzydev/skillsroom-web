@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useId, useRef, useState } from "react";
 import type { CurrentUser } from "@/lib/auth-bridge";
+import { FormActionButton } from "@/components/ui/FormActionButton";
 
 type AccountMenuProps = {
   user: CurrentUser | null;
@@ -114,11 +115,9 @@ export function AccountMenu({ user, align = "right", compact = false }: AccountM
           </Link>
         ) : null}
         <form action="/api/auth/logout" className="border-t border-line" method="post">
-          <button className="w-full px-4 py-3 text-left text-sm font-bold text-muted hover:bg-surfaceHigh hover:text-ink" role="menuitem" type="submit">
-            Sign out
-          </button>
+          <FormActionButton className="w-full justify-start rounded-none px-4 py-3 text-left text-sm font-bold text-muted hover:bg-surfaceHigh hover:text-ink" idleLabel="Sign out" pendingLabel="Signing out..." role="menuitem" variant="ghost" />
         </form>
-        </div>
+      </div>
       ) : null}
     </div>
   );

@@ -4,6 +4,7 @@ import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { AdminShell } from "@/components/layout/AdminShell";
 import { Badge } from "@/components/ui/Badge";
 import { DataTable } from "@/components/ui/DataTable";
+import { FormActionButton } from "@/components/ui/FormActionButton";
 import { Panel, PanelHeader } from "@/components/ui/Panel";
 import { StatusPanel } from "@/components/ui/StatusPanel";
 import { canAccessAdmin, getCurrentUser } from "@/lib/auth-bridge";
@@ -108,12 +109,8 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams?
                         placeholder="Review note"
                       />
                       <div className="flex flex-wrap gap-2">
-                        <button className="min-h-9 rounded-md bg-action px-3 text-xs font-black text-navy-950" name="status" type="submit" value="verified">
-                          Verify
-                        </button>
-                        <button className="min-h-9 rounded-md border border-danger bg-white px-3 text-xs font-black text-danger" name="status" type="submit" value="rejected">
-                          Reject
-                        </button>
+                        <FormActionButton className="text-xs" idleLabel="Verify" name="status" pendingLabel="Verifying..." size="sm" value="verified" />
+                        <FormActionButton className="text-xs" idleLabel="Reject" name="status" pendingLabel="Rejecting..." size="sm" value="rejected" variant="danger" />
                       </div>
                     </form>
                   )

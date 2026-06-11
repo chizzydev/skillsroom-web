@@ -5,8 +5,8 @@ import { AdminStepUpPanel } from "@/components/admin/AdminStepUpPanel";
 import { AdminShell } from "@/components/layout/AdminShell";
 import { LiveUpdateStream } from "@/components/realtime/LiveUpdateStream";
 import { Badge } from "@/components/ui/Badge";
-import { Button } from "@/components/ui/Button";
 import { DataTable } from "@/components/ui/DataTable";
+import { FormActionButton } from "@/components/ui/FormActionButton";
 import { Panel, PanelHeader } from "@/components/ui/Panel";
 import { StatusPanel } from "@/components/ui/StatusPanel";
 import { canAccessAdmin, getCurrentUser } from "@/lib/auth-bridge";
@@ -234,7 +234,7 @@ export default async function AdminRiskPage({ searchParams }: { searchParams: Pr
                 <option value="low">Low</option>
               </select>
               <textarea className="min-h-24 rounded-md border border-line bg-white px-3 py-2 text-sm outline-none focus:border-action" name="summary" placeholder="What happened?" required />
-              <Button type="submit">Create flag</Button>
+              <FormActionButton idleLabel="Create flag" pendingLabel="Creating flag..." />
             </form>
           </Panel>
         </div>
@@ -272,12 +272,12 @@ export default async function AdminRiskPage({ searchParams }: { searchParams: Pr
                   <option value="low">Low</option>
                 </select>
                 <textarea className="min-h-24 rounded-md border border-line bg-white px-3 py-2 text-sm outline-none focus:border-action" name="reason" placeholder="Hold reason" required />
-                <Button type="submit" variant="danger">Hold room</Button>
+                <FormActionButton idleLabel="Hold room" pendingLabel="Holding room..." variant="danger" />
               </form>
               <form action={releaseRoomHoldAction} className="grid gap-3 border-t border-line pt-4">
                 <input className="min-h-11 rounded-md border border-line bg-white px-3 font-mono text-sm outline-none focus:border-action" name="hold_id" placeholder="Hold ID" required />
                 <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="release_note" placeholder="Release note" />
-                <Button type="submit" variant="secondary">Release hold</Button>
+                <FormActionButton idleLabel="Release hold" pendingLabel="Releasing hold..." variant="secondary" />
               </form>
             </div>
           </Panel>
@@ -324,7 +324,7 @@ export default async function AdminRiskPage({ searchParams }: { searchParams: Pr
                   <option value="low">Low</option>
                 </select>
                 <textarea className="min-h-24 rounded-md border border-line bg-white px-3 py-2 text-sm outline-none focus:border-action" name="summary" placeholder="Reason and operator note" required />
-                <Button type="submit" variant="danger">Apply moderation</Button>
+                <FormActionButton idleLabel="Apply moderation" pendingLabel="Applying moderation..." variant="danger" />
               </form>
             </Panel>
           </div>
@@ -487,7 +487,7 @@ export default async function AdminRiskPage({ searchParams }: { searchParams: Pr
               placeholder="Retention cleanup, incident review, mistaken quarantine restore"
               required
             />
-            <Button type="submit" variant="danger">Save quarantine</Button>
+            <FormActionButton idleLabel="Save quarantine" pendingLabel="Saving quarantine..." variant="danger" />
           </form>
         </Panel>
 
@@ -517,7 +517,7 @@ export default async function AdminRiskPage({ searchParams }: { searchParams: Pr
               name="deletion_confirmation"
               placeholder="DELETE EVIDENCE"
             />
-            <Button type="submit" variant="danger">Save deletion</Button>
+            <FormActionButton idleLabel="Save deletion" pendingLabel="Saving deletion..." variant="danger" />
           </form>
         </Panel>
 
@@ -540,7 +540,7 @@ export default async function AdminRiskPage({ searchParams }: { searchParams: Pr
               placeholder="Dispute, payout review, abuse investigation"
               required
             />
-            <Button type="submit" variant="secondary">Save hold</Button>
+            <FormActionButton idleLabel="Save hold" pendingLabel="Saving hold..." variant="secondary" />
           </form>
         </Panel>
 
@@ -553,7 +553,7 @@ export default async function AdminRiskPage({ searchParams }: { searchParams: Pr
               placeholder="evidence-v1_...png"
               required
             />
-            <Button type="submit" variant="secondary">Export package</Button>
+            <FormActionButton idleLabel="Export package" pendingLabel="Exporting package..." variant="secondary" />
           </form>
         </Panel>
 
@@ -566,7 +566,7 @@ export default async function AdminRiskPage({ searchParams }: { searchParams: Pr
               placeholder="evidence-v1_...png"
               required
             />
-            <Button type="submit" variant="secondary">Review custody</Button>
+            <FormActionButton idleLabel="Review custody" pendingLabel="Reviewing custody..." variant="secondary" />
           </form>
         </Panel>
 
@@ -580,7 +580,7 @@ export default async function AdminRiskPage({ searchParams }: { searchParams: Pr
               <option value="dismissed">Dismissed</option>
               <option value="open">Open</option>
             </select>
-            <Button type="submit" variant="secondary">Update flag</Button>
+            <FormActionButton idleLabel="Update flag" pendingLabel="Updating flag..." variant="secondary" />
           </form>
         </Panel>
       </section>

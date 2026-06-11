@@ -3,11 +3,11 @@ import Link from "next/link";
 import { AppShell } from "@/components/layout/AppShell";
 import { PublicSharePanel } from "@/components/community/PublicSharePanel";
 import { Badge } from "@/components/ui/Badge";
-import { Button } from "@/components/ui/Button";
 import { DataTable } from "@/components/ui/DataTable";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Panel, PanelHeader } from "@/components/ui/Panel";
 import { StatusPanel } from "@/components/ui/StatusPanel";
+import { SubmitButton } from "@/components/ui/SubmitButton";
 import { getCurrentUser } from "@/lib/auth-bridge";
 import {
   getCommunitySocialProof,
@@ -124,7 +124,7 @@ export default async function CommunityPage({ searchParams }: CommunityPageProps
             <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" defaultValue={filters.campus ?? ""} name="campus" placeholder="Campus / community" />
             <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" defaultValue={filters.region ?? ""} name="region" placeholder="Region" />
             <div className="grid grid-cols-2 gap-2 md:grid-cols-1">
-              <Button type="submit">Apply</Button>
+              <SubmitButton idleLabel="Apply" pendingLabel="Applying..." />
               <Link className="inline-flex min-h-control items-center justify-center rounded-md border border-line bg-white px-4 text-sm font-black text-ink shadow-tight hover:bg-surfaceHigh" href="/community">
                 Clear
               </Link>
@@ -372,7 +372,7 @@ export default async function CommunityPage({ searchParams }: CommunityPageProps
                   required
                 />
                 <textarea className="min-h-24 rounded-md border border-line bg-white px-3 py-2 text-sm outline-none focus:border-action" name="message" placeholder="Message" />
-                <Button type="submit">Send invite</Button>
+                <SubmitButton idleLabel="Send invite" pendingLabel="Sending invite..." />
                 <p className="text-xs font-bold leading-5 text-muted">{invites.length} pending invite{invites.length === 1 ? "" : "s"}.</p>
               </form>
             </Panel>

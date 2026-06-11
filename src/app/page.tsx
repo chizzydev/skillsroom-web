@@ -1,10 +1,10 @@
 import Link from "next/link";
 import { AppShell } from "@/components/layout/AppShell";
 import { Badge } from "@/components/ui/Badge";
-import { Button } from "@/components/ui/Button";
 import { PendingLink } from "@/components/ui/PendingLink";
 import { Panel, PanelHeader } from "@/components/ui/Panel";
 import { StatusPanel } from "@/components/ui/StatusPanel";
+import { SubmitButton } from "@/components/ui/SubmitButton";
 import { getCurrentUser } from "@/lib/auth-bridge";
 import {
   formatEntryAmount,
@@ -111,7 +111,7 @@ function RoomCard({ room }: { room: MatchRoom }) {
           <form action={joinMatchRoomAction}>
             <input name="room_code" type="hidden" value={room.room_code} />
             <input name="error_path" type="hidden" value="/" />
-            <Button type="submit">Join</Button>
+            <SubmitButton idleLabel="Join" pendingLabel="Joining..." />
           </form>
         ) : null}
       </div>
@@ -335,7 +335,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
                 />
               </label>
               <div className="mt-3 grid grid-cols-2 gap-2">
-                <Button type="submit">Join</Button>
+                <SubmitButton idleLabel="Join" pendingLabel="Joining..." />
                 <PendingLink
                   className="inline-flex min-h-10 items-center justify-center rounded-md border border-white/10 bg-white px-4 text-sm font-black text-ink hover:bg-surfaceHigh"
                   href="/matches/new"

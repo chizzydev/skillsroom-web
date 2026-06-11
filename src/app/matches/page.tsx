@@ -1,8 +1,8 @@
 import { redirect } from "next/navigation";
 import { AppShell } from "@/components/layout/AppShell";
 import { Badge } from "@/components/ui/Badge";
-import { Button } from "@/components/ui/Button";
 import { DataTable } from "@/components/ui/DataTable";
+import { SubmitButton } from "@/components/ui/SubmitButton";
 import { PendingLink } from "@/components/ui/PendingLink";
 import { Panel, PanelHeader } from "@/components/ui/Panel";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
@@ -122,7 +122,7 @@ export default async function MatchesPage({ searchParams }: { searchParams: Prom
               placeholder="SR8K21"
               required
             />
-            <Button type="submit">Join room</Button>
+            <SubmitButton idleLabel="Join room" pendingLabel="Joining room..." />
           </form>
         </Panel>
       </section>

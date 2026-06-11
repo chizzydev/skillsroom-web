@@ -5,7 +5,7 @@ import { AdminStepUpPanel } from "@/components/admin/AdminStepUpPanel";
 import { AdminShell } from "@/components/layout/AdminShell";
 import { LiveUpdateStream } from "@/components/realtime/LiveUpdateStream";
 import { Badge } from "@/components/ui/Badge";
-import { Button } from "@/components/ui/Button";
+import { FormActionButton } from "@/components/ui/FormActionButton";
 import { Panel, PanelHeader } from "@/components/ui/Panel";
 import { StatusPanel } from "@/components/ui/StatusPanel";
 import { TransientStatusBanner } from "@/components/ui/TransientStatusBanner";
@@ -121,8 +121,8 @@ export default async function AdminFundingPage({ searchParams }: { searchParams:
                   <textarea className="min-h-28 rounded-md border border-line bg-white px-3 py-2 text-sm outline-none focus:border-action" name="note" />
                 </label>
                 <div className="grid gap-2">
-                  <Button name="decision" type="submit" value="approve">Approve funding</Button>
-                  <Button name="decision" type="submit" value="reject" variant="danger">Reject funding</Button>
+                  <FormActionButton idleLabel="Approve funding" name="decision" pendingLabel="Approving funding..." value="approve" />
+                  <FormActionButton idleLabel="Reject funding" name="decision" pendingLabel="Rejecting funding..." value="reject" variant="danger" />
                 </div>
               </form>
             </Panel>

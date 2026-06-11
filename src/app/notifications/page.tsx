@@ -2,11 +2,12 @@ import { redirect } from "next/navigation";
 import { AppShell } from "@/components/layout/AppShell";
 import { LiveUpdateStream } from "@/components/realtime/LiveUpdateStream";
 import { Badge } from "@/components/ui/Badge";
-import { Button } from "@/components/ui/Button";
 import { DataTable } from "@/components/ui/DataTable";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { FormActionButton } from "@/components/ui/FormActionButton";
 import { Panel, PanelHeader } from "@/components/ui/Panel";
 import { StatusPanel } from "@/components/ui/StatusPanel";
+import { SubmitButton } from "@/components/ui/SubmitButton";
 import { getCurrentUser } from "@/lib/auth-bridge";
 import {
   formatEntryAmount,
@@ -93,7 +94,7 @@ export default async function NotificationsPage({ searchParams }: { searchParams
             <PanelHeader
               action={
                 <form action={markAllNotificationsReadAction}>
-                  <Button size="sm" type="submit" variant="secondary">Mark all read</Button>
+                  <FormActionButton idleLabel="Mark all read" pendingLabel="Marking all read..." size="sm" variant="secondary" />
                 </form>
               }
               eyebrow="Inbox"
@@ -111,7 +112,7 @@ export default async function NotificationsPage({ searchParams }: { searchParams
                     render: (row) => (
                       <form action={markNotificationReadAction}>
                         <input name="notification_id" type="hidden" value={row.id} />
-                        <Button size="sm" type="submit" variant="secondary">Read</Button>
+                        <FormActionButton idleLabel="Read" pendingLabel="Marking read..." size="sm" variant="secondary" />
                       </form>
                     )
                   }
@@ -141,7 +142,7 @@ export default async function NotificationsPage({ searchParams }: { searchParams
                   <input className="shrink-0" defaultChecked={Boolean(checked)} name={String(name)} type="checkbox" />
                 </label>
               ))}
-              <Button type="submit">Save preferences</Button>
+              <SubmitButton idleLabel="Save preferences" pendingLabel="Saving preferences..." />
             </form>
           </Panel>
         </div>
@@ -176,8 +177,8 @@ export default async function NotificationsPage({ searchParams }: { searchParams
                   render: (row) => (
                     <form action={respondToRoomInviteAction} className="flex flex-wrap gap-2">
                       <input name="invite_id" type="hidden" value={row.id} />
-                      <Button name="response" size="sm" type="submit" value="accepted">Accept</Button>
-                      <Button name="response" size="sm" type="submit" value="declined" variant="danger">Decline</Button>
+                      <FormActionButton idleLabel="Accept" name="response" pendingLabel="Accepting..." size="sm" value="accepted" />
+                      <FormActionButton idleLabel="Decline" name="response" pendingLabel="Declining..." size="sm" value="declined" variant="danger" />
                     </form>
                   )
                 }

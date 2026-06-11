@@ -1,11 +1,11 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Badge } from "@/components/ui/Badge";
-import { Button } from "@/components/ui/Button";
 import { Panel, PanelHeader } from "@/components/ui/Panel";
 import { apiBaseUrl } from "@/lib/api";
 import { getCurrentUser } from "@/lib/auth-bridge";
 import { PasswordField } from "@/components/auth/PasswordField";
+import { SubmitButton } from "@/components/ui/SubmitButton";
 
 type OwnerSetupPageProps = {
   searchParams?: Promise<{ error?: string }>;
@@ -78,7 +78,7 @@ export default async function OwnerSetupPage({ searchParams }: OwnerSetupPagePro
                 </label>
                 <PasswordField autoComplete="new-password" helperText="Use at least 12 characters." label="Password" minLength={12} name="password" />
                 <PasswordField autoComplete="new-password" label="Confirm password" minLength={12} name="password_confirm" />
-                <Button type="submit">Create owner account</Button>
+                <SubmitButton idleLabel="Create owner account" pendingLabel="Creating owner account..." />
               </form>
             ) : (
               <div className="rounded-md border border-line bg-surfaceWarm p-4">

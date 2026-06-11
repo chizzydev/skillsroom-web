@@ -5,8 +5,8 @@ import { AdminStepUpPanel } from "@/components/admin/AdminStepUpPanel";
 import { AdminShell } from "@/components/layout/AdminShell";
 import { LiveUpdateStream } from "@/components/realtime/LiveUpdateStream";
 import { Badge } from "@/components/ui/Badge";
-import { Button } from "@/components/ui/Button";
 import { DataTable } from "@/components/ui/DataTable";
+import { FormActionButton } from "@/components/ui/FormActionButton";
 import { Panel, PanelHeader } from "@/components/ui/Panel";
 import { StatusPanel } from "@/components/ui/StatusPanel";
 import { TransientStatusBanner } from "@/components/ui/TransientStatusBanner";
@@ -116,7 +116,7 @@ export default async function AdminSettlementsPage({ searchParams }: { searchPar
                 Bank payout reference
                 <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="payout_reference" required />
               </label>
-              <Button type="submit">Complete payout</Button>
+              <FormActionButton idleLabel="Complete payout" pendingLabel="Completing payout..." />
             </form>
           </Panel>
         </div>
@@ -153,7 +153,7 @@ export default async function AdminSettlementsPage({ searchParams }: { searchPar
                 Bank refund reference
                 <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="refund_reference" required />
               </label>
-              <Button type="submit" variant="secondary">Complete refund</Button>
+              <FormActionButton idleLabel="Complete refund" pendingLabel="Completing refund..." variant="secondary" />
             </form>
           </Panel>
         </div>
@@ -170,7 +170,7 @@ export default async function AdminSettlementsPage({ searchParams }: { searchPar
                 Notes
                 <textarea className="min-h-24 rounded-md border border-line bg-white px-3 py-2 text-sm outline-none focus:border-action" name="notes" />
               </label>
-              <Button type="submit">Reserve settlement</Button>
+              <FormActionButton idleLabel="Reserve settlement" pendingLabel="Reserving settlement..." />
             </form>
 
             <form action={reserveRefundsAction} className="grid gap-3">
@@ -182,7 +182,7 @@ export default async function AdminSettlementsPage({ searchParams }: { searchPar
                 Refund reason
                 <textarea className="min-h-24 rounded-md border border-line bg-white px-3 py-2 text-sm outline-none focus:border-action" name="reason" required />
               </label>
-              <Button type="submit" variant="danger">Reserve refunds</Button>
+              <FormActionButton idleLabel="Reserve refunds" pendingLabel="Reserving refunds..." variant="danger" />
             </form>
           </div>
         </Panel>
