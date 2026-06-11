@@ -6,11 +6,22 @@ import { AdminShell } from "@/components/layout/AdminShell";
 import { LiveUpdateStream } from "@/components/realtime/LiveUpdateStream";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
+import { PendingLink } from "@/components/ui/PendingLink";
 import { Panel, PanelHeader } from "@/components/ui/Panel";
 import { StatusPanel } from "@/components/ui/StatusPanel";
 import { TransientStatusBanner } from "@/components/ui/TransientStatusBanner";
 import { canAccessAdmin, getCurrentUser } from "@/lib/auth-bridge";
-import { listResultClaims, type MatchResultClaim } from "@/lib/match-room-api";
+import {
+  getMatchRoomTimeline,
+  getPlayerTrustSummary,
+  getRoomResults,
+  listResultClaims,
+  type MatchEvidenceItem,
+  type MatchParticipant,
+  type MatchResultClaim,
+  type MatchTimeline,
+  type PlayerTrustSummary
+} from "@/lib/match-room-api";
 import { reviewResultClaimAction } from "./actions";
 
 function countStatus(rows: MatchResultClaim[], status: MatchResultClaim["status"]) {
@@ -28,6 +39,80 @@ function scoreSummaryLabel(value: string | null | undefined) {
   return value && value.trim().length ? value : "No score line supplied";
 }
 
+function playerName(participant?: MatchParticipant) {
+  if (!participant) return "Unknown player";
+  return participant.user_id.length > 16 ? `${participant.user_id.slice(0, 8)}...${participant.user_id.slice(-4)}` : participant.user_id;
+}
+
+function playerDisplayName(participant: MatchParticipant | undefined, trust?: PlayerTrustSummary | null) {
+  if (!participant) return "Unknown player";
+  return trust?.display_name || trust?.username || playerName(participant);
+}
+
+function playerHandleSummary(trust?: PlayerTrustSummary | null) {
+  if (!trust?.primary_game_handle) return null;
+  return trust.primary_game_external_uid ? `${trust.primary_game_handle} / ${trust.primary_game_external_uid}` : trust.primary_game_handle;
+}
+
+function playerIdentityLabel(participant: MatchParticipant | undefined, trust?: PlayerTrustSummary | null) {
+  if (!participant) return "Unknown player";
+  const displayName = playerDisplayName(participant, trust);
+  const handle = playerHandleSummary(trust);
+  return handle ? `${displayName} (${handle})` : displayName;
+}
+
+type AdminResultQueueCard = {
+  claim: MatchResultClaim;
+  room: MatchTimeline["room"] | null;
+  participants: MatchParticipant[];
+  evidence: MatchEvidenceItem[];
+  trustByUserId: Map<string, PlayerTrustSummary | null>;
+  loadError?: string | null;
+};
+
+async function loadQueueCard(claim: MatchResultClaim): Promise<AdminResultQueueCard> {
+  try {
+    const [timeline, results] = await Promise.all([
+      getMatchRoomTimeline(claim.match_room_id),
+      getRoomResults(claim.match_room_id)
+    ]);
+
+    const relevantParticipants = results.participants.filter(
+      (participant) =>
+        participant.id === claim.claimant_participant_id || participant.id === claim.claimed_winner_participant_id
+    );
+
+    const trustEntries = await Promise.all(
+      relevantParticipants.map(async (participant) => {
+        try {
+          const result = await getPlayerTrustSummary(participant.user_id);
+          return [participant.user_id, result.trust] as const;
+        } catch {
+          return [participant.user_id, null] as const;
+        }
+      })
+    );
+
+    return {
+      claim,
+      room: timeline.room,
+      participants: results.participants,
+      evidence: results.evidence_items.filter((item) => item.result_claim_id === claim.id),
+      trustByUserId: new Map<string, PlayerTrustSummary | null>(trustEntries),
+      loadError: null
+    };
+  } catch {
+    return {
+      claim,
+      room: null,
+      participants: [],
+      evidence: [],
+      trustByUserId: new Map<string, PlayerTrustSummary | null>(),
+      loadError: "Room details unavailable for this claim."
+    };
+  }
+}
+
 export default async function AdminResultsPage({ searchParams }: { searchParams: Promise<{ error?: string; success?: string }> }) {
   const user = await getCurrentUser();
   if (!canAccessAdmin(user)) redirect("/sign-in?redirect=/admin/results");
@@ -40,6 +125,8 @@ export default async function AdminResultsPage({ searchParams }: { searchParams:
   } catch {
     loadError = "Unable to load result review queue.";
   }
+
+  const queueCards = await Promise.all(claims.map(loadQueueCard));
 
   return (
     <AdminShell active="results">
@@ -70,7 +157,20 @@ export default async function AdminResultsPage({ searchParams }: { searchParams:
             <PanelHeader eyebrow="Queue" title="Submitted result claims" description="Copy the claim ID into the decision panel after reviewing the room evidence." />
             <div className="grid gap-3 p-4">
               {claims.length ? (
-                claims.map((claim) => (
+                queueCards.map((card) => {
+                  const claim = card.claim;
+                  const claimantParticipant = card.participants.find((item) => item.id === claim.claimant_participant_id);
+                  const winnerParticipant = card.participants.find((item) => item.id === claim.claimed_winner_participant_id);
+                  const claimantLabel = playerIdentityLabel(
+                    claimantParticipant,
+                    claimantParticipant ? card.trustByUserId.get(claimantParticipant.user_id) : null
+                  );
+                  const winnerLabel = playerIdentityLabel(
+                    winnerParticipant,
+                    winnerParticipant ? card.trustByUserId.get(winnerParticipant.user_id) : null
+                  );
+
+                  return (
                   <article className="rounded-md border border-line bg-white p-4" key={claim.id}>
                     <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                       <div className="min-w-0">
@@ -79,29 +179,67 @@ export default async function AdminResultsPage({ searchParams }: { searchParams:
                           <span className="font-mono text-xs font-bold text-dim">{new Date(claim.submitted_at).toLocaleString("en-NG")}</span>
                         </div>
                         <h2 className="mt-3 text-lg font-black text-ink">{scoreSummaryLabel(claim.score_summary)}</h2>
-                        <p className="mt-1 font-mono text-xs font-bold text-muted">Room {claim.match_room_id}</p>
+                        <p className="mt-1 text-sm font-bold text-muted">
+                          {card.room?.title || "Untitled room"} {card.room?.room_code ? <span className="font-mono text-xs">({card.room.room_code})</span> : null}
+                        </p>
+                        <p className="mt-1 font-mono text-xs font-bold text-dim">Room ID {claim.match_room_id}</p>
                       </div>
-                      <div className="rounded-md border border-line bg-surfaceWarm p-3">
+                      <div className="flex flex-wrap items-start gap-2">
+                        {card.room ? (
+                          <PendingLink
+                            className="inline-flex min-h-10 items-center justify-center rounded-md border border-line bg-surfaceWarm px-3 text-sm font-black text-ink hover:bg-surfaceHigh"
+                            href={`/matches/${claim.match_room_id}#result`}
+                            pendingLabel="Opening room..."
+                          >
+                            View room
+                          </PendingLink>
+                        ) : null}
+                        <div className="rounded-md border border-line bg-surfaceWarm p-3">
                         <span className="block font-mono text-[11px] font-bold uppercase tracking-[0.12em] text-dim">Claim ID</span>
                         <strong className="mt-1 block break-all font-mono text-xs text-ink">{claim.id}</strong>
+                        </div>
                       </div>
                     </div>
                     <dl className="mt-4 grid gap-3 text-sm md:grid-cols-3">
                       <div>
                         <dt className="font-mono text-[11px] font-bold uppercase tracking-[0.12em] text-dim">Claimant</dt>
-                        <dd className="mt-1 break-all font-bold text-muted">{claim.claimant_user_id}</dd>
+                        <dd className="mt-1 font-bold text-muted">{claimantLabel}</dd>
+                        <dd className="mt-1 break-all font-mono text-[11px] text-dim">{claim.claimant_user_id}</dd>
                       </div>
                       <div>
                         <dt className="font-mono text-[11px] font-bold uppercase tracking-[0.12em] text-dim">Winner</dt>
-                        <dd className="mt-1 break-all font-bold text-ink">{claim.claimed_winner_user_id}</dd>
+                        <dd className="mt-1 font-bold text-ink">{winnerLabel}</dd>
+                        <dd className="mt-1 break-all font-mono text-[11px] text-dim">{claim.claimed_winner_user_id}</dd>
                       </div>
                       <div>
                         <dt className="font-mono text-[11px] font-bold uppercase tracking-[0.12em] text-dim">Note</dt>
                         <dd className="mt-1 font-bold text-ink">{claim.note ?? "No note"}</dd>
                       </div>
                     </dl>
+                    {card.evidence.length ? (
+                      <div className="mt-4 grid gap-2 md:grid-cols-2">
+                        {card.evidence.map((item) => (
+                          <a
+                            className="rounded-md border border-line bg-surfaceWarm p-3 text-sm font-bold text-ink hover:border-lineStrong hover:bg-surfaceHigh"
+                            href={item.uri ?? "#"}
+                            key={item.id}
+                            rel="noreferrer"
+                            target="_blank"
+                          >
+                            <span className="block font-mono text-[11px] uppercase tracking-[0.12em] text-cyan">{displayLabel(item.evidence_type)}</span>
+                            <span className="mt-1 block [overflow-wrap:anywhere]">{item.title}</span>
+                            {item.notes ? <span className="mt-1 block text-xs leading-5 text-muted">{item.notes}</span> : null}
+                          </a>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="mt-4 rounded-md border border-line bg-surfaceWarm p-3 text-sm font-bold text-muted">
+                        No evidence link loaded for this claim yet.
+                      </div>
+                    )}
+                    {card.loadError ? <p className="mt-3 text-xs font-bold text-danger">{card.loadError}</p> : null}
                   </article>
-                ))
+                )})
               ) : (
                 <AdminEmptyState description="No result claims are waiting for operator decision." title="Result review queue is clear" />
               )}
