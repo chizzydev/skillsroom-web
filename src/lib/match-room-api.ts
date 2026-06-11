@@ -204,6 +204,12 @@ export type MatchSettlement = {
   completed_by_user_id: string | null;
   completed_at: string | null;
   notes: string | null;
+  room_code?: string | null;
+  room_title?: string | null;
+  winner_username?: string | null;
+  winner_display_name?: string | null;
+  winner_primary_game_handle?: string | null;
+  winner_primary_game_external_uid?: string | null;
 };
 
 export type MatchPayout = {
@@ -219,8 +225,22 @@ export type MatchPayout = {
   completed_by_user_id: string | null;
   completed_at: string | null;
   payout_reference: string | null;
+  failure_note?: string | null;
+  recipient_name: string | null;
+  bank_name: string | null;
+  account_number_masked: string | null;
+  bank_code: string | null;
+  payout_note: string | null;
+  instruction_status: "ready" | "missing";
   created_at: string;
   updated_at: string;
+  room_code?: string | null;
+  room_title?: string | null;
+  username?: string | null;
+  display_name?: string | null;
+  primary_game_handle?: string | null;
+  primary_game_external_uid?: string | null;
+  settlement_status?: SettlementStatus | null;
 };
 
 export type MatchRefund = {
@@ -236,8 +256,21 @@ export type MatchRefund = {
   completed_by_user_id: string | null;
   completed_at: string | null;
   refund_reference: string | null;
+  failure_note?: string | null;
+  recipient_name: string | null;
+  bank_name: string | null;
+  account_number_masked: string | null;
+  bank_code: string | null;
+  payout_note: string | null;
+  instruction_status: "ready" | "missing";
   created_at: string;
   updated_at: string;
+  room_code?: string | null;
+  room_title?: string | null;
+  username?: string | null;
+  display_name?: string | null;
+  primary_game_handle?: string | null;
+  primary_game_external_uid?: string | null;
 };
 
 export type UserRiskFlag = {
@@ -277,6 +310,19 @@ export type PlayerProfile = {
   updated_at: string;
 };
 
+export type PlayerPayoutProfile = {
+  user_id: string;
+  recipient_name: string;
+  bank_name: string;
+  account_number: string;
+  account_number_masked: string;
+  bank_code: string | null;
+  payout_note: string | null;
+  currency: string;
+  created_at: string;
+  updated_at: string;
+};
+
 export type UserGameAccount = {
   id: string;
   user_id: string;
@@ -303,8 +349,11 @@ export type ProfileMe = {
     status: "active" | "locked" | "disabled";
   };
   profile: PlayerProfile | null;
+  payout_profile: PlayerPayoutProfile | null;
   game_accounts: UserGameAccount[];
   risk_flags: UserRiskFlag[];
+  payout_history: MatchPayout[];
+  refund_history: MatchRefund[];
   completion: {
     complete: boolean;
     missing: string[];
@@ -1659,6 +1708,20 @@ export function getProfileMe() {
   return apiRequest<ProfileMe>("/profiles/me");
 }
 
+export function upsertPlayerPayoutProfile(input: {
+  recipient_name: string;
+  bank_name: string;
+  account_number: string;
+  bank_code?: string;
+  payout_note?: string;
+  currency?: string;
+}) {
+  return apiRequest<{ payout_profile: PlayerPayoutProfile }>("/profiles/me/payout-profile", {
+    method: "PUT",
+    body: JSON.stringify(input)
+  });
+}
+
 export function updatePlayerProfile(input: {
   username: string;
   display_name?: string;
@@ -1867,10 +1930,9 @@ export function reviewResultClaim(
   });
 }
 
-export function listSettlements(status: SettlementStatus = "payout_pending") {
-  return apiRequest<{ settlements: MatchSettlement[] }>(
-    `/admin/settlements/settlements?status=${encodeURIComponent(status)}`
-  );
+export function listSettlements(status?: SettlementStatus) {
+  const query = status ? `?status=${encodeURIComponent(status)}` : "";
+  return apiRequest<{ settlements: MatchSettlement[] }>(`/admin/settlements/settlements${query}`);
 }
 
 export function reserveSettlement(input: { match_room_id: string; notes?: string; stepUpToken: string }) {
@@ -1881,10 +1943,9 @@ export function reserveSettlement(input: { match_room_id: string; notes?: string
   });
 }
 
-export function listPayouts(status: PayoutStatus = "queued") {
-  return apiRequest<{ payouts: MatchPayout[] }>(
-    `/admin/settlements/payouts?status=${encodeURIComponent(status)}`
-  );
+export function listPayouts(status?: PayoutStatus) {
+  const query = status ? `?status=${encodeURIComponent(status)}` : "";
+  return apiRequest<{ payouts: MatchPayout[] }>(`/admin/settlements/payouts${query}`);
 }
 
 export function completePayout(
@@ -1901,10 +1962,9 @@ export function completePayout(
   );
 }
 
-export function listRefunds(status: RefundStatus = "queued") {
-  return apiRequest<{ refunds: MatchRefund[] }>(
-    `/admin/settlements/refunds?status=${encodeURIComponent(status)}`
-  );
+export function listRefunds(status?: RefundStatus) {
+  const query = status ? `?status=${encodeURIComponent(status)}` : "";
+  return apiRequest<{ refunds: MatchRefund[] }>(`/admin/settlements/refunds${query}`);
 }
 
 export function reserveRefunds(input: { match_room_id: string; reason: string; stepUpToken: string }) {

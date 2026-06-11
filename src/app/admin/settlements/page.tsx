@@ -35,6 +35,20 @@ function countStatus<T extends { status: string }>(rows: T[], status: string) {
   return rows.filter((row) => row.status === status).length.toString();
 }
 
+function playerLabel(row: {
+  display_name?: string | null;
+  username?: string | null;
+  primary_game_handle?: string | null;
+  primary_game_external_uid?: string | null;
+  user_id: string;
+}) {
+  return row.display_name || row.username || row.primary_game_handle || row.primary_game_external_uid || row.user_id;
+}
+
+function winnerLabel(row: MatchSettlement) {
+  return row.winner_display_name || row.winner_username || row.winner_primary_game_handle || row.winner_primary_game_external_uid || row.winner_user_id;
+}
+
 export default async function AdminSettlementsPage({ searchParams }: { searchParams: Promise<{ error?: string; success?: string }> }) {
   const user = await getCurrentUser();
   if (!user || !canAccessAdmin(user) || !["admin", "owner"].includes(user.role)) redirect("/sign-in?redirect=/admin/settlements");
@@ -45,10 +59,10 @@ export default async function AdminSettlementsPage({ searchParams }: { searchPar
   let refunds: MatchRefund[] = [];
   let loadError: string | null = null;
   try {
-    const [settlementResult, payoutResult, refundResult] = await Promise.all([
-      listSettlements("payout_pending"),
-      listPayouts("queued"),
-      listRefunds("queued")
+    const settlementResult = await listSettlements();
+    const [payoutResult, refundResult] = await Promise.all([
+      listPayouts(),
+      listRefunds()
     ]);
     settlements = settlementResult.settlements;
     payouts = payoutResult.payouts;
@@ -56,6 +70,13 @@ export default async function AdminSettlementsPage({ searchParams }: { searchPar
   } catch {
     loadError = "Unable to load settlement queues.";
   }
+
+  const queuedSettlements = settlements.filter((row) => row.status === "payout_pending");
+  const completedSettlements = settlements.filter((row) => row.status === "completed").slice(0, 12);
+  const queuedPayouts = payouts.filter((row) => row.status === "queued");
+  const completedPayouts = payouts.filter((row) => row.status === "completed").slice(0, 12);
+  const queuedRefunds = refunds.filter((row) => row.status === "queued");
+  const completedRefunds = refunds.filter((row) => row.status === "completed").slice(0, 12);
 
   return (
     <AdminShell active="settlements">
@@ -76,10 +97,10 @@ export default async function AdminSettlementsPage({ searchParams }: { searchPar
         ) : null}
 
         <div className="grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <StatusPanel detail="Reserved" label="Settlements" tone="success" value={countStatus(settlements, "payout_pending")} />
-          <StatusPanel detail="Manual transfer" label="Payout Queue" tone="warning" value={countStatus(payouts, "queued")} />
-          <StatusPanel detail="Manual return" label="Refund Queue" tone="danger" value={countStatus(refunds, "queued")} />
-          <StatusPanel detail="Step-up required" label="Money Actions" tone="cyan" value={(payouts.length + refunds.length).toString()} />
+          <StatusPanel detail="Reserved" label="Settlements" tone="success" value={countStatus(queuedSettlements, "payout_pending")} />
+          <StatusPanel detail="Manual transfer" label="Payout Queue" tone="warning" value={countStatus(queuedPayouts, "queued")} />
+          <StatusPanel detail="Manual return" label="Refund Queue" tone="danger" value={countStatus(queuedRefunds, "queued")} />
+          <StatusPanel detail="Step-up required" label="Money Actions" tone="cyan" value={(queuedPayouts.length + queuedRefunds.length).toString()} />
         </div>
 
         <AdminStepUpPanel returnTo="/admin/settlements" />
@@ -87,16 +108,37 @@ export default async function AdminSettlementsPage({ searchParams }: { searchPar
         <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1fr)_420px]">
           <Panel>
             <PanelHeader eyebrow="Payouts" title="Queued winner payouts" description="Complete only after the bank transfer has actually been sent." />
-            {payouts.length ? (
+            {queuedPayouts.length ? (
               <DataTable
                 columns={[
                   { key: "created_at", label: "Queued", render: (row) => <span className="font-mono text-xs font-bold text-muted">{new Date(row.created_at).toLocaleString("en-NG")}</span> },
-                  { key: "user_id", label: "Winner", render: (row) => <span className="font-bold text-ink">{row.user_id}</span> },
+                  {
+                    key: "winner",
+                    label: "Winner",
+                    render: (row) => (
+                      <div className="grid gap-1">
+                        <span className="font-bold text-ink">{playerLabel(row)}</span>
+                        {row.room_code ? <span className="font-mono text-xs font-bold text-muted">{row.room_code}</span> : null}
+                      </div>
+                    )
+                  },
+                  { key: "room_title", label: "Room", render: (row) => <span className="text-muted">{row.room_title || "Match room"}</span> },
                   { key: "amount_minor", label: "Amount", render: (row) => <span className="font-mono font-bold text-ink">{money(row.currency, row.amount_minor)}</span> },
-                  { key: "status", label: "Status", render: (row) => <Badge tone="warning">{row.status}</Badge> },
+                  {
+                    key: "instructions",
+                    label: "Instructions",
+                    render: (row) => (
+                      <div className="grid gap-1 text-xs text-muted">
+                        <span className="font-bold text-ink">{row.recipient_name || "Instructions missing"}</span>
+                        <span>{row.bank_name || "Bank not set"}</span>
+                        <span className="font-mono">{row.account_number_masked || "No account number"}</span>
+                      </div>
+                    )
+                  },
+                  { key: "status", label: "Status", render: (row) => <Badge tone={row.instruction_status === "ready" ? "warning" : "danger"}>{row.instruction_status === "ready" ? row.status : "needs instructions"}</Badge> },
                   { key: "id", label: "Payout ID", render: (row) => <span className="font-mono text-xs text-muted">{row.id}</span> }
                 ]}
-                rows={payouts}
+                rows={queuedPayouts}
               />
             ) : (
               <div className="p-4">
@@ -124,16 +166,37 @@ export default async function AdminSettlementsPage({ searchParams }: { searchPar
         <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1fr)_420px]">
           <Panel>
             <PanelHeader eyebrow="Refunds" title="Queued refunds" description="Refunds return approved entry funding when a room should not settle to a winner." />
-            {refunds.length ? (
+            {queuedRefunds.length ? (
               <DataTable
                 columns={[
                   { key: "created_at", label: "Queued", render: (row) => <span className="font-mono text-xs font-bold text-muted">{new Date(row.created_at).toLocaleString("en-NG")}</span> },
-                  { key: "user_id", label: "Player", render: (row) => <span className="font-bold text-ink">{row.user_id}</span> },
+                  {
+                    key: "user_id",
+                    label: "Player",
+                    render: (row) => (
+                      <div className="grid gap-1">
+                        <span className="font-bold text-ink">{playerLabel(row)}</span>
+                        {row.room_code ? <span className="font-mono text-xs font-bold text-muted">{row.room_code}</span> : null}
+                      </div>
+                    )
+                  },
+                  { key: "room_title", label: "Room", render: (row) => <span className="text-muted">{row.room_title || "Match room"}</span> },
                   { key: "amount_minor", label: "Amount", render: (row) => <span className="font-mono font-bold text-ink">{money(row.currency, row.amount_minor)}</span> },
+                  {
+                    key: "instructions",
+                    label: "Instructions",
+                    render: (row) => (
+                      <div className="grid gap-1 text-xs text-muted">
+                        <span className="font-bold text-ink">{row.recipient_name || "Instructions missing"}</span>
+                        <span>{row.bank_name || "Bank not set"}</span>
+                        <span className="font-mono">{row.account_number_masked || "No account number"}</span>
+                      </div>
+                    )
+                  },
                   { key: "reason", label: "Reason", render: (row) => <span className="text-muted">{row.reason}</span> },
                   { key: "id", label: "Refund ID", render: (row) => <span className="font-mono text-xs text-muted">{row.id}</span> }
                 ]}
-                rows={refunds}
+                rows={queuedRefunds}
               />
             ) : (
               <div className="p-4">
@@ -159,7 +222,7 @@ export default async function AdminSettlementsPage({ searchParams }: { searchPar
         </div>
 
         <Panel>
-          <PanelHeader eyebrow="Reserve" title="Create payout or refund queues" description="Settlement reservation consumes admin-approved result claims. Refund reservation consumes approved funding." />
+          <PanelHeader eyebrow="Reserve" title="Create payout or refund queues" description="Approved room results now auto-queue payouts. Use manual reserve only for recovery or backfill cases." />
           <div className="grid gap-6 p-4 xl:grid-cols-2">
             <form action={reserveSettlementAction} className="grid gap-3">
               <label className="grid gap-2 text-sm font-bold text-ink">
@@ -186,6 +249,54 @@ export default async function AdminSettlementsPage({ searchParams }: { searchPar
             </form>
           </div>
         </Panel>
+
+        <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1fr)_420px]">
+          <Panel>
+            <PanelHeader eyebrow="History" title="Recent settlements" description="Completed and pending settlement records stay visible for ops audit trails." />
+            {settlements.length ? (
+              <DataTable
+                columns={[
+                  { key: "reserved_at", label: "Reserved", render: (row) => <span className="font-mono text-xs font-bold text-muted">{new Date(row.reserved_at).toLocaleString("en-NG")}</span> },
+                  {
+                    key: "winner",
+                    label: "Winner",
+                    render: (row) => (
+                      <div className="grid gap-1">
+                        <span className="font-bold text-ink">{winnerLabel(row)}</span>
+                        {row.room_code ? <span className="font-mono text-xs font-bold text-muted">{row.room_code}</span> : null}
+                      </div>
+                    )
+                  },
+                  { key: "room_title", label: "Room", render: (row) => <span className="text-muted">{row.room_title || "Match room"}</span> },
+                  { key: "payout_minor", label: "Payout", render: (row) => <span className="font-mono font-bold text-ink">{money(row.currency, row.payout_minor)}</span> },
+                  { key: "status", label: "Status", render: (row) => <Badge tone={row.status === "completed" ? "success" : "warning"}>{row.status}</Badge> }
+                ]}
+                rows={[...queuedSettlements, ...completedSettlements]}
+              />
+            ) : (
+              <div className="p-4">
+                <AdminEmptyState description="Approved results will appear here as soon as they reserve into payout workflow." title="No settlement records yet" />
+              </div>
+            )}
+          </Panel>
+
+          <Panel>
+            <PanelHeader eyebrow="Completed" title="Recent manual closes" />
+            <div className="grid gap-4 p-4">
+              <div className="rounded-md border border-line bg-white p-4">
+                <p className="text-xs font-black uppercase tracking-[0.12em] text-muted">Completed payouts</p>
+                <p className="mt-2 text-2xl font-black text-ink">{completedPayouts.length}</p>
+              </div>
+              <div className="rounded-md border border-line bg-white p-4">
+                <p className="text-xs font-black uppercase tracking-[0.12em] text-muted">Completed refunds</p>
+                <p className="mt-2 text-2xl font-black text-ink">{completedRefunds.length}</p>
+              </div>
+              <div className="rounded-md border border-line bg-surfaceWarm p-4 text-sm leading-6 text-muted">
+                Payout and refund rows now snapshot recipient instructions at queue time, so the ops trail stays readable even if players update their profile later.
+              </div>
+            </div>
+          </Panel>
+        </div>
       </section>
     </AdminShell>
   );

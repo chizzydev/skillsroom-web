@@ -10,8 +10,19 @@ import { StatusPanel } from "@/components/ui/StatusPanel";
 import { SubmitButton } from "@/components/ui/SubmitButton";
 import { Timeline } from "@/components/ui/Timeline";
 import { getCurrentUser, getGoogleLinkStatus } from "@/lib/auth-bridge";
-import { getMyCommunityClan, getMyReferralProgram, getPlayerTrustSummary, getProfileMe, listGameCatalog, type Game, type UserGameAccount } from "@/lib/match-room-api";
-import { updateProfileAction, upsertCommunityClanAction, upsertGameAccountAction } from "./actions";
+import {
+  formatEntryAmount,
+  getMyCommunityClan,
+  getMyReferralProgram,
+  getPlayerTrustSummary,
+  getProfileMe,
+  listGameCatalog,
+  type Game,
+  type MatchPayout,
+  type MatchRefund,
+  type UserGameAccount
+} from "@/lib/match-room-api";
+import { updateProfileAction, upsertCommunityClanAction, upsertGameAccountAction, upsertPayoutProfileAction } from "./actions";
 
 const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3100";
 
@@ -25,6 +36,21 @@ function missingLabel(value: string) {
   return value.replaceAll("_", " ");
 }
 
+function money(currency: string, amountMinor: number) {
+  return formatEntryAmount({ currency, entry_amount_minor: amountMinor });
+}
+
+function settlementTone(status: string) {
+  if (status === "completed") return "success" as const;
+  if (status === "queued" || status === "payout_pending") return "warning" as const;
+  if (status === "cancelled" || status === "failed") return "danger" as const;
+  return "neutral" as const;
+}
+
+function roomLabel(row: MatchPayout | MatchRefund) {
+  return row.room_title || row.room_code || "Match room";
+}
+
 type ProfilePageProps = {
   searchParams?: Promise<{
     error?: string;
@@ -32,6 +58,7 @@ type ProfilePageProps = {
     clan_saved?: string;
     google_linked?: string;
     google_link_error?: string;
+    payout_profile_saved?: string;
     profile_updated?: string;
   }>;
 };
@@ -72,6 +99,9 @@ export default async function ProfilePage({ searchParams }: ProfilePageProps) {
   const clan = clanData?.clan ?? null;
   const clanMembers = clanData?.members ?? [];
   const clanHistory = clanData?.tournament_history ?? [];
+  const payoutProfile = profileData?.payout_profile ?? null;
+  const payoutHistory = profileData?.payout_history ?? [];
+  const refundHistory = profileData?.refund_history ?? [];
   const referralSummary = referralData?.summary ?? { total: 0, pending_activation: 0, reward_issued: 0, reward_held: 0 };
   const referrals = referralData?.referrals ?? [];
   const gameAccounts = profileData?.game_accounts ?? [];
@@ -124,6 +154,11 @@ export default async function ProfilePage({ searchParams }: ProfilePageProps) {
         {params?.profile_updated ? (
           <div className="rounded-md border border-success bg-successSoft p-4 text-sm font-bold text-success">
             Profile details saved.
+          </div>
+        ) : null}
+        {params?.payout_profile_saved ? (
+          <div className="rounded-md border border-success bg-successSoft p-4 text-sm font-bold text-success">
+            Payout instructions saved for future winner payouts and refunds.
           </div>
         ) : null}
         {params?.game_account_saved ? (
@@ -291,6 +326,173 @@ export default async function ProfilePage({ searchParams }: ProfilePageProps) {
               <StatusPanel detail={`${profile?.wins ?? 0} wins / ${profile?.losses ?? 0} losses`} label="Record" tone="success" value={`${profile?.wins ?? 0}-${profile?.losses ?? 0}`} />
               <StatusPanel detail="Lost disputes" label="Disputes" tone={(profile?.disputes_lost ?? 0) > 0 ? "warning" : "success"} value={(profile?.disputes_lost ?? 0).toString()} />
             </div>
+          </Panel>
+        </div>
+
+        <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
+          <Panel id="payout-profile">
+            <PanelHeader
+              eyebrow="Payout Instructions"
+              title="Winner and refund destination"
+              description="Ops uses this snapshot when a room result is approved or a refund is queued, so keep it current."
+            />
+            <form action={upsertPayoutProfileAction} className="grid gap-4 p-4 md:grid-cols-2">
+              <label className="grid gap-2 text-sm font-bold text-ink">
+                Account name
+                <input
+                  className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action"
+                  defaultValue={payoutProfile?.recipient_name ?? profile?.display_name ?? profile?.username ?? ""}
+                  maxLength={120}
+                  name="recipient_name"
+                  required
+                />
+              </label>
+              <label className="grid gap-2 text-sm font-bold text-ink">
+                Bank name
+                <input
+                  className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action"
+                  defaultValue={payoutProfile?.bank_name ?? ""}
+                  maxLength={120}
+                  name="bank_name"
+                  placeholder="OPay, PalmPay, GTBank"
+                  required
+                />
+              </label>
+              <label className="grid gap-2 text-sm font-bold text-ink">
+                Account number
+                <input
+                  className="min-h-11 rounded-md border border-line bg-white px-3 font-mono text-sm outline-none focus:border-action"
+                  defaultValue={payoutProfile?.account_number ?? ""}
+                  inputMode="numeric"
+                  maxLength={20}
+                  name="account_number"
+                  pattern="[0-9]{6,20}"
+                  required
+                />
+              </label>
+              <label className="grid gap-2 text-sm font-bold text-ink">
+                Bank code
+                <input
+                  className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action"
+                  defaultValue={payoutProfile?.bank_code ?? ""}
+                  maxLength={40}
+                  name="bank_code"
+                  placeholder="Optional routing or bank code"
+                />
+              </label>
+              <label className="grid gap-2 text-sm font-bold text-ink">
+                Currency
+                <input
+                  className="min-h-11 rounded-md border border-line bg-white px-3 text-sm uppercase outline-none focus:border-action"
+                  defaultValue={payoutProfile?.currency ?? "NGN"}
+                  maxLength={8}
+                  name="currency"
+                  required
+                />
+              </label>
+              <label className="grid gap-2 text-sm font-bold text-ink md:col-span-2">
+                Payout note
+                <textarea
+                  className="min-h-24 rounded-md border border-line bg-white px-3 py-3 text-sm outline-none focus:border-action"
+                  defaultValue={payoutProfile?.payout_note ?? ""}
+                  maxLength={240}
+                  name="payout_note"
+                  placeholder="Optional note for ops, like preferred bank account label."
+                />
+              </label>
+              <div className="rounded-md border border-cyan bg-cyanSoft p-4 text-sm leading-6 text-muted md:col-span-2">
+                The latest approved room result snapshots these instructions into the payout queue, so later profile edits do not rewrite older ops records.
+              </div>
+              <div className="md:col-span-2">
+                <SubmitButton idleLabel="Save payout instructions" pendingLabel="Saving payout instructions..." />
+              </div>
+            </form>
+          </Panel>
+
+          <Panel>
+            <PanelHeader eyebrow="Ops Snapshot" title="Current payout card" />
+            <div className="grid gap-3 p-4 sm:grid-cols-2 xl:grid-cols-1">
+              <StatusPanel
+                detail={payoutProfile?.bank_name ?? "Add the bank you want ops to use"}
+                label="Destination"
+                tone={payoutProfile ? "success" : "warning"}
+                value={payoutProfile ? "Ready" : "Missing"}
+              />
+              <StatusPanel
+                detail={payoutProfile?.recipient_name ?? "Account holder name"}
+                label="Recipient"
+                tone={payoutProfile ? "cyan" : "warning"}
+                value={payoutProfile?.account_number_masked ?? "Not set"}
+              />
+              <StatusPanel
+                detail="Queued winner payouts tied to your account"
+                label="Payouts"
+                tone="success"
+                value={payoutHistory.length.toString()}
+              />
+              <StatusPanel
+                detail="Queued or completed refunds tied to your account"
+                label="Refunds"
+                tone="warning"
+                value={refundHistory.length.toString()}
+              />
+            </div>
+          </Panel>
+        </div>
+
+        <div className="grid min-w-0 gap-6 xl:grid-cols-2" id="settlement-history">
+          <Panel>
+            <PanelHeader eyebrow="Payout History" title="Winner settlement timeline" description="Every queued or completed winner payout that has been attached to your account." />
+            {payoutHistory.length ? (
+              <DataTable
+                columns={[
+                  {
+                    key: "room",
+                    label: "Room",
+                    render: (row) => (
+                      <div className="grid gap-1">
+                        <strong className="text-ink">{roomLabel(row)}</strong>
+                        {row.room_code ? <span className="font-mono text-xs font-bold text-muted">{row.room_code}</span> : null}
+                      </div>
+                    )
+                  },
+                  { key: "amount_minor", label: "Amount", render: (row) => <span className="font-mono font-bold text-ink">{money(row.currency, row.amount_minor)}</span> },
+                  { key: "instruction_status", label: "Instructions", render: (row) => <Badge tone={row.instruction_status === "ready" ? "success" : "warning"}>{row.instruction_status}</Badge> },
+                  { key: "status", label: "Status", render: (row) => <Badge tone={settlementTone(row.status)}>{row.status}</Badge> },
+                  { key: "created_at", label: "Queued", render: (row) => <span className="text-xs font-bold text-muted">{new Date(row.created_at).toLocaleString("en-NG")}</span> }
+                ]}
+                rows={payoutHistory}
+              />
+            ) : (
+              <div className="p-4 text-sm leading-6 text-muted">No winner payout has been queued for this account yet.</div>
+            )}
+          </Panel>
+
+          <Panel>
+            <PanelHeader eyebrow="Refund History" title="Refund settlement timeline" description="Refund records stay visible here so you can see what ops has queued or completed." />
+            {refundHistory.length ? (
+              <DataTable
+                columns={[
+                  {
+                    key: "room",
+                    label: "Room",
+                    render: (row) => (
+                      <div className="grid gap-1">
+                        <strong className="text-ink">{roomLabel(row)}</strong>
+                        {row.room_code ? <span className="font-mono text-xs font-bold text-muted">{row.room_code}</span> : null}
+                      </div>
+                    )
+                  },
+                  { key: "amount_minor", label: "Amount", render: (row) => <span className="font-mono font-bold text-ink">{money(row.currency, row.amount_minor)}</span> },
+                  { key: "reason", label: "Reason", render: (row) => <span className="text-muted">{row.reason}</span> },
+                  { key: "status", label: "Status", render: (row) => <Badge tone={settlementTone(row.status)}>{row.status}</Badge> },
+                  { key: "created_at", label: "Queued", render: (row) => <span className="text-xs font-bold text-muted">{new Date(row.created_at).toLocaleString("en-NG")}</span> }
+                ]}
+                rows={refundHistory}
+              />
+            ) : (
+              <div className="p-4 text-sm leading-6 text-muted">No refund has been queued for this account yet.</div>
+            )}
           </Panel>
         </div>
 

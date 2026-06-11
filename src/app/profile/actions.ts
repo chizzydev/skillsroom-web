@@ -1,7 +1,13 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { ApiRequestError, updatePlayerProfile, upsertCommunityClan, upsertGameAccount } from "@/lib/match-room-api";
+import {
+  ApiRequestError,
+  updatePlayerProfile,
+  upsertCommunityClan,
+  upsertGameAccount,
+  upsertPlayerPayoutProfile
+} from "@/lib/match-room-api";
 
 function actionErrorMessage(error: unknown) {
   if (error instanceof ApiRequestError) return error.message;
@@ -73,4 +79,21 @@ export async function upsertCommunityClanAction(formData: FormData) {
   }
 
   redirect("/profile?clan_saved=1#clan-profile");
+}
+
+export async function upsertPayoutProfileAction(formData: FormData) {
+  try {
+    await upsertPlayerPayoutProfile({
+      recipient_name: String(formData.get("recipient_name") || "").trim(),
+      bank_name: String(formData.get("bank_name") || "").trim(),
+      account_number: String(formData.get("account_number") || "").replace(/\s+/g, ""),
+      bank_code: cleanOptional(formData.get("bank_code")),
+      payout_note: cleanOptional(formData.get("payout_note")),
+      currency: String(formData.get("currency") || "NGN").trim()
+    });
+  } catch (error) {
+    redirect(`/profile?error=${encodeURIComponent(actionErrorMessage(error))}`);
+  }
+
+  redirect("/profile?payout_profile_saved=1#payout-profile");
 }

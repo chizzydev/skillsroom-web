@@ -164,17 +164,17 @@ export default async function AdminPage({
   let loadError: string | null = null;
 
   try {
-    const [fundingResult, resultClaims, settlementResult, payoutResult, refundResult, flagResult, holdResult, announcementResult] =
-      await Promise.all([
-        listFundingSubmissions("submitted"),
-        listResultClaims("submitted"),
-        listSettlements("payout_pending"),
-        listPayouts("queued"),
-        listRefunds("queued"),
-        listRiskFlags("open"),
-        listRoomHolds("active"),
-        listManageableAnnouncements({ scope: "platform", limit: 8 })
-      ]);
+      const settlementResult = await listSettlements("payout_pending");
+      const [fundingResult, resultClaims, payoutResult, refundResult, flagResult, holdResult, announcementResult] =
+        await Promise.all([
+          listFundingSubmissions("submitted"),
+          listResultClaims("submitted"),
+          listPayouts("queued"),
+          listRefunds("queued"),
+          listRiskFlags("open"),
+          listRoomHolds("active"),
+          listManageableAnnouncements({ scope: "platform", limit: 8 })
+        ]);
     funding = fundingResult.submissions;
     results = resultClaims.claims;
     settlements = settlementResult.settlements;
