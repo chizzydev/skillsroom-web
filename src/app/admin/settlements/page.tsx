@@ -51,6 +51,26 @@ function winnerLabel(row: MatchSettlement) {
   return row.winner_display_name || row.winner_username || row.winner_primary_game_handle || row.winner_primary_game_external_uid || row.winner_user_id;
 }
 
+function RoomCodeLabel({ roomCode }: { roomCode?: string | null }) {
+  if (!roomCode) return null;
+  return (
+    <div className="grid gap-1">
+      <span className="font-mono text-[11px] font-black uppercase tracking-[0.12em] text-dim">Room code</span>
+      <span className="font-mono text-xs font-bold text-muted">{roomCode}</span>
+    </div>
+  );
+}
+
+function MatchRoomIdLabel({ matchRoomId }: { matchRoomId?: string | null }) {
+  if (!matchRoomId) return null;
+  return (
+    <div className="grid gap-1">
+      <span className="font-mono text-[11px] font-black uppercase tracking-[0.12em] text-dim">Match room ID</span>
+      <span className="font-mono text-xs font-bold text-muted [overflow-wrap:anywhere]">{matchRoomId}</span>
+    </div>
+  );
+}
+
 export default async function AdminSettlementsPage({ searchParams }: { searchParams: Promise<{ error?: string; success?: string }> }) {
   const user = await getCurrentUser();
   if (!user || !canAccessAdmin(user) || !["admin", "owner"].includes(user.role)) redirect("/sign-in?redirect=/admin/settlements");
@@ -120,7 +140,8 @@ export default async function AdminSettlementsPage({ searchParams }: { searchPar
                     render: (row) => (
                       <div className="grid gap-1">
                         <span className="font-bold text-ink">{playerLabel(row)}</span>
-                        {row.room_code ? <span className="font-mono text-xs font-bold text-muted">{row.room_code}</span> : null}
+                        <RoomCodeLabel roomCode={row.room_code} />
+                        <MatchRoomIdLabel matchRoomId={row.match_room_id} />
                       </div>
                     )
                   },
@@ -155,6 +176,7 @@ export default async function AdminSettlementsPage({ searchParams }: { searchPar
               <label className="grid gap-2 text-sm font-bold text-ink">
                 Match room ID
                 <input className="min-h-11 rounded-md border border-line bg-white px-3 font-mono text-sm outline-none focus:border-action" name="match_room_id" required />
+                <span className="text-xs leading-5 text-muted">Use the internal room ID, not the short room code like FCSN2HU.</span>
               </label>
               <label className="grid gap-2 text-sm font-bold text-ink">
                 Payout ID
@@ -233,7 +255,8 @@ export default async function AdminSettlementsPage({ searchParams }: { searchPar
                     render: (row) => (
                       <div className="grid gap-1">
                         <span className="font-bold text-ink">{playerLabel(row)}</span>
-                        {row.room_code ? <span className="font-mono text-xs font-bold text-muted">{row.room_code}</span> : null}
+                        <RoomCodeLabel roomCode={row.room_code} />
+                        <MatchRoomIdLabel matchRoomId={row.match_room_id} />
                       </div>
                     )
                   },
@@ -268,6 +291,7 @@ export default async function AdminSettlementsPage({ searchParams }: { searchPar
               <label className="grid gap-2 text-sm font-bold text-ink">
                 Match room ID
                 <input className="min-h-11 rounded-md border border-line bg-white px-3 font-mono text-sm outline-none focus:border-action" name="match_room_id" required />
+                <span className="text-xs leading-5 text-muted">Use the internal room ID, not the short room code like FCSN2HU.</span>
               </label>
               <label className="grid gap-2 text-sm font-bold text-ink">
                 Refund ID
@@ -340,6 +364,7 @@ export default async function AdminSettlementsPage({ searchParams }: { searchPar
               <label className="grid gap-2 text-sm font-bold text-ink">
                 Match room ID
                 <input className="min-h-11 rounded-md border border-line bg-white px-3 font-mono text-sm outline-none focus:border-action" name="match_room_id" required />
+                <span className="text-xs leading-5 text-muted">Use the internal room ID. Room codes are for player-facing lookup only.</span>
               </label>
               <label className="grid gap-2 text-sm font-bold text-ink">
                 Notes
@@ -352,6 +377,7 @@ export default async function AdminSettlementsPage({ searchParams }: { searchPar
               <label className="grid gap-2 text-sm font-bold text-ink">
                 Match room ID
                 <input className="min-h-11 rounded-md border border-line bg-white px-3 font-mono text-sm outline-none focus:border-action" name="match_room_id" required />
+                <span className="text-xs leading-5 text-muted">Use the internal room ID. Room codes are for player-facing lookup only.</span>
               </label>
               <label className="grid gap-2 text-sm font-bold text-ink">
                 Refund reason
@@ -375,7 +401,8 @@ export default async function AdminSettlementsPage({ searchParams }: { searchPar
                     render: (row) => (
                       <div className="grid gap-1">
                         <span className="font-bold text-ink">{winnerLabel(row)}</span>
-                        {row.room_code ? <span className="font-mono text-xs font-bold text-muted">{row.room_code}</span> : null}
+                        <RoomCodeLabel roomCode={row.room_code} />
+                        <MatchRoomIdLabel matchRoomId={row.match_room_id} />
                       </div>
                     )
                   },
