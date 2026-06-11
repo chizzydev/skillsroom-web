@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { adminStepUpCookieName, adminStepUpCookieNames } from "./auth-cookies";
 
-const ADMIN_STEP_UP_WINDOW_MS = 10 * 60 * 1000;
+const ADMIN_STEP_UP_WINDOW_MS = 60 * 60 * 1000;
 
 type AdminStepUpState =
   | { unlocked: false; token: null; expiresAt: null }

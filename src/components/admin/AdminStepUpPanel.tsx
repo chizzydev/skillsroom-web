@@ -10,7 +10,7 @@ type AdminStepUpPanelProps = {
 export async function AdminStepUpPanel({
   returnTo,
   title = "Unlock sensitive actions",
-  description = "Confirm your current Skillsroom password once. The unlock stays active for about 10 minutes and is tied to this browser session."
+  description = "Confirm your current Skillsroom password once. The unlock stays active for about 1 hour, is tied to this browser session, and can be locked manually any time."
 }: AdminStepUpPanelProps) {
   const state = await getAdminStepUpState();
 

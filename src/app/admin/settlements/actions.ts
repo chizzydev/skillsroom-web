@@ -25,20 +25,44 @@ function optionalString(formData: FormData, key: string) {
   return value || undefined;
 }
 
+function normalizedIdentifier(formData: FormData, key: string) {
+  return String(formData.get(key) || "")
+    .replace(/\s+/g, "")
+    .trim();
+}
+
 function uploadedFile(formData: FormData, key: string) {
   const value = formData.get(key);
   return value instanceof File && value.size > 0 ? value : null;
+}
+
+function logSettlementActionFailure(action: string, context: Record<string, unknown>, error: unknown) {
+  console.error(`[settlements:${action}]`, {
+    ...context,
+    error: error instanceof Error ? { name: error.name, message: error.message, stack: error.stack } : error
+  });
 }
 
 export async function reserveSettlementAction(formData: FormData) {
   try {
     const stepUpToken = await requireAdminStepUpToken();
     await reserveSettlement({
-      match_room_id: String(formData.get("match_room_id") || ""),
+      match_room_id: normalizedIdentifier(formData, "match_room_id"),
       notes: String(formData.get("notes") || "").trim() || undefined,
       stepUpToken
     });
   } catch (error) {
+    logSettlementActionFailure(
+      "complete_payout",
+      {
+        matchRoomId: normalizedIdentifier(formData, "match_room_id"),
+        payoutId: normalizedIdentifier(formData, "payout_id"),
+        hasProofFile: Boolean(uploadedFile(formData, "completion_proof_file")),
+        hasProofUrl: Boolean(optionalString(formData, "completion_proof_url")),
+        hasPayoutReference: Boolean(optionalString(formData, "payout_reference"))
+      },
+      error
+    );
     redirect(withError(error));
   }
 
@@ -52,25 +76,37 @@ export async function completePayoutAction(formData: FormData) {
       throw new Error("Sign in again before confirming payout proof.");
     }
     const stepUpToken = await requireAdminStepUpToken();
-    const matchRoomId = String(formData.get("match_room_id") || "").trim();
+    const matchRoomId = normalizedIdentifier(formData, "match_room_id");
     const proofFile = uploadedFile(formData, "completion_proof_file");
     const storedProof = proofFile
       ? await storeEvidenceFile({ file: proofFile, matchRoomId, userId: user.id })
       : null;
     const completionProofUrl = storedProof?.url ?? optionalString(formData, "completion_proof_url");
+    const payoutReference = optionalString(formData, "payout_reference");
     if (!completionProofUrl) {
       throw new Error("Upload the transfer proof screenshot or video, or provide a hosted proof link.");
     }
-    const payoutId = String(formData.get("payout_id") || "").trim();
+    const payoutId = normalizedIdentifier(formData, "payout_id");
     if (!payoutId) {
       throw new Error("Payout ID is required.");
     }
     await completePayout(payoutId, {
-      payout_reference: optionalString(formData, "payout_reference"),
+      payout_reference: payoutReference,
       completion_proof_url: completionProofUrl,
       stepUpToken
     });
   } catch (error) {
+    logSettlementActionFailure(
+      "complete_refund",
+      {
+        matchRoomId: normalizedIdentifier(formData, "match_room_id"),
+        refundId: normalizedIdentifier(formData, "refund_id"),
+        hasProofFile: Boolean(uploadedFile(formData, "completion_proof_file")),
+        hasProofUrl: Boolean(optionalString(formData, "completion_proof_url")),
+        hasRefundReference: Boolean(optionalString(formData, "refund_reference"))
+      },
+      error
+    );
     redirect(withError(error));
   }
 
@@ -102,7 +138,7 @@ export async function reserveRefundsAction(formData: FormData) {
   try {
     const stepUpToken = await requireAdminStepUpToken();
     await reserveRefunds({
-      match_room_id: String(formData.get("match_room_id") || ""),
+      match_room_id: normalizedIdentifier(formData, "match_room_id"),
       reason: String(formData.get("reason") || "").trim(),
       stepUpToken
     });
@@ -120,21 +156,22 @@ export async function completeRefundAction(formData: FormData) {
       throw new Error("Sign in again before confirming refund proof.");
     }
     const stepUpToken = await requireAdminStepUpToken();
-    const matchRoomId = String(formData.get("match_room_id") || "").trim();
+    const matchRoomId = normalizedIdentifier(formData, "match_room_id");
     const proofFile = uploadedFile(formData, "completion_proof_file");
     const storedProof = proofFile
       ? await storeEvidenceFile({ file: proofFile, matchRoomId, userId: user.id })
       : null;
     const completionProofUrl = storedProof?.url ?? optionalString(formData, "completion_proof_url");
+    const refundReference = optionalString(formData, "refund_reference");
     if (!completionProofUrl) {
       throw new Error("Upload the refund proof screenshot or video, or provide a hosted proof link.");
     }
-    const refundId = String(formData.get("refund_id") || "").trim();
+    const refundId = normalizedIdentifier(formData, "refund_id");
     if (!refundId) {
       throw new Error("Refund ID is required.");
     }
     await completeRefund(refundId, {
-      refund_reference: optionalString(formData, "refund_reference"),
+      refund_reference: refundReference,
       completion_proof_url: completionProofUrl,
       stepUpToken
     });
