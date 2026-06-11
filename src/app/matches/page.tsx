@@ -1,9 +1,9 @@
 import { redirect } from "next/navigation";
-import Link from "next/link";
 import { AppShell } from "@/components/layout/AppShell";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { DataTable } from "@/components/ui/DataTable";
+import { PendingLink } from "@/components/ui/PendingLink";
 import { Panel, PanelHeader } from "@/components/ui/Panel";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { StatusPanel } from "@/components/ui/StatusPanel";
@@ -50,9 +50,9 @@ export default async function MatchesPage({ searchParams }: { searchParams: Prom
               </p>
             </div>
             <div className="grid w-full max-w-sm grid-cols-2 gap-2 lg:w-auto">
-              <Link className="inline-flex min-h-10 items-center justify-center rounded-md bg-action px-3 text-center text-sm font-black text-navy-950 shadow-action hover:bg-actionHover" href="/matches/new">
+              <PendingLink className="inline-flex min-h-10 items-center justify-center rounded-md bg-action px-3 text-center text-sm font-black text-navy-950 shadow-action hover:bg-actionHover" href="/matches/new" pendingLabel="Opening creator...">
                 Create room
-              </Link>
+              </PendingLink>
               <a className="inline-flex min-h-10 items-center justify-center rounded-md border border-line bg-white px-3 text-center text-sm font-black text-ink hover:bg-surfaceHigh" href="#join-room">
                 Join by code
               </a>
@@ -87,9 +87,9 @@ export default async function MatchesPage({ searchParams }: { searchParams: Prom
                 key: "title",
                 label: "Room",
                 render: (row) => (
-                  <Link className="font-bold text-ink hover:text-action" href={`/matches/${row.id}`}>
+                  <PendingLink className="font-bold text-ink hover:text-action" href={`/matches/${row.id}`} pendingLabel="Opening room...">
                     {row.title ?? "Private room"}
-                  </Link>
+                  </PendingLink>
                 )
               },
               { key: "entry_amount_minor", label: "Entry", render: (row) => <span className="font-mono font-bold text-ink">{formatEntryAmount(row)}</span> },
@@ -99,12 +99,13 @@ export default async function MatchesPage({ searchParams }: { searchParams: Prom
                 key: "action",
                 label: "Action",
                 render: (row) => (
-                  <Link
+                  <PendingLink
                     className="inline-flex min-h-10 items-center justify-center rounded-md border border-line bg-white px-4 text-sm font-black text-ink hover:bg-surfaceHigh"
                     href={`/matches/${row.id}`}
+                    pendingLabel="Opening room..."
                   >
                     View room
-                  </Link>
+                  </PendingLink>
                 )
               }
             ]}

@@ -14,7 +14,7 @@ export function TransientStatusBanner({
   message,
   tone = "danger",
   clearKeys = ["error", "success"],
-  durationMs = 6500
+  durationMs = 10000
 }: TransientStatusBannerProps) {
   const router = useRouter();
   const pathname = usePathname();

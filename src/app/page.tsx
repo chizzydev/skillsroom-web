@@ -2,6 +2,7 @@ import Link from "next/link";
 import { AppShell } from "@/components/layout/AppShell";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
+import { PendingLink } from "@/components/ui/PendingLink";
 import { Panel, PanelHeader } from "@/components/ui/Panel";
 import { StatusPanel } from "@/components/ui/StatusPanel";
 import { getCurrentUser } from "@/lib/auth-bridge";
@@ -87,9 +88,9 @@ function RoomCard({ room }: { room: MatchRoom }) {
           </span>
           <Badge tone={statusTone(room.status)}>{matchStatusLabel(room.status)}</Badge>
         </div>
-        <Link className="mt-3 block text-lg font-black text-ink hover:text-action" href={`/matches/${room.id}`}>
+        <PendingLink className="mt-3 block text-lg font-black text-ink hover:text-action" href={`/matches/${room.id}`} pendingLabel="Opening room...">
           {room.title ?? "Private match room"}
-        </Link>
+        </PendingLink>
         <div className="mt-3 grid gap-2 text-sm font-bold text-muted sm:grid-cols-3">
           <span>{formatEntryAmount(room)} entry</span>
           <span>
@@ -99,12 +100,13 @@ function RoomCard({ room }: { room: MatchRoom }) {
         </div>
       </div>
       <div className="flex flex-wrap gap-2 md:justify-end">
-        <Link
+        <PendingLink
           className="inline-flex min-h-10 items-center justify-center rounded-md border border-line bg-white px-4 text-sm font-black text-ink hover:bg-surfaceHigh"
           href={`/matches/${room.id}`}
+          pendingLabel="Opening room..."
         >
           View room
-        </Link>
+        </PendingLink>
         {isJoinable ? (
           <form action={joinMatchRoomAction}>
             <input name="room_code" type="hidden" value={room.room_code} />
@@ -298,24 +300,27 @@ export default async function HomePage({ searchParams }: HomePageProps) {
                 Skillsroom keeps private match entries, evidence, and admin decisions in one visible flow.
               </p>
               <div className="mt-5 grid gap-2 sm:flex sm:flex-wrap">
-                <Link
+                <PendingLink
                   className="inline-flex min-h-10 w-full items-center justify-center rounded-md bg-action px-4 text-sm font-black text-navy-950 shadow-action hover:bg-actionHover sm:w-auto"
                   href="/matches"
+                  pendingLabel="Opening rooms..."
                 >
                   Open rooms
-                </Link>
-                <Link
+                </PendingLink>
+                <PendingLink
                   className="inline-flex min-h-10 w-full items-center justify-center rounded-md border border-white/10 bg-white px-4 text-sm font-black text-ink hover:bg-surfaceHigh sm:w-auto"
                   href="/matches/new"
+                  pendingLabel="Opening creator..."
                 >
                   Create room
-                </Link>
-                <Link
+                </PendingLink>
+                <PendingLink
                   className="inline-flex min-h-10 w-full items-center justify-center rounded-md border border-white/10 bg-white px-4 text-sm font-black text-ink hover:bg-surfaceHigh sm:w-auto"
                   href="/community"
+                  pendingLabel="Opening community..."
                 >
                   Community pulse
-                </Link>
+                </PendingLink>
               </div>
             </div>
             <form action={joinMatchRoomAction} className="min-w-0 rounded-lg border border-white/10 bg-white/5 p-3">
@@ -331,12 +336,13 @@ export default async function HomePage({ searchParams }: HomePageProps) {
               </label>
               <div className="mt-3 grid grid-cols-2 gap-2">
                 <Button type="submit">Join</Button>
-                <Link
+                <PendingLink
                   className="inline-flex min-h-10 items-center justify-center rounded-md border border-white/10 bg-white px-4 text-sm font-black text-ink hover:bg-surfaceHigh"
                   href="/matches/new"
+                  pendingLabel="Opening creator..."
                 >
                   Create
-                </Link>
+                </PendingLink>
               </div>
             </form>
           </div>
@@ -364,9 +370,9 @@ export default async function HomePage({ searchParams }: HomePageProps) {
           <Panel>
             <PanelHeader
               action={
-                <Link className="rounded-md border border-line bg-white px-3 py-2 text-sm font-black text-ink hover:bg-surfaceHigh" href="/matches">
+                <PendingLink className="rounded-md border border-line bg-white px-3 py-2 text-sm font-black text-ink hover:bg-surfaceHigh" href="/matches" pendingLabel="Opening rooms...">
                   View all rooms
-                </Link>
+                </PendingLink>
               }
               eyebrow="Lobby"
               title="Rooms needing players or action"
@@ -386,12 +392,13 @@ export default async function HomePage({ searchParams }: HomePageProps) {
                     <p className="mt-2 text-sm leading-6 text-muted">
                       Create the first room for your game or share a room code from your community when one is ready.
                     </p>
-                    <Link
+                    <PendingLink
                       className="mt-4 inline-flex min-h-10 items-center justify-center rounded-md bg-action px-4 text-sm font-black text-navy-950 shadow-action hover:bg-actionHover"
                       href="/matches/new"
+                      pendingLabel="Opening creator..."
                     >
                       Create room
-                    </Link>
+                    </PendingLink>
                   </div>
                 </div>
               </div>

@@ -1,10 +1,10 @@
 import { redirect } from "next/navigation";
-import Link from "next/link";
 import { AppShell } from "@/components/layout/AppShell";
 import { ManualPaymentPanel } from "@/components/payments/ManualPaymentPanel";
 import { LiveUpdateStream } from "@/components/realtime/LiveUpdateStream";
 import { PlayerTrustCard } from "@/components/trust/PlayerTrustCard";
 import { Badge } from "@/components/ui/Badge";
+import { PendingLink } from "@/components/ui/PendingLink";
 import { Panel, PanelHeader } from "@/components/ui/Panel";
 import { SubmitButton } from "@/components/ui/SubmitButton";
 import { Timeline } from "@/components/ui/Timeline";
@@ -131,6 +131,18 @@ function playerDisplayName(participant: MatchParticipant | undefined, trust?: Pl
   return trust?.display_name || trust?.username || participantName(participant);
 }
 
+function playerHandleSummary(trust?: PlayerTrustSummary | null) {
+  if (!trust?.primary_game_handle) return null;
+  return trust.primary_game_external_uid ? `${trust.primary_game_handle} / ${trust.primary_game_external_uid}` : trust.primary_game_handle;
+}
+
+function playerOptionLabel(participant: MatchParticipant | undefined, trust?: PlayerTrustSummary | null) {
+  if (!participant) return "Open slot";
+  const label = playerDisplayName(participant, trust);
+  const handle = playerHandleSummary(trust);
+  return handle ? `${participant.slot.replace("_", " ")} - ${label} (${handle})` : `${participant.slot.replace("_", " ")} - ${label}`;
+}
+
 function primaryHandleLabel(trust?: PlayerTrustSummary | null) {
   if (!trust?.primary_game_handle) return "No game handle";
   return trust.primary_game_external_uid ? `${trust.primary_game_handle} / ${trust.primary_game_external_uid}` : trust.primary_game_handle;
@@ -143,6 +155,14 @@ function metadataString(metadata: Record<string, unknown> | undefined, key: stri
 
 function scoreSummaryLabel(value: string | null | undefined) {
   return value && value.trim().length ? value : "No score line supplied";
+}
+
+function selectFundingSubmission(submissions: ManualFundingSubmission[] | undefined, participantId: string | undefined) {
+  if (!participantId || !submissions?.length) return null;
+  const relevant = submissions
+    .filter((item) => item.participant_id === participantId)
+    .sort((left, right) => Date.parse(right.submitted_at) - Date.parse(left.submitted_at));
+  return relevant.find((item) => item.status === "approved") ?? relevant[0] ?? null;
 }
 
 function resultReadinessMessage(room: MatchRoom, canStartPlay: boolean) {
@@ -180,18 +200,24 @@ function entryLabel(entry: TournamentEntry | undefined) {
 function FundingCard({
   room,
   participant,
-  submission
+  submission,
+  trust
 }: {
   room: MatchRoom;
   participant?: MatchParticipant;
   submission?: ManualFundingSubmission;
+  trust?: PlayerTrustSummary | null;
 }) {
+  const playerLabel = playerDisplayName(participant, trust);
+  const isApproved = submission?.status === "approved";
+  const proofDetailsVisible = Boolean(submission?.sender_account_name || submission?.sender_bank_name || submission?.transfer_reference || submission?.proof_url);
+
   return (
     <div className="rounded-lg border border-line bg-surfaceWarm p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="font-mono text-xs font-bold uppercase tracking-[0.12em] text-dim">{participant?.slot.replace("_", " ") ?? "Open slot"}</p>
-          <p className="mt-2 text-base font-black text-ink">{participantName(participant)}</p>
+          <p className="mt-2 text-base font-black text-ink">{playerLabel}</p>
         </div>
         <Badge tone={submission ? fundingTone(submission.status) : "neutral"}>
           {submission ? displayLabel(submission.status) : "No proof"}
@@ -200,13 +226,26 @@ function FundingCard({
       <p className="mt-3 text-sm font-bold text-muted">{formatEntryAmount(room)} required</p>
       {submission ? (
         <div className="mt-3 rounded-md border border-line bg-white p-3 text-sm">
-          <p className="font-bold text-ink">{submission.sender_account_name || "Account name hidden"}</p>
-          <p className="mt-1 text-muted">{submission.sender_bank_name || "Bank not supplied"}</p>
-          {submission.transfer_reference ? <p className="mt-1 font-mono text-xs font-bold text-dim">Ref: {submission.transfer_reference}</p> : null}
+          {proofDetailsVisible ? (
+            <>
+              {submission.sender_account_name ? <p className="font-bold text-ink">{submission.sender_account_name}</p> : null}
+              {submission.sender_bank_name ? <p className="mt-1 text-muted">{submission.sender_bank_name}</p> : null}
+              {submission.transfer_reference ? <p className="mt-1 font-mono text-xs font-bold text-dim">Ref: {submission.transfer_reference}</p> : null}
+            </>
+          ) : (
+            <p className="font-bold text-ink">
+              {isApproved ? "Funding proof approved and retained for operator review." : "Funding proof submitted for review."}
+            </p>
+          )}
+          {isApproved && !proofDetailsVisible ? (
+            <p className="mt-1 text-muted">Sensitive receipt fields are intentionally hidden here after approval so the card stays clear without exposing unnecessary banking details.</p>
+          ) : null}
           {submission.proof_url ? (
             <a className="mt-2 inline-flex font-black text-cyan hover:text-action" href={submission.proof_url} rel="noreferrer" target="_blank">
               View screenshot
             </a>
+          ) : isApproved ? (
+            <p className="mt-2 text-xs font-bold leading-5 text-muted">Approval is recorded even when a screenshot is not available on this room card.</p>
           ) : null}
         </div>
       ) : (
@@ -264,9 +303,9 @@ export default async function MatchDetailPage({
         <Panel>
           <PanelHeader eyebrow="Room" title="Room unavailable" description={error ?? loadError ?? "The room could not be loaded."} />
           <div className="p-4">
-            <Link className="inline-flex min-h-10 items-center justify-center rounded-md border border-line bg-white px-4 text-sm font-black text-ink hover:bg-surfaceHigh" href="/matches">
+            <PendingLink className="inline-flex min-h-10 items-center justify-center rounded-md border border-line bg-white px-4 text-sm font-black text-ink hover:bg-surfaceHigh" href="/matches" pendingLabel="Opening rooms...">
               Back to rooms
-            </Link>
+            </PendingLink>
           </div>
         </Panel>
       </AppShell>
@@ -284,9 +323,6 @@ export default async function MatchDetailPage({
   const currentParticipant = participants.find((participant) => participant.user_id === user.id);
   const allJoinedParticipantsApproved =
     participants.length > 0 && participants.every((participant) => participant.funding_status === "approved");
-  const currentFundingSubmission = currentParticipant
-    ? funding?.submissions.find((item) => item.participant_id === currentParticipant.id) ?? null
-    : null;
   const gameName = tournamentDetail?.game_name ?? "the game";
   const currentPlayerCheckedIn = currentParticipant
     ? tournamentCheckIns.some((checkIn) => checkIn.participant_id === currentParticipant.id)
@@ -373,9 +409,9 @@ export default async function MatchDetailPage({
                   <SubmitButton idleLabel="Open room" pendingLabel="Opening room..." />
                 </form>
               ) : null}
-              <Link className="inline-flex min-h-10 items-center justify-center rounded-md border border-white/10 bg-white px-4 text-sm font-black text-ink hover:bg-surfaceHigh" href="/matches">
+              <PendingLink className="inline-flex min-h-10 items-center justify-center rounded-md border border-white/10 bg-white px-4 text-sm font-black text-ink hover:bg-surfaceHigh" href="/matches" pendingLabel="Opening rooms...">
                 All rooms
-              </Link>
+              </PendingLink>
               {canStartPlay ? (
                 <form action={startMatchPlayAction}>
                   <input name="match_room_id" type="hidden" value={room.id} />
@@ -399,10 +435,10 @@ export default async function MatchDetailPage({
         />
 
         {error ? <TransientStatusBanner clearKeys={["error"]} durationMs={10000} message={error} /> : null}
-        {inviteSent ? <TransientStatusBanner clearKeys={["invite_sent"]} durationMs={9000} message="Invite sent. The player will see it in their notifications." tone="success" /> : null}
-        {checkedInSuccess ? <TransientStatusBanner clearKeys={["checked_in"]} durationMs={9000} message="Tournament match check-in recorded." tone="success" /> : null}
-        {livestreamSaved ? <TransientStatusBanner clearKeys={["livestream_saved"]} durationMs={9000} message="Livestream link saved." tone="success" /> : null}
-        {livestreamArchived ? <TransientStatusBanner clearKeys={["livestream_archived"]} durationMs={9000} message="Livestream archived." tone="success" /> : null}
+        {inviteSent ? <TransientStatusBanner clearKeys={["invite_sent"]} durationMs={12000} message="Invite sent. The player will see it in their notifications." tone="success" /> : null}
+        {checkedInSuccess ? <TransientStatusBanner clearKeys={["checked_in"]} durationMs={12000} message="Tournament match check-in recorded." tone="success" /> : null}
+        {livestreamSaved ? <TransientStatusBanner clearKeys={["livestream_saved"]} durationMs={12000} message="Livestream link saved." tone="success" /> : null}
+        {livestreamArchived ? <TransientStatusBanner clearKeys={["livestream_archived"]} durationMs={12000} message="Livestream archived." tone="success" /> : null}
         {playStarted ? <TransientStatusBanner clearKeys={["play_started"]} durationMs={10000} message="Match play started. Submit result evidence after the game is complete." tone="success" /> : null}
 
         <div className="grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -728,8 +764,9 @@ export default async function MatchDetailPage({
             <div className="grid gap-3 p-4 md:grid-cols-2">
               {(["player_a", "player_b"] as const).map((slot) => {
                 const participant = participants.find((item) => item.slot === slot);
-                const submission = funding?.submissions.find((item) => item.participant_id === participant?.id);
-                return <FundingCard key={slot} participant={participant} room={room} submission={submission} />;
+                const trust = participant ? trustByUserId.get(participant.user_id) : null;
+                const submission = selectFundingSubmission(funding?.submissions, participant?.id);
+                return <FundingCard key={slot} participant={participant} room={room} submission={submission ?? undefined} trust={trust} />;
               })}
             </div>
           </Panel>
@@ -880,9 +917,9 @@ export default async function MatchDetailPage({
                 <p className="font-bold text-ink">Invites are disabled for linked tournament rooms.</p>
                 <p>Use the assigned opponent shown above, check in for the match, then submit result evidence when play ends.</p>
                 {tournamentDetail ? (
-                  <Link className="inline-flex min-h-10 items-center justify-center rounded-md border border-line bg-white px-4 text-sm font-black text-ink hover:bg-surfaceHigh" href={`/tournaments/${tournamentDetail.id}`}>
+                  <PendingLink className="inline-flex min-h-10 items-center justify-center rounded-md border border-line bg-white px-4 text-sm font-black text-ink hover:bg-surfaceHigh" href={`/tournaments/${tournamentDetail.id}`} pendingLabel="Opening tournament...">
                     View tournament
-                  </Link>
+                  </PendingLink>
                 ) : null}
               </div>
             </Panel>
@@ -907,7 +944,12 @@ export default async function MatchDetailPage({
                       </div>
                       <Badge tone={resultTone(claim.status)}>{displayLabel(claim.status)}</Badge>
                     </div>
-                    <p className="mt-3 text-sm font-bold text-muted">Claimed winner: {participantName(results.participants.find((item) => item.id === claim.claimed_winner_participant_id))}</p>
+                    <p className="mt-3 text-sm font-bold text-muted">
+                      Claimed winner: {playerDisplayName(
+                        results.participants.find((item) => item.id === claim.claimed_winner_participant_id),
+                        trustByUserId.get(results.participants.find((item) => item.id === claim.claimed_winner_participant_id)?.user_id ?? "")
+                      )}
+                    </p>
                     {claim.note ? <p className="mt-2 text-sm leading-6 text-muted">{claim.note}</p> : null}
                     {results.evidence_items.filter((item) => item.result_claim_id === claim.id).length ? (
                       <div className="mt-4 grid gap-2">
@@ -961,7 +1003,7 @@ export default async function MatchDetailPage({
                   <select className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="claimed_winner_participant_id" required>
                     {(results?.participants ?? participants).map((participant) => (
                       <option key={participant.id} value={participant.id}>
-                        {participant.slot.replace("_", " ")} - {participantName(participant)}
+                        {playerOptionLabel(participant, trustByUserId.get(participant.user_id))}
                       </option>
                     ))}
                   </select>
@@ -975,8 +1017,6 @@ export default async function MatchDetailPage({
                   <select className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="evidence_type">
                     <option value="screenshot">Screenshot</option>
                     <option value="video">Video</option>
-                    <option value="link">Link</option>
-                    <option value="note">Note only</option>
                   </select>
                 </label>
                 <label className="grid gap-2 text-sm font-bold text-ink">
@@ -985,21 +1025,18 @@ export default async function MatchDetailPage({
                     accept="image/png,image/jpeg,image/webp,video/mp4,video/webm,video/quicktime"
                     className="min-h-11 rounded-md border border-line bg-white px-3 py-2 text-sm outline-none file:mr-3 file:rounded-sm file:border-0 file:bg-surfaceHigh file:px-3 file:py-2 file:text-xs file:font-black file:text-ink focus:border-action"
                     name="evidence_file"
+                    required
                     type="file"
                   />
                   <span className="text-xs leading-5 text-muted">Images up to 8MB. Videos up to 80MB.</span>
-                </label>
-                <label className="grid gap-2 text-sm font-bold text-ink">
-                  Evidence link
-                  <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="evidence_uri" placeholder="Use only if the file is hosted elsewhere" type="url" />
                 </label>
                 <label className="grid gap-2 text-sm font-bold text-ink">
                   Claim note <span className="font-bold text-muted">(optional)</span>
                   <textarea className="min-h-24 rounded-md border border-line bg-white px-3 py-2 text-sm outline-none focus:border-action" name="note" placeholder="Short result context for review, for example overtime, disconnect, or forfeit." />
                 </label>
                 <label className="grid gap-2 text-sm font-bold text-ink">
-                  Evidence title
-                  <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" defaultValue="Final scoreboard" name="evidence_title" required />
+                  Evidence title <span className="font-bold text-muted">(optional)</span>
+                  <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" defaultValue="Final scoreboard" name="evidence_title" />
                 </label>
                 <label className="grid gap-2 text-sm font-bold text-ink">
                   Evidence notes

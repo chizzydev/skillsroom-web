@@ -33,6 +33,11 @@ function optionalString(formData: FormData, key: string) {
   return value || undefined;
 }
 
+function uploadedFile(formData: FormData, key: string) {
+  const value = formData.get(key);
+  return value instanceof File && value.size > 0 ? value : null;
+}
+
 export async function createMatchRoomAction(formData: FormData) {
   let roomId: string | null = null;
 
@@ -132,8 +137,8 @@ export async function submitManualFundingAction(formData: FormData) {
     }
 
     const amountNaira = Number(formData.get("amount_naira") || 0);
-    const proofFile = formData.get("proof_file");
-    const storedProof = proofFile instanceof File
+    const proofFile = uploadedFile(formData, "proof_file");
+    const storedProof = proofFile
       ? await storeEvidenceFile({ file: proofFile, matchRoomId, userId: user.id })
       : null;
 
@@ -166,21 +171,37 @@ export async function submitResultClaimAction(formData: FormData) {
       throw new Error("Please sign in before submitting evidence.");
     }
 
+    const claimedWinnerParticipantId = String(formData.get("claimed_winner_participant_id") || "").trim();
+    if (!claimedWinnerParticipantId) {
+      throw new Error("Choose the player who won this match before submitting the result.");
+    }
+
     const evidenceType = String(formData.get("evidence_type") || "screenshot") as "screenshot" | "video" | "link" | "note";
-    const evidenceFile = formData.get("evidence_file");
-    const storedEvidence = evidenceFile instanceof File
-      ? await storeEvidenceFile({ file: evidenceFile, matchRoomId, userId: user.id })
-      : null;
-    const uri = String(formData.get("evidence_uri") || "").trim();
+    if (!["screenshot", "video"].includes(evidenceType)) {
+      throw new Error("Choose Screenshot or Video as the evidence type for uploaded match proof.");
+    }
+
+    const evidenceFile = uploadedFile(formData, "evidence_file");
+    if (!evidenceFile) {
+      throw new Error("Upload a screenshot or video before submitting the result.");
+    }
+
+    const storedEvidence = await storeEvidenceFile({ file: evidenceFile, matchRoomId, userId: user.id });
+    if (!storedEvidence) {
+      throw new Error("Evidence upload could not be stored. Try the upload again.");
+    }
+    const evidenceTitle = optionalString(formData, "evidence_title")
+      ?? (storedEvidence.evidenceType === "video" ? "Match result video evidence" : "Match result screenshot evidence");
+
     await submitResultClaim(matchRoomId, {
-      claimed_winner_participant_id: String(formData.get("claimed_winner_participant_id") || ""),
+      claimed_winner_participant_id: claimedWinnerParticipantId,
       score_summary: optionalString(formData, "score_summary"),
       note: optionalString(formData, "note"),
       evidence: [
         {
-          evidence_type: storedEvidence?.evidenceType ?? evidenceType,
-          uri: storedEvidence?.url ?? (uri || undefined),
-          title: String(formData.get("evidence_title") || "").trim(),
+          evidence_type: storedEvidence.evidenceType,
+          uri: storedEvidence.url,
+          title: evidenceTitle,
           notes: String(formData.get("evidence_notes") || "").trim() || undefined
         }
       ]

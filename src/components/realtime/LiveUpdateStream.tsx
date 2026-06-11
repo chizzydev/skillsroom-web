@@ -75,7 +75,7 @@ export function LiveUpdateStream({
         return next;
       });
 
-      const timer = setTimeout(() => dismissToast(toastId), 7000);
+      const timer = setTimeout(() => dismissToast(toastId), 11000);
       toastTimers.set(toastId, timer);
     };
 
@@ -108,7 +108,7 @@ export function LiveUpdateStream({
           tone: "neutral"
         };
         setToasts((current): LiveToast[] => [hiddenToast, ...current].slice(0, 4));
-        const timer = setTimeout(() => dismissToast(toastId), 8000);
+        const timer = setTimeout(() => dismissToast(toastId), 11000);
         toastTimers.set(toastId, timer);
       }
     };
