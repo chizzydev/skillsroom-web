@@ -1,11 +1,9 @@
 import { redirect } from "next/navigation";
 import { AppShell } from "@/components/layout/AppShell";
 import { Badge, type BadgeTone } from "@/components/ui/Badge";
-import { DataTable } from "@/components/ui/DataTable";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Panel, PanelHeader } from "@/components/ui/Panel";
 import { PendingLink } from "@/components/ui/PendingLink";
-import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { StatusPanel } from "@/components/ui/StatusPanel";
 import { canAccessAdmin, getCurrentUser } from "@/lib/auth-bridge";
 import {
@@ -18,8 +16,7 @@ import {
   type TournamentFormat,
   type TournamentStatus
 } from "@/lib/match-room-api";
-
-type TournamentFilter = "all" | "registration_open" | "in_progress" | "completed";
+import { TournamentBoardClient, type TournamentBoardFilter, type TournamentBoardRow } from "./TournamentBoardClient";
 
 const visibleStatuses: TournamentStatus[] = [
   "published",
@@ -68,7 +65,7 @@ function projectedPrize(tournament: Tournament) {
   );
 }
 
-function filterByTab(tournaments: Tournament[], filter: TournamentFilter) {
+function filterByTab(tournaments: Tournament[], filter: TournamentBoardFilter) {
   if (filter === "all") return tournaments;
   if (filter === "in_progress") {
     return tournaments.filter((tournament) =>
@@ -105,64 +102,15 @@ function sortTournaments(tournaments: Tournament[]) {
   });
 }
 
-function TournamentCard({ tournament }: { tournament: Tournament }) {
-  const entries = tournament.registered_entry_count ?? 0;
-  const prize = projectedPrize(tournament);
-
-  return (
-    <article className="grid gap-4 border-b border-line p-4 last:border-b-0 xl:grid-cols-[minmax(0,1fr)_18rem] xl:items-center">
-      <div className="min-w-0">
-        <div className="flex flex-wrap items-center gap-2">
-          <Badge tone={statusTone(tournament.status)}>{displayEnumLabel(tournament.status)}</Badge>
-          <Badge tone={feeTone(tournament.fee_mode)}>{displayEnumLabel(tournament.fee_mode)}</Badge>
-          <span className="rounded-md bg-surfaceHigh px-2 py-1 font-mono text-xs font-black text-ink">
-            {displayEnumLabel(tournament.format)}
-          </span>
-        </div>
-        <PendingLink
-          className="mt-3 block break-words text-xl font-black leading-tight text-ink [overflow-wrap:anywhere] hover:text-action"
-          href={`/tournaments/${tournament.id}`}
-          pendingLabel="Opening tournament..."
-        >
-          {tournament.title}
-        </PendingLink>
-        {tournament.description ? (
-          <p className="mt-2 line-clamp-2 text-sm leading-6 text-muted">{tournament.description}</p>
-        ) : null}
-        <div className="mt-4 grid gap-2 text-sm font-bold text-muted sm:grid-cols-2 lg:grid-cols-4">
-          <span>{tournament.game_name ?? "Game"} lane</span>
-          <span>{displayEnumLabel(tournament.scoring_mode)} scoring</span>
-          <span>{entries}/{tournament.max_entries} entries</span>
-          <span>{formatDate(tournament.starts_at)}</span>
-        </div>
-      </div>
-      <div className="grid gap-3 rounded-md border border-line bg-surfaceWarm p-3">
-        <div>
-          <p className="font-mono text-xs font-black uppercase tracking-[0.12em] text-dim">Prize pool</p>
-          <strong className="mt-1 block text-xl font-black text-ink">
-            {formatMinorMoney(tournament.currency, prize)}
-          </strong>
-        </div>
-        <div className="grid grid-cols-2 gap-2 text-xs font-bold text-muted">
-          <span>Entry: {formatMinorMoney(tournament.currency, tournament.entry_fee_amount_minor)}</span>
-          <span>Split: {displayEnumLabel(tournament.prize_distribution_mode)}</span>
-          <span>Type: {displayEnumLabel(tournament.entry_type)}</span>
-          <span>Team: {tournament.team_size_min}-{tournament.team_size_max}</span>
-        </div>
-      </div>
-    </article>
-  );
-}
-
 export default async function TournamentsPage({
   searchParams
 }: {
-  searchParams: Promise<{ filter?: TournamentFilter }>;
+  searchParams: Promise<{ filter?: TournamentBoardFilter }>;
 }) {
   const user = await getCurrentUser();
   if (!user) redirect("/sign-in?redirect=/tournaments");
   const { filter = "all" } = await searchParams;
-  const activeFilter: TournamentFilter = ["all", "registration_open", "in_progress", "completed"].includes(filter)
+  const activeFilter: TournamentBoardFilter = ["all", "registration_open", "in_progress", "completed"].includes(filter)
     ? filter
     : "all";
 
@@ -181,7 +129,27 @@ export default async function TournamentsPage({
     loadError = "Unable to load tournaments right now. Check your session and try again.";
   }
 
-  const visibleTournaments = filterByTab(tournaments, activeFilter);
+  const tournamentBoardRows: TournamentBoardRow[] = tournaments.map((tournament) => ({
+    id: tournament.id,
+    title: tournament.title,
+    description: tournament.description ?? null,
+    status: tournament.status,
+    status_label: displayEnumLabel(tournament.status),
+    status_tone: statusTone(tournament.status),
+    fee_mode_label: displayEnumLabel(tournament.fee_mode),
+    fee_mode_tone: feeTone(tournament.fee_mode),
+    format_label: displayEnumLabel(tournament.format),
+    scoring_label: displayEnumLabel(tournament.scoring_mode),
+    game_name: tournament.game_name ?? null,
+    registered_entry_count: tournament.registered_entry_count ?? 0,
+    max_entries: tournament.max_entries,
+    starts_at_label: formatDate(tournament.starts_at),
+    prize_label: formatMinorMoney(tournament.currency, projectedPrize(tournament)),
+    entry_fee_label: formatMinorMoney(tournament.currency, tournament.entry_fee_amount_minor),
+    prize_distribution_label: displayEnumLabel(tournament.prize_distribution_mode),
+    entry_type_label: displayEnumLabel(tournament.entry_type),
+    team_size_label: `${tournament.team_size_min}-${tournament.team_size_max}`
+  }));
   const openCount = tournaments.filter((tournament) => tournament.status === "registration_open").length;
   const liveCount = filterByTab(tournaments, "in_progress").length;
   const completedCount = tournaments.filter((tournament) => tournament.status === "completed").length;
@@ -230,35 +198,7 @@ export default async function TournamentsPage({
 
         <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
           <Panel>
-            <PanelHeader
-              action={
-                <SegmentedControl
-                  segments={[
-                    { label: "All", active: activeFilter === "all", href: "/tournaments?filter=all" },
-                    { label: "Open", active: activeFilter === "registration_open", href: "/tournaments?filter=registration_open" },
-                    { label: "Live", active: activeFilter === "in_progress", href: "/tournaments?filter=in_progress" },
-                    { label: "Done", active: activeFilter === "completed", href: "/tournaments?filter=completed" }
-                  ]}
-                />
-              }
-              description="Only published or active tournament records appear here. Drafts stay in admin operations."
-              eyebrow="Events"
-              title="Tournament board"
-            />
-            {visibleTournaments.length ? (
-              <div>
-                {visibleTournaments.map((tournament) => (
-                  <TournamentCard key={tournament.id} tournament={tournament} />
-                ))}
-              </div>
-            ) : (
-              <div className="p-4">
-                <EmptyState
-                  description="When operators publish tournaments, they will appear here with live entry, prize, format, and schedule data."
-                  title="No tournaments in this view"
-                />
-              </div>
-            )}
+            <TournamentBoardClient initialFilter={activeFilter} rows={tournamentBoardRows} />
           </Panel>
 
           <div className="grid gap-6">
@@ -335,35 +275,6 @@ export default async function TournamentsPage({
             </Panel>
           </div>
         </div>
-
-        {visibleTournaments.length ? (
-          <Panel>
-            <PanelHeader
-              description="Compact table view for comparing schedule, capacity, status, and prize exposure."
-              eyebrow="Compare"
-              title="Tournament table"
-            />
-            <DataTable
-              columns={[
-                {
-                  key: "title",
-                  label: "Tournament",
-                  render: (row) => (
-                    <PendingLink className="font-black text-ink hover:text-action" href={`/tournaments/${row.id}`} pendingLabel="Opening tournament...">
-                      {row.title}
-                    </PendingLink>
-                  )
-                },
-                { key: "status", label: "Status", render: (row) => <Badge tone={statusTone(row.status)}>{displayEnumLabel(row.status)}</Badge> },
-                { key: "format", label: "Format", render: (row) => <span className="font-bold text-muted">{displayEnumLabel(row.format)}</span> },
-                { key: "entries", label: "Entries", render: (row) => <span className="font-mono text-xs font-bold text-ink">{row.registered_entry_count ?? 0}/{row.max_entries}</span> },
-                { key: "starts_at", label: "Starts", render: (row) => <span className="text-muted">{formatDate(row.starts_at)}</span> },
-                { key: "prize", label: "Prize", render: (row) => <span className="font-bold text-ink">{formatMinorMoney(row.currency, projectedPrize(row))}</span> }
-              ]}
-              rows={visibleTournaments}
-            />
-          </Panel>
-        ) : null}
       </section>
     </AppShell>
   );

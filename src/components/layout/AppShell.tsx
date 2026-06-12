@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { AccountMenu } from "./AccountMenu";
+import { SkillsroomMark } from "@/components/brand/SkillsroomMark";
 import { canAccessAdmin, getCurrentUser } from "@/lib/auth-bridge";
 
 type AppShellProps = {
@@ -35,7 +36,9 @@ export async function AppShell({ active, children }: AppShellProps) {
       <header className="sticky top-0 z-40 border-b border-line bg-white/95 backdrop-blur">
         <div className="mx-auto flex h-16 max-w-7xl items-center gap-3 px-page">
           <Link className="flex min-w-0 items-center gap-3 text-lg font-black text-ink" href="/">
-            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-md bg-navy-900 text-sm text-action shadow-tight">SR</span>
+            <span className="grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-md shadow-tight">
+              <SkillsroomMark className="h-10 w-10" />
+            </span>
             <span className="hidden truncate min-[430px]:inline">Skillsroom</span>
           </Link>
           <nav className="ml-3 hidden flex-1 items-center justify-center gap-1 md:flex">
@@ -70,7 +73,9 @@ export async function AppShell({ active, children }: AppShellProps) {
         <div className="mx-auto grid max-w-7xl gap-4 px-page pt-6 pb-[calc(6.5rem+env(safe-area-inset-bottom))] md:grid-cols-[minmax(0,1fr)_auto] md:items-center md:py-6">
           <div className="min-w-0">
             <div className="flex min-w-0 items-center gap-2">
-              <span className="grid h-8 w-8 shrink-0 place-items-center rounded-md bg-white/10 text-xs font-black text-action">SR</span>
+              <span className="grid h-8 w-8 shrink-0 place-items-center overflow-hidden rounded-md bg-white/10">
+                <SkillsroomMark className="h-8 w-8" muted />
+              </span>
               <strong className="text-sm font-black text-white">Skillsroom</strong>
             </div>
             <p className="mt-2 max-w-2xl text-xs leading-5 text-slate-300">
