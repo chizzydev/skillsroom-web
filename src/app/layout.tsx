@@ -9,12 +9,18 @@ export const metadata: Metadata = {
   title: "Skillsroom",
   description: "Private competitive gaming rooms with verified match review.",
   metadataBase,
+  icons: {
+    icon: "/icon.svg",
+    shortcut: "/icon.svg",
+    apple: "/icon.svg"
+  },
   verification: {
     google: googleSiteVerification
   },
   openGraph: {
     title: "Skillsroom",
     description: "Private competitive gaming rooms with verified match review.",
+    images: [{ url: "/opengraph-image", width: 1200, height: 630 }],
     siteName: "Skillsroom",
     type: "website",
     url: metadataBase
@@ -22,7 +28,8 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "Skillsroom",
-    description: "Private competitive gaming rooms with verified match review."
+    description: "Private competitive gaming rooms with verified match review.",
+    images: ["/opengraph-image"]
   }
 };
 
