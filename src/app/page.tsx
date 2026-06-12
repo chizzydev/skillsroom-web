@@ -138,21 +138,21 @@ export default async function HomePage({ searchParams }: HomePageProps) {
               <span className="truncate">Skillsroom</span>
             </Link>
             <nav className="ml-auto hidden items-center gap-2 md:flex">
-              <Link className="rounded-md px-3 py-2 text-sm font-black text-muted hover:bg-surfaceHigh hover:text-ink" href="/community">
+              <PendingLink className="rounded-md px-3 py-2 text-sm font-black text-muted hover:bg-surfaceHigh hover:text-ink" href="/community" pendingLabel="Opening community...">
                 Community
-              </Link>
-              <Link className="rounded-md px-3 py-2 text-sm font-black text-muted hover:bg-surfaceHigh hover:text-ink" href="/policies">
+              </PendingLink>
+              <PendingLink className="rounded-md px-3 py-2 text-sm font-black text-muted hover:bg-surfaceHigh hover:text-ink" href="/policies" pendingLabel="Opening policies...">
                 Policies
-              </Link>
-              <Link className="rounded-md px-3 py-2 text-sm font-black text-muted hover:bg-surfaceHigh hover:text-ink" href="/support">
+              </PendingLink>
+              <PendingLink className="rounded-md px-3 py-2 text-sm font-black text-muted hover:bg-surfaceHigh hover:text-ink" href="/support" pendingLabel="Opening support...">
                 Support
-              </Link>
-              <Link className="inline-flex min-h-10 items-center justify-center rounded-md border border-line bg-white px-4 text-sm font-black text-ink hover:bg-surfaceHigh" href="/sign-in?redirect=/">
+              </PendingLink>
+              <PendingLink className="inline-flex min-h-10 items-center justify-center rounded-md border border-line bg-white px-4 text-sm font-black text-ink hover:bg-surfaceHigh" href="/sign-in?redirect=/" pendingLabel="Opening sign in...">
                 Sign in
-              </Link>
-              <Link className="inline-flex min-h-10 items-center justify-center rounded-md bg-action px-4 text-sm font-black text-navy-950 shadow-action hover:bg-actionHover" href="/register">
+              </PendingLink>
+              <PendingLink className="inline-flex min-h-10 items-center justify-center rounded-md bg-action px-4 text-sm font-black text-navy-950 shadow-action hover:bg-actionHover" href="/register" pendingLabel="Opening registration...">
                 Create account
-              </Link>
+              </PendingLink>
             </nav>
           </div>
         </header>
@@ -170,24 +170,27 @@ export default async function HomePage({ searchParams }: HomePageProps) {
                   visible dispute handling, and controlled settlement workflows.
                 </p>
                 <div className="mt-5 grid gap-2 sm:flex sm:flex-wrap">
-                  <Link
+                  <PendingLink
                     className="inline-flex min-h-10 w-full items-center justify-center rounded-md bg-action px-4 text-sm font-black text-navy-950 shadow-action hover:bg-actionHover sm:w-auto"
                     href="/register"
+                    pendingLabel="Opening registration..."
                   >
                     Create account
-                  </Link>
-                  <Link
+                  </PendingLink>
+                  <PendingLink
                     className="inline-flex min-h-10 w-full items-center justify-center rounded-md border border-white/10 bg-white px-4 text-sm font-black text-ink hover:bg-surfaceHigh sm:w-auto"
                     href="/sign-in?redirect=/"
+                    pendingLabel="Opening sign in..."
                   >
                     Sign in
-                  </Link>
-                  <Link
+                  </PendingLink>
+                  <PendingLink
                     className="inline-flex min-h-10 w-full items-center justify-center rounded-md border border-white/10 bg-white px-4 text-sm font-black text-ink hover:bg-surfaceHigh sm:w-auto"
                     href="/community"
+                    pendingLabel="Opening community..."
                   >
                     View public community
-                  </Link>
+                  </PendingLink>
                 </div>
               </div>
               <div className="rounded-lg border border-white/10 bg-white/5 p-4">
@@ -246,30 +249,30 @@ export default async function HomePage({ searchParams }: HomePageProps) {
               <Panel>
                 <PanelHeader eyebrow="Inspect first" title="Public pages" />
                 <div className="grid gap-2 p-4">
-                  <Link className="rounded-md border border-line bg-white px-4 py-3 text-sm font-black text-ink hover:bg-surfaceHigh" href="/community">
+                  <PendingLink className="rounded-md border border-line bg-white px-4 py-3 text-sm font-black text-ink hover:bg-surfaceHigh" href="/community" pendingLabel="Opening community...">
                     Community and leaderboards
-                  </Link>
-                  <Link className="rounded-md border border-line bg-white px-4 py-3 text-sm font-black text-ink hover:bg-surfaceHigh" href="/community/highlights">
+                  </PendingLink>
+                  <PendingLink className="rounded-md border border-line bg-white px-4 py-3 text-sm font-black text-ink hover:bg-surfaceHigh" href="/community/highlights" pendingLabel="Opening highlights...">
                     Highlights and winner pages
-                  </Link>
-                  <Link className="rounded-md border border-line bg-white px-4 py-3 text-sm font-black text-ink hover:bg-surfaceHigh" href="/policies">
+                  </PendingLink>
+                  <PendingLink className="rounded-md border border-line bg-white px-4 py-3 text-sm font-black text-ink hover:bg-surfaceHigh" href="/policies" pendingLabel="Opening policies...">
                     Policies and eligibility
-                  </Link>
-                  <Link className="rounded-md border border-line bg-white px-4 py-3 text-sm font-black text-ink hover:bg-surfaceHigh" href="/support">
+                  </PendingLink>
+                  <PendingLink className="rounded-md border border-line bg-white px-4 py-3 text-sm font-black text-ink hover:bg-surfaceHigh" href="/support" pendingLabel="Opening support...">
                     Support and contact
-                  </Link>
+                  </PendingLink>
                 </div>
               </Panel>
 
               <Panel>
                 <PanelHeader eyebrow="Account" title="Ready to continue?" />
                 <div className="grid gap-2 p-4">
-                  <Link className="inline-flex min-h-10 items-center justify-center rounded-md bg-action px-4 text-sm font-black text-navy-950 shadow-action hover:bg-actionHover" href="/register">
+                  <PendingLink className="inline-flex min-h-10 items-center justify-center rounded-md bg-action px-4 text-sm font-black text-navy-950 shadow-action hover:bg-actionHover" href="/register" pendingLabel="Opening registration...">
                     Create account
-                  </Link>
-                  <Link className="inline-flex min-h-10 items-center justify-center rounded-md border border-line bg-white px-4 text-sm font-black text-ink hover:bg-surfaceHigh" href="/sign-in?redirect=/">
+                  </PendingLink>
+                  <PendingLink className="inline-flex min-h-10 items-center justify-center rounded-md border border-line bg-white px-4 text-sm font-black text-ink hover:bg-surfaceHigh" href="/sign-in?redirect=/" pendingLabel="Opening sign in...">
                     Sign in
-                  </Link>
+                  </PendingLink>
                 </div>
               </Panel>
             </div>

@@ -1,5 +1,4 @@
 import { redirect } from "next/navigation";
-import Link from "next/link";
 import { AdminEmptyState } from "@/components/admin/AdminEmptyState";
 import { AdminStepUpPanel } from "@/components/admin/AdminStepUpPanel";
 import { TournamentResultReviewPanelClient } from "@/components/admin/TournamentResultReviewPanelClient";
@@ -8,9 +7,11 @@ import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { AdminShell } from "@/components/layout/AdminShell";
 import { LiveUpdateStream } from "@/components/realtime/LiveUpdateStream";
 import { Badge, type BadgeTone } from "@/components/ui/Badge";
+import { CopyTextButton } from "@/components/ui/CopyTextButton";
 import { DataTable } from "@/components/ui/DataTable";
 import { FormActionButton } from "@/components/ui/FormActionButton";
 import { Panel, PanelHeader } from "@/components/ui/Panel";
+import { PendingLink } from "@/components/ui/PendingLink";
 import { StatusPanel } from "@/components/ui/StatusPanel";
 import { SubmitButton } from "@/components/ui/SubmitButton";
 import { canAccessAdmin, getCurrentUser } from "@/lib/auth-bridge";
@@ -122,8 +123,7 @@ function topStandings(detail: TournamentDetail) {
 function commandCenterCandidates(tournaments: Tournament[]) {
   const liveStatuses = new Set(["registration_open", "registration_locked", "seeding", "in_progress", "awaiting_results", "under_review", "disputed", "settlement_pending"]);
   return tournaments
-    .filter((tournament) => liveStatuses.has(tournament.status))
-    .slice(0, 5);
+    .filter((tournament) => liveStatuses.has(tournament.status));
 }
 
 function commandSummary(detail: TournamentDetail) {
@@ -187,6 +187,15 @@ function eventMetadataSummary(event: TournamentStateEvent) {
     .slice(0, 3)
     .map((key) => `${displayEnumLabel(key)}: ${String(event.metadata[key])}`)
     .join(" / ");
+}
+
+function TournamentIdRow({ tournamentId }: { tournamentId: string }) {
+  return (
+    <div className="mt-2 flex flex-wrap items-center gap-2">
+      <span className="font-mono text-xs font-bold text-muted [overflow-wrap:anywhere]">{tournamentId}</span>
+      <CopyTextButton label="tournament ID" value={tournamentId} />
+    </div>
+  );
 }
 
 export default async function AdminTournamentsPage({
@@ -347,11 +356,12 @@ export default async function AdminTournamentsPage({
                             <Badge tone="cyan">{displayEnumLabel(detail.format)}</Badge>
                           </div>
                           <h2 className="mt-3 text-lg font-black text-ink">{detail.title}</h2>
-                          <p className="mt-1 font-mono text-xs font-bold text-muted [overflow-wrap:anywhere]">{detail.id}</p>
+                          <p className="mt-1 font-mono text-[0.65rem] font-black uppercase tracking-[0.12em] text-dim">Tournament ID</p>
+                          <TournamentIdRow tournamentId={detail.id} />
                         </div>
-                        <Link className="rounded-md border border-line bg-white px-3 py-2 text-sm font-black text-ink hover:bg-surfaceHigh" href={`/tournaments/${detail.id}`}>
+                        <PendingLink className="rounded-md border border-line bg-white px-3 py-2 text-sm font-black text-ink hover:bg-surfaceHigh" href={`/tournaments/${detail.id}`} pendingLabel="Opening event...">
                           Open event
-                        </Link>
+                        </PendingLink>
                       </div>
                       <div className="grid gap-3 p-4 md:grid-cols-4">
                         <div className="rounded-md border border-line bg-surfaceWarm p-3">
@@ -420,9 +430,9 @@ export default async function AdminTournamentsPage({
                                 label: "Room",
                                 render: (row) =>
                                   row.match_room_id ? (
-                                    <Link className="font-black text-cyan hover:text-action" href={`/matches/${row.match_room_id}`}>
+                                    <PendingLink className="font-black text-cyan hover:text-action" href={`/matches/${row.match_room_id}`} pendingLabel="Opening room...">
                                       Open room
-                                    </Link>
+                                    </PendingLink>
                                   ) : (
                                     <span className="text-muted">Not linked</span>
                                   )

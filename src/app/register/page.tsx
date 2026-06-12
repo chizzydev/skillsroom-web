@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth-bridge";
 import { Badge } from "@/components/ui/Badge";
@@ -6,6 +5,7 @@ import { AuthTrustPanel } from "@/components/auth/AuthTrustPanel";
 import { GoogleAuthButton } from "@/components/auth/GoogleAuthButton";
 import { PasswordField } from "@/components/auth/PasswordField";
 import { authFieldClassName } from "@/components/auth/field-styles";
+import { PendingLink } from "@/components/ui/PendingLink";
 import { SubmitButton } from "@/components/ui/SubmitButton";
 
 type RegisterPageProps = {
@@ -102,16 +102,16 @@ export default async function RegisterPage({ searchParams }: RegisterPageProps) 
           <div className="mt-5 grid gap-3 text-sm font-semibold text-muted">
             <p>
               Want to inspect the platform first?{" "}
-              <Link className="text-ink underline decoration-action decoration-2 underline-offset-4" href="/community">
+              <PendingLink className="text-ink underline decoration-action decoration-2 underline-offset-4" href="/community" pendingLabel="Opening community...">
                 Browse the public community pages
-              </Link>
+              </PendingLink>
               .
             </p>
             <p>
               Already have an account?{" "}
-              <Link className="text-ink underline decoration-action decoration-2 underline-offset-4" href={`/sign-in?redirect=${encodeURIComponent(redirectTo)}`}>
+              <PendingLink className="text-ink underline decoration-action decoration-2 underline-offset-4" href={`/sign-in?redirect=${encodeURIComponent(redirectTo)}`} pendingLabel="Opening sign in...">
                 Sign in
-              </Link>
+              </PendingLink>
             </p>
           </div>
         </section>

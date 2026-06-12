@@ -1,12 +1,12 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth-bridge";
 import { Badge } from "@/components/ui/Badge";
-import Link from "next/link";
 import { apiBaseUrl } from "@/lib/api";
 import { GoogleAuthButton } from "@/components/auth/GoogleAuthButton";
 import { AuthTrustPanel } from "@/components/auth/AuthTrustPanel";
 import { PasswordField } from "@/components/auth/PasswordField";
 import { authFieldClassName } from "@/components/auth/field-styles";
+import { PendingLink } from "@/components/ui/PendingLink";
 import { SubmitButton } from "@/components/ui/SubmitButton";
 
 type SignInPageProps = {
@@ -108,25 +108,25 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
           <div className="mt-5 grid gap-3 text-sm font-semibold text-muted">
             <p>
               Need a closer look first?{" "}
-              <Link className="text-ink underline decoration-action decoration-2 underline-offset-4" href="/policies">
+              <PendingLink className="text-ink underline decoration-action decoration-2 underline-offset-4" href="/policies" pendingLabel="Opening policies...">
                 Read the public rules and policies
-              </Link>
+              </PendingLink>
               .
             </p>
             <p>
               {setupAvailable ? (
                 <>
                   Setting up the platform?{" "}
-                  <Link className="text-ink underline decoration-action decoration-2 underline-offset-4" href="/owner-setup">
+                  <PendingLink className="text-ink underline decoration-action decoration-2 underline-offset-4" href="/owner-setup" pendingLabel="Opening owner setup...">
                     Create owner account
-                  </Link>
+                  </PendingLink>
                 </>
               ) : (
                 <>
                   New to Skillsroom?{" "}
-                  <Link className="text-ink underline decoration-action decoration-2 underline-offset-4" href={`/register?redirect=${encodeURIComponent(redirectTo)}${referralCode ? `&ref=${encodeURIComponent(referralCode)}` : ""}`}>
+                  <PendingLink className="text-ink underline decoration-action decoration-2 underline-offset-4" href={`/register?redirect=${encodeURIComponent(redirectTo)}${referralCode ? `&ref=${encodeURIComponent(referralCode)}` : ""}`} pendingLabel="Opening registration...">
                     Create an account
-                  </Link>
+                  </PendingLink>
                 </>
               )}
             </p>

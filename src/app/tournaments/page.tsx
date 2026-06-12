@@ -1,17 +1,19 @@
 import { redirect } from "next/navigation";
-import Link from "next/link";
 import { AppShell } from "@/components/layout/AppShell";
 import { Badge, type BadgeTone } from "@/components/ui/Badge";
 import { DataTable } from "@/components/ui/DataTable";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Panel, PanelHeader } from "@/components/ui/Panel";
+import { PendingLink } from "@/components/ui/PendingLink";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { StatusPanel } from "@/components/ui/StatusPanel";
 import { canAccessAdmin, getCurrentUser } from "@/lib/auth-bridge";
 import {
   displayEnumLabel,
   formatMinorMoney,
+  listCommunityHighlights,
   listTournaments,
+  type CommunityTournamentHighlightCard,
   type Tournament,
   type TournamentFormat,
   type TournamentStatus
@@ -117,12 +119,13 @@ function TournamentCard({ tournament }: { tournament: Tournament }) {
             {displayEnumLabel(tournament.format)}
           </span>
         </div>
-        <Link
+        <PendingLink
           className="mt-3 block break-words text-xl font-black leading-tight text-ink [overflow-wrap:anywhere] hover:text-action"
           href={`/tournaments/${tournament.id}`}
+          pendingLabel="Opening tournament..."
         >
           {tournament.title}
-        </Link>
+        </PendingLink>
         {tournament.description ? (
           <p className="mt-2 line-clamp-2 text-sm leading-6 text-muted">{tournament.description}</p>
         ) : null}
@@ -164,11 +167,16 @@ export default async function TournamentsPage({
     : "all";
 
   let tournaments: Tournament[] = [];
+  let highlights: CommunityTournamentHighlightCard[] = [];
   let loadError: string | null = null;
 
   try {
-    const result = await listTournaments({ limit: 100 });
+    const [result, highlightResult] = await Promise.all([
+      listTournaments({ limit: 100 }),
+      listCommunityHighlights(6)
+    ]);
     tournaments = sortTournaments(result.tournaments.filter((tournament) => visibleStatuses.includes(tournament.status)));
+    highlights = highlightResult.tournament_highlights;
   } catch {
     loadError = "Unable to load tournaments right now. Check your session and try again.";
   }
@@ -195,12 +203,13 @@ export default async function TournamentsPage({
             </div>
             <div className="flex flex-wrap gap-2">
               {canAccessAdmin(user) ? (
-                <Link
+                <PendingLink
                   className="inline-flex min-h-10 items-center justify-center rounded-md border border-line bg-white px-4 text-sm font-black text-ink hover:bg-surfaceHigh"
                   href="/admin/tournaments"
+                  pendingLabel="Opening tournament ops..."
                 >
                   Manage events
-                </Link>
+                </PendingLink>
               ) : null}
             </div>
           </div>
@@ -278,6 +287,52 @@ export default async function TournamentsPage({
                 </p>
               </div>
             </Panel>
+
+            <Panel>
+              <PanelHeader
+                eyebrow="Completed Activity"
+                title="Public-safe finished events"
+                description="Approved tournament outcomes stay visible here without exposing contribution, evidence, or ops-only records."
+              />
+              {highlights.length ? (
+                <div className="grid gap-3 p-4">
+                  {highlights.slice(0, 4).map((item) => (
+                    <PendingLink
+                      className="rounded-md border border-line bg-white p-4 transition hover:border-action hover:bg-surfaceHigh"
+                      href={`/community/winners/tournaments/${encodeURIComponent(item.tournament_id)}`}
+                      key={item.tournament_id}
+                      pendingLabel="Opening winner page..."
+                    >
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Badge tone="success">Completed</Badge>
+                        <Badge tone="cyan">{item.game_name}</Badge>
+                      </div>
+                      <h2 className="mt-3 text-sm font-black text-ink">{item.title}</h2>
+                      <p className="mt-1 text-sm text-muted">
+                        {item.champion_entry_name ?? "Winner retained in public history"}
+                      </p>
+                      <p className="mt-2 text-xs font-bold uppercase tracking-[0.12em] text-muted">
+                        {displayEnumLabel(item.format)} / {item.completed_match_count} completed matches
+                      </p>
+                    </PendingLink>
+                  ))}
+                  <PendingLink
+                    className="inline-flex min-h-10 items-center justify-center rounded-md border border-line bg-white px-4 text-sm font-black text-ink hover:bg-surfaceHigh"
+                    href="/community/highlights"
+                    pendingLabel="Opening highlights..."
+                  >
+                    Open highlights
+                  </PendingLink>
+                </div>
+              ) : (
+                <div className="p-4">
+                  <EmptyState
+                    description="Approved tournament finishes will appear here once events reach a public-safe completed state."
+                    title="No finished-event highlights yet"
+                  />
+                </div>
+              )}
+            </Panel>
           </div>
         </div>
 
@@ -294,9 +349,9 @@ export default async function TournamentsPage({
                   key: "title",
                   label: "Tournament",
                   render: (row) => (
-                    <Link className="font-black text-ink hover:text-action" href={`/tournaments/${row.id}`}>
+                    <PendingLink className="font-black text-ink hover:text-action" href={`/tournaments/${row.id}`} pendingLabel="Opening tournament...">
                       {row.title}
-                    </Link>
+                    </PendingLink>
                   )
                 },
                 { key: "status", label: "Status", render: (row) => <Badge tone={statusTone(row.status)}>{displayEnumLabel(row.status)}</Badge> },

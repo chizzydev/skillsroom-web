@@ -6,21 +6,25 @@ import { Badge, type BadgeTone } from "@/components/ui/Badge";
 import { DataTable } from "@/components/ui/DataTable";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Panel, PanelHeader } from "@/components/ui/Panel";
+import { PendingLink } from "@/components/ui/PendingLink";
 import { ManualPaymentPanel } from "@/components/payments/ManualPaymentPanel";
 import { StatusPanel } from "@/components/ui/StatusPanel";
 import { SubmitButton } from "@/components/ui/SubmitButton";
 import { Timeline } from "@/components/ui/Timeline";
 import { canAccessAdmin, getCurrentUser } from "@/lib/auth-bridge";
 import {
+  ApiRequestError,
   displayEnumLabel,
   formatMinorMoney,
   getTournamentDetail,
+  getTournamentWinnerPage,
   listAccessibleLivestreams,
   listCommunityAnnouncements,
   listManageableAnnouncements,
   listManageableLivestreams,
   type CommunityAnnouncement,
   type CommunityLivestreamLink,
+  type CommunityTournamentWinnerPage,
   type Tournament,
   type TournamentDetail,
   type TournamentHost,
@@ -378,6 +382,8 @@ export default async function TournamentDetailPage({
   const checkedIn = detail.checked_in_entry_count ?? 0;
   const myEntry = detail.entries.find((entry) => entry.captain_user_id === user.id)
     ?? detail.entries.find((entry) => detail.entry_members.some((member) => member.entry_id === entry.id && member.user_id === user.id));
+  const viewerIsHost = detail.hosts.some((host) => host.user_id === user.id && host.status === "active");
+  const viewerHasSensitiveAuditAccess = canAccessAdmin(user) || detail.created_by_user_id === user.id || viewerIsHost || Boolean(myEntry);
   const registrationOpen = detail.status === "registration_open";
   const checkInOpen = ["registration_open", "registration_locked"].includes(detail.status);
   const canCheckIn = Boolean(myEntry && myEntry.status === "registered" && checkInOpen);
@@ -408,6 +414,14 @@ export default async function TournamentDetailPage({
     "refunded",
     "completed"
   ]);
+  let winnerPage: CommunityTournamentWinnerPage | null = null;
+  if (["settlement_pending", "completed"].includes(detail.status)) {
+    try {
+      winnerPage = await getTournamentWinnerPage(detail.id);
+    } catch (error) {
+      if (!(error instanceof ApiRequestError && error.status === 404)) throw error;
+    }
+  }
 
   return (
     <AppShell active="tournaments">
@@ -430,19 +444,21 @@ export default async function TournamentDetailPage({
               </p>
             </div>
             <div className="flex flex-wrap gap-2 xl:justify-end">
-              <Link
+              <PendingLink
                 className="inline-flex min-h-10 items-center justify-center rounded-md border border-white/10 bg-white px-4 text-sm font-black text-ink hover:bg-surfaceHigh"
                 href="/tournaments"
+                pendingLabel="Opening tournaments..."
               >
                 All tournaments
-              </Link>
+              </PendingLink>
               {canAccessAdmin(user) ? (
-                <Link
+                <PendingLink
                   className="inline-flex min-h-10 items-center justify-center rounded-md bg-action px-4 text-sm font-black text-navy-950 shadow-action hover:bg-actionHover"
                   href="/admin/tournaments"
+                  pendingLabel="Opening tournament ops..."
                 >
                   Manage
-                </Link>
+                </PendingLink>
               ) : null}
             </div>
           </div>
@@ -456,6 +472,52 @@ export default async function TournamentDetailPage({
           <StatusPanel detail={displayEnumLabel(detail.prize_distribution_mode)} label="Prize Pool" tone="success" value={formatMinorMoney(detail.currency, prize)} />
           <StatusPanel detail={detail.game_name ?? detail.game_id} label="Format" tone="warning" value={displayEnumLabel(detail.format)} />
         </div>
+
+        {winnerPage ? (
+          <Panel>
+            <PanelHeader
+              eyebrow="Completed Activity"
+              title="Public-safe tournament finish"
+              description="This finished-event summary stays visible while contribution proofs, payout instructions, and operator-only review details stay restricted."
+            />
+            <div className="grid gap-4 p-4 xl:grid-cols-[minmax(0,1fr)_22rem]">
+              <div className="rounded-md border border-line bg-white p-4">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge tone="success">{winnerPage.winner.result_label}</Badge>
+                  {winnerPage.tournament.game_name ? <Badge tone="cyan">{winnerPage.tournament.game_name}</Badge> : null}
+                </div>
+                <h2 className="mt-3 text-xl font-black text-ink">{winnerPage.winner.player_label}</h2>
+                <p className="mt-2 text-sm leading-6 text-muted">
+                  {winnerPage.winner.entry_name} is the retained winner record for {winnerPage.tournament.title}.
+                </p>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <PendingLink
+                    className="inline-flex min-h-10 items-center justify-center rounded-md border border-line bg-white px-4 text-sm font-black text-ink hover:bg-surfaceHigh"
+                    href={`/community/winners/tournaments/${encodeURIComponent(detail.id)}`}
+                    pendingLabel="Opening winner page..."
+                  >
+                    Open public winner page
+                  </PendingLink>
+                </div>
+              </div>
+              <div className="grid gap-3">
+                <div className="rounded-md border border-line bg-surfaceWarm p-4">
+                  <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.12em] text-dim">Visibility boundary</p>
+                  <ul className="mt-3 grid gap-2 text-sm leading-6 text-muted">
+                    <li>Signed-in users can inspect finished tournament outcomes.</li>
+                    <li>Public sharing belongs on the winner page, not the ops record.</li>
+                    <li>Contribution proofs, payout instructions, and operator-only metadata stay restricted.</li>
+                  </ul>
+                </div>
+                <div className="rounded-md border border-line bg-white p-4">
+                  <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.12em] text-dim">Placements retained</p>
+                  <p className="mt-2 text-2xl font-black text-ink">{winnerPage.placements.length}</p>
+                  <p className="mt-1 text-sm font-bold text-muted">Approved podium context remains visible after the event closes.</p>
+                </div>
+              </div>
+            </div>
+          </Panel>
+        ) : null}
 
         {(error || registered || checkedInSuccess || contributionSubmitted || announcementSaved || announcementPublished || announcementArchived || livestreamSaved || livestreamArchived) ? (
           <div
@@ -1160,9 +1222,9 @@ export default async function TournamentDetailPage({
                                       <Badge tone={statusTone(match.status)}>{displayEnumLabel(match.status)}</Badge>
                                     </div>
                                     {match.match_room_id ? (
-                                      <Link className="shrink-0 rounded-md border border-line bg-white px-2 py-1 text-xs font-black text-cyan hover:bg-surfaceHigh" href={`/matches/${match.match_room_id}`}>
+                                      <PendingLink className="shrink-0 rounded-md border border-line bg-white px-2 py-1 text-xs font-black text-cyan hover:bg-surfaceHigh" href={`/matches/${match.match_room_id}`} pendingLabel="Opening room...">
                                         Room
-                                      </Link>
+                                      </PendingLink>
                                     ) : null}
                                   </div>
                                   <div className="mt-3 grid gap-2">
@@ -1230,9 +1292,9 @@ export default async function TournamentDetailPage({
                   label: "Room",
                   render: (row) =>
                     row.match_room_id ? (
-                      <Link className="font-black text-cyan hover:text-action" href={`/matches/${row.match_room_id}`}>
+                      <PendingLink className="font-black text-cyan hover:text-action" href={`/matches/${row.match_room_id}`} pendingLabel="Opening room...">
                         Open room
-                      </Link>
+                      </PendingLink>
                     ) : (
                       <span className="text-muted">Not linked</span>
                     )
@@ -1246,7 +1308,11 @@ export default async function TournamentDetailPage({
 
         <Panel>
           <PanelHeader
-            description="Tournament state changes are retained for support, moderation, settlement, and dispute review."
+            description={
+              viewerHasSensitiveAuditAccess
+                ? "Tournament state changes are retained for support, moderation, settlement, and dispute review."
+                : "Finished-state history stays visible here without exposing actor IDs, payout detail, or operator-only metadata."
+            }
             eyebrow="Audit"
             title="Tournament history"
           />
@@ -1254,13 +1320,21 @@ export default async function TournamentDetailPage({
             <Timeline items={buildAuditTimeline(events)} />
             {events.length ? (
               <DataTable
-                columns={[
-                  { key: "created_at", label: "When", render: (row) => <span className="font-mono text-xs font-bold text-muted">{formatDate(row.created_at)}</span> },
-                  { key: "status", label: "State", render: (row) => <Badge tone={statusTone(row.to_status)}>{displayEnumLabel(row.to_status)}</Badge> },
-                  { key: "reason", label: "Reason", render: (row) => <span className="font-bold text-ink">{row.reason.replaceAll("_", " ")}</span> },
-                  { key: "actor_user_id", label: "Actor", render: (row) => <span className="font-mono text-xs font-bold text-muted [overflow-wrap:anywhere]">{row.actor_user_id ?? "System"}</span> },
-                  { key: "metadata", label: "Metadata", render: (row) => <span className="text-sm font-bold text-muted">{eventMetadataSummary(row)}</span> }
-                ]}
+                columns={
+                  viewerHasSensitiveAuditAccess
+                    ? [
+                        { key: "created_at", label: "When", render: (row) => <span className="font-mono text-xs font-bold text-muted">{formatDate(row.created_at)}</span> },
+                        { key: "status", label: "State", render: (row) => <Badge tone={statusTone(row.to_status)}>{displayEnumLabel(row.to_status)}</Badge> },
+                        { key: "reason", label: "Reason", render: (row) => <span className="font-bold text-ink">{row.reason.replaceAll("_", " ")}</span> },
+                        { key: "actor_user_id", label: "Actor", render: (row) => <span className="font-mono text-xs font-bold text-muted [overflow-wrap:anywhere]">{row.actor_user_id ?? "System"}</span> },
+                        { key: "metadata", label: "Metadata", render: (row) => <span className="text-sm font-bold text-muted">{eventMetadataSummary(row)}</span> }
+                      ]
+                    : [
+                        { key: "created_at", label: "When", render: (row) => <span className="font-mono text-xs font-bold text-muted">{formatDate(row.created_at)}</span> },
+                        { key: "status", label: "State", render: (row) => <Badge tone={statusTone(row.to_status)}>{displayEnumLabel(row.to_status)}</Badge> },
+                        { key: "reason", label: "Public-safe summary", render: (row) => <span className="font-bold text-ink">{row.reason.replaceAll("_", " ")}</span> }
+                      ]
+                }
                 rows={[...events].reverse().slice(0, 12)}
               />
             ) : null}
