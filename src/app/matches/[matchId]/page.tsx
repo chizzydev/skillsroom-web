@@ -120,11 +120,18 @@ function buildProcessTimeline(room: MatchRoom) {
 }
 
 function buildAuditTimeline(data: MatchTimeline) {
+  const terminalStatuses: MatchRoomStatus[] = ["completed", "cancelled", "refunded", "voided"];
+
   return data.events.length
     ? data.events.map((event, index) => ({
         label: matchStatusLabel(event.to_status),
         detail: event.reason.replaceAll("_", " "),
-        status: index === data.events.length - 1 ? ("current" as const) : ("done" as const)
+        status:
+          index === data.events.length - 1
+            ? terminalStatuses.includes(event.to_status)
+              ? ("done" as const)
+              : ("current" as const)
+            : ("done" as const)
       }))
     : [{ label: "Room created", detail: "Audit events will appear as the room moves.", status: "current" as const }];
 }

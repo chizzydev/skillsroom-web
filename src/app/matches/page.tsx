@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { AppShell } from "@/components/layout/AppShell";
 import { Badge } from "@/components/ui/Badge";
 import { DataTable } from "@/components/ui/DataTable";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { SubmitButton } from "@/components/ui/SubmitButton";
 import { PendingLink } from "@/components/ui/PendingLink";
 import { Panel, PanelHeader } from "@/components/ui/Panel";
@@ -11,7 +12,15 @@ import { getCurrentUser } from "@/lib/auth-bridge";
 import { formatEntryAmount, listMatchRooms, matchStatusLabel, type MatchRoom, type MatchRoomStatus } from "@/lib/match-room-api";
 import { joinMatchRoomAction } from "./actions";
 
-const lobbyStatuses: MatchRoomStatus[] = ["open", "awaiting_funding", "funding_review", "active", "under_review", "disputed", "settlement_pending", "completed"];
+const roomActivityStatuses: MatchRoomStatus[] = ["open", "awaiting_funding", "funding_review"];
+
+function parseRoomQueue(value: string | undefined): MatchRoomStatus {
+  if (value && roomActivityStatuses.includes(value as MatchRoomStatus)) {
+    return value as MatchRoomStatus;
+  }
+
+  return "open";
+}
 
 function statusTone(status: MatchRoomStatus) {
   if (status === "open") return "cyan" as const;
@@ -24,10 +33,11 @@ function countStatus(rooms: MatchRoom[], status: MatchRoomStatus) {
   return rooms.filter((room) => room.status === status).length.toString();
 }
 
-export default async function MatchesPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
+export default async function MatchesPage({ searchParams }: { searchParams: Promise<{ error?: string; queue?: string }> }) {
   const user = await getCurrentUser();
   if (!user) redirect("/sign-in?redirect=/matches");
-  const { error } = await searchParams;
+  const { error, queue } = await searchParams;
+  const selectedQueue = parseRoomQueue(queue);
 
   let rooms: MatchRoom[] = [];
   let loadError: string | null = null;
@@ -36,6 +46,8 @@ export default async function MatchesPage({ searchParams }: { searchParams: Prom
   } catch {
     loadError = "Unable to load match rooms right now. Check that the API is running and your session is still valid.";
   }
+
+  const queuedRooms = rooms.filter((room) => room.status === selectedQueue);
 
   return (
     <AppShell active="matches">
@@ -75,42 +87,60 @@ export default async function MatchesPage({ searchParams }: { searchParams: Prom
 
         <Panel>
           <PanelHeader
-            action={<SegmentedControl segments={lobbyStatuses.slice(0, 3).map((status, index) => ({ label: matchStatusLabel(status), active: index === 0 }))} />}
+            action={
+              <SegmentedControl
+                segments={roomActivityStatuses.map((status) => ({
+                  label: matchStatusLabel(status),
+                  active: status === selectedQueue,
+                  href: status === "open" ? "/matches" : `/matches?queue=${encodeURIComponent(status)}`
+                }))}
+              />
+            }
             description="Open rooms appear first. Rooms become active only after the required entry checks are complete."
             eyebrow="Rooms"
             title="Room activity"
           />
-          <DataTable
-            columns={[
-              { key: "room_code", label: "Code", render: (row) => <span className="font-mono font-bold text-ink">{row.room_code}</span> },
-              {
-                key: "title",
-                label: "Room",
-                render: (row) => (
-                  <PendingLink className="font-bold text-ink hover:text-action" href={`/matches/${row.id}`} pendingLabel="Opening room...">
-                    {row.title ?? "Private room"}
-                  </PendingLink>
-                )
-              },
-              { key: "entry_amount_minor", label: "Entry", render: (row) => <span className="font-mono font-bold text-ink">{formatEntryAmount(row)}</span> },
-              { key: "participant_count", label: "Players", render: (row) => <span className="text-muted">{row.participant_count ?? 0}/{row.max_participants}</span> },
-              { key: "status", label: "Status", render: (row) => <Badge tone={statusTone(row.status)}>{matchStatusLabel(row.status)}</Badge> },
-              {
-                key: "action",
-                label: "Action",
-                render: (row) => (
-                  <PendingLink
-                    className="inline-flex min-h-10 items-center justify-center rounded-md border border-line bg-white px-4 text-sm font-black text-ink hover:bg-surfaceHigh"
-                    href={`/matches/${row.id}`}
-                    pendingLabel="Opening room..."
-                  >
-                    View room
-                  </PendingLink>
-                )
-              }
-            ]}
-            rows={rooms}
-          />
+          {queuedRooms.length ? (
+            <DataTable
+              columns={[
+                { key: "room_code", label: "Code", render: (row) => <span className="font-mono font-bold text-ink">{row.room_code}</span> },
+                {
+                  key: "title",
+                  label: "Room",
+                  render: (row) => (
+                    <PendingLink className="font-bold text-ink hover:text-action" href={`/matches/${row.id}`} pendingLabel="Opening room...">
+                      {row.title ?? "Private room"}
+                    </PendingLink>
+                  )
+                },
+                { key: "entry_amount_minor", label: "Entry", render: (row) => <span className="font-mono font-bold text-ink">{formatEntryAmount(row)}</span> },
+                { key: "participant_count", label: "Players", render: (row) => <span className="text-muted">{row.participant_count ?? 0}/{row.max_participants}</span> },
+                { key: "status", label: "Status", render: (row) => <Badge tone={statusTone(row.status)}>{matchStatusLabel(row.status)}</Badge> },
+                {
+                  key: "action",
+                  label: "Action",
+                  render: (row) => (
+                    <PendingLink
+                      className="inline-flex min-h-10 items-center justify-center rounded-md border border-line bg-white px-4 text-sm font-black text-ink hover:bg-surfaceHigh"
+                      href={`/matches/${row.id}`}
+                      pendingLabel="Opening room..."
+                    >
+                      View room
+                    </PendingLink>
+                  )
+                }
+              ]}
+              rows={queuedRooms}
+            />
+          ) : (
+            <div className="p-4">
+              <EmptyState
+                description={`Rooms in ${matchStatusLabel(selectedQueue).toLowerCase()} will appear here as soon as they enter that queue.`}
+                title={`No ${matchStatusLabel(selectedQueue).toLowerCase()} rooms right now`}
+                tone={selectedQueue === "open" ? "cyan" : "warning"}
+              />
+            </div>
+          )}
         </Panel>
 
         <Panel id="join-room">
