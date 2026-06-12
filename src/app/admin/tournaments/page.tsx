@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { AdminEmptyState } from "@/components/admin/AdminEmptyState";
 import { AdminStepUpPanel } from "@/components/admin/AdminStepUpPanel";
+import { TournamentResultReviewPanelClient } from "@/components/admin/TournamentResultReviewPanelClient";
 import { CatalogRulesetFields } from "@/components/catalog/CatalogRulesetFields";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { AdminShell } from "@/components/layout/AdminShell";
@@ -745,71 +746,12 @@ export default async function AdminTournamentsPage({
 
         <Panel>
           <PanelHeader
-            description="Confirm tournament match outcomes or route operational penalties: disputes, voids, forfeits, no-shows, and disqualifications. Linked match rooms are moved with the tournament decision."
+            description="Confirm tournament match outcomes or route operational penalties with readable match labels, linked-room claim awareness, visible review history, and format-safe decision lanes."
             eyebrow="Result Review"
             title="Tournament result decisions"
           />
-          <form action={reviewTournamentMatchResultAction} className="grid gap-4 p-4">
-            <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-              <label className="grid gap-2 text-sm font-bold text-ink">
-                Tournament
-                <select className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="tournament_id" required>
-                  {tournaments.map((tournament) => (
-                    <option key={tournament.id} value={tournament.id}>
-                      {tournament.title} · {displayEnumLabel(tournament.status)}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="grid gap-2 text-sm font-bold text-ink">
-                Decision
-                <select className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="decision">
-                  <option value="confirm_score">Confirm score</option>
-                  <option value="mark_disputed">Mark disputed</option>
-                  <option value="void_match">Void match</option>
-                  <option value="forfeit_entry">Forfeit entry</option>
-                  <option value="no_show_entry">No-show entry</option>
-                  <option value="disqualify_entry">Disqualify entry</option>
-                </select>
-              </label>
-            </div>
-            <div className="grid min-w-0 gap-4 lg:grid-cols-3">
-              <label className="grid gap-2 text-sm font-bold text-ink">
-                Match ID
-                <input className="min-h-11 rounded-md border border-line bg-white px-3 font-mono text-xs outline-none focus:border-action" name="match_id" placeholder="Tournament match ID" required />
-              </label>
-              <label className="grid gap-2 text-sm font-bold text-ink">
-                Winning entry ID
-                <input className="min-h-11 rounded-md border border-line bg-white px-3 font-mono text-xs outline-none focus:border-action" name="winning_entry_id" placeholder="Required for score confirmation" />
-              </label>
-              <label className="grid gap-2 text-sm font-bold text-ink">
-                Penalized entry ID
-                <input className="min-h-11 rounded-md border border-line bg-white px-3 font-mono text-xs outline-none focus:border-action" name="penalized_entry_id" placeholder="For forfeit, no-show, or DQ" />
-              </label>
-            </div>
-            <div className="grid min-w-0 gap-4 lg:grid-cols-3">
-              <label className="grid gap-2 text-sm font-bold text-ink">
-                Result claim ID
-                <input className="min-h-11 rounded-md border border-line bg-white px-3 font-mono text-xs outline-none focus:border-action" name="result_claim_id" placeholder="Optional linked claim" />
-              </label>
-              <label className="grid gap-2 text-sm font-bold text-ink">
-                Score summary
-                <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="score_summary" placeholder="2-1, forfeit, no-show, DQ" />
-              </label>
-            </div>
-            <label className="grid gap-2 text-sm font-bold text-ink">
-              Review note
-              <textarea className="min-h-24 rounded-md border border-line bg-white px-3 py-2 text-sm outline-none focus:border-action" name="note" />
-            </label>
-            <div className="flex flex-wrap items-center gap-3">
-              <SubmitButton idleLabel="Save result decision" pendingLabel="Saving result decision..." />
-              <p className="text-xs font-bold text-muted">
-                Confirmed head-to-head results advance brackets when the format supports it. Penalty decisions are audit-logged and reflected on match sides.
-              </p>
-            </div>
-          </form>
+          <TournamentResultReviewPanelClient action={reviewTournamentMatchResultAction} tournaments={commandDetails} />
         </Panel>
-
         <Panel>
           <PanelHeader
             description="Reserve tournament prize payout queues from approved prize pools and prize allocations, or queue participant-entry refunds when an event should return money."
@@ -1128,3 +1070,5 @@ export default async function AdminTournamentsPage({
     </AdminShell>
   );
 }
+
+

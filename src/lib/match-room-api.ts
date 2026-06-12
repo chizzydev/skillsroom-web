@@ -1296,6 +1296,7 @@ export type TournamentDetail = Tournament & {
   matches: TournamentMatch[];
   match_sides: TournamentMatchSide[];
   match_check_ins: TournamentMatchCheckIn[];
+  result_reviews: TournamentMatchResultReview[];
   standings: TournamentStanding[];
   prize_allocations: TournamentPrizeAllocation[];
   prize_contributions: TournamentPrizeContribution[];
