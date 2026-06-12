@@ -29,7 +29,21 @@ const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3100";
 function accountTone(status: UserGameAccount["status"]) {
   if (status === "verified") return "success" as const;
   if (status === "rejected" || status === "disabled") return "danger" as const;
-  return "warning" as const;
+  return "cyan" as const;
+}
+
+function accountStatusLabel(status: UserGameAccount["status"]) {
+  if (status === "verified") return "Verified";
+  if (status === "rejected") return "Needs update";
+  if (status === "disabled") return "Disabled";
+  return "Saved";
+}
+
+function accountStatusDetail(status: UserGameAccount["status"]) {
+  if (status === "verified") return "This handle has already been confirmed in admin review.";
+  if (status === "rejected") return "Update this handle or UID if ops flagged a mismatch.";
+  if (status === "disabled") return "This handle is no longer active for rooms.";
+  return "This handle is usable in rooms now. Ops can still verify it later if evidence review needs extra confirmation.";
 }
 
 function missingLabel(value: string) {
@@ -656,6 +670,12 @@ export default async function ProfilePage({ searchParams }: ProfilePageProps) {
             title="Connected game accounts"
           />
           {gameAccounts.length ? (
+            <div className="border-b border-line px-4 py-4 text-sm leading-6 text-muted">
+              Saved handles stay attached to your profile across supported games. Older accounts can still appear here if
+              you used them in previous seasons or before the catalog widened beyond a single title.
+            </div>
+          ) : null}
+          {gameAccounts.length ? (
             <DataTable
               columns={[
                 { key: "game_name", label: "Game", render: (row) => <span className="text-sm font-bold text-ink">{gameMap.get(row.game_id)?.name ?? row.game_id}</span> },
@@ -663,7 +683,16 @@ export default async function ProfilePage({ searchParams }: ProfilePageProps) {
                 { key: "platform", label: "Platform", render: (row) => <span className="text-muted">{row.platform}</span> },
                 { key: "region", label: "Region", render: (row) => <span className="text-muted">{row.region}</span> },
                 { key: "is_primary", label: "Primary", render: (row) => <Badge tone={row.is_primary ? "cyan" : "neutral"}>{row.is_primary ? "Primary" : "Secondary"}</Badge> },
-                { key: "status", label: "Status", render: (row) => <Badge tone={accountTone(row.status)}>{row.status}</Badge> }
+                {
+                  key: "status",
+                  label: "Status",
+                  render: (row) => (
+                    <div className="grid gap-1">
+                      <Badge tone={accountTone(row.status)}>{accountStatusLabel(row.status)}</Badge>
+                      <span className="text-xs leading-5 text-muted">{accountStatusDetail(row.status)}</span>
+                    </div>
+                  )
+                }
               ]}
               rows={gameAccounts}
             />

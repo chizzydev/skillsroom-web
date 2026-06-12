@@ -1,32 +1,27 @@
 import { redirect } from "next/navigation";
 import { AppShell } from "@/components/layout/AppShell";
 import { Badge } from "@/components/ui/Badge";
-import { DataTable } from "@/components/ui/DataTable";
-import { EmptyState } from "@/components/ui/EmptyState";
 import { SubmitButton } from "@/components/ui/SubmitButton";
 import { PendingLink } from "@/components/ui/PendingLink";
 import { Panel, PanelHeader } from "@/components/ui/Panel";
-import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { StatusPanel } from "@/components/ui/StatusPanel";
 import { getCurrentUser } from "@/lib/auth-bridge";
 import { formatEntryAmount, listMatchRooms, matchStatusLabel, type MatchRoom, type MatchRoomStatus } from "@/lib/match-room-api";
 import { joinMatchRoomAction } from "./actions";
+import { RoomActivityPanelClient, type RoomActivityStatus } from "./RoomActivityPanelClient";
 
-const roomActivityStatuses: MatchRoomStatus[] = ["open", "awaiting_funding", "funding_review"];
+const roomActivityStatuses: RoomActivityStatus[] = ["open", "awaiting_funding", "funding_review"];
 
-function parseRoomQueue(value: string | undefined): MatchRoomStatus {
-  if (value && roomActivityStatuses.includes(value as MatchRoomStatus)) {
-    return value as MatchRoomStatus;
+function parseRoomQueue(value: string | undefined): RoomActivityStatus {
+  if (value && roomActivityStatuses.includes(value as RoomActivityStatus)) {
+    return value as RoomActivityStatus;
   }
 
   return "open";
 }
 
-function statusTone(status: MatchRoomStatus) {
-  if (status === "open") return "cyan" as const;
-  if (["awaiting_funding", "funding_review"].includes(status)) return "warning" as const;
-  if (["under_review", "disputed"].includes(status)) return "danger" as const;
-  return "success" as const;
+function isRoomActivityStatus(status: MatchRoomStatus): status is RoomActivityStatus {
+  return roomActivityStatuses.includes(status as RoomActivityStatus);
 }
 
 function countStatus(rooms: MatchRoom[], status: MatchRoomStatus) {
@@ -47,8 +42,18 @@ export default async function MatchesPage({ searchParams }: { searchParams: Prom
     loadError = "Unable to load match rooms right now. Check that the API is running and your session is still valid.";
   }
 
-  const queuedRooms = rooms.filter((room) => room.status === selectedQueue);
-
+  const roomActivityRows = rooms
+    .filter((room) => isRoomActivityStatus(room.status))
+    .map((room) => ({
+      id: room.id,
+      room_code: room.room_code,
+      title: room.title,
+      status: room.status as "open" | "awaiting_funding" | "funding_review",
+      status_label: matchStatusLabel(room.status),
+      entry_label: formatEntryAmount(room),
+      participant_count: room.participant_count ?? 0,
+      max_participants: room.max_participants
+    }));
   return (
     <AppShell active="matches">
       <section className="grid min-w-0 gap-6">
@@ -85,63 +90,7 @@ export default async function MatchesPage({ searchParams }: { searchParams: Prom
           <StatusPanel detail="Visible rooms" label="Tracked" tone="success" value={rooms.length.toString()} />
         </div>
 
-        <Panel>
-          <PanelHeader
-            action={
-              <SegmentedControl
-                segments={roomActivityStatuses.map((status) => ({
-                  label: matchStatusLabel(status),
-                  active: status === selectedQueue,
-                  href: status === "open" ? "/matches" : `/matches?queue=${encodeURIComponent(status)}`
-                }))}
-              />
-            }
-            description="Open rooms appear first. Rooms become active only after the required entry checks are complete."
-            eyebrow="Rooms"
-            title="Room activity"
-          />
-          {queuedRooms.length ? (
-            <DataTable
-              columns={[
-                { key: "room_code", label: "Code", render: (row) => <span className="font-mono font-bold text-ink">{row.room_code}</span> },
-                {
-                  key: "title",
-                  label: "Room",
-                  render: (row) => (
-                    <PendingLink className="font-bold text-ink hover:text-action" href={`/matches/${row.id}`} pendingLabel="Opening room...">
-                      {row.title ?? "Private room"}
-                    </PendingLink>
-                  )
-                },
-                { key: "entry_amount_minor", label: "Entry", render: (row) => <span className="font-mono font-bold text-ink">{formatEntryAmount(row)}</span> },
-                { key: "participant_count", label: "Players", render: (row) => <span className="text-muted">{row.participant_count ?? 0}/{row.max_participants}</span> },
-                { key: "status", label: "Status", render: (row) => <Badge tone={statusTone(row.status)}>{matchStatusLabel(row.status)}</Badge> },
-                {
-                  key: "action",
-                  label: "Action",
-                  render: (row) => (
-                    <PendingLink
-                      className="inline-flex min-h-10 items-center justify-center rounded-md border border-line bg-white px-4 text-sm font-black text-ink hover:bg-surfaceHigh"
-                      href={`/matches/${row.id}`}
-                      pendingLabel="Opening room..."
-                    >
-                      View room
-                    </PendingLink>
-                  )
-                }
-              ]}
-              rows={queuedRooms}
-            />
-          ) : (
-            <div className="p-4">
-              <EmptyState
-                description={`Rooms in ${matchStatusLabel(selectedQueue).toLowerCase()} will appear here as soon as they enter that queue.`}
-                title={`No ${matchStatusLabel(selectedQueue).toLowerCase()} rooms right now`}
-                tone={selectedQueue === "open" ? "cyan" : "warning"}
-              />
-            </div>
-          )}
-        </Panel>
+        <RoomActivityPanelClient initialQueue={selectedQueue} rooms={roomActivityRows} />
 
         <Panel id="join-room">
           <PanelHeader eyebrow="Join Code" title="Join a private room" description="Players can join a room only when their profile is complete and the room is open." />
