@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { GlobalLobbyClient } from "@/components/community/GlobalLobbyClient";
 import { AppShell } from "@/components/layout/AppShell";
 import { Badge } from "@/components/ui/Badge";
 import { PendingLink } from "@/components/ui/PendingLink";
@@ -8,7 +9,15 @@ import { SubmitButton } from "@/components/ui/SubmitButton";
 import { getCurrentUser } from "@/lib/auth-bridge";
 import {
   formatEntryAmount,
+  listChatChannels,
+  listChatMessages,
+  listDmRequests,
   listMatchRooms,
+  type ChatChannel,
+  type ChatDmRequest,
+  type ChatMessage,
+  type ChatPinnedMessage,
+  type ChatPresenceSummary,
   matchStatusLabel,
   type MatchRoom,
   type MatchRoomStatus
@@ -284,13 +293,40 @@ export default async function HomePage({ searchParams }: HomePageProps) {
 
   const params = await searchParams;
   let rooms: MatchRoom[] = [];
+  let chatChannels: ChatChannel[] = [];
+  let lobbyChannel: ChatChannel | null = null;
+  let lobbyMessages: ChatMessage[] = [];
+  let lobbyPinnedMessages: ChatPinnedMessage[] = [];
+  let lobbyPresence: ChatPresenceSummary = { online_count: 0, active: [], typing: [] };
+  let dmRequests: ChatDmRequest[] = [];
   let loadError: string | null = null;
+  let lobbyError: string | null = null;
 
   try {
     const result = await listMatchRooms();
     rooms = sortRooms(result.rooms.filter((room) => actionStatuses.includes(room.status)));
   } catch {
     loadError = "Room activity could not load. Check your connection and try again.";
+  }
+
+  try {
+    const [channelResult, dmRequestResult] = await Promise.all([
+      listChatChannels(),
+      listDmRequests()
+    ]);
+    chatChannels = channelResult.channels;
+    dmRequests = dmRequestResult.requests;
+    lobbyChannel = chatChannels.find((channel) => channel.slug === "global_lobby") ?? chatChannels[0] ?? null;
+    if (lobbyChannel) {
+      const result = await listChatMessages(lobbyChannel.slug, { limit: 60 });
+      lobbyChannel = result.channel;
+      lobbyMessages = result.messages;
+      lobbyPinnedMessages = result.pinned_messages;
+      lobbyPresence = result.presence;
+      chatChannels = chatChannels.map((channel) => channel.id === result.channel.id ? { ...result.channel, unread_count: 0 } : channel);
+    }
+  } catch {
+    lobbyError = "Community channels could not load right now.";
   }
 
   const openRooms = rooms.filter((room) => room.status === "open");
@@ -375,6 +411,14 @@ export default async function HomePage({ searchParams }: HomePageProps) {
           <StatusPanel detail="Playing or reporting" label="Live Flow" tone="success" value={countWhere(rooms, ["active", "awaiting_results"])} />
           <StatusPanel detail="Needs decision" label="Review" tone="danger" value={countWhere(rooms, ["under_review", "disputed"])} />
         </div>
+
+        {lobbyChannel ? (
+          <GlobalLobbyClient channels={chatChannels} currentUserId={user.id} currentUserRole={user.role} initialChannel={lobbyChannel} initialMessages={lobbyMessages} initialPinnedMessages={lobbyPinnedMessages} initialPresence={lobbyPresence} initialDmRequests={dmRequests} />
+        ) : (
+          <Panel>
+            <PanelHeader eyebrow="Global Lobby" title="Community chat unavailable" description={lobbyError ?? "The lobby channel is still warming up."} />
+          </Panel>
+        )}
 
         <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1fr)_22rem]">
           <Panel>

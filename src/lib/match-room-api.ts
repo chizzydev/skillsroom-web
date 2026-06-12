@@ -500,6 +500,150 @@ export type ActivityFeedItem = {
   created_at: string;
 };
 
+export type ChatChannel = {
+  id: string;
+  slug: string;
+  channel_type: "lobby" | "game" | "tournament" | "match_room" | "group" | "dm";
+  visibility: "public" | "members" | "private";
+  status: "active" | "archived" | "locked";
+  title: string;
+  description: string | null;
+  game_id: string | null;
+  tournament_id: string | null;
+  match_room_id: string | null;
+  created_by_user_id: string | null;
+  last_message_id: string | null;
+  last_message_at: string | null;
+  created_at: string;
+  updated_at: string;
+  membership_status?: "active" | "muted" | "left" | "removed" | "blocked" | null;
+  membership_role?: "member" | "moderator" | "admin" | "owner" | null;
+  membership_last_read_at?: string | null;
+  membership_last_seen_at?: string | null;
+  unread_count?: number;
+  online_count?: number;
+  last_message_body?: string | null;
+  last_message_sender_label?: string | null;
+  last_message_sender_user_id?: string | null;
+};
+
+export type ChatMessage = {
+  id: string;
+  channel_id: string;
+  sender_user_id: string | null;
+  message_kind: "user" | "system";
+  status: "visible" | "hidden" | "deleted" | "flagged";
+  body: string;
+  client_message_id: string | null;
+  reply_to_message_id: string | null;
+  reply_to_body?: string | null;
+  reply_to_sender_user_id?: string | null;
+  reply_to_sender_label?: string | null;
+  mentions?: Array<{ user_id: string; text: string; label?: string }>;
+  link_preview?: { url?: string; host?: string; title?: string; safety?: string };
+  reactions?: Array<{ reaction: string; count: number; reacted_by_me?: boolean }>;
+  pinned_at?: string | null;
+  pinned_by_user_id?: string | null;
+  metadata?: Record<string, unknown>;
+  hidden_by_user_id: string | null;
+  hidden_at: string | null;
+  deleted_by_user_id: string | null;
+  deleted_at: string | null;
+  created_at: string;
+  updated_at: string;
+  sender_username?: string | null;
+  sender_display_name?: string | null;
+  sender_label: string;
+};
+
+export type ChatPinnedMessage = {
+  id: string;
+  channel_id: string;
+  message_id: string;
+  pinned_by_user_id: string | null;
+  reason: string | null;
+  pinned_at: string;
+  unpinned_at: string | null;
+  unpinned_by_user_id: string | null;
+  body?: string;
+  sender_user_id?: string | null;
+  sender_username?: string | null;
+  sender_display_name?: string | null;
+  sender_label: string;
+};
+
+export type ChatPresenceUser = {
+  channel_id: string;
+  user_id: string;
+  last_seen_at: string;
+  typing_until: string | null;
+  updated_at: string;
+  username?: string | null;
+  display_name?: string | null;
+  label: string;
+  is_online: boolean;
+  is_typing: boolean;
+};
+
+export type ChatPresenceSummary = {
+  online_count: number;
+  active: ChatPresenceUser[];
+  typing: ChatPresenceUser[];
+};
+
+export type ChatModerationEvent = {
+  id: string;
+  channel_id: string;
+  message_id: string | null;
+  target_user_id: string | null;
+  actor_user_id: string | null;
+  event_type: "message_hidden" | "message_deleted" | "message_reported" | "member_muted" | "member_unmuted" | "channel_locked" | "channel_unlocked";
+  reason: string | null;
+  metadata: Record<string, unknown>;
+  created_at: string;
+  channel_slug?: string;
+  channel_title?: string;
+  message_body?: string | null;
+  message_status?: ChatMessage["status"] | null;
+  sender_username?: string | null;
+  sender_display_name?: string | null;
+  actor_username?: string | null;
+  actor_display_name?: string | null;
+};
+
+export type ChatDmRequest = {
+  id: string;
+  requester_user_id: string;
+  recipient_user_id: string;
+  channel_id: string | null;
+  status: "pending" | "accepted" | "declined" | "cancelled";
+  intro_message: string | null;
+  responded_at: string | null;
+  created_at: string;
+  updated_at: string;
+  requester_username?: string | null;
+  requester_display_name?: string | null;
+  recipient_username?: string | null;
+  recipient_display_name?: string | null;
+  channel_slug?: string | null;
+  channel_title?: string | null;
+  requester_label: string;
+  recipient_label: string;
+};
+
+export type ChatUserBlock = {
+  blocker_user_id: string;
+  blocked_user_id: string;
+  reason: string | null;
+  created_at: string;
+  blocker_username?: string | null;
+  blocker_display_name?: string | null;
+  blocked_username?: string | null;
+  blocked_display_name?: string | null;
+  blocker_label: string;
+  blocked_label: string;
+};
+
 export type LeaderboardRow = {
   user_id: string;
   username: string;
@@ -2384,6 +2528,187 @@ export function respondToRoomInvite(inviteId: string, response: "accepted" | "de
 
 export function listActivityFeed() {
   return apiRequest<{ feed: ActivityFeedItem[] }>("/community/feed");
+}
+
+export function listChatChannels() {
+  return apiRequest<{ channels: ChatChannel[] }>("/community/channels");
+}
+
+export function createChatChannel(input: {
+  channel_type: "game" | "tournament" | "match_room" | "group";
+  title?: string;
+  slug?: string;
+  description?: string;
+  visibility?: "public" | "members" | "private";
+  game_id?: string;
+  game_slug?: string;
+  tournament_id?: string;
+  match_room_id?: string;
+}) {
+  return apiRequest<{ channel: ChatChannel }>("/community/channels", {
+    method: "POST",
+    body: JSON.stringify(input)
+  });
+}
+
+export function listChatMessages(channelIdOrSlug: string, filters: { before?: string; after?: string; limit?: number } = {}) {
+  return apiRequest<{ channel: ChatChannel; messages: ChatMessage[]; pinned_messages: ChatPinnedMessage[]; presence: ChatPresenceSummary }>(
+    `/community/channels/${encodeURIComponent(channelIdOrSlug)}/messages${queryString(filters)}`
+  );
+}
+
+export function getChatPresence(channelIdOrSlug: string) {
+  return apiRequest<{ channel: ChatChannel; presence: ChatPresenceSummary }>(
+    `/community/channels/${encodeURIComponent(channelIdOrSlug)}/presence`
+  );
+}
+
+export function sendChatHeartbeat(channelIdOrSlug: string) {
+  return apiRequest<{ channel: ChatChannel; presence: ChatPresenceSummary }>(
+    `/community/channels/${encodeURIComponent(channelIdOrSlug)}/heartbeat`,
+    { method: "POST", body: JSON.stringify({}) }
+  );
+}
+
+export function setChatTyping(channelIdOrSlug: string, input: { is_typing: boolean }) {
+  return apiRequest<{ channel: ChatChannel; presence: ChatPresenceSummary }>(
+    `/community/channels/${encodeURIComponent(channelIdOrSlug)}/typing`,
+    { method: "POST", body: JSON.stringify(input) }
+  );
+}
+
+export function markChatRead(channelIdOrSlug: string, input: { message_id?: string } = {}) {
+  return apiRequest<{ channel: ChatChannel }>(
+    `/community/channels/${encodeURIComponent(channelIdOrSlug)}/read`,
+    { method: "POST", body: JSON.stringify(input) }
+  );
+}
+
+export function listDmRequests() {
+  return apiRequest<{ requests: ChatDmRequest[] }>("/community/dm-requests");
+}
+
+export function createDmRequest(input: { recipient_user_id?: string; recipient_username?: string; intro_message?: string }) {
+  return apiRequest<{ request: ChatDmRequest }>("/community/dm-requests", {
+    method: "POST",
+    body: JSON.stringify(input)
+  });
+}
+
+export function respondDmRequest(requestId: string, response: "accepted" | "declined") {
+  return apiRequest<{ request: ChatDmRequest; channel: ChatChannel | null }>(
+    `/community/dm-requests/${encodeURIComponent(requestId)}/respond`,
+    {
+      method: "POST",
+      body: JSON.stringify({ response })
+    }
+  );
+}
+
+export function blockChatUser(input: { user_id?: string; username?: string; reason?: string }) {
+  return apiRequest<{ block: ChatUserBlock }>("/community/users/block", {
+    method: "POST",
+    body: JSON.stringify(input)
+  });
+}
+
+export function reportChatUser(input: { user_id?: string; username?: string; reason: string }) {
+  return apiRequest<{ flag: UserRiskFlag }>("/community/users/report", {
+    method: "POST",
+    body: JSON.stringify(input)
+  });
+}
+
+export function getDmAbuseQueue() {
+  return apiRequest<{
+    requests: ChatDmRequest[];
+    blocks: ChatUserBlock[];
+    retention_policy: Record<string, string>;
+  }>("/community/dm-abuse");
+}
+
+export function sendChatMessage(channelIdOrSlug: string, input: { body: string; client_message_id?: string; reply_to_message_id?: string }) {
+  return apiRequest<{ channel: ChatChannel; message: ChatMessage }>(
+    `/community/channels/${encodeURIComponent(channelIdOrSlug)}/messages`,
+    {
+      method: "POST",
+      body: JSON.stringify(input)
+    }
+  );
+}
+
+export function reactChatMessage(channelIdOrSlug: string, messageId: string, input: { reaction: string }) {
+  return apiRequest<{ message: ChatMessage; action: "added" | "removed" }>(
+    `/community/channels/${encodeURIComponent(channelIdOrSlug)}/messages/${encodeURIComponent(messageId)}/reactions`,
+    {
+      method: "POST",
+      body: JSON.stringify(input)
+    }
+  );
+}
+
+export function pinChatMessage(channelIdOrSlug: string, messageId: string, input: { reason?: string }) {
+  return apiRequest<{ pin: ChatPinnedMessage; pinned_messages: ChatPinnedMessage[] }>(
+    `/community/channels/${encodeURIComponent(channelIdOrSlug)}/messages/${encodeURIComponent(messageId)}/pin`,
+    {
+      method: "POST",
+      body: JSON.stringify(input)
+    }
+  );
+}
+
+export function unpinChatMessage(channelIdOrSlug: string, messageId: string) {
+  return apiRequest<{ pin: ChatPinnedMessage | null; pinned_messages: ChatPinnedMessage[] }>(
+    `/community/channels/${encodeURIComponent(channelIdOrSlug)}/messages/${encodeURIComponent(messageId)}/unpin`,
+    {
+      method: "POST",
+      body: JSON.stringify({})
+    }
+  );
+}
+
+export function reportChatMessage(channelIdOrSlug: string, messageId: string, input: { reason: string }) {
+  return apiRequest<{ event: ChatModerationEvent }>(
+    `/community/channels/${encodeURIComponent(channelIdOrSlug)}/messages/${encodeURIComponent(messageId)}/report`,
+    {
+      method: "POST",
+      body: JSON.stringify(input)
+    }
+  );
+}
+
+export function listChatModerationQueue() {
+  return apiRequest<{ events: ChatModerationEvent[] }>("/community/chat-moderation");
+}
+
+export function hideChatMessage(channelIdOrSlug: string, messageId: string, input: { reason: string }) {
+  return apiRequest<{ message: ChatMessage; event: ChatModerationEvent }>(
+    `/community/channels/${encodeURIComponent(channelIdOrSlug)}/messages/${encodeURIComponent(messageId)}/hide`,
+    {
+      method: "POST",
+      body: JSON.stringify(input)
+    }
+  );
+}
+
+export function deleteChatMessage(channelIdOrSlug: string, messageId: string, input: { reason: string }) {
+  return apiRequest<{ message: ChatMessage; event: ChatModerationEvent }>(
+    `/community/channels/${encodeURIComponent(channelIdOrSlug)}/messages/${encodeURIComponent(messageId)}/delete`,
+    {
+      method: "POST",
+      body: JSON.stringify(input)
+    }
+  );
+}
+
+export function muteChatMember(channelIdOrSlug: string, input: { user_id: string; duration_minutes: number; reason: string }) {
+  return apiRequest<{ event: ChatModerationEvent }>(
+    `/community/channels/${encodeURIComponent(channelIdOrSlug)}/members/mute`,
+    {
+      method: "POST",
+      body: JSON.stringify(input)
+    }
+  );
 }
 
 export function getCommunitySocialProof() {

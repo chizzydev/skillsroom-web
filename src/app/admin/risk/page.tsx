@@ -13,10 +13,15 @@ import { canAccessAdmin, getCurrentUser } from "@/lib/auth-bridge";
 import { listEvidenceRetentionReport } from "@/lib/evidence-storage";
 import {
   getRiskDashboard,
+  getDmAbuseQueue,
+  listChatModerationQueue,
   listEvidenceAccessEvents,
   listModerationActions,
   listRiskFlags,
   listRoomHolds,
+  type ChatModerationEvent,
+  type ChatDmRequest,
+  type ChatUserBlock,
   type ModerationAction,
   type RoomModerationHold,
   type SecurityEvent,
@@ -26,6 +31,9 @@ import {
   createModerationActionAction,
   createRiskFlagAction,
   createRoomHoldAction,
+  deleteChatMessageAction,
+  hideChatMessageAction,
+  muteChatMemberAction,
   releaseRoomHoldAction,
   updateEvidenceDeletionAction,
   updateEvidenceLegalHoldAction,
@@ -56,6 +64,10 @@ function metadataText(event: SecurityEvent, key: string) {
   if (typeof value === "number") return value.toString();
   if (typeof value === "boolean") return value ? "true" : "false";
   return null;
+}
+
+function chatSenderLabel(event: ChatModerationEvent) {
+  return event.sender_display_name || event.sender_username || event.target_user_id || "Skillsroom player";
 }
 
 type EvidenceReviewRow = {
@@ -131,21 +143,31 @@ export default async function AdminRiskPage({ searchParams }: { searchParams: Pr
   let flags: UserRiskFlag[] = [];
   let actions: ModerationAction[] = [];
   let holds: RoomModerationHold[] = [];
+  let chatModerationEvents: ChatModerationEvent[] = [];
+  let dmAbuseRequests: ChatDmRequest[] = [];
+  let dmBlocks: ChatUserBlock[] = [];
+  let dmRetentionPolicy: Record<string, string> = {};
   let evidenceEvents: SecurityEvent[] = [];
   let retentionReport: Awaited<ReturnType<typeof listEvidenceRetentionReport>> | null = null;
   let loadError: string | null = null;
   try {
-    const [dashboard, flagResult, actionResult, holdResult, evidenceEventResult, localRetentionReport] = await Promise.all([
+    const [dashboard, flagResult, actionResult, holdResult, chatModerationResult, dmAbuseResult, evidenceEventResult, localRetentionReport] = await Promise.all([
       getRiskDashboard(),
       listRiskFlags("open"),
       listModerationActions(),
       listRoomHolds("active"),
+      listChatModerationQueue(),
+      getDmAbuseQueue(),
       listEvidenceAccessEvents(50),
       listEvidenceRetentionReport()
     ]);
     flags = flagResult.flags;
     actions = actionResult.actions;
     holds = holdResult.holds;
+    chatModerationEvents = chatModerationResult.events;
+    dmAbuseRequests = dmAbuseResult.requests;
+    dmBlocks = dmAbuseResult.blocks;
+    dmRetentionPolicy = dmAbuseResult.retention_policy;
     evidenceEvents = evidenceEventResult.events;
     retentionReport = localRetentionReport;
     void dashboard;
@@ -172,7 +194,7 @@ export default async function AdminRiskPage({ searchParams }: { searchParams: Pr
           tone="danger"
         />
 
-        <LiveUpdateStream eventTypePrefixes={["admin.queue.risk.", "match.hold."]} label="Risk live" />
+        <LiveUpdateStream eventTypePrefixes={["admin.queue.risk.", "admin.queue.chat_moderation.", "match.hold.", "chat.message.", "chat.member."]} label="Risk live" />
 
         {(error || loadError) && (
           <div className="rounded-md border border-danger bg-red-50 p-4 text-sm font-bold text-danger">
@@ -184,7 +206,7 @@ export default async function AdminRiskPage({ searchParams }: { searchParams: Pr
           <StatusPanel detail="Open queue" label="Risk Flags" tone="danger" value={countRows(flags)} />
           <StatusPanel detail="Active room blocks" label="Room Holds" tone="warning" value={countRows(holds)} />
           <StatusPanel detail="Recent audit trail" label="Actions" tone="cyan" value={countRows(actions)} />
-          <StatusPanel detail="Grouped evidence files" label="Evidence Review" tone={evidenceExceptions.length ? "danger" : evidenceNeedsReview.length ? "warning" : "cyan"} value={countRows(evidenceReviews)} />
+          <StatusPanel detail="Reports and chat safety actions" label="Chat Queue" tone={chatModerationEvents.length ? "warning" : "success"} value={countRows(chatModerationEvents)} />
         </div>
 
         <div className="grid min-w-0 gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -193,6 +215,97 @@ export default async function AdminRiskPage({ searchParams }: { searchParams: Pr
           <StatusPanel detail="Files preserved beyond normal retention" label="Legal Hold" tone={evidenceLegalHolds.length ? "warning" : "neutral"} value={countRows(evidenceLegalHolds)} />
           <StatusPanel detail="Expired and eligible for quarantine" label="Cleanup Queue" tone={cleanupEligible ? "warning" : "success"} value={cleanupEligible.toString()} />
         </div>
+
+        <Panel>
+          <PanelHeader eyebrow="Chat Safety" title="Chat moderation queue" description="Review reported messages, hide or delete unsafe content, and mute users from a channel." />
+          {chatModerationEvents.length ? (
+            <DataTable
+              columns={[
+                { key: "created_at", label: "Created", render: (row) => <span className="font-mono text-xs font-bold text-muted">{new Date(row.created_at).toLocaleString("en-NG")}</span> },
+                { key: "event_type", label: "Type", render: (row) => <Badge tone={row.event_type === "message_reported" ? "warning" : "cyan"}>{displayLabel(row.event_type)}</Badge> },
+                {
+                  key: "message",
+                  label: "Message",
+                  render: (row) => (
+                    <span className="grid gap-1">
+                      <span className="text-sm font-bold text-ink [overflow-wrap:anywhere]">{row.message_body ?? "Message no longer visible"}</span>
+                      <span className="text-xs font-bold text-muted">{row.channel_title ?? row.channel_slug ?? "Channel"} by {chatSenderLabel(row)}</span>
+                    </span>
+                  )
+                },
+                { key: "reason", label: "Reason", render: (row) => <span className="text-sm text-muted">{row.reason ?? "No reason supplied"}</span> },
+                {
+                  key: "actions",
+                  label: "Actions",
+                  render: (row) => (
+                    <div className="grid min-w-[16rem] gap-2">
+                      <form action={hideChatMessageAction} className="grid grid-cols-[1fr_auto] gap-2">
+                        <input name="channel_slug" type="hidden" value={row.channel_slug ?? row.channel_id} />
+                        <input name="message_id" type="hidden" value={row.message_id ?? ""} />
+                        <input className="min-h-9 rounded-md border border-line bg-white px-2 text-xs outline-none focus:border-action" name="reason" placeholder="Hide reason" />
+                        <FormActionButton disabled={!row.message_id || row.message_status !== "visible"} idleLabel="Hide" pendingLabel="Hiding..." size="sm" variant="secondary" />
+                      </form>
+                      <form action={deleteChatMessageAction} className="grid grid-cols-[1fr_auto] gap-2">
+                        <input name="channel_slug" type="hidden" value={row.channel_slug ?? row.channel_id} />
+                        <input name="message_id" type="hidden" value={row.message_id ?? ""} />
+                        <input className="min-h-9 rounded-md border border-line bg-white px-2 text-xs outline-none focus:border-action" name="reason" placeholder="Delete reason" />
+                        <FormActionButton disabled={!row.message_id || row.message_status === "deleted"} idleLabel="Delete" pendingLabel="Deleting..." size="sm" variant="danger" />
+                      </form>
+                      <form action={muteChatMemberAction} className="grid grid-cols-[1fr_5rem_auto] gap-2">
+                        <input name="channel_slug" type="hidden" value={row.channel_slug ?? row.channel_id} />
+                        <input name="user_id" type="hidden" value={row.target_user_id ?? ""} />
+                        <input className="min-h-9 rounded-md border border-line bg-white px-2 text-xs outline-none focus:border-action" name="reason" placeholder="Mute reason" />
+                        <input className="min-h-9 rounded-md border border-line bg-white px-2 text-xs outline-none focus:border-action" min={5} max={10080} name="duration_minutes" type="number" defaultValue={60} />
+                        <FormActionButton disabled={!row.target_user_id} idleLabel="Mute" pendingLabel="Muting..." size="sm" variant="danger" />
+                      </form>
+                    </div>
+                  )
+                }
+              ]}
+              rows={chatModerationEvents}
+            />
+          ) : (
+            <div className="p-4">
+              <AdminEmptyState description="Reported chat messages and recent chat safety actions will appear here." title="Chat moderation queue is clear" />
+            </div>
+          )}
+        </Panel>
+
+        <Panel>
+          <PanelHeader eyebrow="Private DMs" title="DM abuse investigation" description="DMs require recipient acceptance. Operators review metadata, reports, blocks, and request state, not open private browsing." />
+          <div className="grid gap-4 p-4 xl:grid-cols-2">
+            <div className="grid gap-3">
+              <h3 className="text-sm font-black text-ink">Recent DM requests</h3>
+              {dmAbuseRequests.slice(0, 8).map((request) => (
+                <div className="rounded-md border border-line bg-white p-3" key={request.id}>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge tone={request.status === "pending" ? "warning" : request.status === "accepted" ? "success" : "neutral"}>{request.status}</Badge>
+                    <span className="text-xs font-bold text-muted">{new Date(request.created_at).toLocaleString("en-NG")}</span>
+                  </div>
+                  <p className="mt-2 text-sm font-bold text-ink">{request.requester_label} to {request.recipient_label}</p>
+                  {request.intro_message ? <p className="mt-1 text-sm text-muted">{request.intro_message}</p> : null}
+                </div>
+              ))}
+              {!dmAbuseRequests.length ? <AdminEmptyState title="No DM requests" description="DM request metadata appears here for investigation." /> : null}
+            </div>
+            <div className="grid gap-3">
+              <h3 className="text-sm font-black text-ink">User blocks</h3>
+              {dmBlocks.slice(0, 8).map((block) => (
+                <div className="rounded-md border border-line bg-white p-3" key={`${block.blocker_user_id}:${block.blocked_user_id}`}>
+                  <p className="text-sm font-bold text-ink">{block.blocker_label} blocked {block.blocked_label}</p>
+                  <p className="mt-1 text-xs font-bold text-muted">{new Date(block.created_at).toLocaleString("en-NG")}</p>
+                  {block.reason ? <p className="mt-1 text-sm text-muted">{block.reason}</p> : null}
+                </div>
+              ))}
+              {!dmBlocks.length ? <AdminEmptyState title="No user blocks" description="Chat user blocks appear here for abuse review." /> : null}
+            </div>
+          </div>
+          <div className="grid gap-2 border-t border-line p-4 text-sm text-muted">
+            {Object.entries(dmRetentionPolicy).map(([key, value]) => (
+              <p key={key}><strong className="text-ink">{displayLabel(key)}:</strong> {value}</p>
+            ))}
+          </div>
+        </Panel>
 
         <div className="grid min-w-0 gap-3 sm:grid-cols-2 xl:grid-cols-4">
           <StatusPanel detail="Moved out of active serving" label="Quarantined" tone={quarantinedEvidence ? "warning" : "neutral"} value={quarantinedEvidence.toString()} />

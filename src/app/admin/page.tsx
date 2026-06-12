@@ -30,7 +30,7 @@ import {
   type RoomModerationHold,
   type UserRiskFlag
 } from "@/lib/match-room-api";
-import { archiveAnnouncementAction, createPlatformAnnouncementAction, publishAnnouncementAction } from "./actions";
+import { archiveAnnouncementAction, createChatChannelAction, createPlatformAnnouncementAction, publishAnnouncementAction } from "./actions";
 
 type WorkItem = {
   id: string;
@@ -145,13 +145,13 @@ function fromHold(row: RoomModerationHold): WorkItem {
 export default async function AdminPage({
   searchParams
 }: {
-  searchParams: Promise<{ error?: string; announcement_saved?: string; announcement_published?: string; announcement_archived?: string }>;
+  searchParams: Promise<{ error?: string; announcement_saved?: string; announcement_published?: string; announcement_archived?: string; channel_saved?: string }>;
 }) {
   const user = await getCurrentUser();
   if (!canAccessAdmin(user)) {
     redirect("/sign-in?redirect=/admin");
   }
-  const { error, announcement_saved: announcementSaved, announcement_published: announcementPublished, announcement_archived: announcementArchived } = await searchParams;
+  const { error, announcement_saved: announcementSaved, announcement_published: announcementPublished, announcement_archived: announcementArchived, channel_saved: channelSaved } = await searchParams;
 
   let funding: ManualFundingSubmission[] = [];
   let results: MatchResultClaim[] = [];
@@ -221,6 +221,7 @@ export default async function AdminPage({
         {announcementSaved ? <TransientStatusBanner clearKeys={["announcement_saved"]} durationMs={12000} message="Platform announcement saved." tone="success" /> : null}
         {announcementPublished ? <TransientStatusBanner clearKeys={["announcement_published"]} durationMs={12000} message="Announcement published." tone="success" /> : null}
         {announcementArchived ? <TransientStatusBanner clearKeys={["announcement_archived"]} durationMs={12000} message="Announcement archived." tone="success" /> : null}
+        {channelSaved ? <TransientStatusBanner clearKeys={["channel_saved"]} durationMs={12000} message="Community channel saved." tone="success" /> : null}
         {loadError ? (
           <div className="rounded-md border border-danger bg-red-50 p-4 text-sm font-bold text-danger">{loadError}</div>
         ) : null}
@@ -323,6 +324,34 @@ export default async function AdminPage({
               )}
             </div>
           </div>
+        </Panel>
+
+        <Panel>
+          <PanelHeader
+            description="Create broad community channels, or ensure game, tournament, and room-linked channels for the signed-in channel list."
+            eyebrow="Channels"
+            title="Community channel setup"
+          />
+          <form action={createChatChannelAction} className="grid gap-3 p-4 xl:grid-cols-[180px_minmax(0,1fr)_160px_minmax(0,1fr)_auto]">
+            <select className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="channel_type">
+              <option value="group">Community</option>
+              <option value="game">Game</option>
+              <option value="tournament">Tournament</option>
+              <option value="match_room">Room</option>
+            </select>
+            <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="title" placeholder="Channel title" />
+            <select className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="visibility">
+              <option value="public">Public</option>
+              <option value="members">Members</option>
+              <option value="private">Private</option>
+            </select>
+            <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="description" placeholder="Description" />
+            <FormActionButton idleLabel="Save channel" pendingLabel="Saving..." />
+            <input className="min-h-11 rounded-md border border-line bg-white px-3 font-mono text-sm outline-none focus:border-action xl:col-span-2" name="slug" placeholder="Optional slug" />
+            <input className="min-h-11 rounded-md border border-line bg-white px-3 font-mono text-sm outline-none focus:border-action" name="game_slug" placeholder="game slug" />
+            <input className="min-h-11 rounded-md border border-line bg-white px-3 font-mono text-sm outline-none focus:border-action" name="tournament_id" placeholder="tournament id" />
+            <input className="min-h-11 rounded-md border border-line bg-white px-3 font-mono text-sm outline-none focus:border-action" name="match_room_id" placeholder="room id" />
+          </form>
         </Panel>
 
         <Panel>

@@ -45,6 +45,42 @@ export function describeRealtimeEvent(event: RealtimeEvent): RealtimeToastMessag
         description: typeof event.payload.title === "string" ? event.payload.title : "Your inbox has a fresh update.",
         tone: "neutral"
       };
+    case "chat.message.created":
+      return {
+        title: typeof event.payload.channel_slug === "string" && event.payload.channel_slug === "global_lobby" ? "Global Lobby message" : "New chat message",
+        description: "A community channel has a fresh message.",
+        tone: "neutral"
+      };
+    case "chat.system_message.created":
+      return { title: "Channel update", description: "Skillsroom posted a system message.", tone: "success" };
+    case "chat.message.mentioned":
+      return { title: "You were mentioned", description: "A player mentioned you in chat.", tone: "neutral" };
+    case "chat.message.reaction.changed":
+      return null;
+    case "chat.message.pinned":
+      return { title: "Message pinned", description: "A channel message was pinned.", tone: "success" };
+    case "chat.message.unpinned":
+      return { title: "Message unpinned", description: "A channel pin was removed.", tone: "neutral" };
+    case "chat.message.hidden":
+      return { title: "Chat message hidden", description: "A moderator hid a community message.", tone: "warning" };
+    case "chat.message.deleted":
+      return { title: "Chat message deleted", description: "A moderator deleted a community message.", tone: "danger" };
+    case "chat.member.muted":
+      return { title: "Chat muted", description: "A channel mute was applied.", tone: "warning" };
+    case "chat.presence.changed":
+      return null;
+    case "chat.typing.changed":
+      return null;
+    case "chat.channel.read":
+      return null;
+    case "chat.dm.request.created":
+      return { title: "DM request", description: "A private message request needs a response.", tone: "neutral" };
+    case "chat.dm.request.accepted":
+      return { title: "DM accepted", description: "A private DM channel is now available.", tone: "success" };
+    case "chat.dm.request.declined":
+      return { title: "DM declined", description: "The private message request was declined.", tone: "warning" };
+    case "chat.user.blocked":
+      return { title: "User blocked", description: "That player can no longer DM you.", tone: "warning" };
     case "room.invite.created":
       return { title: "Room invite sent", description: "The invited player can now respond from their inbox.", tone: "neutral" };
     case "room.invite.accepted":

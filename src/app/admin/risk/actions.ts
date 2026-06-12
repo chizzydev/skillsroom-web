@@ -17,6 +17,9 @@ import {
   createModerationAction,
   createRiskFlag,
   createRoomHold,
+  deleteChatMessage,
+  hideChatMessage,
+  muteChatMember,
   releaseRoomHold,
   updateRiskFlagStatus,
   type ModerationAction,
@@ -162,6 +165,48 @@ export async function releaseRoomHoldAction(formData: FormData) {
     await releaseRoomHold(
       String(formData.get("hold_id") || "").trim(),
       String(formData.get("release_note") || "").trim() || undefined
+    );
+  } catch (error) {
+    redirect(withError(error));
+  }
+  redirect("/admin/risk");
+}
+
+export async function hideChatMessageAction(formData: FormData) {
+  try {
+    await hideChatMessage(
+      String(formData.get("channel_slug") || "").trim(),
+      String(formData.get("message_id") || "").trim(),
+      { reason: String(formData.get("reason") || "").trim() || "Hidden from chat moderation queue." }
+    );
+  } catch (error) {
+    redirect(withError(error));
+  }
+  redirect("/admin/risk");
+}
+
+export async function deleteChatMessageAction(formData: FormData) {
+  try {
+    await deleteChatMessage(
+      String(formData.get("channel_slug") || "").trim(),
+      String(formData.get("message_id") || "").trim(),
+      { reason: String(formData.get("reason") || "").trim() || "Deleted from chat moderation queue." }
+    );
+  } catch (error) {
+    redirect(withError(error));
+  }
+  redirect("/admin/risk");
+}
+
+export async function muteChatMemberAction(formData: FormData) {
+  try {
+    await muteChatMember(
+      String(formData.get("channel_slug") || "").trim(),
+      {
+        user_id: String(formData.get("user_id") || "").trim(),
+        duration_minutes: Number(formData.get("duration_minutes") || 60),
+        reason: String(formData.get("reason") || "").trim() || "Muted from chat moderation queue."
+      }
     );
   } catch (error) {
     redirect(withError(error));

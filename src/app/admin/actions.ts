@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import {
   ApiRequestError,
   archiveCommunityAnnouncement,
+  createChatChannel,
   createCommunityAnnouncement,
   publishCommunityAnnouncement,
   type CommunityAnnouncementCategory,
@@ -12,7 +13,7 @@ import {
 
 function actionErrorMessage(error: unknown) {
   if (error instanceof ApiRequestError) return error.message;
-  return "The community announcement could not be completed.";
+  return "The community action could not be completed.";
 }
 
 function optionalString(formData: FormData, key: string) {
@@ -60,4 +61,23 @@ export async function archiveAnnouncementAction(formData: FormData) {
   }
 
   redirect(`/admin?announcement_archived=${encodeURIComponent(announcementId)}`);
+}
+
+export async function createChatChannelAction(formData: FormData) {
+  try {
+    await createChatChannel({
+      channel_type: String(formData.get("channel_type") || "group") as "game" | "tournament" | "match_room" | "group",
+      title: optionalString(formData, "title"),
+      slug: optionalString(formData, "slug"),
+      description: optionalString(formData, "description"),
+      visibility: optionalString(formData, "visibility") as "public" | "members" | "private" | undefined,
+      game_slug: optionalString(formData, "game_slug"),
+      tournament_id: optionalString(formData, "tournament_id"),
+      match_room_id: optionalString(formData, "match_room_id")
+    });
+  } catch (error) {
+    redirect(`/admin?error=${encodeURIComponent(actionErrorMessage(error))}`);
+  }
+
+  redirect("/admin?channel_saved=1");
 }
