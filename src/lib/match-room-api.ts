@@ -370,6 +370,30 @@ export type ProfileMe = {
   };
 };
 
+export type TeamRole = "player" | "support" | "moderator" | "admin" | "owner";
+
+export type AdminTeamMember = {
+  user_id: string;
+  email: string | null;
+  display_name: string | null;
+  username: string | null;
+  profile_display_name: string | null;
+  user_role: TeamRole;
+  user_status: "active" | "locked" | "disabled";
+  team_member_id: string | null;
+  team_role: TeamRole | null;
+  team_status: "invited" | "active" | "suspended" | "removed" | null;
+  is_platform_owner: boolean;
+  ownership_percentage: string | null;
+  invited_by_user_id: string | null;
+  activated_at: string | null;
+  suspended_at: string | null;
+  removed_at: string | null;
+  created_at: string;
+  updated_at: string;
+  team_updated_at: string | null;
+};
+
 export type PlayerTrustSummary = {
   user_id: string;
   username: string | null;
@@ -2213,6 +2237,26 @@ export function updateRefundInstructions(
 
 export function getRiskDashboard() {
   return apiRequest<RiskDashboard>("/admin/risk/dashboard");
+}
+
+export function listAdminTeamMembers() {
+  return apiRequest<{ members: AdminTeamMember[] }>("/admin/team/members");
+}
+
+export function updateAdminTeamMemberRole(input: {
+  userId: string;
+  role: Exclude<TeamRole, "owner">;
+  note?: string;
+  stepUpToken: string;
+}) {
+  return apiRequest<{ members: AdminTeamMember[] }>(`/admin/team/members/${encodeURIComponent(input.userId)}/role`, {
+    method: "PATCH",
+    headers: { "x-admin-step-up": input.stepUpToken },
+    body: JSON.stringify({
+      role: input.role,
+      note: input.note
+    })
+  });
 }
 
 export function listEvidenceAccessEvents(limit = 50) {

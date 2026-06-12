@@ -3,7 +3,7 @@ import { AccountMenu } from "./AccountMenu";
 import { getCurrentUser } from "@/lib/auth-bridge";
 
 type AdminShellProps = {
-  active: "overview" | "funding" | "results" | "settlements" | "tournaments" | "matches" | "players" | "disputes" | "risk";
+  active: "overview" | "funding" | "results" | "settlements" | "tournaments" | "matches" | "players" | "team" | "disputes" | "risk";
   children: React.ReactNode;
 };
 
@@ -14,6 +14,7 @@ const nav = [
   { key: "settlements", label: "Settlements", href: "/admin/settlements" },
   { key: "tournaments", label: "Tournaments", href: "/admin/tournaments" },
   { key: "players", label: "Players", href: "/admin/players" },
+  { key: "team", label: "Team roles", href: "/admin/team" },
   { key: "risk", label: "Risk", href: "/admin/risk" }
 ] as const;
 
