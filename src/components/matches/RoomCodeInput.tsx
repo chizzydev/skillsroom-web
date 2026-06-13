@@ -35,7 +35,17 @@ export function RoomCodeInput() {
       enterKeyHint="go"
       maxLength={12}
       name="room_code"
+      onBlur={(event) => {
+        event.currentTarget.readOnly = true;
+      }}
+      onFocus={(event) => {
+        if (event.currentTarget.readOnly) event.currentTarget.blur();
+      }}
+      onPointerDown={(event) => {
+        event.currentTarget.readOnly = false;
+      }}
       placeholder="SR8K21"
+      readOnly
       ref={inputRef}
       required
       spellCheck={false}

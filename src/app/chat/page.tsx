@@ -61,7 +61,7 @@ export default async function ChatPage() {
   }
 
   return (
-    <main className="h-[100svh] overflow-hidden bg-[#0f1b26] sm:h-[100dvh]">
+    <main className="h-[100svh] overflow-hidden bg-[#0f1b26]">
       {activeChannel ? (
         <GlobalLobbyClient
           channels={channels}

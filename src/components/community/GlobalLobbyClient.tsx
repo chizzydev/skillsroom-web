@@ -172,6 +172,7 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
   const [pinClock, setPinClock] = useState(() => Date.now());
   const [isPinning, setIsPinning] = useState(false);
   const [unpinningIds, setUnpinningIds] = useState<Set<string>>(new Set());
+  const [chatViewportHeight, setChatViewportHeight] = useState<number | null>(null);
   const messageViewportRef = useRef<HTMLDivElement | null>(null);
   const composerRef = useRef<HTMLTextAreaElement | null>(null);
   const seenIdsRef = useRef<Set<string>>(new Set(initialMessages.map((message) => message.id)));
@@ -226,6 +227,29 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
     });
     return () => window.cancelAnimationFrame(frame);
   }, [activeChannel.slug, messages.length]);
+
+  useEffect(() => {
+    if (!fullLayout) return;
+
+    const visualViewport = window.visualViewport;
+    const updateViewportHeight = () => {
+      const nextHeight = Math.round(visualViewport?.height ?? window.innerHeight);
+      setChatViewportHeight((current) => current === nextHeight ? current : nextHeight);
+    };
+
+    updateViewportHeight();
+    window.addEventListener("resize", updateViewportHeight);
+    window.addEventListener("orientationchange", updateViewportHeight);
+    visualViewport?.addEventListener("resize", updateViewportHeight);
+    visualViewport?.addEventListener("scroll", updateViewportHeight);
+
+    return () => {
+      window.removeEventListener("resize", updateViewportHeight);
+      window.removeEventListener("orientationchange", updateViewportHeight);
+      visualViewport?.removeEventListener("resize", updateViewportHeight);
+      visualViewport?.removeEventListener("scroll", updateViewportHeight);
+    };
+  }, [fullLayout]);
 
   useEffect(() => {
     const composer = composerRef.current;
@@ -708,8 +732,8 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
   return (
     <section className={[
       "min-w-0 overflow-hidden bg-white shadow-tight",
-      fullLayout ? "grid h-screen h-[100svh] grid-rows-[auto_minmax(0,1fr)] border-0 sm:h-[100dvh]" : "rounded-lg border border-line"
-    ].join(" ")}>
+      fullLayout ? "grid h-screen h-[100svh] grid-rows-[auto_minmax(0,1fr)] border-0" : "rounded-lg border border-line"
+    ].join(" ")} style={fullLayout && chatViewportHeight ? { height: `${chatViewportHeight}px` } : undefined}>
       <header className={[
         "flex min-w-0 items-center gap-3 border-b p-3 sm:p-4",
         fullLayout ? "border-white/10 bg-[#172331] text-white" : "border-line bg-white"
