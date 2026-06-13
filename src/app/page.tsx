@@ -14,6 +14,7 @@ import {
   type MatchRoomStatus
 } from "@/lib/match-room-api";
 import { joinMatchRoomAction } from "./matches/actions";
+import { RoomCodeInput } from "@/components/matches/RoomCodeInput";
 
 type HomePageProps = {
   searchParams?: Promise<{ error?: string }>;
@@ -337,12 +338,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
               <input name="error_path" type="hidden" value="/" />
               <label className="text-xs font-black uppercase tracking-[0.14em] text-slate-300">
                 Join room code
-                <input
-                  className="mt-2 min-h-11 w-full rounded-md border border-white/10 bg-white px-3 font-mono text-sm font-black uppercase text-ink outline-none focus:border-action"
-                  name="room_code"
-                  placeholder="SR8K21"
-                  required
-                />
+                <RoomCodeInput />
               </label>
               <div className="mt-3 grid grid-cols-2 gap-2">
                 <SubmitButton idleLabel="Join" pendingLabel="Joining..." />
