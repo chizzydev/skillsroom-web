@@ -47,7 +47,7 @@ export function describeRealtimeEvent(event: RealtimeEvent): RealtimeToastMessag
       };
     case "chat.message.created":
       return {
-        title: typeof event.payload.channel_slug === "string" && event.payload.channel_slug === "global_lobby" ? "Global Lobby message" : "New chat message",
+        title: typeof event.payload.channel_slug === "string" && event.payload.channel_slug === "global_lobby" ? "Global Chat message" : "New chat message",
         description: "A community channel has a fresh message.",
         tone: "neutral"
       };

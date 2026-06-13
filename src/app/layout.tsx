@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 const metadataBase = new URL(process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3100");
@@ -31,6 +31,13 @@ export const metadata: Metadata = {
     description: "Private competitive gaming rooms with verified match review.",
     images: ["/opengraph-image"]
   }
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: "#172331"
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

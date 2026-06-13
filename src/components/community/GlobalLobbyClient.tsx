@@ -48,7 +48,7 @@ function initials(value: string) {
 }
 
 function channelInitials(channel: Pick<ChatChannel, "slug" | "title">) {
-  if (channel.slug === "global_lobby") return "GL";
+  if (channel.slug === "global_lobby") return "GC";
   const words = channel.title
     .replace(/[^A-Za-z0-9 ]+/g, " ")
     .split(/\s+/)
@@ -58,12 +58,16 @@ function channelInitials(channel: Pick<ChatChannel, "slug" | "title">) {
 }
 
 function channelTypeLabel(channel: ChatChannel) {
-  if (channel.slug === "global_lobby") return "Lobby";
+  if (channel.slug === "global_lobby") return "Chat";
   if (channel.channel_type === "match_room") return "Room";
   if (channel.channel_type === "tournament") return "Tournament";
   if (channel.channel_type === "game") return "Game";
   if (channel.channel_type === "group") return "Community";
   return "Channel";
+}
+
+function channelTitle(channel: Pick<ChatChannel, "slug" | "title">) {
+  return channel.slug === "global_lobby" ? "Global Chat" : channel.title;
 }
 
 function channelPreview(channel: ChatChannel) {
@@ -169,6 +173,7 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
   const [isPinning, setIsPinning] = useState(false);
   const [unpinningIds, setUnpinningIds] = useState<Set<string>>(new Set());
   const scrollRef = useRef<HTMLDivElement | null>(null);
+  const composerRef = useRef<HTMLTextAreaElement | null>(null);
   const seenIdsRef = useRef<Set<string>>(new Set(initialMessages.map((message) => message.id)));
   const messagesByChannelRef = useRef(messagesByChannel);
 
@@ -216,6 +221,14 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
   useEffect(() => {
     scrollRef.current?.scrollIntoView({ block: "end" });
   }, [activeChannel.slug, messages.length]);
+
+  useEffect(() => {
+    const composer = composerRef.current;
+    if (!composer) return;
+    composer.style.height = "0px";
+    composer.style.height = `${Math.min(composer.scrollHeight, 112)}px`;
+    composer.style.overflowY = composer.scrollHeight > 112 ? "auto" : "hidden";
+  }, [body]);
 
   useEffect(() => {
     if (!pinnedMessages.length) return;
@@ -266,6 +279,15 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
     } finally {
       setIsLoadingChannel(false);
     }
+  }
+
+  function handleBack() {
+    if (activeChannel.slug !== "global_lobby") {
+      setInfoTab("channels");
+      setShowChannelInfo(true);
+      return;
+    }
+    window.history.back();
   }
 
   useEffect(() => {
@@ -677,18 +699,18 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
   return (
     <section className={[
       "min-w-0 overflow-hidden bg-white shadow-tight",
-      fullLayout ? "h-screen border-0" : "rounded-lg border border-line"
+      fullLayout ? "grid h-screen h-[100dvh] grid-rows-[auto_minmax(0,1fr)] border-0" : "rounded-lg border border-line"
     ].join(" ")}>
       <header className={[
         "flex min-w-0 items-center gap-3 border-b p-3 sm:p-4",
         fullLayout ? "border-white/10 bg-[#172331] text-white" : "border-line bg-white"
       ].join(" ")}>
-        <button className={fullLayout ? "grid h-10 w-10 shrink-0 place-items-center rounded-full text-2xl text-white md:hidden" : "hidden"} onClick={() => history.back()} type="button">‹</button>
+        <button aria-label="Go back" className={fullLayout ? "grid h-10 w-10 shrink-0 place-items-center rounded-full text-2xl text-white md:hidden" : "hidden"} onClick={handleBack} type="button">‹</button>
         <button aria-label="Open channel details" className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-navy-900 text-sm font-black text-action shadow-tight" onClick={() => setShowChannelInfo(true)} type="button">
           {channelInitials(activeChannel)}
         </button>
         <button className="min-w-0 flex-1 text-left" onClick={() => setShowChannelInfo(true)} type="button">
-          <h2 className={["truncate text-lg font-black leading-tight", fullLayout ? "text-white" : "text-ink"].join(" ")}>{activeChannel.title}</h2>
+          <h2 className={["truncate text-lg font-black leading-tight", fullLayout ? "text-white" : "text-ink"].join(" ")}>{channelTitle(activeChannel)}</h2>
           <p className={["mt-0.5 truncate text-sm leading-5", fullLayout ? "text-slate-300" : "text-muted"].join(" ")}>
             {presence.online_count} online{channelList.length ? ` · ${channelList.length} channels` : ""}
           </p>
@@ -700,32 +722,32 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
       </header>
 
       {showChannelInfo ? (
-        <div aria-label={`${activeChannel.title} details`} aria-modal="true" className="fixed inset-0 z-50 grid max-w-[100vw] overflow-x-hidden bg-black/60 sm:place-items-center sm:p-4" role="dialog">
+        <div aria-label={`${channelTitle(activeChannel)} details`} aria-modal="true" className="fixed inset-0 z-50 grid max-w-[100vw] overflow-x-hidden bg-black/60 pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] sm:place-items-center sm:p-4" role="dialog">
           <section className="grid h-full min-h-0 w-full min-w-0 max-w-full grid-rows-[auto_auto_1fr] overflow-hidden bg-[#172331] text-white shadow-panel sm:h-[min(48rem,92vh)] sm:max-w-2xl sm:rounded-lg sm:border sm:border-white/10">
-            <header className="flex min-w-0 items-center gap-2 border-b border-white/10 p-3 sm:gap-3 sm:p-4">
-              <button aria-label="Close channel details" className="grid h-10 w-10 shrink-0 place-items-center rounded-full text-sm font-black text-white hover:bg-white/10" onClick={() => setShowChannelInfo(false)} type="button">X</button>
-              <span className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-navy-900 text-sm font-black text-action shadow-tight sm:h-14 sm:w-14 sm:text-base">{channelInitials(activeChannel)}</span>
+            <header className="flex min-w-0 items-center gap-2 border-b border-white/10 px-3 py-2.5 sm:gap-3 sm:p-4">
+              <button aria-label="Close channel details" className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-sm font-black text-white hover:bg-white/10" onClick={() => setShowChannelInfo(false)} type="button">X</button>
+              <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-navy-900 text-sm font-black text-action shadow-tight sm:h-14 sm:w-14 sm:text-base">{channelInitials(activeChannel)}</span>
               <div className="min-w-0 flex-1">
-                <h2 className="truncate text-lg font-black text-white sm:text-xl">{activeChannel.title}</h2>
-                <p className="mt-1 truncate text-xs font-bold text-slate-300 sm:text-sm">{presence.online_count} online / {userDirectory.length} active or recent</p>
+                <h2 className="truncate text-base font-black text-white sm:text-xl">{channelTitle(activeChannel)}</h2>
+                <p className="mt-0.5 truncate text-xs font-bold text-slate-300 sm:mt-1 sm:text-sm">{presence.online_count} online / {userDirectory.length} active or recent</p>
               </div>
             </header>
 
             <div className="grid grid-cols-3 border-b border-white/10 px-3">
               {(["members", "channels", "pins"] as const).map((tab) => (
-                <button className={["min-h-12 min-w-0 truncate border-b-2 px-1 text-xs font-black capitalize sm:px-2 sm:text-sm", infoTab === tab ? "border-sky-400 text-sky-300" : "border-transparent text-slate-400 hover:text-white"].join(" ")} key={tab} onClick={() => setInfoTab(tab)} type="button">
+                <button className={["min-h-11 min-w-0 truncate border-b-2 px-1 text-xs font-black capitalize sm:min-h-12 sm:px-2 sm:text-sm", infoTab === tab ? "border-sky-400 text-sky-300" : "border-transparent text-slate-400 hover:text-white"].join(" ")} key={tab} onClick={() => setInfoTab(tab)} type="button">
                   {tab}{tab === "channels" ? ` ${channelList.length}` : tab === "pins" && pinnedMessages.length ? ` ${pinnedMessages.length}` : ""}
                 </button>
               ))}
             </div>
 
-            <div className="min-h-0 overflow-y-auto p-4">
+            <div className="min-h-0 overflow-y-auto p-3 sm:p-4">
               {infoTab === "members" ? (
                 <div className="grid gap-2">
                   <p className="mb-1 text-xs font-black uppercase tracking-[0.14em] text-slate-400">Active and recent members</p>
                   {userDirectory.length ? userDirectory.map((user) => (
-                    <div className="flex min-w-0 items-center gap-3 rounded-md bg-white/5 p-3" key={user.user_id}>
-                      <span className="relative grid h-11 w-11 shrink-0 place-items-center rounded-full bg-navy-900 text-sm font-black text-white">
+                    <div className="flex min-w-0 items-center gap-3 rounded-md bg-white/5 p-2.5 sm:p-3" key={user.user_id}>
+                      <span className="relative grid h-10 w-10 shrink-0 place-items-center rounded-full bg-navy-900 text-sm font-black text-white sm:h-11 sm:w-11">
                         {initials(user.label)}
                         {user.is_online ? <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-[#172331] bg-success" /> : null}
                       </span>
@@ -745,7 +767,7 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
                     <button className={["flex min-w-0 items-center gap-3 rounded-md border p-3 text-left", item.id === activeChannel.id ? "border-sky-400 bg-sky-400/10" : "border-white/10 bg-white/5 hover:bg-white/10"].join(" ")} key={item.id} onClick={() => { setShowChannelInfo(false); void openChannel(item); }} type="button">
                       <span className="grid h-11 w-11 shrink-0 place-items-center rounded-md bg-white/10 px-1 text-xs font-black text-sky-300">{channelInitials(item)}</span>
                       <span className="min-w-0 flex-1">
-                        <span className="block truncate text-sm font-black text-white">{item.title}</span>
+                        <span className="block truncate text-sm font-black text-white">{channelTitle(item)}</span>
                         <span className="mt-1 block truncate text-xs font-bold text-slate-400">{channelTypeLabel(item)} / {item.online_count ?? 0} online / {channelPreview(item)}</span>
                       </span>
                       {(item.unread_count ?? 0) > 0 ? <span className="rounded-full bg-sky-500 px-2 py-1 text-xs font-black text-white">{item.unread_count}</span> : null}
@@ -759,9 +781,14 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
                   <p className="mb-1 text-xs font-black uppercase tracking-[0.14em] text-slate-400">Pinned messages</p>
                   {pinnedMessages.length ? pinnedMessages.map((pin) => (
                     <article className="rounded-md border border-white/10 bg-white/5 p-3" key={pin.id}>
-                      <p className="text-sm font-black text-sky-300">{pin.sender_label}</p>
+                      <div className="flex min-w-0 items-start justify-between gap-2">
+                        <p className="min-w-0 truncate text-sm font-black text-sky-300">{pin.sender_label}</p>
+                        {canManageAnyPin || pin.pinned_by_user_id === currentUserId || pin.sender_user_id === currentUserId ? (
+                          <button className="shrink-0 rounded-sm px-2 py-1 text-[0.68rem] font-black uppercase tracking-[0.12em] text-slate-300 hover:bg-white/10 disabled:cursor-wait disabled:opacity-60" disabled={unpinningIds.has(pin.message_id)} onClick={() => void unpinMessage(pin.message_id)} type="button">{unpinningIds.has(pin.message_id) ? "Unpinning..." : "Unpin"}</button>
+                        ) : null}
+                      </div>
                       <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-white">{pin.body}</p>
-                      {pin.reason ? <p className="mt-2 text-xs font-bold text-slate-400">{pin.reason}</p> : null}
+                      <p className="mt-2 text-xs font-bold text-slate-400">{pinExpiryLabel(pin.expires_at)}</p>
                     </article>
                   )) : <p className="rounded-md border border-dashed border-white/10 p-5 text-center text-sm font-bold text-slate-400">No messages are pinned in this channel yet.</p>}
                 </div>
@@ -797,12 +824,12 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
       ) : null}
 
       <div className={[
-        "grid min-h-[34rem]",
-        fullLayout ? "h-[calc(100%-4.75rem)] md:grid-cols-[17rem_minmax(0,1fr)] xl:grid-cols-[17rem_minmax(0,1fr)_16rem]" : "lg:grid-cols-[20rem_minmax(0,1fr)]"
+        "grid",
+        fullLayout ? "min-h-0 overflow-hidden md:grid-cols-[17rem_minmax(0,1fr)] xl:grid-cols-[17rem_minmax(0,1fr)_16rem]" : "min-h-[34rem] lg:grid-cols-[20rem_minmax(0,1fr)]"
       ].join(" ")}>
         <aside className={[
           "border-line bg-white",
-          fullLayout ? "hidden border-r md:block" : "border-b lg:border-b-0 lg:border-r"
+          fullLayout ? "hidden min-h-0 overflow-hidden border-r md:block" : "border-b lg:border-b-0 lg:border-r"
         ].join(" ")}>
           <div className={[
             "overflow-y-auto p-3",
@@ -854,7 +881,7 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
                     type="button"
                   >
                     <span className="flex min-w-0 items-center justify-between gap-2">
-                      <strong className="truncate text-sm font-black text-ink"># {item.title}</strong>
+                      <strong className="flex min-w-0 items-center gap-2 truncate text-sm font-black text-ink"><span className="grid h-7 min-w-9 shrink-0 place-items-center rounded-sm bg-navy-900 px-1 text-[0.62rem] text-action">{channelInitials(item)}</span><span className="truncate">{channelTitle(item)}</span></strong>
                       {(item.unread_count ?? 0) > 0 ? (
                         <span className="rounded-md bg-danger px-2 py-0.5 text-[0.65rem] font-black text-white">{item.unread_count}</span>
                       ) : null}
@@ -867,9 +894,9 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
           </div>
         </aside>
 
-        <div className="grid min-h-[28rem] grid-rows-[1fr_auto] bg-[#132333] bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.06)_0,rgba(255,255,255,0)_22rem)]">
+        <div className="grid min-h-0 grid-rows-[minmax(0,1fr)_auto] bg-[#132333] bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.06)_0,rgba(255,255,255,0)_22rem)]">
           <div className={[
-            "min-h-[22rem] overflow-y-auto p-3 sm:p-4",
+            "min-h-0 overflow-y-auto p-3 sm:p-4",
             fullLayout ? "max-h-none" : "max-h-[58vh]"
           ].join(" ")}>
             <div className="mb-2 flex min-w-0 flex-wrap items-center gap-2 rounded-md border border-white/10 bg-[#203244]/90 px-3 py-2 text-xs font-bold text-slate-300">
@@ -1027,7 +1054,7 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
             )}
           </div>
 
-          <form className="border-t border-white/10 bg-[#172331] p-2 sm:p-3" onSubmit={sendMessage}>
+          <form className="border-t border-white/10 bg-[#172331] px-2 pt-2 pb-[max(env(safe-area-inset-bottom),0.75rem)] sm:p-3" onSubmit={sendMessage}>
             {error ? <p className="mb-2 rounded-md border border-danger bg-red-50 p-3 text-sm font-bold text-danger">{error}</p> : null}
             {typingUsers.length ? (
               <p className="mb-2 px-2 text-xs font-bold text-sky-300">
@@ -1062,29 +1089,31 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
               <label className="grid gap-1">
                 <span className="sr-only">Message</span>
                 <textarea
-                  className="max-h-32 min-h-12 resize-none rounded-2xl border border-white/10 bg-[#223447] px-4 py-3 text-base leading-6 text-white outline-none placeholder:text-slate-400 focus:border-sky-400"
+                  className="min-h-10 max-h-28 resize-none overflow-y-hidden rounded-2xl border border-white/10 bg-[#223447] px-3 py-2 text-base leading-6 text-white outline-none placeholder:text-slate-400 focus:border-sky-400"
                   maxLength={1000}
                   onChange={(event) => setBody(event.target.value)}
-                  placeholder={`Message ${activeChannel.title}`}
+                  placeholder={`Message ${channelTitle(activeChannel)}`}
+                  ref={composerRef}
+                  rows={1}
                   value={body}
                 />
               </label>
               <button
-                className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-sky-500 text-xl font-black text-white shadow-action hover:bg-sky-400 disabled:cursor-not-allowed disabled:bg-slate-600 disabled:text-slate-400 disabled:shadow-none"
+                className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-sky-500 text-lg font-black text-white shadow-action hover:bg-sky-400 disabled:cursor-not-allowed disabled:bg-slate-600 disabled:text-slate-400 disabled:shadow-none sm:h-12 sm:w-12 sm:text-xl"
                 disabled={!canSend}
                 type="submit"
               >
                 {isSending ? "…" : "➤"}
               </button>
             </div>
-            <div className="mt-1 flex flex-wrap items-center justify-between gap-2 px-2 text-xs font-bold text-slate-400">
+            <div className="mt-1 hidden flex-wrap items-center justify-between gap-2 px-2 text-xs font-bold text-slate-400 sm:flex">
               <span>{channelTypeLabel(activeChannel)} · {activeChannel.visibility}</span>
               <span className={charactersLeft < 80 ? "text-warning" : ""}>{charactersLeft}</span>
             </div>
           </form>
         </div>
         {fullLayout ? (
-          <aside className="hidden border-l border-line bg-white lg:block">
+          <aside className="hidden min-h-0 overflow-y-auto border-l border-line bg-white lg:block">
             <div className="grid gap-4 p-4">
               <section>
                 <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Active now</p>

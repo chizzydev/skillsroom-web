@@ -327,9 +327,9 @@ export default async function HomePage({ searchParams }: HomePageProps) {
                 <PendingLink
                   className="inline-flex min-h-10 w-full items-center justify-center rounded-md border border-white/10 bg-white px-4 text-sm font-black text-ink hover:bg-surfaceHigh sm:w-auto"
                   href="/chat"
-                  pendingLabel="Opening lobby..."
+                  pendingLabel="Opening chat..."
                 >
-                  Global Lobby
+                  Global Chat
                 </PendingLink>
               </div>
             </div>

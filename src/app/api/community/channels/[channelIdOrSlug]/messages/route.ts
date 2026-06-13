@@ -12,7 +12,7 @@ type RouteContext = {
 async function proxy(request: Request, context: RouteContext, method: "GET" | "POST") {
   const token = await getAccessToken();
   if (!token) {
-    return Response.json({ ok: false, error: { code: "AUTH_REQUIRED", message: "Please sign in to use the Global Lobby." } }, { status: 401 });
+    return Response.json({ ok: false, error: { code: "AUTH_REQUIRED", message: "Please sign in to use Global Chat." } }, { status: 401 });
   }
 
   const { channelIdOrSlug } = await context.params;

@@ -19,12 +19,12 @@ export default async function ChatPage() {
 
   if (!user) {
     return (
-      <main className="min-h-screen bg-bg p-4">
+      <main className="min-h-dvh bg-bg p-4">
         <Panel>
           <PanelHeader
             eyebrow="Community Chat"
             title="Sign in to enter chat"
-            description="Global Lobby, game channels, room channels, and private DMs are available to signed-in players."
+            description="Global Chat, game channels, room channels, and private DMs are available to signed-in players."
           />
         </Panel>
       </main>
@@ -61,7 +61,7 @@ export default async function ChatPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#0f1b26]">
+    <main className="min-h-dvh bg-[#0f1b26]">
       {activeChannel ? (
         <GlobalLobbyClient
           channels={channels}
