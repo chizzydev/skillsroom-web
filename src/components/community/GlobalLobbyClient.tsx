@@ -12,6 +12,7 @@ type GlobalLobbyClientProps = {
   initialPinnedMessages: ChatPinnedMessage[];
   initialPresence: ChatPresenceSummary;
   initialDmRequests: ChatDmRequest[];
+  layout?: "embedded" | "full";
 };
 
 type ApiEnvelope<T> =
@@ -26,6 +27,34 @@ type RealtimeEvent = {
 
 function messageTime(value: string) {
   return new Date(value).toLocaleTimeString("en-NG", { hour: "2-digit", minute: "2-digit" });
+}
+
+function messageDate(value: string) {
+  return new Date(value).toLocaleDateString("en-NG", { month: "short", day: "numeric" });
+}
+
+function pinExpiryLabel(value: string | null) {
+  if (!value) return "Pinned until removed";
+  return `Until ${new Date(value).toLocaleString("en-NG", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}`;
+}
+
+function initials(value: string) {
+  return value
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part.charAt(0).toUpperCase())
+    .join("") || "SR";
+}
+
+function channelInitials(channel: Pick<ChatChannel, "slug" | "title">) {
+  if (channel.slug === "global_lobby") return "GL";
+  const words = channel.title
+    .replace(/[^A-Za-z0-9 ]+/g, " ")
+    .split(/\s+/)
+    .filter((word) => word && !["of", "the", "and"].includes(word.toLowerCase()));
+  if (words.length === 1) return words[0].slice(0, 3).toUpperCase();
+  return words.slice(0, 4).map((word) => word.charAt(0)).join("").toUpperCase() || "CH";
 }
 
 function channelTypeLabel(channel: ChatChannel) {
@@ -95,16 +124,22 @@ function renderMessageBody(body: string) {
   ));
 }
 
+function displayHandle(message: Pick<ChatMessage, "sender_username" | "sender_label">) {
+  return message.sender_username ? `@${message.sender_username}` : message.sender_label;
+}
+
+const emptyMessages: ChatMessage[] = [];
+const emptyPinnedMessages: ChatPinnedMessage[] = [];
 const emptyPresence: ChatPresenceSummary = { online_count: 0, active: [], typing: [] };
 const reactionOptions = [
-  { key: "like", label: "Like" },
+  { key: "like", label: "👍" },
   { key: "gg", label: "GG" },
-  { key: "fire", label: "Fire" },
-  { key: "clap", label: "Clap" },
-  { key: "trophy", label: "Win" }
+  { key: "fire", label: "🔥" },
+  { key: "clap", label: "👏" },
+  { key: "trophy", label: "🏆" }
 ];
 
-export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, initialChannel, initialMessages, initialPinnedMessages, initialPresence, initialDmRequests }: GlobalLobbyClientProps) {
+export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, initialChannel, initialMessages, initialPinnedMessages, initialPresence, initialDmRequests, layout = "embedded" }: GlobalLobbyClientProps) {
   const [channelList, setChannelList] = useState<ChatChannel[]>(channels);
   const [dmRequests, setDmRequests] = useState<ChatDmRequest[]>(initialDmRequests);
   const [dmUsername, setDmUsername] = useState("");
@@ -126,16 +161,47 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
   const [isLoadingChannel, setIsLoadingChannel] = useState(false);
   const [reportingIds, setReportingIds] = useState<Set<string>>(new Set());
   const [streamStatus, setStreamStatus] = useState<"starting" | "live" | "reconnecting">("starting");
+  const [showChannelInfo, setShowChannelInfo] = useState(false);
+  const [infoTab, setInfoTab] = useState<"members" | "channels" | "pins">("members");
+  const [pinTarget, setPinTarget] = useState<ChatMessage | null>(null);
+  const [pinDurationHours, setPinDurationHours] = useState<24 | 168 | 720>(168);
+  const [pinClock, setPinClock] = useState(() => Date.now());
+  const [isPinning, setIsPinning] = useState(false);
+  const [unpinningIds, setUnpinningIds] = useState<Set<string>>(new Set());
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const seenIdsRef = useRef<Set<string>>(new Set(initialMessages.map((message) => message.id)));
   const messagesByChannelRef = useRef(messagesByChannel);
 
-  const messages = messagesByChannel[activeChannel.slug] ?? [];
-  const pinnedMessages = pinnedByChannel[activeChannel.slug] ?? [];
+  const messages = messagesByChannel[activeChannel.slug] ?? emptyMessages;
+  const pinnedMessages = (pinnedByChannel[activeChannel.slug] ?? emptyPinnedMessages)
+    .filter((pin) => !pin.expires_at || Date.parse(pin.expires_at) > pinClock);
   const presence = presenceByChannel[activeChannel.slug] ?? emptyPresence;
   const charactersLeft = 1000 - body.length;
   const canSend = body.trim().length > 0 && body.trim().length <= 1000 && !isSending && !isLoadingChannel;
-  const canModerateChat = ["moderator", "admin", "owner"].includes(currentUserRole);
+  const canManageAnyPin = ["support", "moderator", "admin", "owner"].includes(currentUserRole);
+  const fullLayout = layout === "full";
+  const typingUsers = presence.typing.filter((user) => user.user_id !== currentUserId);
+  const userDirectory = useMemo(() => {
+    const users = new Map<string, { user_id: string; label: string; username?: string | null; is_online?: boolean }>();
+    for (const user of presence.active) {
+      users.set(user.user_id, { user_id: user.user_id, label: user.label, username: user.username, is_online: user.is_online });
+    }
+    for (const message of messages) {
+      if (message.sender_user_id && !users.has(message.sender_user_id)) {
+        users.set(message.sender_user_id, {
+          user_id: message.sender_user_id,
+          label: message.sender_label,
+          username: message.sender_username,
+          is_online: false
+        });
+      }
+    }
+    return Array.from(users.values());
+  }, [messages, presence.active]);
+  const mentionFragment = body.match(/(?:^|\s)@([A-Za-z0-9_]{0,24})$/)?.[1]?.toLowerCase() ?? null;
+  const mentionSuggestions = mentionFragment === null ? [] : userDirectory
+    .filter((user) => user.username && user.user_id !== currentUserId && user.username.toLowerCase().startsWith(mentionFragment))
+    .slice(0, 5);
 
   const statusLabel = useMemo(() => {
     if (streamStatus === "live") return "Live";
@@ -143,9 +209,19 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
     return "Connecting";
   }, [streamStatus]);
 
+  function insertMention(username: string) {
+    setBody((current) => current.replace(/(^|\s)@([A-Za-z0-9_]{0,24})$/, `$1@${username} `));
+  }
+
   useEffect(() => {
     scrollRef.current?.scrollIntoView({ block: "end" });
   }, [activeChannel.slug, messages.length]);
+
+  useEffect(() => {
+    if (!pinnedMessages.length) return;
+    const timer = window.setInterval(() => setPinClock(Date.now()), 60_000);
+    return () => window.clearInterval(timer);
+  }, [pinnedMessages.length]);
 
   useEffect(() => {
     messagesByChannelRef.current = messagesByChannel;
@@ -453,17 +529,17 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
     }
   }
 
-  async function pinMessage(message: ChatMessage) {
-    const reason = window.prompt("Why are you pinning this message?");
-    if (reason === null) return;
+  async function pinMessage(message: ChatMessage, durationHours: 24 | 168 | 720) {
+    if (isPinning) return;
     setError(null);
+    setIsPinning(true);
     try {
       const response = await fetch(
         `/api/community/channels/${encodeURIComponent(activeChannel.slug)}/messages/${encodeURIComponent(message.id)}/pin`,
         {
           method: "POST",
           headers: { "content-type": "application/json", accept: "application/json" },
-          body: JSON.stringify({ reason: reason.trim() || undefined })
+          body: JSON.stringify({ duration_hours: durationHours })
         }
       );
       const payload = (await response.json()) as ApiEnvelope<{ pinned_messages: ChatPinnedMessage[] }>;
@@ -471,13 +547,18 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
         throw new Error(payload.ok === false ? payload.error?.message ?? "Message could not be pinned." : "Message could not be pinned.");
       }
       setPinnedByChannel((current) => ({ ...current, [activeChannel.slug]: payload.data.pinned_messages }));
+      setPinTarget(null);
     } catch (pinError) {
       setError(pinError instanceof Error ? pinError.message : "Message could not be pinned.");
+    } finally {
+      setIsPinning(false);
     }
   }
 
   async function unpinMessage(messageId: string) {
+    if (unpinningIds.has(messageId)) return;
     setError(null);
+    setUnpinningIds((current) => new Set(current).add(messageId));
     try {
       const response = await fetch(
         `/api/community/channels/${encodeURIComponent(activeChannel.slug)}/messages/${encodeURIComponent(messageId)}/unpin`,
@@ -494,6 +575,12 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
       setPinnedByChannel((current) => ({ ...current, [activeChannel.slug]: payload.data.pinned_messages }));
     } catch (pinError) {
       setError(pinError instanceof Error ? pinError.message : "Message could not be unpinned.");
+    } finally {
+      setUnpinningIds((current) => {
+        const next = new Set(current);
+        next.delete(messageId);
+        return next;
+      });
     }
   }
 
@@ -588,22 +675,139 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
   }
 
   return (
-    <section className="min-w-0 overflow-hidden rounded-lg border border-line bg-white shadow-tight">
-      <header className="flex min-w-0 flex-col gap-3 border-b border-line bg-surface p-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="min-w-0">
-          <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Community Channels</p>
-          <h2 className="mt-1 text-lg font-black leading-tight text-ink">{activeChannel.title}</h2>
-          <p className="mt-1 text-sm leading-6 text-muted">{activeChannel.description ?? "Signed-in Skillsroom players can talk here."}</p>
-        </div>
-        <div className="inline-flex min-h-9 w-fit items-center gap-2 rounded-md border border-line bg-white px-3 text-xs font-black text-muted">
+    <section className={[
+      "min-w-0 overflow-hidden bg-white shadow-tight",
+      fullLayout ? "h-screen border-0" : "rounded-lg border border-line"
+    ].join(" ")}>
+      <header className={[
+        "flex min-w-0 items-center gap-3 border-b p-3 sm:p-4",
+        fullLayout ? "border-white/10 bg-[#172331] text-white" : "border-line bg-white"
+      ].join(" ")}>
+        <button className={fullLayout ? "grid h-10 w-10 shrink-0 place-items-center rounded-full text-2xl text-white md:hidden" : "hidden"} onClick={() => history.back()} type="button">‹</button>
+        <button aria-label="Open channel details" className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-navy-900 text-sm font-black text-action shadow-tight" onClick={() => setShowChannelInfo(true)} type="button">
+          {channelInitials(activeChannel)}
+        </button>
+        <button className="min-w-0 flex-1 text-left" onClick={() => setShowChannelInfo(true)} type="button">
+          <h2 className={["truncate text-lg font-black leading-tight", fullLayout ? "text-white" : "text-ink"].join(" ")}>{activeChannel.title}</h2>
+          <p className={["mt-0.5 truncate text-sm leading-5", fullLayout ? "text-slate-300" : "text-muted"].join(" ")}>
+            {presence.online_count} online{channelList.length ? ` · ${channelList.length} channels` : ""}
+          </p>
+        </button>
+        <div className={["hidden min-h-9 w-fit items-center gap-2 rounded-full border px-3 text-xs font-black sm:inline-flex", fullLayout ? "border-white/10 bg-white/5 text-slate-300" : "border-line bg-white text-muted"].join(" ")}>
           <span className={streamStatus === "live" ? "text-success" : "text-warning"}>{statusLabel}</span>
-          <span>{presence.online_count} online</span>
         </div>
+        <button aria-label="Open channel details" className={["grid h-9 w-9 shrink-0 place-items-center rounded-full border text-sm font-black", fullLayout ? "border-white/10 bg-white/5 text-white hover:bg-white/10" : "border-line bg-white text-ink hover:bg-surfaceHigh"].join(" ")} onClick={() => setShowChannelInfo(true)} title="Channel details" type="button">i</button>
       </header>
 
-      <div className="grid min-h-[34rem] lg:grid-cols-[20rem_minmax(0,1fr)]">
-        <aside className="border-b border-line bg-white lg:border-b-0 lg:border-r">
-          <div className="max-h-72 overflow-y-auto p-3 lg:max-h-[62vh]">
+      {showChannelInfo ? (
+        <div aria-label={`${activeChannel.title} details`} aria-modal="true" className="fixed inset-0 z-50 grid max-w-[100vw] overflow-x-hidden bg-black/60 sm:place-items-center sm:p-4" role="dialog">
+          <section className="grid h-full min-h-0 w-full min-w-0 max-w-full grid-rows-[auto_auto_1fr] overflow-hidden bg-[#172331] text-white shadow-panel sm:h-[min(48rem,92vh)] sm:max-w-2xl sm:rounded-lg sm:border sm:border-white/10">
+            <header className="flex min-w-0 items-center gap-2 border-b border-white/10 p-3 sm:gap-3 sm:p-4">
+              <button aria-label="Close channel details" className="grid h-10 w-10 shrink-0 place-items-center rounded-full text-sm font-black text-white hover:bg-white/10" onClick={() => setShowChannelInfo(false)} type="button">X</button>
+              <span className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-navy-900 text-sm font-black text-action shadow-tight sm:h-14 sm:w-14 sm:text-base">{channelInitials(activeChannel)}</span>
+              <div className="min-w-0 flex-1">
+                <h2 className="truncate text-lg font-black text-white sm:text-xl">{activeChannel.title}</h2>
+                <p className="mt-1 truncate text-xs font-bold text-slate-300 sm:text-sm">{presence.online_count} online / {userDirectory.length} active or recent</p>
+              </div>
+            </header>
+
+            <div className="grid grid-cols-3 border-b border-white/10 px-3">
+              {(["members", "channels", "pins"] as const).map((tab) => (
+                <button className={["min-h-12 min-w-0 truncate border-b-2 px-1 text-xs font-black capitalize sm:px-2 sm:text-sm", infoTab === tab ? "border-sky-400 text-sky-300" : "border-transparent text-slate-400 hover:text-white"].join(" ")} key={tab} onClick={() => setInfoTab(tab)} type="button">
+                  {tab}{tab === "channels" ? ` ${channelList.length}` : tab === "pins" && pinnedMessages.length ? ` ${pinnedMessages.length}` : ""}
+                </button>
+              ))}
+            </div>
+
+            <div className="min-h-0 overflow-y-auto p-4">
+              {infoTab === "members" ? (
+                <div className="grid gap-2">
+                  <p className="mb-1 text-xs font-black uppercase tracking-[0.14em] text-slate-400">Active and recent members</p>
+                  {userDirectory.length ? userDirectory.map((user) => (
+                    <div className="flex min-w-0 items-center gap-3 rounded-md bg-white/5 p-3" key={user.user_id}>
+                      <span className="relative grid h-11 w-11 shrink-0 place-items-center rounded-full bg-navy-900 text-sm font-black text-white">
+                        {initials(user.label)}
+                        {user.is_online ? <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-[#172331] bg-success" /> : null}
+                      </span>
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-black text-white">{user.label}</p>
+                        <p className="truncate text-xs font-bold text-slate-400">{user.username ? `@${user.username} / ` : ""}{user.is_online ? "online" : "recent"}</p>
+                      </div>
+                    </div>
+                  )) : <p className="rounded-md border border-dashed border-white/10 p-5 text-center text-sm font-bold text-slate-400">Members appear here as they become active in this channel.</p>}
+                </div>
+              ) : null}
+
+              {infoTab === "channels" ? (
+                <div className="grid gap-2">
+                  <p className="mb-1 text-xs font-black uppercase tracking-[0.14em] text-slate-400">Your accessible channels</p>
+                  {channelList.map((item) => (
+                    <button className={["flex min-w-0 items-center gap-3 rounded-md border p-3 text-left", item.id === activeChannel.id ? "border-sky-400 bg-sky-400/10" : "border-white/10 bg-white/5 hover:bg-white/10"].join(" ")} key={item.id} onClick={() => { setShowChannelInfo(false); void openChannel(item); }} type="button">
+                      <span className="grid h-11 w-11 shrink-0 place-items-center rounded-md bg-white/10 px-1 text-xs font-black text-sky-300">{channelInitials(item)}</span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm font-black text-white">{item.title}</span>
+                        <span className="mt-1 block truncate text-xs font-bold text-slate-400">{channelTypeLabel(item)} / {item.online_count ?? 0} online / {channelPreview(item)}</span>
+                      </span>
+                      {(item.unread_count ?? 0) > 0 ? <span className="rounded-full bg-sky-500 px-2 py-1 text-xs font-black text-white">{item.unread_count}</span> : null}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+
+              {infoTab === "pins" ? (
+                <div className="grid gap-2">
+                  <p className="mb-1 text-xs font-black uppercase tracking-[0.14em] text-slate-400">Pinned messages</p>
+                  {pinnedMessages.length ? pinnedMessages.map((pin) => (
+                    <article className="rounded-md border border-white/10 bg-white/5 p-3" key={pin.id}>
+                      <p className="text-sm font-black text-sky-300">{pin.sender_label}</p>
+                      <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-white">{pin.body}</p>
+                      {pin.reason ? <p className="mt-2 text-xs font-bold text-slate-400">{pin.reason}</p> : null}
+                    </article>
+                  )) : <p className="rounded-md border border-dashed border-white/10 p-5 text-center text-sm font-bold text-slate-400">No messages are pinned in this channel yet.</p>}
+                </div>
+              ) : null}
+            </div>
+          </section>
+        </div>
+      ) : null}
+
+      {pinTarget ? (
+        <div aria-label="Choose pin duration" aria-modal="true" className="fixed inset-0 z-[60] grid place-items-center bg-black/60 p-4" role="dialog">
+          <section className="w-full max-w-sm rounded-lg border border-white/10 bg-[#172331] p-5 text-white shadow-panel">
+            <h2 className="text-xl font-black">Choose how long this pin lasts</h2>
+            <p className="mt-2 text-sm leading-6 text-slate-300">You or an authorized team member can unpin it sooner.</p>
+            <div className="mt-5 grid gap-2">
+              {([
+                [24, "24 hours"],
+                [168, "7 days"],
+                [720, "30 days"]
+              ] as const).map(([hours, label]) => (
+                <label className={["flex min-h-12 cursor-pointer items-center gap-3 rounded-md border px-3", pinDurationHours === hours ? "border-sky-400 bg-sky-400/10" : "border-white/10 bg-white/5"].join(" ")} key={hours}>
+                  <input checked={pinDurationHours === hours} className="h-5 w-5 accent-sky-400" disabled={isPinning} name="pin-duration" onChange={() => setPinDurationHours(hours)} type="radio" />
+                  <span className="font-black">{label}</span>
+                </label>
+              ))}
+            </div>
+            <div className="mt-6 grid grid-cols-2 gap-2">
+              <button className="min-h-11 rounded-md border border-white/10 bg-white/5 px-4 font-black text-white hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50" disabled={isPinning} onClick={() => setPinTarget(null)} type="button">Cancel</button>
+              <button className="min-h-11 rounded-md bg-sky-500 px-4 font-black text-white hover:bg-sky-400 disabled:cursor-wait disabled:bg-sky-700" disabled={isPinning} onClick={() => void pinMessage(pinTarget, pinDurationHours)} type="button">{isPinning ? "Pinning..." : "Pin"}</button>
+            </div>
+          </section>
+        </div>
+      ) : null}
+
+      <div className={[
+        "grid min-h-[34rem]",
+        fullLayout ? "h-[calc(100%-4.75rem)] md:grid-cols-[17rem_minmax(0,1fr)] xl:grid-cols-[17rem_minmax(0,1fr)_16rem]" : "lg:grid-cols-[20rem_minmax(0,1fr)]"
+      ].join(" ")}>
+        <aside className={[
+          "border-line bg-white",
+          fullLayout ? "hidden border-r md:block" : "border-b lg:border-b-0 lg:border-r"
+        ].join(" ")}>
+          <div className={[
+            "overflow-y-auto p-3",
+            fullLayout ? "max-h-64 lg:h-full lg:max-h-none" : "max-h-72 lg:max-h-[62vh]"
+          ].join(" ")}>
             <form className="mb-3 grid gap-2 rounded-md border border-line bg-surface p-3" onSubmit={createDmRequest}>
               <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">DM Request</p>
               <input
@@ -663,26 +867,29 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
           </div>
         </aside>
 
-        <div className="grid min-h-[28rem] grid-rows-[1fr_auto]">
-          <div className="max-h-[58vh] min-h-[22rem] overflow-y-auto bg-bg p-3 sm:p-4">
-            <div className="mb-3 flex min-w-0 flex-wrap items-center gap-2 rounded-md border border-line bg-white px-3 py-2 text-xs font-bold text-muted">
+        <div className="grid min-h-[28rem] grid-rows-[1fr_auto] bg-[#132333] bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.06)_0,rgba(255,255,255,0)_22rem)]">
+          <div className={[
+            "min-h-[22rem] overflow-y-auto p-3 sm:p-4",
+            fullLayout ? "max-h-none" : "max-h-[58vh]"
+          ].join(" ")}>
+            <div className="mb-2 flex min-w-0 flex-wrap items-center gap-2 rounded-md border border-white/10 bg-[#203244]/90 px-3 py-2 text-xs font-bold text-slate-300">
               <span>{presence.online_count} online</span>
               {presence.active.slice(0, 5).map((user) => (
                 <span className="rounded-sm bg-surfaceHigh px-2 py-1" key={user.user_id}>{user.label}</span>
               ))}
             </div>
             {pinnedMessages.length ? (
-              <div className="mb-3 grid gap-2 rounded-md border border-cyan/30 bg-cyanSoft p-3">
-                <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Pinned</p>
+              <div className="sticky top-0 z-10 mb-3 grid gap-1 rounded-xl border border-white/10 bg-[#223447]/95 p-3 shadow-tight">
+                <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-sky-300">Pinned Message</p>
                 {pinnedMessages.map((pin) => (
-                  <div className="grid gap-1 rounded-md bg-white p-2" key={pin.id}>
+                  <div className="grid gap-1 rounded-md bg-white/5 p-2" key={pin.id}>
                     <div className="flex min-w-0 items-start justify-between gap-2">
-                      <p className="min-w-0 truncate text-xs font-black text-ink">{pin.sender_label}: {pin.body}</p>
-                      {canModerateChat ? (
-                        <button className="shrink-0 rounded-sm px-2 py-1 text-[0.68rem] font-black uppercase tracking-[0.12em] text-muted hover:bg-surfaceHigh" onClick={() => unpinMessage(pin.message_id)} type="button">Unpin</button>
+                      <p className="min-w-0 truncate text-xs font-black text-white">{pin.sender_label}: {pin.body}</p>
+                      {canManageAnyPin || pin.pinned_by_user_id === currentUserId || pin.sender_user_id === currentUserId ? (
+                        <button className="min-w-20 shrink-0 rounded-sm px-2 py-1 text-[0.68rem] font-black uppercase tracking-[0.12em] text-slate-300 hover:bg-white/10 disabled:cursor-wait disabled:opacity-60" disabled={unpinningIds.has(pin.message_id)} onClick={() => void unpinMessage(pin.message_id)} type="button">{unpinningIds.has(pin.message_id) ? "Unpinning..." : "Unpin"}</button>
                       ) : null}
                     </div>
-                    {pin.reason ? <p className="text-xs text-muted">{pin.reason}</p> : null}
+                    <p className="text-xs text-slate-400">{pinExpiryLabel(pin.expires_at)}</p>
                   </div>
                 ))}
               </div>
@@ -692,57 +899,72 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
                 <p className="text-sm font-black text-muted">Loading channel...</p>
               </div>
             ) : messages.length ? (
-              <div className="grid gap-3">
-                {messages.map((message) => {
+              <div className="grid gap-2">
+                {messages.map((message, index) => {
                   const mine = message.sender_user_id === currentUserId;
                   const system = message.message_kind === "system";
+                  const isPinned = pinnedMessages.some((pin) => pin.message_id === message.id);
+                  const previous = messages[index - 1];
+                  const showDate = !previous || messageDate(previous.created_at) !== messageDate(message.created_at);
                   return (
+                    <div key={message.id}>
+                      {showDate ? (
+                        <div className="my-3 flex justify-center">
+                          <span className="rounded-full bg-[#223447]/90 px-3 py-1 text-xs font-black text-slate-300 shadow-tight">{messageDate(message.created_at)}</span>
+                        </div>
+                      ) : null}
                     <article
                       className={[
-                        "max-w-[min(92%,42rem)] rounded-md border p-3 shadow-tight",
-                        system ? "mx-auto border-action/30 bg-amber-50" : mine ? "ml-auto border-cyan/25 bg-cyanSoft" : "mr-auto border-line bg-white"
+                        "group grid max-w-[min(92%,38rem)] gap-1.5 rounded-2xl border px-3 py-2 shadow-tight",
+                        system ? "mx-auto border-action/30 bg-amber-50" : mine ? "ml-auto rounded-br-md border-emerald-300/20 bg-[#d7f9df]" : "mr-auto rounded-bl-md border-white/10 bg-[#26394b] text-white"
                       ].join(" ")}
-                      key={message.id}
                     >
                       <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
-                        <strong className="break-words text-sm font-black text-ink [overflow-wrap:anywhere]">{system ? "Skillsroom" : mine ? "You" : message.sender_label}</strong>
-                        <span className="font-mono text-[0.68rem] font-bold uppercase tracking-[0.12em] text-muted">{messageTime(message.created_at)}</span>
-                        {message.pinned_at ? <span className="rounded-sm bg-action/20 px-2 py-1 text-[0.68rem] font-black uppercase tracking-[0.12em] text-ink">Pinned</span> : null}
-                        <button
-                          className="rounded-sm px-2 py-1 text-[0.68rem] font-black uppercase tracking-[0.12em] text-muted hover:bg-white hover:text-cyan"
-                          onClick={() => setReplyTo(message)}
-                          type="button"
-                        >
-                          Reply
-                        </button>
-                        {canModerateChat ? (
+                        {!mine && !system ? <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-navy-900 text-xs font-black text-white">{initials(message.sender_label)}</span> : null}
+                        <strong className={["break-words text-sm font-black [overflow-wrap:anywhere]", mine || system ? "text-ink" : "text-sky-300"].join(" ")}>{system ? "Skillsroom" : mine ? "You" : message.sender_label}</strong>
+                        {!mine && !system ? <span className="text-xs font-bold text-slate-300">{displayHandle(message)}</span> : null}
+                        <span className={["font-mono text-[0.68rem] font-bold uppercase tracking-[0.12em]", mine || system ? "text-muted" : "text-slate-400"].join(" ")}>{messageTime(message.created_at)}</span>
+                        {isPinned ? <span className="rounded-sm bg-action/20 px-2 py-1 text-[0.68rem] font-black uppercase tracking-[0.12em] text-ink">Pinned</span> : null}
+                        <span className="flex flex-wrap gap-1 opacity-100 sm:opacity-0 sm:transition sm:group-hover:opacity-100">
                           <button
-                            className="rounded-sm px-2 py-1 text-[0.68rem] font-black uppercase tracking-[0.12em] text-muted hover:bg-white hover:text-cyan"
-                            onClick={() => pinMessage(message)}
+                            className={["rounded-full px-2 py-1 text-[0.68rem] font-black uppercase tracking-[0.12em]", mine ? "text-muted hover:bg-white" : "text-slate-300 hover:bg-white/10"].join(" ")}
+                            onClick={() => setReplyTo(message)}
+                            type="button"
+                          >
+                            ↩
+                          </button>
+                        {(mine || canManageAnyPin) && !isPinned ? (
+                          <button
+                            className={["rounded-full px-2 py-1 text-[0.68rem] font-black uppercase tracking-[0.12em]", mine ? "text-muted hover:bg-white" : "text-slate-300 hover:bg-white/10"].join(" ")}
+                            onClick={() => {
+                              setPinDurationHours(168);
+                              setPinTarget(message);
+                            }}
                             type="button"
                           >
                             Pin
                           </button>
                         ) : null}
+                        </span>
                         {!mine ? (
                           <>
                             <button
-                              className="rounded-sm px-2 py-1 text-[0.68rem] font-black uppercase tracking-[0.12em] text-muted hover:bg-white hover:text-danger"
+                              className="rounded-full px-2 py-1 text-[0.68rem] font-black uppercase tracking-[0.12em] text-slate-300 hover:bg-white/10"
                               disabled={reportingIds.has(message.id)}
                               onClick={() => reportMessage(message)}
                               type="button"
                             >
-                              {reportingIds.has(message.id) ? "Reporting" : "Report"}
+                              {reportingIds.has(message.id) ? "..." : "Report"}
                             </button>
                             <button
-                              className="rounded-sm px-2 py-1 text-[0.68rem] font-black uppercase tracking-[0.12em] text-muted hover:bg-white hover:text-danger"
+                              className="hidden rounded-full px-2 py-1 text-[0.68rem] font-black uppercase tracking-[0.12em] text-slate-300 hover:bg-white/10 sm:inline"
                               onClick={() => reportUser(message)}
                               type="button"
                             >
                               Report user
                             </button>
                             <button
-                              className="rounded-sm px-2 py-1 text-[0.68rem] font-black uppercase tracking-[0.12em] text-muted hover:bg-white hover:text-danger"
+                              className="hidden rounded-full px-2 py-1 text-[0.68rem] font-black uppercase tracking-[0.12em] text-slate-300 hover:bg-white/10 sm:inline"
                               onClick={() => blockUser(message)}
                               type="button"
                             >
@@ -753,32 +975,32 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
                       </div>
                       {message.reply_to_message_id ? (
                         <button
-                          className="mt-2 grid w-full gap-1 rounded-md border-l-4 border-cyan bg-white/70 px-3 py-2 text-left"
+                          className={["mt-1 grid w-full gap-1 rounded-md border-l-4 px-3 py-2 text-left", mine ? "border-emerald-500 bg-white/70" : "border-sky-400 bg-white/10"].join(" ")}
                           onClick={() => {
                             const target = messages.find((item) => item.id === message.reply_to_message_id);
                             if (target) setReplyTo(target);
                           }}
                           type="button"
                         >
-                          <span className="text-xs font-black text-cyan">{message.reply_to_sender_label ?? "Earlier message"}</span>
-                          <span className="max-h-10 overflow-hidden text-xs text-muted">{message.reply_to_body ?? "Message unavailable"}</span>
+                          <span className={["text-xs font-black", mine ? "text-cyan" : "text-sky-300"].join(" ")}>{message.reply_to_sender_label ?? "Earlier message"}</span>
+                          <span className={["max-h-10 overflow-hidden text-xs", mine ? "text-muted" : "text-slate-300"].join(" ")}>{message.reply_to_body ?? "Message unavailable"}</span>
                         </button>
                       ) : null}
-                      <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-ink [overflow-wrap:anywhere]">{renderMessageBody(message.body)}</p>
+                      <p className={["mt-1 whitespace-pre-wrap break-words text-[0.98rem] leading-6 [overflow-wrap:anywhere]", mine || system ? "text-ink" : "text-white"].join(" ")}>{renderMessageBody(message.body)}</p>
                       {message.link_preview?.url && message.link_preview.host ? (
-                        <a className="mt-3 block rounded-md border border-line bg-white p-3 text-sm hover:bg-surfaceHigh" href={message.link_preview.url} rel="noreferrer" target="_blank">
-                          <span className="block font-black text-ink">{message.link_preview.title ?? message.link_preview.host}</span>
-                          <span className="mt-1 block break-all text-xs font-bold text-muted">{message.link_preview.host}</span>
+                        <a className={["mt-2 block rounded-md border p-3 text-sm", mine ? "border-line bg-white hover:bg-surfaceHigh" : "border-white/10 bg-white/10 hover:bg-white/15"].join(" ")} href={message.link_preview.url} rel="noreferrer" target="_blank">
+                          <span className={["block font-black", mine ? "text-ink" : "text-white"].join(" ")}>{message.link_preview.title ?? message.link_preview.host}</span>
+                          <span className={["mt-1 block break-all text-xs font-bold", mine ? "text-muted" : "text-slate-300"].join(" ")}>{message.link_preview.host}</span>
                         </a>
                       ) : null}
-                      <div className="mt-3 flex flex-wrap gap-1.5">
+                      <div className="mt-1.5 flex flex-wrap gap-1.5">
                         {reactionOptions.map((reaction) => {
                           const summary = message.reactions?.find((item) => item.reaction === reaction.key);
                           return (
                             <button
                               className={[
-                                "rounded-md border px-2 py-1 text-xs font-black",
-                                summary?.reacted_by_me ? "border-cyan bg-cyanSoft text-ink" : "border-line bg-white text-muted hover:bg-surfaceHigh"
+                                "rounded-full border px-2.5 py-1 text-xs font-black",
+                                summary?.reacted_by_me ? "border-sky-300 bg-sky-100 text-ink" : mine ? "border-white bg-white/80 text-muted hover:bg-white" : "border-white/10 bg-white/10 text-slate-200 hover:bg-white/20"
                               ].join(" ")}
                               key={reaction.key}
                               onClick={() => reactToMessage(message, reaction.key)}
@@ -790,6 +1012,7 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
                         })}
                       </div>
                     </article>
+                    </div>
                   );
                 })}
                 <div ref={scrollRef} />
@@ -804,47 +1027,91 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
             )}
           </div>
 
-          <form className="border-t border-line bg-white p-3 sm:p-4" onSubmit={sendMessage}>
-            {error ? <p className="mb-3 rounded-md border border-danger bg-red-50 p-3 text-sm font-bold text-danger">{error}</p> : null}
-            {presence.typing.filter((user) => user.user_id !== currentUserId).length ? (
-              <p className="mb-2 text-xs font-bold text-muted">
-                {presence.typing.filter((user) => user.user_id !== currentUserId).map((user) => user.label).slice(0, 3).join(", ")} typing...
+          <form className="border-t border-white/10 bg-[#172331] p-2 sm:p-3" onSubmit={sendMessage}>
+            {error ? <p className="mb-2 rounded-md border border-danger bg-red-50 p-3 text-sm font-bold text-danger">{error}</p> : null}
+            {typingUsers.length ? (
+              <p className="mb-2 px-2 text-xs font-bold text-sky-300">
+                {typingUsers.map((user) => user.label).slice(0, 3).join(", ")} typing...
               </p>
             ) : null}
             {replyTo ? (
-              <div className="mb-3 flex min-w-0 items-start justify-between gap-3 rounded-md border border-cyan/30 bg-cyanSoft p-3">
+              <div className="mb-2 flex min-w-0 items-start justify-between gap-3 rounded-xl border border-white/10 bg-[#223447] p-3">
                 <div className="min-w-0">
-                  <p className="text-xs font-black text-cyan">Replying to {replyTo.sender_user_id === currentUserId ? "you" : replyTo.sender_label}</p>
-                  <p className="mt-1 truncate text-sm text-ink">{replyTo.body}</p>
+                  <p className="text-xs font-black text-sky-300">Replying to {replyTo.sender_user_id === currentUserId ? "you" : replyTo.sender_label}</p>
+                  <p className="mt-1 truncate text-sm text-slate-200">{replyTo.body}</p>
                 </div>
-                <button className="shrink-0 rounded-md border border-line bg-white px-2 py-1 text-xs font-black text-muted hover:bg-surfaceHigh" onClick={() => setReplyTo(null)} type="button">Cancel</button>
+                <button className="shrink-0 rounded-full bg-white/10 px-3 py-1 text-xs font-black text-slate-200 hover:bg-white/20" onClick={() => setReplyTo(null)} type="button">Cancel</button>
               </div>
             ) : null}
-            <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
+            {mentionSuggestions.length ? (
+              <div className="mb-2 flex max-w-full gap-2 overflow-x-auto rounded-xl border border-white/10 bg-[#223447] p-2">
+                {mentionSuggestions.map((user) => (
+                  <button
+                    className="inline-flex min-h-9 shrink-0 items-center gap-2 rounded-full bg-white/10 px-3 text-xs font-black text-white hover:bg-white/20"
+                    key={user.user_id}
+                    onClick={() => user.username ? insertMention(user.username) : undefined}
+                    type="button"
+                  >
+                    <span className="grid h-6 w-6 place-items-center rounded-full bg-navy-900 text-[0.62rem] text-white">{initials(user.label)}</span>
+                    @{user.username}
+                  </button>
+                ))}
+              </div>
+            ) : null}
+            <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2 items-end">
               <label className="grid gap-1">
                 <span className="sr-only">Message</span>
                 <textarea
-                  className="min-h-24 resize-y rounded-md border border-line bg-white px-3 py-2 text-sm leading-6 text-ink outline-none focus:border-action"
+                  className="max-h-32 min-h-12 resize-none rounded-2xl border border-white/10 bg-[#223447] px-4 py-3 text-base leading-6 text-white outline-none placeholder:text-slate-400 focus:border-sky-400"
                   maxLength={1000}
                   onChange={(event) => setBody(event.target.value)}
-                  placeholder={`Message #${activeChannel.title}`}
+                  placeholder={`Message ${activeChannel.title}`}
                   value={body}
                 />
               </label>
               <button
-                className="inline-flex min-h-control items-center justify-center rounded-md bg-action px-5 text-sm font-black text-navy-950 shadow-action hover:bg-actionHover disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-muted disabled:shadow-none"
+                className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-sky-500 text-xl font-black text-white shadow-action hover:bg-sky-400 disabled:cursor-not-allowed disabled:bg-slate-600 disabled:text-slate-400 disabled:shadow-none"
                 disabled={!canSend}
                 type="submit"
               >
-                {isSending ? "Sending..." : "Send"}
+                {isSending ? "…" : "➤"}
               </button>
             </div>
-            <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs font-bold text-muted">
-              <span>{channelTypeLabel(activeChannel)} - {activeChannel.visibility} - last read {activeChannel.membership_last_read_at ? new Date(activeChannel.membership_last_read_at).toLocaleTimeString("en-NG", { hour: "2-digit", minute: "2-digit" }) : "now"}</span>
-              <span className={charactersLeft < 80 ? "text-warning" : ""}>{charactersLeft} left</span>
+            <div className="mt-1 flex flex-wrap items-center justify-between gap-2 px-2 text-xs font-bold text-slate-400">
+              <span>{channelTypeLabel(activeChannel)} · {activeChannel.visibility}</span>
+              <span className={charactersLeft < 80 ? "text-warning" : ""}>{charactersLeft}</span>
             </div>
           </form>
         </div>
+        {fullLayout ? (
+          <aside className="hidden border-l border-line bg-white lg:block">
+            <div className="grid gap-4 p-4">
+              <section>
+                <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Active now</p>
+                <div className="mt-3 grid gap-2">
+                  {userDirectory.length ? userDirectory.slice(0, 18).map((user) => (
+                    <div className="flex min-w-0 items-center gap-2 rounded-md bg-surfaceHigh px-2 py-2" key={user.user_id}>
+                      <span className="relative grid h-9 w-9 shrink-0 place-items-center rounded-full bg-navy-900 text-xs font-black text-white">
+                        {initials(user.label)}
+                        {user.is_online ? <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-white bg-success" /> : null}
+                      </span>
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-black text-ink">{user.label}</p>
+                        <p className="truncate text-xs font-bold text-muted">{user.username ? `@${user.username}` : user.is_online ? "online" : "recent"}</p>
+                      </div>
+                    </div>
+                  )) : (
+                    <p className="rounded-md border border-dashed border-line p-3 text-sm font-bold text-muted">Active players will appear here.</p>
+                  )}
+                </div>
+              </section>
+              <section className="rounded-md border border-line bg-surface p-3">
+                <p className="text-xs font-black uppercase tracking-[0.14em] text-muted">Mentions</p>
+                <p className="mt-2 text-sm leading-6 text-muted">Type @ and choose an active username when available.</p>
+              </section>
+            </div>
+          </aside>
+        ) : null}
       </div>
     </section>
   );

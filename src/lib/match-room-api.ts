@@ -563,6 +563,7 @@ export type ChatPinnedMessage = {
   pinned_by_user_id: string | null;
   reason: string | null;
   pinned_at: string;
+  expires_at: string | null;
   unpinned_at: string | null;
   unpinned_by_user_id: string | null;
   body?: string;

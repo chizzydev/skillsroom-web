@@ -3,12 +3,12 @@ import { AccountMenu } from "./AccountMenu";
 import { canAccessAdmin, getCurrentUser } from "@/lib/auth-bridge";
 
 type AppShellProps = {
-  active: "lobby" | "matches" | "tournaments" | "community" | "notifications" | "profile";
+  active: "home" | "lobby" | "matches" | "tournaments" | "community" | "notifications" | "profile";
   children: React.ReactNode;
 };
 
 const nav = [
-  { key: "lobby", label: "Lobby", short: "Lobby", href: "/" },
+  { key: "lobby", label: "Chat", short: "Chat", href: "/chat" },
   { key: "matches", label: "Rooms", short: "Rooms", href: "/matches" },
   { key: "tournaments", label: "Tournaments", short: "Tourneys", href: "/tournaments" },
   { key: "notifications", label: "Notifications", short: "Inbox", href: "/notifications" },
