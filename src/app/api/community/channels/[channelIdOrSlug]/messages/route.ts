@@ -1,5 +1,6 @@
 import { getAccessToken } from "@/lib/auth-bridge";
 import { apiBaseUrl } from "@/lib/api";
+import { buildApiProxyHeaders } from "@/lib/api-proxy";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -21,10 +22,13 @@ async function proxy(request: Request, context: RouteContext, method: "GET" | "P
 
   const response = await fetch(upstreamUrl, {
     method,
-    headers: {
+    headers: method === "POST" ? buildApiProxyHeaders(request, {
       accept: "application/json",
       authorization: `Bearer ${token}`,
-      ...(method === "POST" ? { "content-type": "application/json" } : {})
+      "content-type": "application/json"
+    }) : {
+      accept: "application/json",
+      authorization: `Bearer ${token}`
     },
     body: method === "POST" ? await request.text() : undefined,
     cache: "no-store"

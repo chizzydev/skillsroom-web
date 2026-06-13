@@ -1,7 +1,5 @@
-import type { NextRequest } from "next/server";
-
 export function buildApiProxyHeaders(
-  request: NextRequest,
+  request: Request,
   headers: Record<string, string | undefined>
 ) {
   const forwardedHeaders = new Headers();
@@ -12,7 +10,7 @@ export function buildApiProxyHeaders(
     }
   }
 
-  const origin = request.headers.get("origin");
+  const origin = request.headers.get("origin") ?? new URL(request.url).origin;
   const referer = request.headers.get("referer");
 
   if (origin) forwardedHeaders.set("origin", origin);

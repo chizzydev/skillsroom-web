@@ -1,5 +1,6 @@
 import { getAccessToken } from "@/lib/auth-bridge";
 import { apiBaseUrl } from "@/lib/api";
+import { buildApiProxyHeaders } from "@/lib/api-proxy";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -8,7 +9,7 @@ type RouteContext = {
   params: Promise<{ channelIdOrSlug: string }>;
 };
 
-export async function POST(_request: Request, context: RouteContext) {
+export async function POST(request: Request, context: RouteContext) {
   const token = await getAccessToken();
   if (!token) {
     return Response.json({ ok: false, error: { code: "AUTH_REQUIRED", message: "Please sign in to update channel presence." } }, { status: 401 });
@@ -17,11 +18,11 @@ export async function POST(_request: Request, context: RouteContext) {
   const { channelIdOrSlug } = await context.params;
   const response = await fetch(new URL(`/community/channels/${encodeURIComponent(channelIdOrSlug)}/heartbeat`, apiBaseUrl()), {
     method: "POST",
-    headers: {
+    headers: buildApiProxyHeaders(request, {
       accept: "application/json",
       authorization: `Bearer ${token}`,
       "content-type": "application/json"
-    },
+    }),
     body: "{}",
     cache: "no-store"
   });
