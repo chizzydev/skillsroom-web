@@ -172,7 +172,7 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
   const [pinClock, setPinClock] = useState(() => Date.now());
   const [isPinning, setIsPinning] = useState(false);
   const [unpinningIds, setUnpinningIds] = useState<Set<string>>(new Set());
-  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const messageViewportRef = useRef<HTMLDivElement | null>(null);
   const composerRef = useRef<HTMLTextAreaElement | null>(null);
   const seenIdsRef = useRef<Set<string>>(new Set(initialMessages.map((message) => message.id)));
   const messagesByChannelRef = useRef(messagesByChannel);
@@ -219,7 +219,12 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
   }
 
   useEffect(() => {
-    scrollRef.current?.scrollIntoView({ block: "end" });
+    const viewport = messageViewportRef.current;
+    if (!viewport) return;
+    const frame = window.requestAnimationFrame(() => {
+      viewport.scrollTop = viewport.scrollHeight;
+    });
+    return () => window.cancelAnimationFrame(frame);
   }, [activeChannel.slug, messages.length]);
 
   useEffect(() => {
@@ -287,7 +292,11 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
       setShowChannelInfo(true);
       return;
     }
-    window.history.back();
+    window.location.assign("/");
+  }
+
+  function exitChat() {
+    window.location.assign("/");
   }
 
   useEffect(() => {
@@ -699,7 +708,7 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
   return (
     <section className={[
       "min-w-0 overflow-hidden bg-white shadow-tight",
-      fullLayout ? "grid h-screen h-[100dvh] grid-rows-[auto_minmax(0,1fr)] border-0" : "rounded-lg border border-line"
+      fullLayout ? "grid h-screen h-[100svh] grid-rows-[auto_minmax(0,1fr)] border-0 sm:h-[100dvh]" : "rounded-lg border border-line"
     ].join(" ")}>
       <header className={[
         "flex min-w-0 items-center gap-3 border-b p-3 sm:p-4",
@@ -725,7 +734,7 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
         <div aria-label={`${channelTitle(activeChannel)} details`} aria-modal="true" className="fixed inset-0 z-50 grid max-w-[100vw] overflow-x-hidden bg-black/60 pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] sm:place-items-center sm:p-4" role="dialog">
           <section className="grid h-full min-h-0 w-full min-w-0 max-w-full grid-rows-[auto_auto_1fr] overflow-hidden bg-[#172331] text-white shadow-panel sm:h-[min(48rem,92vh)] sm:max-w-2xl sm:rounded-lg sm:border sm:border-white/10">
             <header className="flex min-w-0 items-center gap-2 border-b border-white/10 px-3 py-2.5 sm:gap-3 sm:p-4">
-              <button aria-label="Close channel details" className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-sm font-black text-white hover:bg-white/10" onClick={() => setShowChannelInfo(false)} type="button">X</button>
+              <button aria-label="Exit chat" className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-sm font-black text-white hover:bg-white/10" onClick={exitChat} title="Back to home" type="button">X</button>
               <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-navy-900 text-sm font-black text-action shadow-tight sm:h-14 sm:w-14 sm:text-base">{channelInitials(activeChannel)}</span>
               <div className="min-w-0 flex-1">
                 <h2 className="truncate text-base font-black text-white sm:text-xl">{channelTitle(activeChannel)}</h2>
@@ -898,7 +907,7 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
           <div className={[
             "min-h-0 overflow-y-auto p-3 sm:p-4",
             fullLayout ? "max-h-none" : "max-h-[58vh]"
-          ].join(" ")}>
+          ].join(" ")} ref={messageViewportRef}>
             <div className="mb-2 flex min-w-0 flex-wrap items-center gap-2 rounded-md border border-white/10 bg-[#203244]/90 px-3 py-2 text-xs font-bold text-slate-300">
               <span>{presence.online_count} online</span>
               {presence.active.slice(0, 5).map((user) => (
@@ -1042,7 +1051,6 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
                     </div>
                   );
                 })}
-                <div ref={scrollRef} />
               </div>
             ) : (
               <div className="grid h-full min-h-[18rem] place-items-center rounded-md border border-dashed border-line bg-white p-6 text-center">
