@@ -527,6 +527,24 @@ export type ChatChannel = {
   last_message_sender_user_id?: string | null;
 };
 
+export type ChatAttachment = {
+  id: string;
+  channel_id: string;
+  message_id: string | null;
+  uploader_user_id: string;
+  attachment_type: "image";
+  status: "pending" | "ready" | "attached" | "hidden" | "deleted" | "failed";
+  mime_type: "image/jpeg" | "image/png" | "image/webp";
+  byte_size: number;
+  width: number | null;
+  height: number | null;
+  original_name: string | null;
+  alt_text: string | null;
+  created_at: string;
+  uploader_label: string;
+  client_preview_url?: string;
+};
+
 export type ChatMessage = {
   id: string;
   channel_id: string;
@@ -542,6 +560,7 @@ export type ChatMessage = {
   mentions?: Array<{ user_id: string; text: string; label?: string }>;
   link_preview?: { url?: string; host?: string; title?: string; safety?: string };
   reactions?: Array<{ reaction: string; count: number; reacted_by_me?: boolean }>;
+  attachments?: ChatAttachment[];
   pinned_at?: string | null;
   pinned_by_user_id?: string | null;
   metadata?: Record<string, unknown>;
@@ -2682,7 +2701,7 @@ export function getDmAbuseQueue() {
   }>("/community/dm-abuse");
 }
 
-export function sendChatMessage(channelIdOrSlug: string, input: { body: string; client_message_id?: string; reply_to_message_id?: string }) {
+export function sendChatMessage(channelIdOrSlug: string, input: { body: string; client_message_id?: string; reply_to_message_id?: string; attachment_ids?: string[] }) {
   return apiRequest<{ channel: ChatChannel; message: ChatMessage }>(
     `/community/channels/${encodeURIComponent(channelIdOrSlug)}/messages`,
     {

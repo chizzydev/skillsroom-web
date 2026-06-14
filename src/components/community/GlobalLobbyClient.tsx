@@ -1,7 +1,8 @@
 "use client";
+/* eslint-disable @next/next/no-img-element -- private signed URLs and local blob previews bypass the public image optimizer */
 
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
-import type { ChatChannel, ChatDmRequest, ChatMessage, ChatMessagePageInfo, ChatPinnedMessage, ChatPresenceSummary, ChatSearchPageInfo } from "@/lib/match-room-api";
+import type { ChatAttachment, ChatChannel, ChatDmRequest, ChatMessage, ChatMessagePageInfo, ChatPinnedMessage, ChatPresenceSummary, ChatSearchPageInfo } from "@/lib/match-room-api";
 
 type GlobalLobbyClientProps = {
   channels: ChatChannel[];
@@ -26,6 +27,43 @@ type RealtimeEvent = {
   event_type: string;
   payload: Record<string, unknown>;
 };
+
+type PendingImage = {
+  localId: string;
+  file: File;
+  previewUrl: string;
+  attachment?: ChatAttachment;
+  state: "uploading" | "ready" | "failed";
+  progress: number;
+  error?: string;
+};
+
+type MediaPage = { attachments: ChatAttachment[]; page_info: { has_more: boolean; next_before: string | null } };
+
+function ChatImage({ attachment, channelSlug, className, onOpen }: { attachment: ChatAttachment; channelSlug: string; className?: string; onOpen?: (url: string) => void }) {
+  const [url, setUrl] = useState(attachment.client_preview_url ?? "");
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    if (attachment.client_preview_url || attachment.status !== "attached") return;
+    let active = true;
+    fetch(`/api/community/channels/${encodeURIComponent(channelSlug)}/attachments/${encodeURIComponent(attachment.id)}/url`, { headers: { accept: "application/json" }, cache: "no-store" })
+      .then(async (response) => {
+        const payload = await response.json() as ApiEnvelope<{ url: string }>;
+        if (!response.ok || payload.ok !== true) throw new Error("Image unavailable.");
+        if (active) setUrl(payload.data.url);
+      })
+      .catch(() => { if (active) setFailed(true); });
+    return () => { active = false; };
+  }, [attachment.client_preview_url, attachment.id, attachment.status, channelSlug]);
+
+  if (attachment.status === "hidden" || attachment.status === "deleted") {
+    return <div className={["grid min-h-28 place-items-center rounded-md border border-dashed border-white/15 bg-black/10 p-4 text-center text-xs font-bold text-slate-400", className].filter(Boolean).join(" ")}>Image removed by moderation.</div>;
+  }
+  if (failed) return <div className={["grid min-h-28 place-items-center rounded-md bg-black/10 p-4 text-xs font-bold text-slate-400", className].filter(Boolean).join(" ")}>Image unavailable.</div>;
+  if (!url) return <div className={["min-h-32 animate-pulse rounded-md bg-black/15", className].filter(Boolean).join(" ")} aria-label="Loading image" />;
+  return <button aria-label={`Open image from ${attachment.uploader_label}`} className={["block min-w-0 overflow-hidden rounded-md bg-black/20", className].filter(Boolean).join(" ")} onClick={() => onOpen?.(url)} type="button"><img alt={attachment.alt_text ?? attachment.original_name ?? "Chat image"} className="h-full w-full object-cover" loading="lazy" src={url} /></button>;
+}
 
 function messageTime(value: string) {
   return new Date(value).toLocaleTimeString("en-NG", { hour: "2-digit", minute: "2-digit" });
@@ -79,7 +117,7 @@ function channelPreview(channel: ChatChannel) {
   return channel.description ?? `${channelTypeLabel(channel)} channel`;
 }
 
-function pendingMessage(channelId: string, userId: string, body: string, clientMessageId: string, replyTo: ChatMessage | null): ChatMessage {
+function pendingMessage(channelId: string, userId: string, body: string, clientMessageId: string, replyTo: ChatMessage | null, attachments: ChatAttachment[]): ChatMessage {
   const now = new Date().toISOString();
   return {
     id: clientMessageId,
@@ -96,6 +134,7 @@ function pendingMessage(channelId: string, userId: string, body: string, clientM
     mentions: [],
     link_preview: {},
     reactions: [],
+    attachments,
     pinned_at: null,
     pinned_by_user_id: null,
     hidden_by_user_id: null,
@@ -185,7 +224,14 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
   const [notice, setNotice] = useState<string | null>(null);
   const [streamStatus, setStreamStatus] = useState<"starting" | "live" | "reconnecting">("starting");
   const [showChannelInfo, setShowChannelInfo] = useState(false);
-  const [infoTab, setInfoTab] = useState<"members" | "channels" | "pins">("members");
+  const [infoTab, setInfoTab] = useState<"members" | "channels" | "media" | "pins">("members");
+  const [mediaByChannel, setMediaByChannel] = useState<Record<string, MediaPage>>({});
+  const [isLoadingMedia, setIsLoadingMedia] = useState(false);
+  const [mediaError, setMediaError] = useState<string | null>(null);
+  const [pendingImages, setPendingImages] = useState<PendingImage[]>([]);
+  const [showAttachmentMenu, setShowAttachmentMenu] = useState(false);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [viewer, setViewer] = useState<{ attachment: ChatAttachment; url: string } | null>(null);
   const [pinTarget, setPinTarget] = useState<ChatMessage | null>(null);
   const [pinDurationHours, setPinDurationHours] = useState<24 | 168 | 720>(168);
   const [pinClock, setPinClock] = useState(() => Date.now());
@@ -210,6 +256,8 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
   const [isContextView, setIsContextView] = useState(false);
   const messageViewportRef = useRef<HTMLDivElement | null>(null);
   const composerRef = useRef<HTMLTextAreaElement | null>(null);
+  const imageInputRef = useRef<HTMLInputElement | null>(null);
+  const uploadRequestsRef = useRef<Map<string, XMLHttpRequest>>(new Map());
   const longPressTimerRef = useRef<number | null>(null);
   const seenIdsRef = useRef<Set<string>>(new Set(initialMessages.map((message) => message.id)));
   const messagesByChannelRef = useRef(messagesByChannel);
@@ -228,7 +276,9 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
     .filter((pin) => !pin.expires_at || Date.parse(pin.expires_at) > pinClock);
   const presence = presenceByChannel[activeChannel.slug] ?? emptyPresence;
   const charactersLeft = 1000 - body.length;
-  const canSend = body.trim().length > 0 && body.trim().length <= 1000 && !isSending && !isLoadingChannel;
+  const readyImages = pendingImages.filter((image) => image.state === "ready" && image.attachment);
+  const uploadInProgress = pendingImages.some((image) => image.state === "uploading");
+  const canSend = (body.trim().length > 0 || readyImages.length > 0) && body.trim().length <= 1000 && !uploadInProgress && !isSending && !isLoadingChannel;
   const canManageAnyPin = ["support", "moderator", "admin", "owner"].includes(currentUserRole);
   const canModerateMessages = ["moderator", "admin", "owner"].includes(currentUserRole);
   const fullLayout = layout === "full";
@@ -617,6 +667,26 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
           return;
         }
 
+        if (realtimeEvent.event_type === "chat.attachment.updated") {
+          const channelSlug = realtimeEvent.payload.channel_slug;
+          const attachment = realtimeEvent.payload.attachment;
+          if (typeof channelSlug !== "string" || typeof attachment !== "object" || attachment === null || !("id" in attachment)) return;
+          const updated = attachment as ChatAttachment;
+          setMessagesByChannel((current) => ({
+            ...current,
+            [channelSlug]: (current[channelSlug] ?? []).map((message) => ({
+              ...message,
+              attachments: message.attachments?.map((item) => item.id === updated.id ? updated : item)
+            }))
+          }));
+          setMediaByChannel((current) => current[channelSlug] ? ({
+            ...current,
+            [channelSlug]: { ...current[channelSlug], attachments: current[channelSlug].attachments.map((item) => item.id === updated.id ? updated : item) }
+          }) : current);
+          setViewer((current) => current?.attachment.id === updated.id ? null : current);
+          return;
+        }
+
         if (!["chat.message.hidden", "chat.message.deleted"].includes(realtimeEvent.event_type)) return;
         const channelSlug = realtimeEvent.payload.channel_slug;
         const messageId = realtimeEvent.payload.message_id;
@@ -663,6 +733,89 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
     return () => source.close();
   }, [activeChannel]);
 
+  function uploadImage(file: File, existingLocalId?: string) {
+    const localId = existingLocalId ?? crypto.randomUUID();
+    if (!existingLocalId && pendingImages.length >= 4) {
+      setError("You can add up to 4 images to one message.");
+      return;
+    }
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type) || !file.size || file.size > 8 * 1024 * 1024) {
+      setError("Choose a JPG, PNG, or WEBP image up to 8MB.");
+      return;
+    }
+    const previewUrl = existingLocalId
+      ? pendingImages.find((image) => image.localId === existingLocalId)?.previewUrl ?? URL.createObjectURL(file)
+      : URL.createObjectURL(file);
+    const next: PendingImage = { localId, file, previewUrl, state: "uploading", progress: 0 };
+    setError(null);
+    setPendingImages((current) => existingLocalId ? current.map((image) => image.localId === localId ? next : image) : [...current, next]);
+    const form = new FormData();
+    form.append("image", file);
+    const request = new XMLHttpRequest();
+    uploadRequestsRef.current.set(localId, request);
+    request.open("POST", `/api/community/channels/${encodeURIComponent(activeChannel.slug)}/attachments`);
+    request.setRequestHeader("accept", "application/json");
+    request.upload.onprogress = (event) => {
+      if (!event.lengthComputable) return;
+      setPendingImages((current) => current.map((image) => image.localId === localId ? { ...image, progress: Math.max(1, Math.round((event.loaded / event.total) * 100)) } : image));
+    };
+    request.onload = () => {
+      uploadRequestsRef.current.delete(localId);
+      try {
+        const payload = JSON.parse(request.responseText) as ApiEnvelope<{ attachment: ChatAttachment }>;
+        if (request.status < 200 || request.status >= 300 || payload.ok !== true) throw new Error(payload.ok === false ? payload.error?.message ?? "Image upload failed." : "Image upload failed.");
+        setPendingImages((current) => current.map((image) => image.localId === localId ? { ...image, attachment: { ...payload.data.attachment, client_preview_url: image.previewUrl }, state: "ready", progress: 100, error: undefined } : image));
+      } catch (uploadError) {
+        setPendingImages((current) => current.map((image) => image.localId === localId ? { ...image, state: "failed", error: uploadError instanceof Error ? uploadError.message : "Image upload failed." } : image));
+      }
+    };
+    request.onerror = () => {
+      uploadRequestsRef.current.delete(localId);
+      setPendingImages((current) => current.map((image) => image.localId === localId ? { ...image, state: "failed", error: "Connection lost during upload." } : image));
+    };
+    request.onabort = () => uploadRequestsRef.current.delete(localId);
+    request.send(form);
+  }
+
+  function removePendingImage(image: PendingImage) {
+    uploadRequestsRef.current.get(image.localId)?.abort();
+    URL.revokeObjectURL(image.previewUrl);
+    setPendingImages((current) => current.filter((item) => item.localId !== image.localId));
+  }
+
+  async function loadMedia(before?: string | null) {
+    if (isLoadingMedia) return;
+    setIsLoadingMedia(true);
+    setMediaError(null);
+    try {
+      const suffix = before ? `?before=${encodeURIComponent(before)}` : "";
+      const response = await fetch(`/api/community/channels/${encodeURIComponent(activeChannel.slug)}/media${suffix}`, { headers: { accept: "application/json" }, cache: "no-store" });
+      const payload = await response.json() as ApiEnvelope<MediaPage>;
+      if (!response.ok || payload.ok !== true) throw new Error(payload.ok === false ? payload.error?.message ?? "Media could not load." : "Media could not load.");
+      setMediaByChannel((current) => ({
+        ...current,
+        [activeChannel.slug]: before
+          ? { attachments: [...(current[activeChannel.slug]?.attachments ?? []), ...payload.data.attachments], page_info: payload.data.page_info }
+          : payload.data
+      }));
+    } catch (loadError) {
+      setMediaError(loadError instanceof Error ? loadError.message : "Media could not load.");
+    } finally { setIsLoadingMedia(false); }
+  }
+
+  async function reportAttachment(attachment: ChatAttachment) {
+    if (!window.confirm("Report this image to the Skillsroom moderation team?")) return;
+    try {
+      const response = await fetch(`/api/community/channels/${encodeURIComponent(activeChannel.slug)}/attachments/${encodeURIComponent(attachment.id)}/report`, {
+        method: "POST", headers: { "content-type": "application/json", accept: "application/json" }, body: JSON.stringify({ reason: "Image reported from channel viewer." })
+      });
+      const payload = await response.json() as ApiEnvelope<unknown>;
+      if (!response.ok || payload.ok !== true) throw new Error(payload.ok === false ? payload.error?.message ?? "Image could not be reported." : "Image could not be reported.");
+      setNotice("Image reported. The moderation team can now review it.");
+      setViewer(null);
+    } catch (reportError) { setError(reportError instanceof Error ? reportError.message : "Image could not be reported."); }
+  }
+
   async function deliverMessage(channel: ChatChannel, message: ChatMessage) {
     setIsSending(true);
     setMessagesByChannel((current) => ({
@@ -678,7 +831,8 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
         body: JSON.stringify({
           body: message.body,
           client_message_id: message.client_message_id,
-          reply_to_message_id: message.reply_to_message_id ?? undefined
+          reply_to_message_id: message.reply_to_message_id ?? undefined,
+          attachment_ids: message.attachments?.map((attachment) => attachment.id) ?? []
         })
       });
       const payload = (await response.json()) as ApiEnvelope<{ message: ChatMessage }>;
@@ -723,12 +877,14 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
   async function sendMessage(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const trimmed = body.replace(/\s+/g, " ").trim();
-    if (!trimmed || trimmed.length > 1000) return;
+    if ((!trimmed && !readyImages.length) || trimmed.length > 1000 || uploadInProgress) return;
     const clientMessageId = `web:${crypto.randomUUID()}`;
-    const nextMessage = pendingMessage(activeChannel.id, currentUserId, trimmed, clientMessageId, replyTo);
+    const attachments = readyImages.map((image) => ({ ...image.attachment!, client_preview_url: image.previewUrl }));
+    const nextMessage = pendingMessage(activeChannel.id, currentUserId, trimmed, clientMessageId, replyTo, attachments);
     shouldStickLatestRef.current = true;
     setError(null);
     setBody("");
+    setPendingImages([]);
     setReplyTo(null);
     setMessagesByChannel((current) => ({
       ...current,
@@ -1235,9 +1391,9 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
               </div>
             </header>
 
-            <div className="grid grid-cols-3 border-b border-white/10 px-3">
-              {(["members", "channels", "pins"] as const).map((tab) => (
-                <button className={["min-h-11 min-w-0 truncate border-b-2 px-1 text-xs font-black capitalize sm:min-h-12 sm:px-2 sm:text-sm", infoTab === tab ? "border-sky-400 text-sky-300" : "border-transparent text-slate-400 hover:text-white"].join(" ")} key={tab} onClick={() => setInfoTab(tab)} type="button">
+            <div className="grid grid-cols-4 border-b border-white/10 px-2 sm:px-3">
+              {(["members", "channels", "media", "pins"] as const).map((tab) => (
+                <button className={["min-h-11 min-w-0 truncate border-b-2 px-1 text-[0.7rem] font-black capitalize sm:min-h-12 sm:px-2 sm:text-sm", infoTab === tab ? "border-sky-400 text-sky-300" : "border-transparent text-slate-400 hover:text-white"].join(" ")} key={tab} onClick={() => { setInfoTab(tab); if (tab === "media" && !mediaByChannel[activeChannel.slug]) void loadMedia(); }} type="button">
                   {tab}{tab === "channels" ? ` ${channelList.length}` : tab === "pins" && pinnedMessages.length ? ` ${pinnedMessages.length}` : ""}
                 </button>
               ))}
@@ -1275,6 +1431,25 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
                       {(item.unread_count ?? 0) > 0 ? <span className="rounded-full bg-sky-500 px-2 py-1 text-xs font-black text-white">{item.unread_count}</span> : null}
                     </button>
                   ))}
+                </div>
+              ) : null}
+
+              {infoTab === "media" ? (
+                <div className="grid gap-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-400">Shared images</p>
+                    <span className="text-xs font-bold text-slate-500">{mediaByChannel[activeChannel.slug]?.attachments.length ?? 0}</span>
+                  </div>
+                  {mediaError ? <p className="rounded-md border border-red-400/30 bg-red-950/30 p-3 text-sm font-bold text-red-200">{mediaError}</p> : null}
+                  {mediaByChannel[activeChannel.slug]?.attachments.length ? (
+                    <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-4 sm:gap-2">
+                      {mediaByChannel[activeChannel.slug].attachments.map((attachment) => (
+                        <ChatImage attachment={attachment} channelSlug={activeChannel.slug} className="aspect-square" key={attachment.id} onOpen={(url) => setViewer({ attachment, url })} />
+                      ))}
+                    </div>
+                  ) : !isLoadingMedia ? <p className="rounded-md border border-dashed border-white/10 p-6 text-center text-sm font-bold text-slate-400">Images shared in this channel will appear here.</p> : null}
+                  {isLoadingMedia ? <p className="p-4 text-center text-sm font-bold text-slate-400">Loading media...</p> : null}
+                  {mediaByChannel[activeChannel.slug]?.page_info.has_more ? <button className="min-h-10 rounded-md border border-white/10 bg-white/5 text-sm font-black hover:bg-white/10" disabled={isLoadingMedia} onClick={() => void loadMedia(mediaByChannel[activeChannel.slug].page_info.next_before)} type="button">Load older images</button> : null}
                 </div>
               ) : null}
 
@@ -1655,7 +1830,14 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
                           <span className={["max-h-10 overflow-hidden text-xs", mine ? "text-muted" : "text-slate-300"].join(" ")}>{message.reply_to_body ?? "Message unavailable"}</span>
                         </button>
                       ) : null}
-                      <p className={["mt-1 whitespace-pre-wrap break-words text-[0.98rem] leading-6 [overflow-wrap:anywhere]", deleted ? "italic text-slate-400" : mine || system ? "text-ink" : "text-white"].join(" ")}>{deleted ? "This message was deleted." : renderMessageBody(message.body)}</p>
+                      {message.attachments?.length ? (
+                        <div className={["mt-1 grid gap-1.5 overflow-hidden", message.attachments.length === 1 ? "grid-cols-1" : "grid-cols-2"].join(" ")}>
+                          {message.attachments.map((attachment) => (
+                            <ChatImage attachment={attachment} channelSlug={activeChannel.slug} className={message.attachments?.length === 1 ? "max-h-[28rem] min-h-40" : "aspect-square"} key={attachment.id} onOpen={(url) => setViewer({ attachment, url })} />
+                          ))}
+                        </div>
+                      ) : null}
+                      {deleted || message.body ? <p className={["mt-1 whitespace-pre-wrap break-words text-[0.98rem] leading-6 [overflow-wrap:anywhere]", deleted ? "italic text-slate-400" : mine || system ? "text-ink" : "text-white"].join(" ")}>{deleted ? "This message was deleted." : renderMessageBody(message.body)}</p> : null}
                       {message.client_delivery_state ? (
                         <div className="mt-2 flex flex-wrap items-center gap-2 border-t border-red-300/40 pt-2 text-xs font-bold text-red-700">
                           <span>{message.client_delivery_state === "sending" ? "Sending..." : message.client_error ?? "Message failed to send."}</span>
@@ -1734,7 +1916,29 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
                 ))}
               </div>
             ) : null}
-            <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-end gap-2">
+            {pendingImages.length ? (
+              <div className="mb-2 flex max-w-full gap-2 overflow-x-auto rounded-xl border border-white/10 bg-[#223447] p-2">
+                {pendingImages.map((image) => (
+                  <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-md bg-black/20" key={image.localId}>
+                    <img alt={image.file.name} className="h-full w-full object-cover" src={image.previewUrl} />
+                    <div className="absolute inset-x-0 bottom-0 bg-black/75 p-1.5 text-[0.62rem] font-black text-white">
+                      {image.state === "uploading" ? <><span>{image.progress}%</span><span className="mt-1 block h-1 overflow-hidden rounded-full bg-white/20"><span className="block h-full bg-sky-400" style={{ width: `${image.progress}%` }} /></span></> : image.state === "failed" ? <button className="w-full rounded-sm bg-red-600 px-1 py-1" onClick={() => uploadImage(image.file, image.localId)} type="button">Retry</button> : "Ready"}
+                    </div>
+                    <button aria-label={`Remove ${image.file.name}`} className="absolute right-1 top-1 grid h-7 w-7 place-items-center rounded-full bg-black/75 text-xs font-black text-white" onClick={() => removePendingImage(image)} type="button">X</button>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+            {showEmojiPicker ? (
+              <div className="mb-2 flex max-w-full flex-wrap gap-1.5 rounded-xl border border-white/10 bg-[#223447] p-2" role="dialog" aria-label="Emoji picker">
+                {["😀", "😂", "😍", "😭", "😅", "🤔", "😎", "🥳", "😮", "😡", "👍", "👏", "🔥", "❤️", "🏆", "🎮", "💯", "🙏"].map((emoji) => <button className="grid h-9 w-9 place-items-center rounded-md text-xl hover:bg-white/10" key={emoji} onClick={() => { setBody((current) => `${current}${emoji}`); composerRef.current?.focus(); }} type="button">{emoji}</button>)}
+              </div>
+            ) : null}
+            <div className="relative grid min-w-0 grid-cols-[auto_auto_minmax(0,1fr)_auto] items-end gap-1.5 sm:gap-2">
+              <input accept="image/jpeg,image/png,image/webp" className="sr-only" multiple onChange={(event) => { Array.from(event.target.files ?? []).slice(0, Math.max(0, 4 - pendingImages.length)).forEach((file) => uploadImage(file)); event.currentTarget.value = ""; }} ref={imageInputRef} type="file" />
+              <button aria-expanded={showAttachmentMenu} aria-label="Add an attachment" className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-white/10 bg-[#223447] text-2xl font-light text-slate-200 hover:bg-[#2c4358]" onClick={() => { setShowAttachmentMenu((current) => !current); setShowEmojiPicker(false); }} title="Add image" type="button">+</button>
+              {showAttachmentMenu ? <div className="absolute bottom-12 left-0 z-20 min-w-44 rounded-md border border-white/10 bg-[#26394b] p-1.5 text-white shadow-panel"><button className="flex min-h-11 w-full items-center gap-3 rounded-sm px-3 text-left text-sm font-black hover:bg-white/10" onClick={() => { setShowAttachmentMenu(false); imageInputRef.current?.click(); }} type="button"><span aria-hidden="true">▣</span> Add photo</button><p className="px-3 pb-2 text-[0.68rem] font-bold text-slate-400">JPG, PNG or WEBP, up to 8MB</p></div> : null}
+              <button aria-expanded={showEmojiPicker} aria-label="Choose emoji" className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-white/10 bg-[#223447] text-xl text-slate-200 hover:bg-[#2c4358]" onClick={() => { setShowEmojiPicker((current) => !current); setShowAttachmentMenu(false); }} title="Emoji" type="button">☺</button>
               <label className="grid min-w-0 gap-1">
                 <span className="sr-only">Message</span>
                 <textarea
@@ -1750,6 +1954,7 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
               <button
                 className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-sky-500 text-lg font-black text-white shadow-action hover:bg-sky-400 disabled:cursor-not-allowed disabled:bg-slate-600 disabled:text-slate-400 disabled:shadow-none sm:h-12 sm:w-12 sm:text-xl"
                 disabled={!canSend}
+                aria-label="Send message"
                 type="submit"
               >
                 {isSending ? "…" : "➤"}
@@ -1791,6 +1996,24 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
           </aside>
         ) : null}
       </div>
+      {viewer ? (
+        <div aria-label="Image viewer" aria-modal="true" className="fixed inset-0 z-[80] grid grid-rows-[auto_minmax(0,1fr)_auto] bg-black/95 pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] text-white" role="dialog">
+          <header className="flex min-w-0 items-center justify-between gap-3 border-b border-white/10 px-3 py-2.5 sm:px-5">
+            <div className="min-w-0">
+              <p className="truncate text-sm font-black">{viewer.attachment.uploader_label}</p>
+              <p className="mt-0.5 truncate text-xs text-slate-400">{viewer.attachment.original_name ?? "Shared image"}</p>
+            </div>
+            <button aria-label="Close image viewer" className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-white/10 text-lg font-black hover:bg-white/20" onClick={() => setViewer(null)} type="button">X</button>
+          </header>
+          <div className="grid min-h-0 place-items-center overflow-auto p-2 sm:p-5">
+            <img alt={viewer.attachment.alt_text ?? viewer.attachment.original_name ?? "Chat image"} className="max-h-full max-w-full object-contain" src={viewer.url} />
+          </div>
+          <footer className="flex items-center justify-between gap-3 border-t border-white/10 px-3 py-2.5 sm:px-5">
+            <span className="text-xs font-bold text-slate-400">{Math.max(1, Math.round(viewer.attachment.byte_size / 1024))} KB</span>
+            {viewer.attachment.uploader_user_id !== currentUserId ? <button className="min-h-10 rounded-full border border-red-400/40 px-4 text-xs font-black text-red-200 hover:bg-red-500/10" onClick={() => void reportAttachment(viewer.attachment)} type="button">Report image</button> : null}
+          </footer>
+        </div>
+      ) : null}
     </section>
   );
 }
