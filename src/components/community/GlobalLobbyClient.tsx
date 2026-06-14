@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
-import type { ChatChannel, ChatDmRequest, ChatMessage, ChatPinnedMessage, ChatPresenceSummary } from "@/lib/match-room-api";
+import type { ChatChannel, ChatDmRequest, ChatMessage, ChatMessagePageInfo, ChatPinnedMessage, ChatPresenceSummary, ChatSearchPageInfo } from "@/lib/match-room-api";
 
 type GlobalLobbyClientProps = {
   channels: ChatChannel[];
@@ -9,8 +9,10 @@ type GlobalLobbyClientProps = {
   currentUserRole: string;
   initialChannel: ChatChannel;
   initialMessages: ChatMessage[];
+  initialPageInfo: ChatMessagePageInfo;
   initialPinnedMessages: ChatPinnedMessage[];
   initialPresence: ChatPresenceSummary;
+  initialReadBoundary: string | null;
   initialDmRequests: ChatDmRequest[];
   layout?: "embedded" | "full";
 };
@@ -105,7 +107,8 @@ function pendingMessage(channelId: string, userId: string, body: string, clientM
     editable_until: new Date(Date.now() + 15 * 60_000).toISOString(),
     created_at: now,
     updated_at: now,
-    sender_label: "You"
+    sender_label: "You",
+    client_delivery_state: "sending"
   };
 }
 
@@ -146,7 +149,7 @@ const reactionOptions = [
   { key: "trophy", label: "🏆" }
 ];
 
-export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, initialChannel, initialMessages, initialPinnedMessages, initialPresence, initialDmRequests, layout = "embedded" }: GlobalLobbyClientProps) {
+export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, initialChannel, initialMessages, initialPageInfo, initialPinnedMessages, initialPresence, initialReadBoundary, initialDmRequests, layout = "embedded" }: GlobalLobbyClientProps) {
   const [channelList, setChannelList] = useState<ChatChannel[]>(channels);
   const [dmRequests, setDmRequests] = useState<ChatDmRequest[]>(initialDmRequests);
   const [dmUsername, setDmUsername] = useState("");
@@ -160,6 +163,12 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
   });
   const [presenceByChannel, setPresenceByChannel] = useState<Record<string, ChatPresenceSummary>>({
     [initialChannel.slug]: initialPresence
+  });
+  const [pageInfoByChannel, setPageInfoByChannel] = useState<Record<string, ChatMessagePageInfo>>({
+    [initialChannel.slug]: initialPageInfo
+  });
+  const [readBoundaryByChannel, setReadBoundaryByChannel] = useState<Record<string, string | null>>({
+    [initialChannel.slug]: initialReadBoundary
   });
   const [body, setBody] = useState("");
   const [replyTo, setReplyTo] = useState<ChatMessage | null>(null);
@@ -182,14 +191,39 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
   const [pinClock, setPinClock] = useState(() => Date.now());
   const [isPinning, setIsPinning] = useState(false);
   const [unpinningIds, setUnpinningIds] = useState<Set<string>>(new Set());
-  const [chatViewportHeight, setChatViewportHeight] = useState<number | null>(null);
+  const [chatViewport, setChatViewport] = useState<{ height: number; top: number } | null>(null);
+  const [isLoadingOlder, setIsLoadingOlder] = useState(false);
+  const [showJumpLatest, setShowJumpLatest] = useState(false);
+  const [showSearch, setShowSearch] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchUser, setSearchUser] = useState("");
+  const [searchDateFrom, setSearchDateFrom] = useState("");
+  const [searchDateTo, setSearchDateTo] = useState("");
+  const [searchMentions, setSearchMentions] = useState<"" | "any" | "me">("");
+  const [searchLinks, setSearchLinks] = useState(false);
+  const [searchPinned, setSearchPinned] = useState(false);
+  const [searchResults, setSearchResults] = useState<ChatMessage[]>([]);
+  const [searchPageInfo, setSearchPageInfo] = useState<ChatSearchPageInfo>({ has_more: false, next_cursor: null });
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
+  const [pendingJumpMessageId, setPendingJumpMessageId] = useState<string | null>(null);
+  const [isContextView, setIsContextView] = useState(false);
   const messageViewportRef = useRef<HTMLDivElement | null>(null);
   const composerRef = useRef<HTMLTextAreaElement | null>(null);
   const longPressTimerRef = useRef<number | null>(null);
   const seenIdsRef = useRef<Set<string>>(new Set(initialMessages.map((message) => message.id)));
   const messagesByChannelRef = useRef(messagesByChannel);
+  const shouldStickLatestRef = useRef(true);
+  const initialLinkHandledRef = useRef(false);
 
   const messages = messagesByChannel[activeChannel.slug] ?? emptyMessages;
+  const pageInfo = pageInfoByChannel[activeChannel.slug] ?? { has_older: false, older_cursor: null };
+  const readBoundary = readBoundaryByChannel[activeChannel.slug] ?? null;
+  const unreadMessageId = readBoundary
+    ? messages.find((message) => message.sender_user_id !== currentUserId && Date.parse(message.created_at) > Date.parse(readBoundary))?.id ?? null
+    : (activeChannel.unread_count ?? 0) > 0
+      ? messages.find((message) => message.sender_user_id !== currentUserId)?.id ?? null
+      : null;
   const pinnedMessages = (pinnedByChannel[activeChannel.slug] ?? emptyPinnedMessages)
     .filter((pin) => !pin.expires_at || Date.parse(pin.expires_at) > pinClock);
   const presence = presenceByChannel[activeChannel.slug] ?? emptyPresence;
@@ -281,7 +315,7 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
     const viewport = messageViewportRef.current;
     if (!viewport) return;
     const frame = window.requestAnimationFrame(() => {
-      const linkedMessageId = new URLSearchParams(window.location.search).get("message");
+      const linkedMessageId = pendingJumpMessageId;
       const linkedMessage = linkedMessageId ? document.getElementById(`chat-message-${linkedMessageId}`) : null;
       if (linkedMessage) {
         linkedMessage.scrollIntoView({ block: "center", behavior: "smooth" });
@@ -289,33 +323,64 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
           [{ outlineColor: "rgba(56, 189, 248, 0.9)" }, { outlineColor: "rgba(56, 189, 248, 0)" }],
           { duration: 1800, easing: "ease-out" }
         );
-      } else {
+        if (pendingJumpMessageId) setPendingJumpMessageId(null);
+      } else if (shouldStickLatestRef.current) {
         viewport.scrollTop = viewport.scrollHeight;
       }
     });
     return () => window.cancelAnimationFrame(frame);
-  }, [activeChannel.slug, messages.length]);
+  }, [activeChannel.slug, messages.length, pendingJumpMessageId]);
+
+  useEffect(() => {
+    const saved = window.localStorage.getItem(`skillsroom:chat-draft:${currentUserId}:${activeChannel.slug}`) ?? "";
+    setBody(saved);
+  }, [activeChannel.slug, currentUserId]);
+
+  useEffect(() => {
+    const key = `skillsroom:chat-draft:${currentUserId}:${activeChannel.slug}`;
+    const timer = window.setTimeout(() => {
+      if (body) window.localStorage.setItem(key, body);
+      else window.localStorage.removeItem(key);
+    }, 180);
+    return () => window.clearTimeout(timer);
+  }, [activeChannel.slug, body, currentUserId]);
 
   useEffect(() => {
     if (!fullLayout) return;
 
     const visualViewport = window.visualViewport;
-    const updateViewportHeight = () => {
-      const nextHeight = Math.round(visualViewport?.height ?? window.innerHeight);
-      setChatViewportHeight((current) => current === nextHeight ? current : nextHeight);
+    const root = document.documentElement;
+    const bodyElement = document.body;
+    const previousRootOverflow = root.style.overflow;
+    const previousBodyOverflow = bodyElement.style.overflow;
+    const previousBodyOverscroll = bodyElement.style.overscrollBehavior;
+
+    root.style.overflow = "hidden";
+    bodyElement.style.overflow = "hidden";
+    bodyElement.style.overscrollBehavior = "none";
+
+    const updateViewport = () => {
+      const next = {
+        height: Math.round(visualViewport?.height ?? window.innerHeight),
+        top: Math.round(visualViewport?.offsetTop ?? 0)
+      };
+      setChatViewport((current) => current?.height === next.height && current.top === next.top ? current : next);
     };
 
-    updateViewportHeight();
-    window.addEventListener("resize", updateViewportHeight);
-    window.addEventListener("orientationchange", updateViewportHeight);
-    visualViewport?.addEventListener("resize", updateViewportHeight);
-    visualViewport?.addEventListener("scroll", updateViewportHeight);
+    updateViewport();
+    window.addEventListener("resize", updateViewport);
+    window.addEventListener("orientationchange", updateViewport);
+    visualViewport?.addEventListener("resize", updateViewport);
+    visualViewport?.addEventListener("scroll", updateViewport);
 
     return () => {
-      window.removeEventListener("resize", updateViewportHeight);
-      window.removeEventListener("orientationchange", updateViewportHeight);
-      visualViewport?.removeEventListener("resize", updateViewportHeight);
-      visualViewport?.removeEventListener("scroll", updateViewportHeight);
+      window.removeEventListener("resize", updateViewport);
+      window.removeEventListener("orientationchange", updateViewport);
+      visualViewport?.removeEventListener("resize", updateViewport);
+      visualViewport?.removeEventListener("scroll", updateViewport);
+      root.style.overflow = previousRootOverflow;
+      bodyElement.style.overflow = previousBodyOverflow;
+      bodyElement.style.overscrollBehavior = previousBodyOverscroll;
     };
   }, [fullLayout]);
 
@@ -337,6 +402,20 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
     messagesByChannelRef.current = messagesByChannel;
   }, [messagesByChannel]);
 
+  useEffect(() => {
+    if (initialLinkHandledRef.current) return;
+    const linkedMessageId = new URLSearchParams(window.location.search).get("message");
+    if (!linkedMessageId) {
+      initialLinkHandledRef.current = true;
+      return;
+    }
+    initialLinkHandledRef.current = true;
+    if (messages.some((message) => message.id === linkedMessageId)) setPendingJumpMessageId(linkedMessageId);
+    else void jumpToMessage(linkedMessageId);
+    // Deep links are consumed once; rerunning after message updates can replace the user's current view.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeChannel.slug]);
+
   async function markRead(channel: ChatChannel, nextMessages: ChatMessage[]) {
     const lastMessage = nextMessages.at(-1);
     await fetch(`/api/community/channels/${encodeURIComponent(channel.slug)}/read`, {
@@ -347,9 +426,12 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
   }
 
   async function openChannel(channel: ChatChannel) {
+    shouldStickLatestRef.current = true;
+    setIsContextView(false);
     setActiveChannel(channel);
-    setBody("");
     setReplyTo(null);
+    setSearchResults([]);
+    setSearchPageInfo({ has_more: false, next_cursor: null });
     setError(null);
     const nextUrl = new URL(window.location.href);
     nextUrl.searchParams.set("channel", channel.slug);
@@ -364,7 +446,7 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
         headers: { accept: "application/json" },
         cache: "no-store"
       });
-      const payload = (await response.json()) as ApiEnvelope<{ channel: ChatChannel; messages: ChatMessage[]; pinned_messages: ChatPinnedMessage[]; presence: ChatPresenceSummary }>;
+      const payload = (await response.json()) as ApiEnvelope<{ channel: ChatChannel; messages: ChatMessage[]; pinned_messages: ChatPinnedMessage[]; presence: ChatPresenceSummary; page_info: ChatMessagePageInfo; read_boundary: string | null }>;
       if (!response.ok || payload.ok !== true) {
         throw new Error(payload.ok === false ? payload.error?.message ?? "Channel could not load." : "Channel could not load.");
       }
@@ -373,6 +455,8 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
       setMessagesByChannel((current) => ({ ...current, [payload.data.channel.slug]: payload.data.messages }));
       setPinnedByChannel((current) => ({ ...current, [payload.data.channel.slug]: payload.data.pinned_messages }));
       setPresenceByChannel((current) => ({ ...current, [payload.data.channel.slug]: payload.data.presence }));
+      setPageInfoByChannel((current) => ({ ...current, [payload.data.channel.slug]: payload.data.page_info }));
+      setReadBoundaryByChannel((current) => ({ ...current, [payload.data.channel.slug]: payload.data.read_boundary }));
       setChannelList((current) => current.map((item) => item.id === payload.data.channel.id ? { ...payload.data.channel, unread_count: 0 } : item));
       await markRead(payload.data.channel, payload.data.messages);
     } catch (loadError) {
@@ -579,27 +663,23 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
     return () => source.close();
   }, [activeChannel]);
 
-  async function sendMessage(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const trimmed = body.replace(/\s+/g, " ").trim();
-    if (!trimmed || trimmed.length > 1000) return;
-
-    const clientMessageId = `web:${crypto.randomUUID()}`;
-    const replyTarget = replyTo;
-    setError(null);
+  async function deliverMessage(channel: ChatChannel, message: ChatMessage) {
     setIsSending(true);
-    setBody("");
-    setReplyTo(null);
     setMessagesByChannel((current) => ({
       ...current,
-      [activeChannel.slug]: mergeMessage(current[activeChannel.slug] ?? [], pendingMessage(activeChannel.id, currentUserId, trimmed, clientMessageId, replyTarget))
+      [channel.slug]: (current[channel.slug] ?? []).map((item) => item.client_message_id === message.client_message_id
+        ? { ...item, client_delivery_state: "sending", client_error: undefined }
+        : item)
     }));
-
     try {
-      const response = await fetch(`/api/community/channels/${encodeURIComponent(activeChannel.slug)}/messages`, {
+      const response = await fetch(`/api/community/channels/${encodeURIComponent(channel.slug)}/messages`, {
         method: "POST",
         headers: { "content-type": "application/json", accept: "application/json" },
-        body: JSON.stringify({ body: trimmed, client_message_id: clientMessageId, reply_to_message_id: replyTarget?.id })
+        body: JSON.stringify({
+          body: message.body,
+          client_message_id: message.client_message_id,
+          reply_to_message_id: message.reply_to_message_id ?? undefined
+        })
       });
       const payload = (await response.json()) as ApiEnvelope<{ message: ChatMessage }>;
       if (!response.ok || payload.ok !== true) {
@@ -608,17 +688,17 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
       seenIdsRef.current.add(payload.data.message.id);
       setMessagesByChannel((current) => ({
         ...current,
-        [activeChannel.slug]: mergeMessage(current[activeChannel.slug] ?? [], payload.data.message)
+        [channel.slug]: mergeMessage(current[channel.slug] ?? [], payload.data.message)
       }));
-      setChannelList((current) => current.map((item) => item.id === activeChannel.id ? {
+      setChannelList((current) => current.map((item) => item.id === channel.id ? {
         ...item,
         last_message_body: payload.data.message.body,
         last_message_sender_label: "You",
         last_message_sender_user_id: currentUserId,
         last_message_at: payload.data.message.created_at
       } : item));
-      void markRead(activeChannel, [...(messagesByChannelRef.current[activeChannel.slug] ?? []), payload.data.message]);
-      void fetch(`/api/community/channels/${encodeURIComponent(activeChannel.slug)}/typing`, {
+      void markRead(channel, [...(messagesByChannelRef.current[channel.slug] ?? []), payload.data.message]);
+      void fetch(`/api/community/channels/${encodeURIComponent(channel.slug)}/typing`, {
         method: "POST",
         headers: { "content-type": "application/json", accept: "application/json" },
         body: JSON.stringify({ is_typing: false })
@@ -626,13 +706,191 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
     } catch (sendError) {
       setMessagesByChannel((current) => ({
         ...current,
-        [activeChannel.slug]: (current[activeChannel.slug] ?? []).filter((message) => message.client_message_id !== clientMessageId)
+        [channel.slug]: (current[channel.slug] ?? []).map((item) => item.client_message_id === message.client_message_id
+          ? {
+              ...item,
+              client_delivery_state: "failed",
+              client_error: sendError instanceof Error ? sendError.message : "Message could not be sent."
+            }
+          : item)
       }));
-      setBody(trimmed);
-      setReplyTo(replyTarget);
       setError(sendError instanceof Error ? sendError.message : "Message could not be sent.");
     } finally {
       setIsSending(false);
+    }
+  }
+
+  async function sendMessage(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const trimmed = body.replace(/\s+/g, " ").trim();
+    if (!trimmed || trimmed.length > 1000) return;
+    const clientMessageId = `web:${crypto.randomUUID()}`;
+    const nextMessage = pendingMessage(activeChannel.id, currentUserId, trimmed, clientMessageId, replyTo);
+    shouldStickLatestRef.current = true;
+    setError(null);
+    setBody("");
+    setReplyTo(null);
+    setMessagesByChannel((current) => ({
+      ...current,
+      [activeChannel.slug]: mergeMessage(current[activeChannel.slug] ?? [], nextMessage)
+    }));
+    await deliverMessage(activeChannel, nextMessage);
+  }
+
+  async function retryMessage(message: ChatMessage) {
+    shouldStickLatestRef.current = true;
+    setError(null);
+    await deliverMessage(activeChannel, message);
+  }
+
+  function dismissFailedMessage(message: ChatMessage) {
+    setMessagesByChannel((current) => ({
+      ...current,
+      [activeChannel.slug]: (current[activeChannel.slug] ?? []).filter((item) => item.client_message_id !== message.client_message_id)
+    }));
+  }
+
+  async function loadOlderMessages() {
+    if (!pageInfo.has_older || !pageInfo.older_cursor || isLoadingOlder) return;
+    const viewport = messageViewportRef.current;
+    const previousHeight = viewport?.scrollHeight ?? 0;
+    shouldStickLatestRef.current = false;
+    setIsLoadingOlder(true);
+    setError(null);
+    try {
+      const response = await fetch(
+        `/api/community/channels/${encodeURIComponent(activeChannel.slug)}/messages?limit=60&cursor=${encodeURIComponent(pageInfo.older_cursor)}`,
+        { headers: { accept: "application/json" }, cache: "no-store" }
+      );
+      const payload = (await response.json()) as ApiEnvelope<{
+        messages: ChatMessage[];
+        page_info: ChatMessagePageInfo;
+      }>;
+      if (!response.ok || payload.ok !== true) {
+        throw new Error(payload.ok === false ? payload.error?.message ?? "Older messages could not load." : "Older messages could not load.");
+      }
+      setMessagesByChannel((current) => {
+        const existing = current[activeChannel.slug] ?? [];
+        const ids = new Set(existing.map((message) => message.id));
+        return { ...current, [activeChannel.slug]: [...payload.data.messages.filter((message) => !ids.has(message.id)), ...existing] };
+      });
+      setPageInfoByChannel((current) => ({ ...current, [activeChannel.slug]: payload.data.page_info }));
+      window.requestAnimationFrame(() => {
+        if (viewport) viewport.scrollTop = viewport.scrollHeight - previousHeight;
+      });
+    } catch (loadError) {
+      setError(loadError instanceof Error ? loadError.message : "Older messages could not load.");
+    } finally {
+      setIsLoadingOlder(false);
+    }
+  }
+
+  async function jumpToLatest() {
+    shouldStickLatestRef.current = true;
+    setShowJumpLatest(false);
+    if (isContextView) {
+      setIsLoadingChannel(true);
+      try {
+        const response = await fetch(`/api/community/channels/${encodeURIComponent(activeChannel.slug)}/messages?limit=60`, {
+          headers: { accept: "application/json" }, cache: "no-store"
+        });
+        const payload = (await response.json()) as ApiEnvelope<{
+          messages: ChatMessage[];
+          pinned_messages: ChatPinnedMessage[];
+          presence: ChatPresenceSummary;
+          page_info: ChatMessagePageInfo;
+          read_boundary: string | null;
+        }>;
+        if (!response.ok || payload.ok !== true) throw new Error("Latest messages could not load.");
+        setMessagesByChannel((current) => ({ ...current, [activeChannel.slug]: payload.data.messages }));
+        setPinnedByChannel((current) => ({ ...current, [activeChannel.slug]: payload.data.pinned_messages }));
+        setPresenceByChannel((current) => ({ ...current, [activeChannel.slug]: payload.data.presence }));
+        setPageInfoByChannel((current) => ({ ...current, [activeChannel.slug]: payload.data.page_info }));
+        setReadBoundaryByChannel((current) => ({ ...current, [activeChannel.slug]: payload.data.read_boundary }));
+        setIsContextView(false);
+      } catch (latestError) {
+        setError(latestError instanceof Error ? latestError.message : "Latest messages could not load.");
+      } finally {
+        setIsLoadingChannel(false);
+      }
+    }
+    window.requestAnimationFrame(() => {
+      const viewport = messageViewportRef.current;
+      viewport?.scrollTo({ top: viewport.scrollHeight, behavior: "smooth" });
+    });
+    const nextUrl = new URL(window.location.href);
+    nextUrl.searchParams.delete("message");
+    window.history.replaceState({}, "", nextUrl);
+    void markRead(activeChannel, messages);
+  }
+
+  async function jumpToMessage(messageId: string) {
+    const existing = document.getElementById(`chat-message-${messageId}`);
+    if (existing) {
+      const nextUrl = new URL(window.location.href);
+      nextUrl.searchParams.set("channel", activeChannel.slug);
+      nextUrl.searchParams.set("message", messageId);
+      window.history.replaceState({}, "", nextUrl);
+      setShowSearch(false);
+      setPendingJumpMessageId(messageId);
+      return;
+    }
+    setError(null);
+    try {
+      const response = await fetch(
+        `/api/community/channels/${encodeURIComponent(activeChannel.slug)}/messages/${encodeURIComponent(messageId)}/context`,
+        { headers: { accept: "application/json" }, cache: "no-store" }
+      );
+      const payload = (await response.json()) as ApiEnvelope<{ messages: ChatMessage[]; target_message_id: string }>;
+      if (!response.ok || payload.ok !== true) {
+        throw new Error(payload.ok === false ? payload.error?.message ?? "Message could not be opened." : "Message could not be opened.");
+      }
+      shouldStickLatestRef.current = false;
+      setIsContextView(true);
+      setMessagesByChannel((current) => ({ ...current, [activeChannel.slug]: payload.data.messages }));
+      setPendingJumpMessageId(payload.data.target_message_id);
+      const nextUrl = new URL(window.location.href);
+      nextUrl.searchParams.set("channel", activeChannel.slug);
+      nextUrl.searchParams.set("message", payload.data.target_message_id);
+      window.history.replaceState({}, "", nextUrl);
+      setShowSearch(false);
+    } catch (jumpError) {
+      setError(jumpError instanceof Error ? jumpError.message : "Message could not be opened.");
+    }
+  }
+
+  async function runSearch(event?: FormEvent<HTMLFormElement>, cursor?: string | null) {
+    event?.preventDefault();
+    if (!searchQuery.trim() && !searchUser && !searchDateFrom && !searchDateTo && !searchMentions && !searchLinks && !searchPinned) {
+      setSearchError("Choose a word or at least one filter.");
+      return;
+    }
+    setIsSearching(true);
+    setSearchError(null);
+    try {
+      const params = new URLSearchParams({ limit: "25" });
+      if (searchQuery.trim()) params.set("q", searchQuery.trim());
+      if (searchUser) params.set("user", searchUser);
+      if (searchDateFrom) params.set("date_from", searchDateFrom);
+      if (searchDateTo) params.set("date_to", searchDateTo);
+      if (searchMentions) params.set("mentions", searchMentions);
+      if (searchLinks) params.set("links", "true");
+      if (searchPinned) params.set("pinned", "true");
+      if (cursor) params.set("cursor", cursor);
+      const response = await fetch(
+        `/api/community/channels/${encodeURIComponent(activeChannel.slug)}/messages/search?${params}`,
+        { headers: { accept: "application/json" }, cache: "no-store" }
+      );
+      const payload = (await response.json()) as ApiEnvelope<{ messages: ChatMessage[]; page_info: ChatSearchPageInfo }>;
+      if (!response.ok || payload.ok !== true) {
+        throw new Error(payload.ok === false ? payload.error?.message ?? "Search could not be completed." : "Search could not be completed.");
+      }
+      setSearchResults((current) => cursor ? [...current, ...payload.data.messages] : payload.data.messages);
+      setSearchPageInfo(payload.data.page_info);
+    } catch (nextError) {
+      setSearchError(nextError instanceof Error ? nextError.message : "Search could not be completed.");
+    } finally {
+      setIsSearching(false);
     }
   }
 
@@ -942,8 +1200,8 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
   return (
     <section className={[
       "min-w-0 overflow-hidden bg-white shadow-tight",
-      fullLayout ? "grid h-screen h-[100svh] grid-rows-[auto_minmax(0,1fr)] border-0" : "rounded-lg border border-line"
-    ].join(" ")} style={fullLayout && chatViewportHeight ? { height: `${chatViewportHeight}px` } : undefined}>
+      fullLayout ? "fixed inset-x-0 top-0 grid h-[100dvh] grid-rows-[auto_minmax(0,1fr)] border-0" : "rounded-lg border border-line"
+    ].join(" ")} style={fullLayout && chatViewport ? { height: `${chatViewport.height}px`, top: `${chatViewport.top}px` } : undefined}>
       <header className={[
         "flex min-w-0 items-center gap-3 border-b p-3 sm:p-4",
         fullLayout ? "border-white/10 bg-[#172331] text-white" : "border-line bg-white"
@@ -961,6 +1219,7 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
         <div className={["hidden min-h-9 w-fit items-center gap-2 rounded-full border px-3 text-xs font-black sm:inline-flex", fullLayout ? "border-white/10 bg-white/5 text-slate-300" : "border-line bg-white text-muted"].join(" ")}>
           <span className={streamStatus === "live" ? "text-success" : "text-warning"}>{statusLabel}</span>
         </div>
+        <button aria-label="Search channel messages" className={["grid h-9 min-w-9 shrink-0 place-items-center rounded-full border px-2 text-xs font-black", fullLayout ? "border-white/10 bg-white/5 text-white hover:bg-white/10" : "border-line bg-white text-ink hover:bg-surfaceHigh"].join(" ")} onClick={() => setShowSearch(true)} title="Search messages" type="button">Search</button>
         <button aria-label="Open channel details" className={["grid h-9 w-9 shrink-0 place-items-center rounded-full border text-sm font-black", fullLayout ? "border-white/10 bg-white/5 text-white hover:bg-white/10" : "border-line bg-white text-ink hover:bg-surfaceHigh"].join(" ")} onClick={() => setShowChannelInfo(true)} title="Channel details" type="button">i</button>
       </header>
 
@@ -1036,6 +1295,55 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
                   )) : <p className="rounded-md border border-dashed border-white/10 p-5 text-center text-sm font-bold text-slate-400">No messages are pinned in this channel yet.</p>}
                 </div>
               ) : null}
+            </div>
+          </section>
+        </div>
+      ) : null}
+
+      {showSearch ? (
+        <div aria-label={`Search ${channelTitle(activeChannel)}`} aria-modal="true" className="fixed inset-0 z-[60] flex items-end bg-black/60 p-2 pb-[max(env(safe-area-inset-bottom),0.5rem)] sm:items-center sm:justify-center sm:p-4" role="dialog">
+          <section className="grid max-h-[92svh] w-full max-w-2xl grid-rows-[auto_auto_minmax(0,1fr)] overflow-hidden rounded-lg border border-white/10 bg-[#172331] text-white shadow-panel">
+            <header className="flex items-center justify-between gap-3 border-b border-white/10 px-4 py-3">
+              <div className="min-w-0">
+                <h2 className="truncate text-lg font-black">Search {channelTitle(activeChannel)}</h2>
+                <p className="mt-0.5 text-xs text-slate-400">Find messages without leaving the channel.</p>
+              </div>
+              <button aria-label="Close search" className="grid h-9 w-9 place-items-center rounded-full text-xl hover:bg-white/10" onClick={() => setShowSearch(false)} type="button">X</button>
+            </header>
+            <form className="grid gap-3 border-b border-white/10 p-3 sm:p-4" onSubmit={(event) => void runSearch(event)}>
+              <input className="min-h-11 rounded-md border border-white/10 bg-[#223447] px-3 text-base text-white outline-none placeholder:text-slate-400 focus:border-sky-400" maxLength={120} onChange={(event) => setSearchQuery(event.target.value)} placeholder="Search message text" type="search" value={searchQuery} />
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                <select className="min-h-10 min-w-0 rounded-md border border-white/10 bg-[#223447] px-2 text-base text-white sm:text-sm" onChange={(event) => setSearchUser(event.target.value)} value={searchUser}>
+                  <option value="">Any user</option>
+                  {userDirectory.map((user) => <option key={user.user_id} value={user.user_id}>{user.label}</option>)}
+                </select>
+                <select className="min-h-10 min-w-0 rounded-md border border-white/10 bg-[#223447] px-2 text-base text-white sm:text-sm" onChange={(event) => setSearchMentions(event.target.value as "" | "any" | "me")} value={searchMentions}>
+                  <option value="">Any mention</option>
+                  <option value="any">Has mentions</option>
+                  <option value="me">Mentions me</option>
+                </select>
+                <input aria-label="Messages from date" className="min-h-10 min-w-0 rounded-md border border-white/10 bg-[#223447] px-2 text-base text-white sm:text-sm" onChange={(event) => setSearchDateFrom(event.target.value)} type="date" value={searchDateFrom} />
+                <input aria-label="Messages through date" className="min-h-10 min-w-0 rounded-md border border-white/10 bg-[#223447] px-2 text-base text-white sm:text-sm" onChange={(event) => setSearchDateTo(event.target.value)} type="date" value={searchDateTo} />
+              </div>
+              <div className="flex flex-wrap items-center gap-3">
+                <label className="inline-flex min-h-9 items-center gap-2 text-sm font-bold"><input checked={searchLinks} className="h-4 w-4 accent-sky-400" onChange={(event) => setSearchLinks(event.target.checked)} type="checkbox" /> Has links</label>
+                <label className="inline-flex min-h-9 items-center gap-2 text-sm font-bold"><input checked={searchPinned} className="h-4 w-4 accent-sky-400" onChange={(event) => setSearchPinned(event.target.checked)} type="checkbox" /> Pinned</label>
+                <button className="ml-auto min-h-10 rounded-md bg-sky-500 px-4 text-sm font-black text-white hover:bg-sky-400 disabled:cursor-wait disabled:bg-slate-600" disabled={isSearching} type="submit">{isSearching ? "Searching..." : "Search"}</button>
+              </div>
+              {searchError ? <p className="rounded-md border border-red-400/30 bg-red-950/30 p-2 text-sm font-bold text-red-200">{searchError}</p> : null}
+            </form>
+            <div className="min-h-0 overflow-y-auto p-3 sm:p-4">
+              {searchResults.length ? (
+                <div className="grid gap-2">
+                  {searchResults.map((message) => (
+                    <button className="grid gap-1 rounded-md border border-white/10 bg-white/5 p-3 text-left hover:bg-white/10" key={message.id} onClick={() => void jumpToMessage(message.id)} type="button">
+                      <span className="flex min-w-0 items-center justify-between gap-3"><strong className="truncate text-sm text-sky-300">{message.sender_label}</strong><span className="shrink-0 text-xs text-slate-400">{new Date(message.created_at).toLocaleString("en-NG")}</span></span>
+                      <span className="line-clamp-3 text-sm leading-6 text-slate-200">{message.body}</span>
+                    </button>
+                  ))}
+                  {searchPageInfo.has_more && searchPageInfo.next_cursor ? <button className="min-h-11 rounded-md border border-white/10 bg-white/5 font-black hover:bg-white/10 disabled:cursor-wait" disabled={isSearching} onClick={() => void runSearch(undefined, searchPageInfo.next_cursor)} type="button">{isSearching ? "Loading..." : "More results"}</button> : null}
+                </div>
+              ) : <p className="rounded-md border border-dashed border-white/10 p-6 text-center text-sm font-bold text-slate-400">Search results will appear here.</p>}
             </div>
           </section>
         </div>
@@ -1209,13 +1517,23 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
           <div className={[
             "min-h-0 overflow-y-auto p-3 sm:p-4",
             fullLayout ? "max-h-none" : "max-h-[58vh]"
-          ].join(" ")} ref={messageViewportRef}>
+          ].join(" ")} onScroll={(event) => {
+            const viewport = event.currentTarget;
+            const nearLatest = viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight < 120;
+            shouldStickLatestRef.current = nearLatest;
+            setShowJumpLatest(!nearLatest);
+          }} ref={messageViewportRef}>
             <div className="mb-2 flex min-w-0 flex-wrap items-center gap-2 rounded-md border border-white/10 bg-[#203244]/90 px-3 py-2 text-xs font-bold text-slate-300">
               <span>{presence.online_count} online</span>
               {presence.active.slice(0, 5).map((user) => (
                 <span className="rounded-sm bg-surfaceHigh px-2 py-1" key={user.user_id}>{user.label}</span>
               ))}
             </div>
+            {pageInfo.has_older ? (
+              <div className="mb-3 flex justify-center">
+                <button className="min-h-9 rounded-full border border-white/10 bg-[#223447] px-4 text-xs font-black text-slate-200 hover:bg-[#2c4358] disabled:cursor-wait disabled:opacity-60" disabled={isLoadingOlder} onClick={() => void loadOlderMessages()} type="button">{isLoadingOlder ? "Loading older..." : "Load older messages"}</button>
+              </div>
+            ) : null}
             {pinnedMessages.length ? (
               <div className="sticky top-0 z-10 mb-3 grid gap-1 rounded-xl border border-white/10 bg-[#223447]/95 p-3 shadow-tight">
                 <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-sky-300">Pinned Message</p>
@@ -1252,15 +1570,22 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
                           <span className="rounded-full bg-[#223447]/90 px-3 py-1 text-xs font-black text-slate-300 shadow-tight">{messageDate(message.created_at)}</span>
                         </div>
                       ) : null}
+                      {message.id === unreadMessageId ? (
+                        <div className="my-3 flex items-center gap-3" role="separator">
+                          <span className="h-px flex-1 bg-sky-400/50" />
+                          <span className="text-[0.68rem] font-black uppercase tracking-[0.14em] text-sky-300">New messages</span>
+                          <span className="h-px flex-1 bg-sky-400/50" />
+                        </div>
+                      ) : null}
                     <article
                       id={`chat-message-${message.id}`}
                       className={[
                         "group grid max-w-[min(92%,38rem)] gap-1.5 rounded-2xl border px-3 py-2 shadow-tight",
                         deleted ? (mine ? "ml-auto border-dashed border-white/15 bg-[#1d2b38] text-slate-400" : "mr-auto border-dashed border-white/15 bg-[#1d2b38] text-slate-400") : system ? "mx-auto border-action/30 bg-amber-50" : mine ? "ml-auto rounded-br-md border-emerald-300/20 bg-[#d7f9df]" : "mr-auto rounded-bl-md border-white/10 bg-[#26394b] text-white"
                       ].join(" ")}
-                      onContextMenu={(event) => { event.preventDefault(); setActionMessage(message); }}
+                      onContextMenu={(event) => { event.preventDefault(); if (!message.client_delivery_state) setActionMessage(message); }}
                       onPointerCancel={clearLongPress}
-                      onPointerDown={(event) => beginLongPress(message, event.target)}
+                      onPointerDown={(event) => { if (!message.client_delivery_state) beginLongPress(message, event.target); }}
                       onPointerLeave={clearLongPress}
                       onPointerUp={clearLongPress}
                     >
@@ -1271,8 +1596,8 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
                         <span className={["font-mono text-[0.68rem] font-bold uppercase tracking-[0.12em]", mine || system ? "text-muted" : "text-slate-400"].join(" ")}>{messageTime(message.created_at)}</span>
                         {message.edited_at && !deleted ? <span className={["text-[0.68rem] font-bold", mine || system ? "text-muted" : "text-slate-400"].join(" ")}>edited</span> : null}
                         {isPinned ? <span className="rounded-sm bg-action/20 px-2 py-1 text-[0.68rem] font-black uppercase tracking-[0.12em] text-ink">Pinned</span> : null}
-                        <button aria-label="Open message actions" className={["grid h-7 w-7 place-items-center rounded-full text-base font-black", mine && !deleted ? "text-muted hover:bg-white" : "text-slate-300 hover:bg-white/10"].join(" ")} onClick={() => setActionMessage(message)} title="Message actions" type="button">...</button>
-                        {!deleted ? <span className="flex flex-wrap gap-1 opacity-100 sm:opacity-0 sm:transition sm:group-hover:opacity-100">
+                        {!message.client_delivery_state ? <button aria-label="Open message actions" className={["grid h-7 w-7 place-items-center rounded-full text-base font-black", mine && !deleted ? "text-muted hover:bg-white" : "text-slate-300 hover:bg-white/10"].join(" ")} onClick={() => setActionMessage(message)} title="Message actions" type="button">...</button> : null}
+                        {!deleted && !message.client_delivery_state ? <span className="flex flex-wrap gap-1 opacity-100 sm:opacity-0 sm:transition sm:group-hover:opacity-100">
                           <button
                             className={["rounded-full px-2 py-1 text-[0.68rem] font-black uppercase tracking-[0.12em]", mine ? "text-muted hover:bg-white" : "text-slate-300 hover:bg-white/10"].join(" ")}
                             onClick={() => setReplyTo(message)}
@@ -1323,10 +1648,7 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
                       {message.reply_to_message_id ? (
                         <button
                           className={["mt-1 grid w-full gap-1 rounded-md border-l-4 px-3 py-2 text-left", mine ? "border-emerald-500 bg-white/70" : "border-sky-400 bg-white/10"].join(" ")}
-                          onClick={() => {
-                            const target = messages.find((item) => item.id === message.reply_to_message_id);
-                            if (target) setReplyTo(target);
-                          }}
+                          onClick={() => message.reply_to_message_id ? void jumpToMessage(message.reply_to_message_id) : undefined}
                           type="button"
                         >
                           <span className={["text-xs font-black", mine ? "text-cyan" : "text-sky-300"].join(" ")}>{message.reply_to_sender_label ?? "Earlier message"}</span>
@@ -1334,13 +1656,20 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
                         </button>
                       ) : null}
                       <p className={["mt-1 whitespace-pre-wrap break-words text-[0.98rem] leading-6 [overflow-wrap:anywhere]", deleted ? "italic text-slate-400" : mine || system ? "text-ink" : "text-white"].join(" ")}>{deleted ? "This message was deleted." : renderMessageBody(message.body)}</p>
+                      {message.client_delivery_state ? (
+                        <div className="mt-2 flex flex-wrap items-center gap-2 border-t border-red-300/40 pt-2 text-xs font-bold text-red-700">
+                          <span>{message.client_delivery_state === "sending" ? "Sending..." : message.client_error ?? "Message failed to send."}</span>
+                          {message.client_delivery_state === "failed" ? <button className="rounded-full bg-red-700 px-3 py-1 font-black text-white disabled:opacity-60" disabled={isSending} onClick={() => void retryMessage(message)} type="button">{isSending ? "Retrying..." : "Retry"}</button> : null}
+                          {message.client_delivery_state === "failed" ? <button className="rounded-full border border-red-300 px-3 py-1 font-black" onClick={() => dismissFailedMessage(message)} type="button">Discard</button> : null}
+                        </div>
+                      ) : null}
                       {!deleted && message.link_preview?.url && message.link_preview.host ? (
                         <a className={["mt-2 block rounded-md border p-3 text-sm", mine ? "border-line bg-white hover:bg-surfaceHigh" : "border-white/10 bg-white/10 hover:bg-white/15"].join(" ")} href={message.link_preview.url} rel="noreferrer" target="_blank">
                           <span className={["block font-black", mine ? "text-ink" : "text-white"].join(" ")}>{message.link_preview.title ?? message.link_preview.host}</span>
                           <span className={["mt-1 block break-all text-xs font-bold", mine ? "text-muted" : "text-slate-300"].join(" ")}>{message.link_preview.host}</span>
                         </a>
                       ) : null}
-                      {!deleted ? <div className="mt-1.5 flex flex-wrap gap-1.5">
+                      {!deleted && !message.client_delivery_state ? <div className="mt-1.5 flex flex-wrap gap-1.5">
                         {reactionOptions.map((reaction) => {
                           const summary = message.reactions?.find((item) => item.reaction === reaction.key);
                           return (
@@ -1371,9 +1700,10 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
                 </div>
               </div>
             )}
+            {showJumpLatest || isContextView ? <button className="sticky bottom-2 ml-auto mt-3 block min-h-10 rounded-full bg-sky-500 px-4 text-xs font-black text-white shadow-panel hover:bg-sky-400" onClick={() => void jumpToLatest()} type="button">Jump to latest</button> : null}
           </div>
 
-          <form className="border-t border-white/10 bg-[#172331] px-2 pt-2 pb-[max(env(safe-area-inset-bottom),0.75rem)] sm:p-3" onSubmit={sendMessage}>
+          <form className="min-w-0 border-t border-white/10 bg-[#172331] px-2 pt-2 pb-[max(env(safe-area-inset-bottom),0.75rem)] sm:p-3" onSubmit={sendMessage}>
             {error ? <p className="mb-2 rounded-md border border-danger bg-red-50 p-3 text-sm font-bold text-danger">{error}</p> : null}
             {typingUsers.length ? (
               <p className="mb-2 px-2 text-xs font-bold text-sky-300">
@@ -1404,11 +1734,11 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
                 ))}
               </div>
             ) : null}
-            <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2 items-end">
-              <label className="grid gap-1">
+            <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-end gap-2">
+              <label className="grid min-w-0 gap-1">
                 <span className="sr-only">Message</span>
                 <textarea
-                  className="min-h-10 max-h-28 resize-none overflow-y-hidden rounded-2xl border border-white/10 bg-[#223447] px-3 py-2 text-base leading-6 text-white outline-none placeholder:text-slate-400 focus:border-sky-400"
+                  className="min-h-10 w-full min-w-0 max-h-28 resize-none overflow-y-hidden rounded-2xl border border-white/10 bg-[#223447] px-3 py-2 text-base leading-6 text-white outline-none placeholder:text-slate-400 focus:border-sky-400"
                   maxLength={1000}
                   onChange={(event) => setBody(event.target.value)}
                   placeholder={`Message ${channelTitle(activeChannel)}`}
@@ -1418,7 +1748,7 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
                 />
               </label>
               <button
-                className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-sky-500 text-lg font-black text-white shadow-action hover:bg-sky-400 disabled:cursor-not-allowed disabled:bg-slate-600 disabled:text-slate-400 disabled:shadow-none sm:h-12 sm:w-12 sm:text-xl"
+                className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-sky-500 text-lg font-black text-white shadow-action hover:bg-sky-400 disabled:cursor-not-allowed disabled:bg-slate-600 disabled:text-slate-400 disabled:shadow-none sm:h-12 sm:w-12 sm:text-xl"
                 disabled={!canSend}
                 type="submit"
               >

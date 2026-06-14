@@ -8,6 +8,7 @@ import {
   type ChatChannel,
   type ChatDmRequest,
   type ChatMessage,
+  type ChatMessagePageInfo,
   type ChatPinnedMessage,
   type ChatPresenceSummary
 } from "@/lib/match-room-api";
@@ -40,6 +41,8 @@ export default async function ChatPage({ searchParams }: ChatPageProps) {
   let activeChannel: ChatChannel | null = null;
   let messages: ChatMessage[] = [];
   let pinnedMessages: ChatPinnedMessage[] = [];
+  let pageInfo: ChatMessagePageInfo = { has_older: false, older_cursor: null };
+  let readBoundary: string | null = null;
   let presence: ChatPresenceSummary = { online_count: 0, active: [], typing: [] };
   let dmRequests: ChatDmRequest[] = [];
   let loadError: string | null = null;
@@ -62,6 +65,8 @@ export default async function ChatPage({ searchParams }: ChatPageProps) {
       messages = messageResult.messages;
       pinnedMessages = messageResult.pinned_messages;
       presence = messageResult.presence;
+      pageInfo = messageResult.page_info;
+      readBoundary = messageResult.read_boundary;
       channels = channels.map((channel) => channel.id === messageResult.channel.id ? { ...messageResult.channel, unread_count: 0 } : channel);
     }
   } catch {
@@ -78,8 +83,10 @@ export default async function ChatPage({ searchParams }: ChatPageProps) {
           initialChannel={activeChannel}
           initialDmRequests={dmRequests}
           initialMessages={messages}
+          initialPageInfo={pageInfo}
           initialPinnedMessages={pinnedMessages}
           initialPresence={presence}
+          initialReadBoundary={readBoundary}
           layout="full"
         />
       ) : (

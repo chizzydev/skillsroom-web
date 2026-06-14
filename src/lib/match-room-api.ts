@@ -557,6 +557,18 @@ export type ChatMessage = {
   sender_username?: string | null;
   sender_display_name?: string | null;
   sender_label: string;
+  client_delivery_state?: "sending" | "failed";
+  client_error?: string;
+};
+
+export type ChatMessagePageInfo = {
+  has_older: boolean;
+  older_cursor: string | null;
+};
+
+export type ChatSearchPageInfo = {
+  has_more: boolean;
+  next_cursor: string | null;
 };
 
 export type ChatPinnedMessage = {
@@ -2567,9 +2579,36 @@ export function createChatChannel(input: {
   });
 }
 
-export function listChatMessages(channelIdOrSlug: string, filters: { before?: string; after?: string; limit?: number } = {}) {
-  return apiRequest<{ channel: ChatChannel; messages: ChatMessage[]; pinned_messages: ChatPinnedMessage[]; presence: ChatPresenceSummary }>(
+export function listChatMessages(channelIdOrSlug: string, filters: { before?: string; after?: string; cursor?: string; limit?: number } = {}) {
+  return apiRequest<{ channel: ChatChannel; messages: ChatMessage[]; pinned_messages: ChatPinnedMessage[]; presence: ChatPresenceSummary; page_info: ChatMessagePageInfo; read_boundary: string | null }>(
     `/community/channels/${encodeURIComponent(channelIdOrSlug)}/messages${queryString(filters)}`
+  );
+}
+
+export function searchChatMessages(channelIdOrSlug: string, filters: {
+  q?: string;
+  user?: string;
+  date_from?: string;
+  date_to?: string;
+  mentions?: "any" | "me";
+  links?: boolean;
+  pinned?: boolean;
+  cursor?: string;
+  limit?: number;
+}) {
+  const query = {
+    ...filters,
+    links: filters.links === undefined ? undefined : String(filters.links),
+    pinned: filters.pinned === undefined ? undefined : String(filters.pinned)
+  };
+  return apiRequest<{ channel: ChatChannel; messages: ChatMessage[]; page_info: ChatSearchPageInfo }>(
+    `/community/channels/${encodeURIComponent(channelIdOrSlug)}/messages/search${queryString(query)}`
+  );
+}
+
+export function getChatMessageContext(channelIdOrSlug: string, messageId: string) {
+  return apiRequest<{ channel: ChatChannel; target_message_id: string; messages: ChatMessage[] }>(
+    `/community/channels/${encodeURIComponent(channelIdOrSlug)}/messages/${encodeURIComponent(messageId)}/context`
   );
 }
 
