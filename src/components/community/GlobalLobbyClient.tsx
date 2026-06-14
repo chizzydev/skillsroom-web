@@ -100,6 +100,9 @@ function pendingMessage(channelId: string, userId: string, body: string, clientM
     hidden_at: null,
     deleted_by_user_id: null,
     deleted_at: null,
+    edited_at: null,
+    edit_count: 0,
+    editable_until: new Date(Date.now() + 15 * 60_000).toISOString(),
     created_at: now,
     updated_at: now,
     sender_label: "You"
@@ -164,6 +167,13 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
   const [isSending, setIsSending] = useState(false);
   const [isLoadingChannel, setIsLoadingChannel] = useState(false);
   const [reportingIds, setReportingIds] = useState<Set<string>>(new Set());
+  const [actionMessage, setActionMessage] = useState<ChatMessage | null>(null);
+  const [editTarget, setEditTarget] = useState<ChatMessage | null>(null);
+  const [editBody, setEditBody] = useState("");
+  const [isEditing, setIsEditing] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<ChatMessage | null>(null);
+  const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
+  const [notice, setNotice] = useState<string | null>(null);
   const [streamStatus, setStreamStatus] = useState<"starting" | "live" | "reconnecting">("starting");
   const [showChannelInfo, setShowChannelInfo] = useState(false);
   const [infoTab, setInfoTab] = useState<"members" | "channels" | "pins">("members");
@@ -175,6 +185,7 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
   const [chatViewportHeight, setChatViewportHeight] = useState<number | null>(null);
   const messageViewportRef = useRef<HTMLDivElement | null>(null);
   const composerRef = useRef<HTMLTextAreaElement | null>(null);
+  const longPressTimerRef = useRef<number | null>(null);
   const seenIdsRef = useRef<Set<string>>(new Set(initialMessages.map((message) => message.id)));
   const messagesByChannelRef = useRef(messagesByChannel);
 
@@ -185,6 +196,7 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
   const charactersLeft = 1000 - body.length;
   const canSend = body.trim().length > 0 && body.trim().length <= 1000 && !isSending && !isLoadingChannel;
   const canManageAnyPin = ["support", "moderator", "admin", "owner"].includes(currentUserRole);
+  const canModerateMessages = ["moderator", "admin", "owner"].includes(currentUserRole);
   const fullLayout = layout === "full";
   const typingUsers = presence.typing.filter((user) => user.user_id !== currentUserId);
   const userDirectory = useMemo(() => {
@@ -219,11 +231,67 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
     setBody((current) => current.replace(/(^|\s)@([A-Za-z0-9_]{0,24})$/, `$1@${username} `));
   }
 
+  function canEditMessage(message: ChatMessage) {
+    return message.status === "visible" &&
+      message.message_kind === "user" &&
+      message.sender_user_id === currentUserId &&
+      Boolean(message.editable_until && Date.parse(message.editable_until) > Date.now());
+  }
+
+  function canDeleteMessage(message: ChatMessage) {
+    return message.status !== "deleted" && (message.sender_user_id === currentUserId || canModerateMessages);
+  }
+
+  function clearLongPress() {
+    if (longPressTimerRef.current !== null) {
+      window.clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+  }
+
+  function beginLongPress(message: ChatMessage, target: EventTarget | null) {
+    if (target instanceof Element && target.closest("button, a, input, textarea")) return;
+    clearLongPress();
+    longPressTimerRef.current = window.setTimeout(() => {
+      setActionMessage(message);
+      longPressTimerRef.current = null;
+    }, 550);
+  }
+
+  async function copyToClipboard(value: string, successMessage: string) {
+    try {
+      await navigator.clipboard.writeText(value);
+      setNotice(successMessage);
+      window.setTimeout(() => setNotice(null), 2200);
+    } catch {
+      setError("Your browser could not copy that message.");
+    } finally {
+      setActionMessage(null);
+    }
+  }
+
+  function messageLink(message: ChatMessage) {
+    const url = new URL("/chat", window.location.origin);
+    url.searchParams.set("channel", activeChannel.slug);
+    url.searchParams.set("message", message.id);
+    return url.toString();
+  }
+
   useEffect(() => {
     const viewport = messageViewportRef.current;
     if (!viewport) return;
     const frame = window.requestAnimationFrame(() => {
-      viewport.scrollTop = viewport.scrollHeight;
+      const linkedMessageId = new URLSearchParams(window.location.search).get("message");
+      const linkedMessage = linkedMessageId ? document.getElementById(`chat-message-${linkedMessageId}`) : null;
+      if (linkedMessage) {
+        linkedMessage.scrollIntoView({ block: "center", behavior: "smooth" });
+        linkedMessage.animate(
+          [{ outlineColor: "rgba(56, 189, 248, 0.9)" }, { outlineColor: "rgba(56, 189, 248, 0)" }],
+          { duration: 1800, easing: "ease-out" }
+        );
+      } else {
+        viewport.scrollTop = viewport.scrollHeight;
+      }
     });
     return () => window.cancelAnimationFrame(frame);
   }, [activeChannel.slug, messages.length]);
@@ -283,6 +351,10 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
     setBody("");
     setReplyTo(null);
     setError(null);
+    const nextUrl = new URL(window.location.href);
+    nextUrl.searchParams.set("channel", channel.slug);
+    nextUrl.searchParams.delete("message");
+    window.history.replaceState({}, "", nextUrl);
     setChannelList((current) => current.map((item) => item.id === channel.id ? { ...item, unread_count: 0 } : item));
     if (messagesByChannel[channel.slug]) return;
 
@@ -406,7 +478,7 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
           return;
         }
 
-        if (realtimeEvent.event_type === "chat.message.reaction.changed") {
+        if (realtimeEvent.event_type === "chat.message.reaction.changed" || realtimeEvent.event_type === "chat.message.updated") {
           const channelSlug = realtimeEvent.payload.channel_slug;
           const message = realtimeEvent.payload.message;
           if (typeof channelSlug !== "string" || !isChatMessage(message)) return;
@@ -414,6 +486,11 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
             ...current,
             [channelSlug]: (current[channelSlug] ?? []).map((item) => item.id === message.id ? message : item)
           }));
+          if (realtimeEvent.event_type === "chat.message.updated") {
+            setChannelList((current) => current.map((channel) => channel.slug === channelSlug && channel.last_message_id === message.id
+              ? { ...channel, last_message_body: message.body, last_message_sender_label: message.sender_label }
+              : channel));
+          }
           return;
         }
 
@@ -460,6 +537,36 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
         const channelSlug = realtimeEvent.payload.channel_slug;
         const messageId = realtimeEvent.payload.message_id;
         if (typeof channelSlug !== "string" || typeof messageId !== "string") return;
+        if (realtimeEvent.event_type === "chat.message.deleted" && isChatMessage(realtimeEvent.payload.message)) {
+          const deletedMessage = realtimeEvent.payload.message;
+          setMessagesByChannel((current) => ({
+            ...current,
+            [channelSlug]: (current[channelSlug] ?? []).map((message) => message.id === messageId ? deletedMessage : message)
+          }));
+          setChannelList((current) => current.map((channel) => {
+            if (channel.slug !== channelSlug || channel.last_message_id !== messageId) return channel;
+            const latestVisible = (messagesByChannelRef.current[channelSlug] ?? [])
+              .filter((item) => item.id !== messageId && item.status === "visible")
+              .at(-1);
+            return {
+              ...channel,
+              last_message_id: latestVisible?.id ?? null,
+              last_message_at: latestVisible?.created_at ?? null,
+              last_message_body: latestVisible?.body ?? null,
+              last_message_sender_label: latestVisible?.sender_label ?? null,
+              last_message_sender_user_id: latestVisible?.sender_user_id ?? null
+            };
+          }));
+          const pinnedMessages = realtimeEvent.payload.pinned_messages;
+          if (Array.isArray(pinnedMessages)) {
+            setPinnedByChannel((current) => ({
+              ...current,
+              [channelSlug]: pinnedMessages.filter((item): item is ChatPinnedMessage => typeof item === "object" && item !== null && "message_id" in item)
+            }));
+          }
+          setReplyTo((current) => current?.id === messageId ? null : current);
+          return;
+        }
         setMessagesByChannel((current) => ({
           ...current,
           [channelSlug]: (current[channelSlug] ?? []).filter((message) => message.id !== messageId)
@@ -553,6 +660,109 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
       setError(reportError instanceof Error ? reportError.message : "Report could not be sent.");
     } finally {
       setReportingIds((current) => {
+        const next = new Set(current);
+        next.delete(message.id);
+        return next;
+      });
+    }
+  }
+
+  function beginEdit(message: ChatMessage) {
+    setActionMessage(null);
+    setEditTarget(message);
+    setEditBody(message.body);
+    setError(null);
+  }
+
+  async function saveMessageEdit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!editTarget || isEditing) return;
+    const trimmed = editBody.replace(/\s+/g, " ").trim();
+    if (!trimmed || trimmed === editTarget.body || trimmed.length > 1000) return;
+
+    setError(null);
+    setIsEditing(true);
+    try {
+      const response = await fetch(
+        `/api/community/channels/${encodeURIComponent(activeChannel.slug)}/messages/${encodeURIComponent(editTarget.id)}`,
+        {
+          method: "PATCH",
+          headers: { "content-type": "application/json", accept: "application/json" },
+          body: JSON.stringify({ body: trimmed })
+        }
+      );
+      const payload = (await response.json()) as ApiEnvelope<{ channel: ChatChannel; message: ChatMessage }>;
+      if (!response.ok || payload.ok !== true) {
+        throw new Error(payload.ok === false ? payload.error?.message ?? "Message could not be edited." : "Message could not be edited.");
+      }
+      setMessagesByChannel((current) => ({
+        ...current,
+        [activeChannel.slug]: (current[activeChannel.slug] ?? []).map((message) => message.id === payload.data.message.id ? payload.data.message : message)
+      }));
+      setChannelList((current) => current.map((channel) => channel.id === activeChannel.id && channel.last_message_id === payload.data.message.id
+        ? { ...channel, last_message_body: payload.data.message.body }
+        : channel));
+      setEditTarget(null);
+      setEditBody("");
+      setNotice("Message edited.");
+      window.setTimeout(() => setNotice(null), 2200);
+    } catch (editError) {
+      setError(editError instanceof Error ? editError.message : "Message could not be edited.");
+    } finally {
+      setIsEditing(false);
+    }
+  }
+
+  async function deleteMessage(message: ChatMessage) {
+    if (deletingIds.has(message.id)) return;
+    setError(null);
+    setDeletingIds((current) => new Set(current).add(message.id));
+    try {
+      const response = await fetch(
+        `/api/community/channels/${encodeURIComponent(activeChannel.slug)}/messages/${encodeURIComponent(message.id)}/delete`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json", accept: "application/json" },
+          body: JSON.stringify(canModerateMessages && message.sender_user_id !== currentUserId
+            ? { reason: "Removed by a Skillsroom moderator." }
+            : {})
+        }
+      );
+      const payload = (await response.json()) as ApiEnvelope<{ message: ChatMessage; pinned_messages?: ChatPinnedMessage[] }>;
+      if (!response.ok || payload.ok !== true) {
+        throw new Error(payload.ok === false ? payload.error?.message ?? "Message could not be deleted." : "Message could not be deleted.");
+      }
+      setMessagesByChannel((current) => ({
+        ...current,
+        [activeChannel.slug]: (current[activeChannel.slug] ?? []).map((item) => item.id === message.id ? payload.data.message : item)
+      }));
+      setPinnedByChannel((current) => ({
+        ...current,
+        [activeChannel.slug]: (current[activeChannel.slug] ?? []).filter((pin) => pin.message_id !== message.id)
+      }));
+      setChannelList((current) => current.map((channel) => {
+        if (channel.id !== activeChannel.id || channel.last_message_id !== message.id) return channel;
+        const latestVisible = (messagesByChannelRef.current[activeChannel.slug] ?? [])
+          .filter((item) => item.id !== message.id && item.status === "visible")
+          .at(-1);
+        return {
+          ...channel,
+          last_message_id: latestVisible?.id ?? null,
+          last_message_at: latestVisible?.created_at ?? null,
+          last_message_body: latestVisible?.body ?? null,
+          last_message_sender_label: latestVisible?.sender_label ?? null,
+          last_message_sender_user_id: latestVisible?.sender_user_id ?? null
+        };
+      }));
+      setReplyTo((current) => current?.id === message.id ? null : current);
+      setDeleteTarget(null);
+      setActionMessage(null);
+      setNotice("Message deleted.");
+      window.setTimeout(() => setNotice(null), 2200);
+    } catch (deleteError) {
+      setError(deleteError instanceof Error ? deleteError.message : "Message could not be deleted.");
+    } finally {
+      setDeletingIds((current) => {
         const next = new Set(current);
         next.delete(message.id);
         return next;
@@ -856,6 +1066,74 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
         </div>
       ) : null}
 
+      {notice ? (
+        <div aria-live="polite" className="fixed left-1/2 top-[max(env(safe-area-inset-top),1rem)] z-[80] -translate-x-1/2 rounded-full bg-emerald-500 px-4 py-2 text-sm font-black text-navy-950 shadow-panel">
+          {notice}
+        </div>
+      ) : null}
+
+      {actionMessage ? (
+        <div aria-label="Message actions" aria-modal="true" className="fixed inset-0 z-[65] flex items-end bg-black/60 p-2 pb-[max(env(safe-area-inset-bottom),0.5rem)] sm:items-center sm:justify-center sm:p-4" onClick={() => setActionMessage(null)} role="dialog">
+          <section className="w-full max-w-md overflow-hidden rounded-lg border border-white/10 bg-[#172331] text-white shadow-panel" onClick={(event) => event.stopPropagation()}>
+            <header className="flex items-center justify-between border-b border-white/10 px-4 py-3">
+              <div className="min-w-0">
+                <p className="truncate text-sm font-black">{actionMessage.sender_user_id === currentUserId ? "Your message" : actionMessage.sender_label}</p>
+                <p className="mt-0.5 truncate text-xs text-slate-400">{actionMessage.status === "deleted" ? "Deleted message" : actionMessage.body}</p>
+              </div>
+              <button aria-label="Close message actions" className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-xl text-slate-300 hover:bg-white/10" onClick={() => setActionMessage(null)} type="button">X</button>
+            </header>
+            <div className="grid grid-cols-2 gap-px bg-white/10 sm:grid-cols-3">
+              {actionMessage.status === "visible" ? (
+                <button className="min-h-14 bg-[#172331] px-3 text-sm font-black hover:bg-[#223447]" onClick={() => { setReplyTo(actionMessage); setActionMessage(null); composerRef.current?.focus(); }} type="button">Reply</button>
+              ) : null}
+              {actionMessage.status === "visible" ? (
+                <button className="min-h-14 bg-[#172331] px-3 text-sm font-black hover:bg-[#223447]" onClick={() => void copyToClipboard(actionMessage.body, "Message copied.")} type="button">Copy text</button>
+              ) : null}
+              <button className="min-h-14 bg-[#172331] px-3 text-sm font-black hover:bg-[#223447]" onClick={() => void copyToClipboard(messageLink(actionMessage), "Message link copied.")} type="button">Copy link</button>
+              {canEditMessage(actionMessage) ? (
+                <button className="min-h-14 bg-[#172331] px-3 text-sm font-black hover:bg-[#223447]" onClick={() => beginEdit(actionMessage)} type="button">Edit</button>
+              ) : null}
+              {canDeleteMessage(actionMessage) ? (
+                <button className="min-h-14 bg-[#172331] px-3 text-sm font-black text-red-300 hover:bg-red-950/40" onClick={() => { setDeleteTarget(actionMessage); setActionMessage(null); }} type="button">Delete</button>
+              ) : null}
+              {actionMessage.status === "visible" && (actionMessage.sender_user_id === currentUserId || canManageAnyPin) && !pinnedMessages.some((pin) => pin.message_id === actionMessage.id) ? (
+                <button className="min-h-14 bg-[#172331] px-3 text-sm font-black hover:bg-[#223447]" onClick={() => { setPinTarget(actionMessage); setActionMessage(null); }} type="button">Pin</button>
+              ) : null}
+              {actionMessage.status === "visible" && actionMessage.sender_user_id !== currentUserId ? (
+                <button className="min-h-14 bg-[#172331] px-3 text-sm font-black hover:bg-[#223447]" onClick={() => { setActionMessage(null); void reportMessage(actionMessage); }} type="button">Report</button>
+              ) : null}
+            </div>
+          </section>
+        </div>
+      ) : null}
+
+      {editTarget ? (
+        <div aria-label="Edit message" aria-modal="true" className="fixed inset-0 z-[70] flex items-end bg-black/60 p-2 pb-[max(env(safe-area-inset-bottom),0.5rem)] sm:items-center sm:justify-center sm:p-4" role="dialog">
+          <form className="w-full max-w-lg rounded-lg border border-white/10 bg-[#172331] p-4 text-white shadow-panel sm:p-5" onSubmit={saveMessageEdit}>
+            <h2 className="text-lg font-black">Edit message</h2>
+            <p className="mt-1 text-sm text-slate-300">Your edit will be marked, and the previous version remains available to authorized moderators.</p>
+            <textarea autoFocus className="mt-4 min-h-28 w-full resize-y rounded-md border border-white/10 bg-[#223447] p-3 text-base leading-6 text-white outline-none focus:border-sky-400" disabled={isEditing} maxLength={1000} onChange={(event) => setEditBody(event.target.value)} value={editBody} />
+            <div className="mt-4 grid grid-cols-2 gap-2">
+              <button className="min-h-11 rounded-md border border-white/10 bg-white/5 px-4 font-black hover:bg-white/10 disabled:opacity-50" disabled={isEditing} onClick={() => { setEditTarget(null); setEditBody(""); }} type="button">Cancel</button>
+              <button className="min-h-11 rounded-md bg-sky-500 px-4 font-black hover:bg-sky-400 disabled:cursor-wait disabled:bg-slate-600" disabled={isEditing || !editBody.trim() || editBody.replace(/\s+/g, " ").trim() === editTarget.body} type="submit">{isEditing ? "Saving..." : "Save edit"}</button>
+            </div>
+          </form>
+        </div>
+      ) : null}
+
+      {deleteTarget ? (
+        <div aria-label="Confirm message deletion" aria-modal="true" className="fixed inset-0 z-[70] grid place-items-center bg-black/60 p-4" role="alertdialog">
+          <section className="w-full max-w-sm rounded-lg border border-white/10 bg-[#172331] p-5 text-white shadow-panel">
+            <h2 className="text-xl font-black">Delete this message?</h2>
+            <p className="mt-2 text-sm leading-6 text-slate-300">Everyone will see &quot;This message was deleted.&quot; Replies will stay connected, and the original is retained only for authorized audit review.</p>
+            <div className="mt-6 grid grid-cols-2 gap-2">
+              <button className="min-h-11 rounded-md border border-white/10 bg-white/5 px-4 font-black hover:bg-white/10 disabled:opacity-50" disabled={deletingIds.has(deleteTarget.id)} onClick={() => setDeleteTarget(null)} type="button">No, keep it</button>
+              <button className="min-h-11 rounded-md bg-red-600 px-4 font-black hover:bg-red-500 disabled:cursor-wait disabled:bg-red-900" disabled={deletingIds.has(deleteTarget.id)} onClick={() => void deleteMessage(deleteTarget)} type="button">{deletingIds.has(deleteTarget.id) ? "Deleting..." : "Yes, delete"}</button>
+            </div>
+          </section>
+        </div>
+      ) : null}
+
       <div className={[
         "grid",
         fullLayout ? "min-h-0 overflow-hidden md:grid-cols-[17rem_minmax(0,1fr)] xl:grid-cols-[17rem_minmax(0,1fr)_16rem]" : "min-h-[34rem] lg:grid-cols-[20rem_minmax(0,1fr)]"
@@ -963,6 +1241,7 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
                 {messages.map((message, index) => {
                   const mine = message.sender_user_id === currentUserId;
                   const system = message.message_kind === "system";
+                  const deleted = message.status === "deleted";
                   const isPinned = pinnedMessages.some((pin) => pin.message_id === message.id);
                   const previous = messages[index - 1];
                   const showDate = !previous || messageDate(previous.created_at) !== messageDate(message.created_at);
@@ -974,18 +1253,26 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
                         </div>
                       ) : null}
                     <article
+                      id={`chat-message-${message.id}`}
                       className={[
                         "group grid max-w-[min(92%,38rem)] gap-1.5 rounded-2xl border px-3 py-2 shadow-tight",
-                        system ? "mx-auto border-action/30 bg-amber-50" : mine ? "ml-auto rounded-br-md border-emerald-300/20 bg-[#d7f9df]" : "mr-auto rounded-bl-md border-white/10 bg-[#26394b] text-white"
+                        deleted ? (mine ? "ml-auto border-dashed border-white/15 bg-[#1d2b38] text-slate-400" : "mr-auto border-dashed border-white/15 bg-[#1d2b38] text-slate-400") : system ? "mx-auto border-action/30 bg-amber-50" : mine ? "ml-auto rounded-br-md border-emerald-300/20 bg-[#d7f9df]" : "mr-auto rounded-bl-md border-white/10 bg-[#26394b] text-white"
                       ].join(" ")}
+                      onContextMenu={(event) => { event.preventDefault(); setActionMessage(message); }}
+                      onPointerCancel={clearLongPress}
+                      onPointerDown={(event) => beginLongPress(message, event.target)}
+                      onPointerLeave={clearLongPress}
+                      onPointerUp={clearLongPress}
                     >
                       <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
                         {!mine && !system ? <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-navy-900 text-xs font-black text-white">{initials(message.sender_label)}</span> : null}
                         <strong className={["break-words text-sm font-black [overflow-wrap:anywhere]", mine || system ? "text-ink" : "text-sky-300"].join(" ")}>{system ? "Skillsroom" : mine ? "You" : message.sender_label}</strong>
                         {!mine && !system ? <span className="text-xs font-bold text-slate-300">{displayHandle(message)}</span> : null}
                         <span className={["font-mono text-[0.68rem] font-bold uppercase tracking-[0.12em]", mine || system ? "text-muted" : "text-slate-400"].join(" ")}>{messageTime(message.created_at)}</span>
+                        {message.edited_at && !deleted ? <span className={["text-[0.68rem] font-bold", mine || system ? "text-muted" : "text-slate-400"].join(" ")}>edited</span> : null}
                         {isPinned ? <span className="rounded-sm bg-action/20 px-2 py-1 text-[0.68rem] font-black uppercase tracking-[0.12em] text-ink">Pinned</span> : null}
-                        <span className="flex flex-wrap gap-1 opacity-100 sm:opacity-0 sm:transition sm:group-hover:opacity-100">
+                        <button aria-label="Open message actions" className={["grid h-7 w-7 place-items-center rounded-full text-base font-black", mine && !deleted ? "text-muted hover:bg-white" : "text-slate-300 hover:bg-white/10"].join(" ")} onClick={() => setActionMessage(message)} title="Message actions" type="button">...</button>
+                        {!deleted ? <span className="flex flex-wrap gap-1 opacity-100 sm:opacity-0 sm:transition sm:group-hover:opacity-100">
                           <button
                             className={["rounded-full px-2 py-1 text-[0.68rem] font-black uppercase tracking-[0.12em]", mine ? "text-muted hover:bg-white" : "text-slate-300 hover:bg-white/10"].join(" ")}
                             onClick={() => setReplyTo(message)}
@@ -1005,8 +1292,8 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
                             Pin
                           </button>
                         ) : null}
-                        </span>
-                        {!mine ? (
+                        </span> : null}
+                        {!mine && !deleted ? (
                           <>
                             <button
                               className="rounded-full px-2 py-1 text-[0.68rem] font-black uppercase tracking-[0.12em] text-slate-300 hover:bg-white/10"
@@ -1046,14 +1333,14 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
                           <span className={["max-h-10 overflow-hidden text-xs", mine ? "text-muted" : "text-slate-300"].join(" ")}>{message.reply_to_body ?? "Message unavailable"}</span>
                         </button>
                       ) : null}
-                      <p className={["mt-1 whitespace-pre-wrap break-words text-[0.98rem] leading-6 [overflow-wrap:anywhere]", mine || system ? "text-ink" : "text-white"].join(" ")}>{renderMessageBody(message.body)}</p>
-                      {message.link_preview?.url && message.link_preview.host ? (
+                      <p className={["mt-1 whitespace-pre-wrap break-words text-[0.98rem] leading-6 [overflow-wrap:anywhere]", deleted ? "italic text-slate-400" : mine || system ? "text-ink" : "text-white"].join(" ")}>{deleted ? "This message was deleted." : renderMessageBody(message.body)}</p>
+                      {!deleted && message.link_preview?.url && message.link_preview.host ? (
                         <a className={["mt-2 block rounded-md border p-3 text-sm", mine ? "border-line bg-white hover:bg-surfaceHigh" : "border-white/10 bg-white/10 hover:bg-white/15"].join(" ")} href={message.link_preview.url} rel="noreferrer" target="_blank">
                           <span className={["block font-black", mine ? "text-ink" : "text-white"].join(" ")}>{message.link_preview.title ?? message.link_preview.host}</span>
                           <span className={["mt-1 block break-all text-xs font-bold", mine ? "text-muted" : "text-slate-300"].join(" ")}>{message.link_preview.host}</span>
                         </a>
                       ) : null}
-                      <div className="mt-1.5 flex flex-wrap gap-1.5">
+                      {!deleted ? <div className="mt-1.5 flex flex-wrap gap-1.5">
                         {reactionOptions.map((reaction) => {
                           const summary = message.reactions?.find((item) => item.reaction === reaction.key);
                           return (
@@ -1070,7 +1357,7 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
                             </button>
                           );
                         })}
-                      </div>
+                      </div> : null}
                     </article>
                     </div>
                   );

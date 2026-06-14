@@ -549,6 +549,9 @@ export type ChatMessage = {
   hidden_at: string | null;
   deleted_by_user_id: string | null;
   deleted_at: string | null;
+  edited_at: string | null;
+  edit_count: number;
+  editable_until: string | null;
   created_at: string;
   updated_at: string;
   sender_username?: string | null;
@@ -571,6 +574,18 @@ export type ChatPinnedMessage = {
   sender_username?: string | null;
   sender_display_name?: string | null;
   sender_label: string;
+};
+
+export type ChatMessageEdit = {
+  id: string;
+  message_id: string;
+  channel_id: string;
+  editor_user_id: string | null;
+  previous_body: string;
+  metadata: Record<string, unknown>;
+  edited_at: string;
+  editor_username?: string | null;
+  editor_display_name?: string | null;
 };
 
 export type ChatPresenceUser = {
@@ -2648,6 +2663,16 @@ export function reactChatMessage(channelIdOrSlug: string, messageId: string, inp
   );
 }
 
+export function editChatMessage(channelIdOrSlug: string, messageId: string, input: { body: string }) {
+  return apiRequest<{ channel: ChatChannel; message: ChatMessage }>(
+    `/community/channels/${encodeURIComponent(channelIdOrSlug)}/messages/${encodeURIComponent(messageId)}`,
+    {
+      method: "PATCH",
+      body: JSON.stringify(input)
+    }
+  );
+}
+
 export function pinChatMessage(channelIdOrSlug: string, messageId: string, input: { reason?: string }) {
   return apiRequest<{ pin: ChatPinnedMessage; pinned_messages: ChatPinnedMessage[] }>(
     `/community/channels/${encodeURIComponent(channelIdOrSlug)}/messages/${encodeURIComponent(messageId)}/pin`,
@@ -2682,6 +2707,12 @@ export function listChatModerationQueue() {
   return apiRequest<{ events: ChatModerationEvent[] }>("/community/chat-moderation");
 }
 
+export function getChatMessageEditHistory(channelIdOrSlug: string, messageId: string) {
+  return apiRequest<{ message: ChatMessage; edits: ChatMessageEdit[] }>(
+    `/community/channels/${encodeURIComponent(channelIdOrSlug)}/messages/${encodeURIComponent(messageId)}/edits`
+  );
+}
+
 export function hideChatMessage(channelIdOrSlug: string, messageId: string, input: { reason: string }) {
   return apiRequest<{ message: ChatMessage; event: ChatModerationEvent }>(
     `/community/channels/${encodeURIComponent(channelIdOrSlug)}/messages/${encodeURIComponent(messageId)}/hide`,
@@ -2692,7 +2723,7 @@ export function hideChatMessage(channelIdOrSlug: string, messageId: string, inpu
   );
 }
 
-export function deleteChatMessage(channelIdOrSlug: string, messageId: string, input: { reason: string }) {
+export function deleteChatMessage(channelIdOrSlug: string, messageId: string, input: { reason?: string } = {}) {
   return apiRequest<{ message: ChatMessage; event: ChatModerationEvent }>(
     `/community/channels/${encodeURIComponent(channelIdOrSlug)}/messages/${encodeURIComponent(messageId)}/delete`,
     {

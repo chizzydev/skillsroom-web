@@ -14,8 +14,13 @@ import {
 
 export const dynamic = "force-dynamic";
 
-export default async function ChatPage() {
+type ChatPageProps = {
+  searchParams: Promise<{ channel?: string; message?: string }>;
+};
+
+export default async function ChatPage({ searchParams }: ChatPageProps) {
   const user = await getCurrentUser();
+  const requested = await searchParams;
 
   if (!user) {
     return (
@@ -46,7 +51,10 @@ export default async function ChatPage() {
     ]);
     channels = channelResult.channels;
     dmRequests = dmRequestResult.requests;
-    activeChannel = channels.find((channel) => channel.slug === "global_lobby") ?? channels[0] ?? null;
+    activeChannel = channels.find((channel) => channel.slug === requested.channel)
+      ?? channels.find((channel) => channel.slug === "global_lobby")
+      ?? channels[0]
+      ?? null;
 
     if (activeChannel) {
       const messageResult = await listChatMessages(activeChannel.slug, { limit: 80 });
