@@ -43,10 +43,12 @@ type MediaPage = { attachments: ChatAttachment[]; page_info: { has_more: boolean
 function ChatImage({ attachment, channelSlug, className, onOpen }: { attachment: ChatAttachment; channelSlug: string; className?: string; onOpen?: (url: string) => void }) {
   const [url, setUrl] = useState(attachment.client_preview_url ?? "");
   const [failed, setFailed] = useState(false);
+  const [loadRequested, setLoadRequested] = useState(Boolean(attachment.client_preview_url));
 
   useEffect(() => {
-    if (attachment.client_preview_url || attachment.status !== "attached") return;
+    if (!loadRequested || attachment.client_preview_url || attachment.status !== "attached") return;
     let active = true;
+    setFailed(false);
     fetch(`/api/community/channels/${encodeURIComponent(channelSlug)}/attachments/${encodeURIComponent(attachment.id)}/url`, { headers: { accept: "application/json" }, cache: "no-store" })
       .then(async (response) => {
         const payload = await response.json() as ApiEnvelope<{ url: string }>;
@@ -55,13 +57,14 @@ function ChatImage({ attachment, channelSlug, className, onOpen }: { attachment:
       })
       .catch(() => { if (active) setFailed(true); });
     return () => { active = false; };
-  }, [attachment.client_preview_url, attachment.id, attachment.status, channelSlug]);
+  }, [attachment.client_preview_url, attachment.id, attachment.status, channelSlug, loadRequested]);
 
   if (attachment.status === "hidden" || attachment.status === "deleted") {
     return <div className={["grid min-h-28 place-items-center rounded-md border border-dashed border-white/15 bg-black/10 p-4 text-center text-xs font-bold text-slate-400", className].filter(Boolean).join(" ")}>Image removed by moderation.</div>;
   }
-  if (failed) return <div className={["grid min-h-28 place-items-center rounded-md bg-black/10 p-4 text-xs font-bold text-slate-400", className].filter(Boolean).join(" ")}>Image unavailable.</div>;
-  if (!url) return <div className={["min-h-32 animate-pulse rounded-md bg-black/15", className].filter(Boolean).join(" ")} aria-label="Loading image" />;
+  if (failed) return <button className={["grid min-h-28 place-items-center rounded-md bg-black/15 p-4 text-xs font-black text-slate-300", className].filter(Boolean).join(" ")} onClick={() => { setFailed(false); setLoadRequested(false); window.requestAnimationFrame(() => setLoadRequested(true)); }} type="button">Image unavailable. Tap to retry.</button>;
+  if (!loadRequested) return <button aria-label={`Load image from ${attachment.uploader_label}`} className={["grid min-h-32 place-items-center rounded-md border border-white/10 bg-black/20 p-4 text-center text-slate-200", className].filter(Boolean).join(" ")} onClick={() => setLoadRequested(true)} type="button"><span className="grid gap-2"><span aria-hidden="true" className="text-2xl">&#8595;</span><span className="text-xs font-black">Load image</span><span className="text-[0.68rem] font-bold text-slate-400">{Math.max(1, Math.round(attachment.byte_size / 1024))} KB</span></span></button>;
+  if (!url) return <div className={["grid min-h-32 animate-pulse place-items-center rounded-md bg-black/15 text-xs font-bold text-slate-400", className].filter(Boolean).join(" ")} aria-label="Loading image">Loading image...</div>;
   return <button aria-label={`Open image from ${attachment.uploader_label}`} className={["block min-w-0 overflow-hidden rounded-md bg-black/20", className].filter(Boolean).join(" ")} onClick={() => onOpen?.(url)} type="button"><img alt={attachment.alt_text ?? attachment.original_name ?? "Chat image"} className="h-full w-full object-cover" loading="lazy" src={url} /></button>;
 }
 
@@ -274,6 +277,7 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
       : null;
   const pinnedMessages = (pinnedByChannel[activeChannel.slug] ?? emptyPinnedMessages)
     .filter((pin) => !pin.expires_at || Date.parse(pin.expires_at) > pinClock);
+  const currentPinnedMessage = pinnedMessages[0] ?? null;
   const presence = presenceByChannel[activeChannel.slug] ?? emptyPresence;
   const charactersLeft = 1000 - body.length;
   const readyImages = pendingImages.filter((image) => image.state === "ready" && image.attachment);
@@ -1015,6 +1019,11 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
     }
   }
 
+  function openPinnedMessage(messageId: string) {
+    setShowChannelInfo(false);
+    void jumpToMessage(messageId);
+  }
+
   async function runSearch(event?: FormEvent<HTMLFormElement>, cursor?: string | null) {
     event?.preventDefault();
     if (!searchQuery.trim() && !searchUser && !searchDateFrom && !searchDateTo && !searchMentions && !searchLinks && !searchPinned) {
@@ -1459,13 +1468,15 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
                   {pinnedMessages.length ? pinnedMessages.map((pin) => (
                     <article className="rounded-md border border-white/10 bg-white/5 p-3" key={pin.id}>
                       <div className="flex min-w-0 items-start justify-between gap-2">
-                        <p className="min-w-0 truncate text-sm font-black text-sky-300">{pin.sender_label}</p>
+                        <button className="min-w-0 flex-1 text-left" onClick={() => openPinnedMessage(pin.message_id)} type="button">
+                          <span className="block truncate text-sm font-black text-sky-300">{pin.sender_label}</span>
+                          <span className="mt-2 block truncate text-sm leading-6 text-white">{pin.body?.trim() || "Photo"}</span>
+                          <span className="mt-2 block text-xs font-bold text-slate-400">{pinExpiryLabel(pin.expires_at)}</span>
+                        </button>
                         {canManageAnyPin || pin.pinned_by_user_id === currentUserId || pin.sender_user_id === currentUserId ? (
                           <button className="shrink-0 rounded-sm px-2 py-1 text-[0.68rem] font-black uppercase tracking-[0.12em] text-slate-300 hover:bg-white/10 disabled:cursor-wait disabled:opacity-60" disabled={unpinningIds.has(pin.message_id)} onClick={() => void unpinMessage(pin.message_id)} type="button">{unpinningIds.has(pin.message_id) ? "Unpinning..." : "Unpin"}</button>
                         ) : null}
                       </div>
-                      <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-white">{pin.body}</p>
-                      <p className="mt-2 text-xs font-bold text-slate-400">{pinExpiryLabel(pin.expires_at)}</p>
                     </article>
                   )) : <p className="rounded-md border border-dashed border-white/10 p-5 text-center text-sm font-bold text-slate-400">No messages are pinned in this channel yet.</p>}
                 </div>
@@ -1709,20 +1720,18 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
                 <button className="min-h-9 rounded-full border border-white/10 bg-[#223447] px-4 text-xs font-black text-slate-200 hover:bg-[#2c4358] disabled:cursor-wait disabled:opacity-60" disabled={isLoadingOlder} onClick={() => void loadOlderMessages()} type="button">{isLoadingOlder ? "Loading older..." : "Load older messages"}</button>
               </div>
             ) : null}
-            {pinnedMessages.length ? (
-              <div className="sticky top-0 z-10 mb-3 grid gap-1 rounded-xl border border-white/10 bg-[#223447]/95 p-3 shadow-tight">
-                <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-sky-300">Pinned Message</p>
-                {pinnedMessages.map((pin) => (
-                  <div className="grid gap-1 rounded-md bg-white/5 p-2" key={pin.id}>
-                    <div className="flex min-w-0 items-start justify-between gap-2">
-                      <p className="min-w-0 truncate text-xs font-black text-white">{pin.sender_label}: {pin.body}</p>
-                      {canManageAnyPin || pin.pinned_by_user_id === currentUserId || pin.sender_user_id === currentUserId ? (
-                        <button className="min-w-20 shrink-0 rounded-sm px-2 py-1 text-[0.68rem] font-black uppercase tracking-[0.12em] text-slate-300 hover:bg-white/10 disabled:cursor-wait disabled:opacity-60" disabled={unpinningIds.has(pin.message_id)} onClick={() => void unpinMessage(pin.message_id)} type="button">{unpinningIds.has(pin.message_id) ? "Unpinning..." : "Unpin"}</button>
-                      ) : null}
-                    </div>
-                    <p className="text-xs text-slate-400">{pinExpiryLabel(pin.expires_at)}</p>
-                  </div>
-                ))}
+            {currentPinnedMessage ? (
+              <div className="sticky top-0 z-10 mb-2 flex min-h-12 items-center gap-2 rounded-md border border-white/10 bg-[#223447]/95 px-2 py-1.5 shadow-tight">
+                <button className="flex min-w-0 flex-1 items-center gap-2 text-left" onClick={() => openPinnedMessage(currentPinnedMessage.message_id)} type="button">
+                  <span aria-hidden="true" className="grid h-8 w-8 shrink-0 place-items-center rounded-sm bg-white/10 text-sm text-sky-300">&#128204;</span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-[0.62rem] font-black uppercase tracking-[0.12em] text-sky-300">Pinned message{pinnedMessages.length > 1 ? ` ${pinnedMessages.length}` : ""}</span>
+                    <span className="block truncate text-xs font-bold text-white">{currentPinnedMessage.sender_label}: {currentPinnedMessage.body?.trim() || "Photo"}</span>
+                  </span>
+                </button>
+                {canManageAnyPin || currentPinnedMessage.pinned_by_user_id === currentUserId || currentPinnedMessage.sender_user_id === currentUserId ? (
+                  <button aria-label="Unpin current message" className="shrink-0 rounded-sm px-2 py-1 text-[0.62rem] font-black uppercase tracking-[0.1em] text-slate-300 hover:bg-white/10 disabled:cursor-wait disabled:opacity-60" disabled={unpinningIds.has(currentPinnedMessage.message_id)} onClick={() => void unpinMessage(currentPinnedMessage.message_id)} type="button">{unpinningIds.has(currentPinnedMessage.message_id) ? "..." : "Unpin"}</button>
+                ) : null}
               </div>
             ) : null}
             {isLoadingChannel ? (
@@ -1755,7 +1764,7 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
                     <article
                       id={`chat-message-${message.id}`}
                       className={[
-                        "group grid max-w-[min(92%,38rem)] gap-1.5 rounded-2xl border px-3 py-2 shadow-tight",
+                        "group grid max-w-[min(92%,38rem)] select-none gap-1.5 rounded-2xl border px-3 py-2 shadow-tight",
                         deleted ? (mine ? "ml-auto border-dashed border-white/15 bg-[#1d2b38] text-slate-400" : "mr-auto border-dashed border-white/15 bg-[#1d2b38] text-slate-400") : system ? "mx-auto border-action/30 bg-amber-50" : mine ? "ml-auto rounded-br-md border-emerald-300/20 bg-[#d7f9df]" : "mr-auto rounded-bl-md border-white/10 bg-[#26394b] text-white"
                       ].join(" ")}
                       onContextMenu={(event) => { event.preventDefault(); if (!message.client_delivery_state) setActionMessage(message); }}
