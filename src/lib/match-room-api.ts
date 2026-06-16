@@ -1631,6 +1631,10 @@ function appOrigin() {
   return process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3100";
 }
 
+function requestSignal(init: RequestInit) {
+  return init.signal ?? AbortSignal.timeout(30_000);
+}
+
 async function apiRequest<T>(path: string, init: RequestInit = {}): Promise<T> {
   const token = await getAccessToken();
   if (!token) {
@@ -1639,6 +1643,7 @@ async function apiRequest<T>(path: string, init: RequestInit = {}): Promise<T> {
 
   const response = await fetch(`${apiBaseUrl()}${path}`, {
     ...init,
+    signal: requestSignal(init),
     headers: {
       accept: "application/json",
       authorization: `Bearer ${token}`,
@@ -1670,6 +1675,7 @@ async function apiRequest<T>(path: string, init: RequestInit = {}): Promise<T> {
 async function publicApiRequest<T>(path: string, init: RequestInit = {}): Promise<T> {
   const response = await fetch(`${apiBaseUrl()}${path}`, {
     ...init,
+    signal: requestSignal(init),
     headers: {
       accept: "application/json",
       origin: appOrigin(),
