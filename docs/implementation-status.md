@@ -2,6 +2,11 @@
 
 Last updated: 2026-06-09
 
+## Prevention Reference
+
+- See `docs/auth-trust-prevention-playbook.md` before starting any new product or auth-heavy rebuild. It captures the Skillsroom lesson as a prevention standard, not a recovery note.
+- See `docs/new-product-auth-trust-kickoff-template.md` for the paste-ready new chat starter.
+
 ## Admin Step-Up UX Hardening
 
 - Replaced raw admin `step-up token` inputs across funding, results, settlements, Risk Ops, and tournament operator flows.
@@ -2510,3 +2515,18 @@ Community + Virality is complete through C10. New community growth work should b
 - `npm run lint`
 - `npm run build`
 - `npm run launch:check`
+
+## Completed In Messaging Batch 11: Notifications + Control
+
+- Added channel settings for everything, mentions-only, or no notifications.
+- Added separate DM notification preferences and opt-in browser/mobile push.
+- Added moderator slow-mode and temporary-lockdown controls with action-specific loading states.
+- Added visible cooldown and lockdown countdowns directly above the message composer.
+- Added blocked-user review and unblock actions.
+- Added realtime control updates and reliable viewport-relative jumps for current and older pinned messages.
+
+## Messaging Batch 11 Verification
+
+- `npm run typecheck`
+- `npm run build`
+- authenticated responsive browser QA at narrow mobile width

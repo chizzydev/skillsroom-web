@@ -24,6 +24,8 @@ npm run launch:check
 - Google sign-in needs `NEXT_PUBLIC_GOOGLE_CLIENT_ID`.
 - The exact web origin in use, such as `http://localhost:3100` in development or `https://skillsroom.xyz` in production, must also be added to Google Authorized JavaScript origins.
 - Search Console URL-prefix verification can use `GOOGLE_SITE_VERIFICATION`. If unset, the production homepage currently falls back to the active Skillsroom verification token.
+- Before building a new auth-heavy product, review `docs/auth-trust-prevention-playbook.md`.
+- For a paste-ready new chat starter, use `docs/new-product-auth-trust-kickoff-template.md`.
 
 ## Evidence Storage
 
