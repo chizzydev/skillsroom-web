@@ -5,6 +5,7 @@ import {
   ApiRequestError,
   markAllNotificationsRead,
   markNotificationRead,
+  respondDmRequest,
   respondToRoomInvite,
   updateNotificationPreferences
 } from "@/lib/match-room-api";
@@ -49,6 +50,21 @@ export async function respondToRoomInviteAction(formData: FormData) {
     redirect(withError(error));
   }
   redirect(response === "accepted" && matchRoomId ? `/matches/${matchRoomId}` : "/notifications");
+}
+
+export async function respondToDmRequestAction(formData: FormData) {
+  let channelSlug: string | null = null;
+  const response = String(formData.get("response")) === "declined" ? "declined" : "accepted";
+  try {
+    const result = await respondDmRequest(
+      String(formData.get("request_id") || ""),
+      response
+    );
+    channelSlug = result.channel?.slug ?? result.request.channel_slug ?? null;
+  } catch (error) {
+    redirect(withError(error));
+  }
+  redirect(response === "accepted" && channelSlug ? `/chat?channel=${encodeURIComponent(channelSlug)}` : "/notifications");
 }
 
 export async function updateNotificationPreferencesAction(formData: FormData) {

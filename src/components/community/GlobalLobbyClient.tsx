@@ -1771,6 +1771,11 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
       setDmUsername("");
       setDmIntro("");
     } catch (dmError) {
+      if (dmError instanceof Error && /already pending/i.test(dmError.message)) {
+        setNotice("DM request already pending. Open Inbox to check or respond.");
+        window.setTimeout(() => setNotice(null), 3200);
+        return;
+      }
       setError(dmError instanceof Error ? dmError.message : "DM request could not be sent.");
     }
   }
@@ -1796,6 +1801,12 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
       setNotice("DM request sent.");
       window.setTimeout(() => setNotice(null), 2200);
     } catch (dmError) {
+      if (dmError instanceof Error && /already pending/i.test(dmError.message)) {
+        setProfileUser(null);
+        setNotice("DM request already pending. Open Inbox to check or respond.");
+        window.setTimeout(() => setNotice(null), 3200);
+        return;
+      }
       setError(dmError instanceof Error ? dmError.message : "DM request could not be sent.");
     } finally {
       setIsRequestingProfileDm(false);
@@ -2621,6 +2632,18 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
             "overflow-y-auto p-3",
             fullLayout ? "max-h-64 lg:h-full lg:max-h-none" : "max-h-72 lg:max-h-[62vh]"
           ].join(" ")}>
+            <a
+              className={[
+                "mb-3 flex min-h-11 items-center justify-between rounded-md border px-3 text-sm font-black transition",
+                fullLayout ? "border-sky-400/30 bg-sky-400/10 text-sky-200 hover:bg-sky-400/15" : "border-cyan bg-cyanSoft text-ink hover:border-action"
+              ].join(" ")}
+              href="/notifications"
+            >
+              <span>Message requests</span>
+              <span className={["rounded-full px-2 py-0.5 text-xs", fullLayout ? "bg-white/10 text-white" : "bg-white text-cyan"].join(" ")}>
+                {dmRequests.filter((request) => request.status === "pending" && request.recipient_user_id === currentUserId).length}
+              </span>
+            </a>
             <form className={["mb-3 grid gap-2 rounded-md border p-3", fullLayout ? "border-white/10 bg-white/5" : "border-line bg-surface"].join(" ")} onSubmit={createDmRequest}>
               <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">DM Request</p>
               <input

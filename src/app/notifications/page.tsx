@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { AppShell } from "@/components/layout/AppShell";
 import { LiveUpdateStream } from "@/components/realtime/LiveUpdateStream";
 import { Badge } from "@/components/ui/Badge";
@@ -12,8 +13,10 @@ import { getCurrentUser } from "@/lib/auth-bridge";
 import {
   formatEntryAmount,
   getNotificationPreferences,
+  listDmRequests,
   listNotifications,
   listRoomInvites,
+  type ChatDmRequest,
   type NotificationPreference,
   type RoomInvite,
   type UserNotification
@@ -21,6 +24,7 @@ import {
 import {
   markAllNotificationsReadAction,
   markNotificationReadAction,
+  respondToDmRequestAction,
   respondToRoomInviteAction,
   updateNotificationPreferencesAction
 } from "./actions";
@@ -34,6 +38,18 @@ function inviteEntry(invite: RoomInvite) {
   return formatEntryAmount({ currency: invite.currency, entry_amount_minor: invite.entry_amount_minor });
 }
 
+function dmRequester(request: ChatDmRequest) {
+  return request.requester_label || request.requester_display_name || request.requester_username || "A Skillsroom player";
+}
+
+function dmRecipient(request: ChatDmRequest) {
+  return request.recipient_label || request.recipient_display_name || request.recipient_username || "A Skillsroom player";
+}
+
+function dmHandle(username?: string | null) {
+  return username ? `@${username}` : "@skillsroom";
+}
+
 export default async function NotificationsPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
   const user = await getCurrentUser();
   if (!user) redirect("/sign-in?redirect=/notifications");
@@ -41,20 +57,26 @@ export default async function NotificationsPage({ searchParams }: { searchParams
 
   let notifications: UserNotification[] = [];
   let invites: RoomInvite[] = [];
+  let dmRequests: ChatDmRequest[] = [];
   let preferences: NotificationPreference | null = null;
   let loadError: string | null = null;
   try {
-    const [notificationResult, inviteResult, preferenceResult] = await Promise.all([
+    const [notificationResult, inviteResult, dmRequestResult, preferenceResult] = await Promise.all([
       listNotifications("unread"),
       listRoomInvites("pending"),
+      listDmRequests(),
       getNotificationPreferences()
     ]);
     notifications = notificationResult.notifications;
     invites = inviteResult.invites;
+    dmRequests = dmRequestResult.requests;
     preferences = preferenceResult.preferences;
   } catch {
     loadError = "Unable to load notifications.";
   }
+  const incomingDmRequests = dmRequests.filter((request) => request.status === "pending" && request.recipient_user_id === user.id);
+  const outgoingDmRequests = dmRequests.filter((request) => request.status === "pending" && request.requester_user_id === user.id);
+  const activeDmRequests = dmRequests.filter((request) => request.status === "accepted" && request.channel_slug).slice(0, 6);
 
   return (
     <AppShell active="notifications">
@@ -69,7 +91,7 @@ export default async function NotificationsPage({ searchParams }: { searchParams
           </p>
         </section>
 
-        <LiveUpdateStream eventTypePrefixes={["notification.", "room.invite."]} label="Inbox live" />
+        <LiveUpdateStream eventTypePrefixes={["notification.", "room.invite.", "chat.dm.request."]} label="Inbox live" />
 
         {(error || loadError) && (
           <div className="rounded-md border border-danger bg-red-50 p-4 text-sm font-bold text-danger">
@@ -77,8 +99,9 @@ export default async function NotificationsPage({ searchParams }: { searchParams
           </div>
         )}
 
-        <div className="grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-5">
           <StatusPanel detail="Unread" label="Notifications" tone="warning" value={notifications.length.toString()} />
+          <StatusPanel detail="Awaiting you" label="DM Requests" tone="cyan" value={incomingDmRequests.length.toString()} />
           <StatusPanel detail="Pending" label="Invites" tone="cyan" value={invites.length.toString()} />
           <StatusPanel detail="Current channel" label="In-app" tone={preferences?.in_app_enabled ? "success" : "danger"} value={preferences?.in_app_enabled ? "On" : "Off"} />
           <StatusPanel
@@ -146,6 +169,74 @@ export default async function NotificationsPage({ searchParams }: { searchParams
             </form>
           </Panel>
         </div>
+
+        <Panel>
+          <PanelHeader
+            eyebrow="Messages"
+            title="DM requests"
+            description="Accept a request to open a private channel. Pending sent requests stay visible here so they never feel lost."
+          />
+          <div className="grid gap-4 p-4">
+            {incomingDmRequests.length ? (
+              <div className="grid gap-3">
+                <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Waiting for your response</p>
+                {incomingDmRequests.map((request) => (
+                  <article className="grid gap-3 rounded-md border border-line bg-white p-4 shadow-tight" key={request.id}>
+                    <div className="flex min-w-0 items-start gap-3">
+                      <span className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-navy-950 text-sm font-black text-action">
+                        {dmRequester(request).slice(0, 1).toUpperCase()}
+                      </span>
+                      <div className="min-w-0">
+                        <p className="break-words text-base font-black text-ink">{dmRequester(request)}</p>
+                        <p className="mt-0.5 break-words text-xs font-bold text-muted">{dmHandle(request.requester_username)} requested a private chat</p>
+                        {request.intro_message ? <p className="mt-3 rounded-md bg-surfaceHigh p-3 text-sm leading-6 text-muted">{request.intro_message}</p> : null}
+                        <p className="mt-2 font-mono text-[0.68rem] font-bold uppercase tracking-[0.1em] text-dim">{new Date(request.created_at).toLocaleString("en-NG")}</p>
+                      </div>
+                    </div>
+                    <form action={respondToDmRequestAction} className="flex flex-wrap gap-2">
+                      <input name="request_id" type="hidden" value={request.id} />
+                      <FormActionButton idleLabel="Accept" name="response" pendingLabel="Accepting..." size="sm" value="accepted" />
+                      <FormActionButton idleLabel="Decline" name="response" pendingLabel="Declining..." size="sm" value="declined" variant="danger" />
+                    </form>
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <EmptyState description="Private chat requests waiting for your response will appear here." title="No DM requests waiting" />
+            )}
+
+            {outgoingDmRequests.length ? (
+              <div className="grid gap-3 border-t border-line pt-4">
+                <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-dim">Sent requests</p>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {outgoingDmRequests.map((request) => (
+                    <article className="rounded-md border border-line bg-surfaceHigh p-3" key={request.id}>
+                      <p className="font-black text-ink">{dmRecipient(request)}</p>
+                      <p className="mt-1 text-sm font-bold text-muted">{dmHandle(request.recipient_username)} has not responded yet.</p>
+                    </article>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+
+            {activeDmRequests.length ? (
+              <div className="grid gap-3 border-t border-line pt-4">
+                <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-dim">Open private chats</p>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {activeDmRequests.map((request) => {
+                    const otherName = request.requester_user_id === user.id ? dmRecipient(request) : dmRequester(request);
+                    return (
+                      <Link className="rounded-md border border-line bg-white p-3 font-black text-ink shadow-tight transition hover:border-cyan hover:text-cyan" href={`/chat?channel=${encodeURIComponent(request.channel_slug!)}`} key={request.id}>
+                        {otherName}
+                        <span className="mt-1 block text-xs font-bold text-muted">Open private chat</span>
+                      </Link>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : null}
+          </div>
+        </Panel>
 
         <Panel>
           <PanelHeader
