@@ -1,6 +1,7 @@
 import { GlobalLobbyClient } from "@/components/community/GlobalLobbyClient";
 import { Panel, PanelHeader } from "@/components/ui/Panel";
 import { getCurrentUser } from "@/lib/auth-bridge";
+import { redirect } from "next/navigation";
 import {
   listChatChannels,
   listChatMessages,
@@ -24,17 +25,7 @@ export default async function ChatPage({ searchParams }: ChatPageProps) {
   const requested = await searchParams;
 
   if (!user) {
-    return (
-      <main className="min-h-dvh bg-bg p-4">
-        <Panel>
-          <PanelHeader
-            eyebrow="Community Chat"
-            title="Sign in to enter chat"
-            description="Global Chat, game channels, room channels, and private DMs are available to signed-in players."
-          />
-        </Panel>
-      </main>
-    );
+    redirect("/");
   }
 
   let channels: ChatChannel[] = [];

@@ -29,7 +29,9 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
       accept: "application/json"
     },
     cache: "no-store"
-  });
+  }).catch(() => null);
+
+  if (!response) return null;
 
   if (!response.ok) return null;
 
@@ -57,7 +59,9 @@ export async function getGoogleLinkStatus(): Promise<{
       accept: "application/json"
     },
     cache: "no-store"
-  });
+  }).catch(() => null);
+
+  if (!response) return null;
 
   if (!response.ok) return null;
 

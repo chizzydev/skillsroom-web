@@ -9,6 +9,16 @@ type RouteContext = {
   params: Promise<{ channelIdOrSlug: string; messageId: string }>;
 };
 
+export async function GET(_request: Request, context: RouteContext) {
+  const token = await getAccessToken();
+  if (!token) return Response.json({ ok: false, error: { code: "AUTH_REQUIRED", message: "Please sign in to view reactions." } }, { status: 401 });
+  const { channelIdOrSlug, messageId } = await context.params;
+  const response = await fetch(new URL(`/community/channels/${encodeURIComponent(channelIdOrSlug)}/messages/${encodeURIComponent(messageId)}/reactions`, apiBaseUrl()), {
+    headers: { accept: "application/json", authorization: `Bearer ${token}` }, cache: "no-store"
+  });
+  return new Response(await response.text(), { status: response.status, headers: { "content-type": response.headers.get("content-type") ?? "application/json" } });
+}
+
 export async function POST(request: Request, context: RouteContext) {
   const token = await getAccessToken();
   if (!token) {

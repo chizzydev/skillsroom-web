@@ -525,6 +525,25 @@ export type ChatChannel = {
   last_message_body?: string | null;
   last_message_sender_label?: string | null;
   last_message_sender_user_id?: string | null;
+  slow_mode_seconds?: number;
+  lockdown_until?: string | null;
+  lockdown_reason?: string | null;
+  locked_by_user_id?: string | null;
+  membership_notification_level?: ChatNotificationLevel | null;
+  membership_dm_notification_level?: ChatNotificationLevel | null;
+  membership_push_enabled?: boolean | null;
+};
+
+export type ChatNotificationLevel = "all" | "mentions" | "none";
+
+export type ChatChannelControls = {
+  notification_level: ChatNotificationLevel;
+  dm_notification_level: ChatNotificationLevel;
+  push_enabled: boolean;
+  slow_mode_seconds: number;
+  lockdown_until: string | null;
+  lockdown_reason: string | null;
+  can_manage_channel: boolean;
 };
 
 export type ChatAttachment = {
@@ -554,12 +573,18 @@ export type ChatMessage = {
   body: string;
   client_message_id: string | null;
   reply_to_message_id: string | null;
+  thread_root_message_id?: string | null;
+  forwarded_from_message_id?: string | null;
+  forwarded_from_channel_id?: string | null;
   reply_to_body?: string | null;
   reply_to_sender_user_id?: string | null;
   reply_to_sender_label?: string | null;
   mentions?: Array<{ user_id: string; text: string; label?: string }>;
   link_preview?: { url?: string; host?: string; title?: string; safety?: string };
   reactions?: Array<{ reaction: string; count: number; reacted_by_me?: boolean }>;
+  bookmarked_by_me?: boolean;
+  thread_reply_count?: number;
+  poll?: ChatPoll | null;
   attachments?: ChatAttachment[];
   pinned_at?: string | null;
   pinned_by_user_id?: string | null;
@@ -578,6 +603,59 @@ export type ChatMessage = {
   sender_label: string;
   client_delivery_state?: "sending" | "failed";
   client_error?: string;
+};
+
+export type ChatPollOption = {
+  id: string;
+  poll_id: string;
+  option_order: number;
+  label: string;
+  vote_count: number;
+  voted_by_me: boolean;
+};
+
+export type ChatPoll = {
+  id: string;
+  channel_id: string;
+  message_id: string;
+  created_by_user_id: string | null;
+  question: string;
+  allow_multiple: boolean;
+  status: "open" | "closed" | "cancelled";
+  closes_at: string | null;
+  closed_at: string | null;
+  created_at: string;
+  updated_at: string;
+  options: ChatPollOption[];
+  total_votes: number;
+};
+
+export type ChatBookmark = {
+  message_id: string;
+  channel_slug: string;
+  channel_title: string;
+  bookmarked_at: string;
+  message: ChatMessage;
+};
+
+export type ChatReactionMember = {
+  user_id: string;
+  reaction: string;
+  created_at: string;
+  username: string | null;
+  display_name: string | null;
+  label: string;
+};
+
+export type ScheduledChatAnnouncement = {
+  id: string;
+  channel_id: string;
+  created_by_user_id: string | null;
+  body: string;
+  scheduled_for: string;
+  status: "scheduled" | "publishing" | "published" | "cancelled" | "failed";
+  published_message_id: string | null;
+  created_at: string;
 };
 
 export type ChatMessagePageInfo = {
@@ -1569,7 +1647,11 @@ async function apiRequest<T>(path: string, init: RequestInit = {}): Promise<T> {
       ...init.headers
     },
     cache: "no-store"
-  });
+  }).catch(() => null);
+
+  if (!response) {
+    throw new ApiRequestError("Skillsroom API is temporarily unavailable. Please try again.", 503, "API_UNAVAILABLE");
+  }
 
   const payload = (await response.json().catch(() => null)) as ApiSuccess<T> | ApiFailure | null;
   if (!response.ok || !payload || payload.ok !== true) {
@@ -1595,7 +1677,11 @@ async function publicApiRequest<T>(path: string, init: RequestInit = {}): Promis
       ...init.headers
     },
     cache: "no-store"
-  });
+  }).catch(() => null);
+
+  if (!response) {
+    throw new ApiRequestError("Skillsroom API is temporarily unavailable. Please try again.", 503, "API_UNAVAILABLE");
+  }
 
   const payload = (await response.json().catch(() => null)) as ApiSuccess<T> | ApiFailure | null;
   if (!response.ok || !payload || payload.ok !== true) {
