@@ -40,6 +40,13 @@ type PendingImage = {
 
 type MediaPage = { attachments: ChatAttachment[]; page_info: { has_more: boolean; next_before: string | null } };
 
+type ChatProfileUser = {
+  user_id: string;
+  label: string;
+  username?: string | null;
+  is_online?: boolean;
+};
+
 function ChatImage({ attachment, channelSlug, className, onOpen }: { attachment: ChatAttachment; channelSlug: string; className?: string; onOpen?: (url: string) => void }) {
   const [url, setUrl] = useState(attachment.client_preview_url ?? "");
   const [failed, setFailed] = useState(false);
@@ -306,6 +313,10 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
   const [pollClosesAt, setPollClosesAt] = useState("");
   const [isCreatingPoll, setIsCreatingPoll] = useState(false);
   const [votingPollIds, setVotingPollIds] = useState<Set<string>>(new Set());
+  const [profileUser, setProfileUser] = useState<ChatProfileUser | null>(null);
+  const [profileDmIntro, setProfileDmIntro] = useState("");
+  const [isRequestingProfileDm, setIsRequestingProfileDm] = useState(false);
+  const [profileAction, setProfileAction] = useState<"report" | "block" | null>(null);
   const [showSchedule, setShowSchedule] = useState(false);
   const [scheduledBody, setScheduledBody] = useState("");
   const [scheduledFor, setScheduledFor] = useState("");
@@ -385,6 +396,7 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
     .map((user) => [user.user_id, user])).values()).slice(0, 8);
   const isChatAdmin = ["admin", "owner"].includes(currentUserRole);
   const activeEmojiGroup = emojiGroups.find((group) => group.key === emojiGroup) ?? emojiGroups[0];
+  const profileIsSelf = profileUser?.user_id === currentUserId;
 
   const statusLabel = useMemo(() => {
     if (streamStatus === "live") return "Live";
@@ -394,6 +406,23 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
 
   function insertMention(username: string) {
     setBody((current) => current.replace(/(^|\s)@([A-Za-z0-9_]{0,24})$/, `$1@${username} `));
+  }
+
+  function openUserProfile(user: ChatProfileUser) {
+    setProfileUser(user);
+    setProfileDmIntro("");
+    setError(null);
+  }
+
+  function openMessageUserProfile(message: ChatMessage) {
+    if (!message.sender_user_id || message.message_kind === "system") return;
+    const activeUser = presence.active.find((user) => user.user_id === message.sender_user_id);
+    openUserProfile({
+      user_id: message.sender_user_id,
+      label: activeUser?.label ?? message.sender_label,
+      username: activeUser?.username ?? message.sender_username,
+      is_online: activeUser?.is_online ?? false
+    });
   }
 
   function canEditMessage(message: ChatMessage) {
@@ -668,6 +697,10 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
     }
     if (actionMessage) {
       setActionMessage(null);
+      return true;
+    }
+    if (profileUser) {
+      setProfileUser(null);
       return true;
     }
     if (showChannelInfo) {
@@ -1742,6 +1775,33 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
     }
   }
 
+  async function requestProfileDm() {
+    if (!profileUser || profileIsSelf || isRequestingProfileDm) return;
+    const target = profileUser;
+    setIsRequestingProfileDm(true);
+    setError(null);
+    try {
+      const response = await fetch("/api/community/dm-requests", {
+        method: "POST",
+        headers: { "content-type": "application/json", accept: "application/json" },
+        body: JSON.stringify({ recipient_user_id: target.user_id, intro_message: profileDmIntro.trim() || undefined })
+      });
+      const payload = (await response.json()) as ApiEnvelope<{ request: ChatDmRequest }>;
+      if (!response.ok || payload.ok !== true) {
+        throw new Error(payload.ok === false ? payload.error?.message ?? "DM request could not be sent." : "DM request could not be sent.");
+      }
+      setDmRequests((current) => [payload.data.request, ...current.filter((item) => item.id !== payload.data.request.id)]);
+      setProfileDmIntro("");
+      setProfileUser(null);
+      setNotice("DM request sent.");
+      window.setTimeout(() => setNotice(null), 2200);
+    } catch (dmError) {
+      setError(dmError instanceof Error ? dmError.message : "DM request could not be sent.");
+    } finally {
+      setIsRequestingProfileDm(false);
+    }
+  }
+
   async function respondDmRequest(requestId: string, responseValue: "accepted" | "declined") {
     setError(null);
     try {
@@ -1956,6 +2016,64 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
     }
   }
 
+  async function reportProfileUser() {
+    if (!profileUser || profileIsSelf || profileAction) return;
+    const target = profileUser;
+    const reason = window.prompt(`Why are you reporting ${target.label}?`);
+    const trimmed = reason?.trim();
+    if (!trimmed) return;
+    setProfileAction("report");
+    setError(null);
+    try {
+      const response = await fetch("/api/community/users/report", {
+        method: "POST",
+        headers: { "content-type": "application/json", accept: "application/json" },
+        body: JSON.stringify({ user_id: target.user_id, reason: trimmed })
+      });
+      const payload = (await response.json()) as ApiEnvelope<{ flag: { id: string } }>;
+      if (!response.ok || payload.ok !== true) {
+        throw new Error(payload.ok === false ? payload.error?.message ?? "User could not be reported." : "User could not be reported.");
+      }
+      setNotice("User reported.");
+      window.setTimeout(() => setNotice(null), 2200);
+    } catch (reportError) {
+      setError(reportError instanceof Error ? reportError.message : "User could not be reported.");
+    } finally {
+      setProfileAction(null);
+    }
+  }
+
+  async function blockProfileUser() {
+    if (!profileUser || profileIsSelf || profileAction) return;
+    const target = profileUser;
+    const confirmed = window.confirm(`Block ${target.label}? You will stop seeing their chat messages.`);
+    if (!confirmed) return;
+    setProfileAction("block");
+    setError(null);
+    try {
+      const response = await fetch("/api/community/users/block", {
+        method: "POST",
+        headers: { "content-type": "application/json", accept: "application/json" },
+        body: JSON.stringify({ user_id: target.user_id })
+      });
+      const payload = (await response.json()) as ApiEnvelope<{ block: { blocked_user_id: string } }>;
+      if (!response.ok || payload.ok !== true) {
+        throw new Error(payload.ok === false ? payload.error?.message ?? "User could not be blocked." : "User could not be blocked.");
+      }
+      setMessagesByChannel((current) => ({
+        ...current,
+        [activeChannel.slug]: (current[activeChannel.slug] ?? []).filter((item) => item.sender_user_id !== target.user_id)
+      }));
+      setProfileUser(null);
+      setNotice("User blocked.");
+      window.setTimeout(() => setNotice(null), 2200);
+    } catch (blockError) {
+      setError(blockError instanceof Error ? blockError.message : "User could not be blocked.");
+    } finally {
+      setProfileAction(null);
+    }
+  }
+
   return (
     <section className={[
       "min-w-0 overflow-hidden shadow-tight",
@@ -2016,7 +2134,7 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
                 <div className="grid gap-2">
                   <p className="mb-1 text-xs font-black uppercase tracking-[0.14em] text-slate-400">Active and recent members</p>
                   {userDirectory.length ? userDirectory.map((user) => (
-                    <div className="flex min-w-0 items-center gap-3 rounded-md bg-white/5 p-2.5 sm:p-3" key={user.user_id}>
+                    <button className="flex min-w-0 items-center gap-3 rounded-md bg-white/5 p-2.5 text-left hover:bg-white/10 sm:p-3" key={user.user_id} onClick={() => openUserProfile(user)} type="button">
                       <span className="relative grid h-10 w-10 shrink-0 place-items-center rounded-full bg-navy-900 text-sm font-black text-white sm:h-11 sm:w-11">
                         {initials(user.label)}
                         {user.is_online ? <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-[#172331] bg-success" /> : null}
@@ -2025,7 +2143,7 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
                         <p className="truncate text-sm font-black text-white">{user.label}</p>
                         <p className="truncate text-xs font-bold text-slate-400">{user.username ? `@${user.username} / ` : ""}{user.is_online ? "online" : "recent"}</p>
                       </div>
-                    </div>
+                    </button>
                   )) : <p className="rounded-md border border-dashed border-white/10 p-5 text-center text-sm font-bold text-slate-400">Members appear here as they become active in this channel.</p>}
                 </div>
               ) : null}
@@ -2189,6 +2307,66 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
                   </section>
                 </div>
               ) : null}
+            </div>
+          </section>
+        </div>
+      ) : null}
+
+      {profileUser ? (
+        <div aria-label={`${profileUser.label} profile`} aria-modal="true" className="fixed inset-0 z-[62] flex items-end bg-black/60 p-2 pb-[max(env(safe-area-inset-bottom),0.5rem)] sm:items-center sm:justify-center sm:p-4" onClick={() => setProfileUser(null)} role="dialog">
+          <section className="max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-lg border border-white/10 bg-[#171b25] text-white shadow-panel" onClick={(event) => event.stopPropagation()}>
+            <div className="h-20 rounded-t-lg bg-[linear-gradient(135deg,#22d3ee,#8b5cf6_55%,#111827)]" />
+            <div className="px-5 pb-5">
+              <div className="-mt-10 flex items-end justify-between gap-3">
+                <span className="relative grid h-20 w-20 shrink-0 place-items-center rounded-full border-4 border-[#171b25] bg-navy-900 text-2xl font-black text-action shadow-tight">
+                  {initials(profileUser.label)}
+                  {profileUser.is_online ? <span className="absolute bottom-1 right-1 h-4 w-4 rounded-full border-2 border-[#171b25] bg-success" /> : null}
+                </span>
+                <button aria-label="Close profile" className="mb-2 grid h-10 w-10 shrink-0 place-items-center rounded-full bg-white/10 text-lg font-black text-slate-200 hover:bg-white/20" onClick={() => setProfileUser(null)} type="button">X</button>
+              </div>
+
+              <div className="mt-4 min-w-0">
+                <h2 className="break-words text-3xl font-black leading-tight text-white">{profileIsSelf ? "You" : profileUser.label}</h2>
+                <p className="mt-1 break-words text-base font-bold text-slate-300">{profileUser.username ? `@${profileUser.username}` : profileUser.label}</p>
+                <p className="mt-2 text-sm font-bold text-slate-400">{profileUser.is_online ? "Online now" : "Recent in this channel"} / {channelTitle(activeChannel)}</p>
+              </div>
+
+              <div className="mt-5 grid gap-2 sm:grid-cols-[1fr_auto_auto]">
+                {profileIsSelf ? (
+                  <a className="grid min-h-11 place-items-center rounded-full bg-action px-4 text-sm font-black text-navy-950 shadow-action hover:bg-action/90" href="/profile">Edit profile</a>
+                ) : (
+                  <button className="min-h-11 rounded-full bg-action px-4 text-sm font-black text-navy-950 shadow-action hover:bg-action/90 disabled:cursor-wait disabled:bg-slate-600 disabled:text-slate-300 disabled:shadow-none" disabled={isRequestingProfileDm} onClick={() => void requestProfileDm()} type="button">
+                    {isRequestingProfileDm ? "Requesting..." : "Request DM"}
+                  </button>
+                )}
+                {!profileIsSelf ? <button className="min-h-11 rounded-full bg-white/10 px-4 text-sm font-black text-white hover:bg-white/15 disabled:cursor-wait disabled:opacity-60" disabled={profileAction !== null} onClick={() => void reportProfileUser()} type="button">{profileAction === "report" ? "Reporting..." : "Report"}</button> : null}
+                {!profileIsSelf ? <button className="min-h-11 rounded-full bg-red-500/20 px-4 text-sm font-black text-red-100 hover:bg-red-500/30 disabled:cursor-wait disabled:opacity-60" disabled={profileAction !== null} onClick={() => void blockProfileUser()} type="button">{profileAction === "block" ? "Blocking..." : "Block"}</button> : null}
+              </div>
+
+              {!profileIsSelf ? (
+                <div className="mt-5 rounded-lg border border-white/10 bg-white/5 p-3">
+                  <label className="grid gap-2 text-sm font-bold text-slate-300">
+                    <span className="font-black text-white">DM intro</span>
+                    <textarea className="min-h-20 resize-y rounded-md border border-white/10 bg-[#223447] p-3 text-base leading-6 text-white outline-none placeholder:text-slate-500 focus:border-sky-400" maxLength={240} onChange={(event) => setProfileDmIntro(event.target.value)} placeholder={`Say why you want to message ${profileUser.label}`} value={profileDmIntro} />
+                  </label>
+                  <p className="mt-2 text-xs leading-5 text-slate-400">DMs use request-and-accept first. Be careful with links, payment requests, and off-platform claims.</p>
+                </div>
+              ) : null}
+
+              <div className="mt-5 grid gap-3">
+                <section className="rounded-lg border border-white/10 bg-white/5 p-4">
+                  <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-400">Skillsroom identity</p>
+                  <p className="mt-2 text-sm leading-6 text-slate-200">This public identity follows the player across Global Chat, game channels, room channels, and future DMs when they update their profile.</p>
+                </section>
+                <section className="rounded-lg border border-white/10 bg-white/5 p-4">
+                  <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-400">Channel status</p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-black text-slate-200">{profileUser.is_online ? "Active now" : "Recent"}</span>
+                    <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-black text-slate-200">{profileIsSelf ? "Your account" : "Member"}</span>
+                    <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-black text-slate-200">{channelTypeLabel(activeChannel)}</span>
+                  </div>
+                </section>
+              </div>
             </div>
           </section>
         </div>
@@ -2555,6 +2733,7 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
                   const system = message.message_kind === "system";
                   const deleted = message.status === "deleted";
                   const isPinned = pinnedMessages.some((pin) => pin.message_id === message.id);
+                  const canOpenSenderProfile = Boolean(message.sender_user_id && !system);
                   const previous = messages[index - 1];
                   const showDate = !previous || messageDate(previous.created_at) !== messageDate(message.created_at);
                   return (
@@ -2584,9 +2763,13 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
                       onPointerUp={clearLongPress}
                     >
                       <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
-                        {!mine && !system ? <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-navy-900 text-xs font-black text-white">{initials(message.sender_label)}</span> : null}
-                        <strong className={["break-words text-sm font-black [overflow-wrap:anywhere]", mine || system ? "text-ink" : "text-sky-300"].join(" ")}>{system ? "Skillsroom" : mine ? "You" : message.sender_label}</strong>
-                        {!mine && !system ? <span className="text-xs font-bold text-slate-300">{displayHandle(message)}</span> : null}
+                        {!mine && !system ? <button aria-label={`Open ${message.sender_label} profile`} className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-navy-900 text-xs font-black text-white hover:ring-2 hover:ring-sky-300" disabled={!canOpenSenderProfile} onClick={() => openMessageUserProfile(message)} type="button">{initials(message.sender_label)}</button> : null}
+                        {canOpenSenderProfile ? (
+                          <button className={["break-words text-left text-sm font-black [overflow-wrap:anywhere]", mine ? "text-ink hover:text-cyan" : "text-sky-300 hover:text-sky-200"].join(" ")} onClick={() => openMessageUserProfile(message)} type="button">{mine ? "You" : message.sender_label}</button>
+                        ) : (
+                          <strong className={["break-words text-sm font-black [overflow-wrap:anywhere]", mine || system ? "text-ink" : "text-sky-300"].join(" ")}>{system ? "Skillsroom" : mine ? "You" : message.sender_label}</strong>
+                        )}
+                        {!mine && !system ? <button className="text-xs font-bold text-slate-300 hover:text-white" onClick={() => openMessageUserProfile(message)} type="button">{displayHandle(message)}</button> : null}
                         <span className={["font-mono text-[0.68rem] font-bold uppercase tracking-[0.12em]", mine || system ? "text-muted" : "text-slate-400"].join(" ")}>{messageTime(message.created_at)}</span>
                         {message.edited_at && !deleted ? <span className={["text-[0.68rem] font-bold", mine || system ? "text-muted" : "text-slate-400"].join(" ")}>edited</span> : null}
                         {isPinned ? <span className="rounded-sm bg-action/20 px-2 py-1 text-[0.68rem] font-black uppercase tracking-[0.12em] text-ink">Pinned</span> : null}
@@ -2843,7 +3026,7 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
                 <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Active now</p>
                 <div className="mt-3 grid gap-2">
                   {userDirectory.length ? userDirectory.slice(0, 18).map((user) => (
-                    <div className="flex min-w-0 items-center gap-2 rounded-md border border-white/10 bg-white/5 px-2 py-2" key={user.user_id}>
+                    <button className="flex min-w-0 items-center gap-2 rounded-md border border-white/10 bg-white/5 px-2 py-2 text-left hover:bg-white/10" key={user.user_id} onClick={() => openUserProfile(user)} type="button">
                       <span className="relative grid h-9 w-9 shrink-0 place-items-center rounded-full bg-navy-900 text-xs font-black text-white">
                         {initials(user.label)}
                         {user.is_online ? <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-[#162536] bg-success" /> : null}
@@ -2852,7 +3035,7 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
                         <p className="truncate text-sm font-black text-white">{user.label}</p>
                         <p className="truncate text-xs font-bold text-slate-400">{user.username ? `@${user.username}` : user.is_online ? "online" : "recent"}</p>
                       </div>
-                    </div>
+                    </button>
                   )) : (
                     <p className="rounded-md border border-dashed border-white/10 p-3 text-sm font-bold text-slate-400">Active players will appear here.</p>
                   )}
