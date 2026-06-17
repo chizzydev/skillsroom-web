@@ -532,6 +532,10 @@ export type ChatChannel = {
   membership_notification_level?: ChatNotificationLevel | null;
   membership_dm_notification_level?: ChatNotificationLevel | null;
   membership_push_enabled?: boolean | null;
+  dm_peer_user_id?: string | null;
+  dm_peer_username?: string | null;
+  dm_peer_display_name?: string | null;
+  dm_peer_label?: string | null;
 };
 
 export type ChatNotificationLevel = "all" | "mentions" | "none";
@@ -551,9 +555,17 @@ export type ChatAttachment = {
   channel_id: string;
   message_id: string | null;
   uploader_user_id: string;
-  attachment_type: "image";
+  attachment_type: "image" | "document";
   status: "pending" | "ready" | "attached" | "hidden" | "deleted" | "failed";
-  mime_type: "image/jpeg" | "image/png" | "image/webp";
+  mime_type:
+    | "image/jpeg"
+    | "image/png"
+    | "image/webp"
+    | "application/pdf"
+    | "application/msword"
+    | "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    | "application/vnd.oasis.opendocument.text"
+    | "text/plain";
   byte_size: number;
   width: number | null;
   height: number | null;

@@ -1,7 +1,7 @@
 "use client";
 /* eslint-disable @next/next/no-img-element -- private signed URLs and local blob previews bypass the public image optimizer */
 
-import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import type { ChatAttachment, ChatBookmark, ChatChannel, ChatChannelControls, ChatDmRequest, ChatMessage, ChatMessagePageInfo, ChatNotificationLevel, ChatPinnedMessage, ChatPresenceSummary, ChatReactionMember, ChatSearchPageInfo, ChatUserBlock, ScheduledChatAnnouncement } from "@/lib/match-room-api";
 
 type GlobalLobbyClientProps = {
@@ -28,10 +28,10 @@ type RealtimeEvent = {
   payload: Record<string, unknown>;
 };
 
-type PendingImage = {
+type PendingAttachment = {
   localId: string;
   file: File;
-  previewUrl: string;
+  previewUrl?: string;
   attachment?: ChatAttachment;
   state: "uploading" | "ready" | "failed";
   progress: number;
@@ -46,6 +46,51 @@ type ChatProfileUser = {
   username?: string | null;
   is_online?: boolean;
 };
+
+const chatImageMimeTypes = ["image/jpeg", "image/png", "image/webp"] as const;
+const chatDocumentMimeTypes = [
+  "application/pdf",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/vnd.oasis.opendocument.text",
+  "text/plain"
+] as const;
+const acceptedChatDocuments = ".pdf,.doc,.docx,.odt,.txt,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.oasis.opendocument.text,text/plain";
+const maxChatImageBytes = 8 * 1024 * 1024;
+const maxChatDocumentBytes = 12 * 1024 * 1024;
+
+function isChatImageMime(mimeType: string | null | undefined) {
+  return chatImageMimeTypes.includes(mimeType as (typeof chatImageMimeTypes)[number]);
+}
+
+function isChatDocumentMime(mimeType: string | null | undefined) {
+  return chatDocumentMimeTypes.includes(mimeType as (typeof chatDocumentMimeTypes)[number]);
+}
+
+function chatAttachmentKind(file: File): "image" | "document" | null {
+  if (isChatImageMime(file.type)) return "image";
+  if (isChatDocumentMime(file.type)) return "document";
+  return null;
+}
+
+function formatAttachmentSize(bytes: number | null | undefined) {
+  if (!bytes || bytes < 1) return "";
+  if (bytes >= 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(bytes >= 10 * 1024 * 1024 ? 0 : 1)} MB`;
+  return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+}
+
+function documentBadge(mimeType: string | null | undefined) {
+  if (mimeType === "application/pdf") return "PDF";
+  if (mimeType === "text/plain") return "TXT";
+  if (mimeType === "application/vnd.oasis.opendocument.text") return "ODT";
+  if (mimeType === "application/msword" || mimeType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") return "DOC";
+  return "FILE";
+}
+
+function attachmentPreviewLabel(attachment: ChatAttachment) {
+  if (attachment.original_name?.trim()) return attachment.original_name.trim();
+  return attachment.attachment_type === "document" ? "Document" : "Photo";
+}
 
 function ChatImage({ attachment, channelSlug, className, onOpen }: { attachment: ChatAttachment; channelSlug: string; className?: string; onOpen?: (url: string) => void }) {
   const [url, setUrl] = useState(attachment.client_preview_url ?? "");
@@ -75,6 +120,51 @@ function ChatImage({ attachment, channelSlug, className, onOpen }: { attachment:
   return <button aria-label={`Open image from ${attachment.uploader_label}`} className={["block min-w-0 overflow-hidden rounded-md bg-black/20", className].filter(Boolean).join(" ")} onClick={() => onOpen?.(url)} type="button"><img alt={attachment.alt_text ?? attachment.original_name ?? "Chat image"} className="h-full w-full object-cover" loading="lazy" src={url} /></button>;
 }
 
+function ChatAttachmentTile({ attachment, channelSlug, className, onOpenImage }: { attachment: ChatAttachment; channelSlug: string; className?: string; onOpenImage?: (url: string) => void }) {
+  const [isOpening, setIsOpening] = useState(false);
+  const [failed, setFailed] = useState(false);
+
+  if (attachment.attachment_type === "image") {
+    return <ChatImage attachment={attachment} channelSlug={channelSlug} className={className} onOpen={onOpenImage} />;
+  }
+
+  const unavailable = attachment.status === "hidden" || attachment.status === "deleted" || attachment.status === "failed";
+
+  async function openDocument() {
+    if (unavailable || isOpening) return;
+    setIsOpening(true);
+    setFailed(false);
+    try {
+      const response = await fetch(`/api/community/channels/${encodeURIComponent(channelSlug)}/attachments/${encodeURIComponent(attachment.id)}/url`, { headers: { accept: "application/json" }, cache: "no-store" });
+      const payload = await response.json() as ApiEnvelope<{ url: string }>;
+      if (!response.ok || payload.ok !== true) throw new Error(payload.ok === false ? payload.error?.message ?? "Document unavailable." : "Document unavailable.");
+      window.open(payload.data.url, "_blank", "noopener,noreferrer");
+    } catch {
+      setFailed(true);
+    } finally {
+      setIsOpening(false);
+    }
+  }
+
+  return (
+    <button
+      aria-label={`Open ${attachmentPreviewLabel(attachment)}`}
+      className={["flex min-h-24 min-w-0 items-center gap-3 rounded-md border border-white/10 bg-black/15 p-3 text-left hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60", className].filter(Boolean).join(" ")}
+      disabled={unavailable || isOpening}
+      onClick={() => void openDocument()}
+      type="button"
+    >
+      <span className="grid h-12 w-12 shrink-0 place-items-center rounded-md bg-sky-400/15 font-mono text-xs font-black text-sky-200">{documentBadge(attachment.mime_type)}</span>
+      <span className="min-w-0">
+        <span className="block truncate text-sm font-black text-white">{attachmentPreviewLabel(attachment)}</span>
+        <span className="mt-1 block text-xs font-bold text-slate-400">
+          {unavailable ? "Attachment unavailable" : failed ? "Could not open. Tap to retry." : isOpening ? "Opening..." : `Open file${formatAttachmentSize(attachment.byte_size) ? ` · ${formatAttachmentSize(attachment.byte_size)}` : ""}`}
+        </span>
+      </span>
+    </button>
+  );
+}
+
 function messageTime(value: string) {
   return new Date(value).toLocaleTimeString("en-NG", { hour: "2-digit", minute: "2-digit" });
 }
@@ -97,9 +187,19 @@ function initials(value: string) {
     .join("") || "SR";
 }
 
-function channelInitials(channel: Pick<ChatChannel, "slug" | "title">) {
+type ChatChannelDisplay = Pick<ChatChannel, "slug" | "title" | "channel_type" | "dm_peer_label" | "dm_peer_display_name" | "dm_peer_username">;
+
+function channelDisplayName(channel: ChatChannelDisplay) {
+  if (channel.slug === "global_lobby") return "Global Chat";
+  if (channel.channel_type === "dm") {
+    return channel.dm_peer_label ?? channel.dm_peer_display_name ?? channel.dm_peer_username ?? "DM";
+  }
+  return channel.title;
+}
+
+function channelInitials(channel: ChatChannelDisplay) {
   if (channel.slug === "global_lobby") return "GC";
-  const words = channel.title
+  const words = channelDisplayName(channel)
     .replace(/[^A-Za-z0-9 ]+/g, " ")
     .split(/\s+/)
     .filter((word) => word && !["of", "the", "and"].includes(word.toLowerCase()));
@@ -113,16 +213,20 @@ function channelTypeLabel(channel: ChatChannel) {
   if (channel.channel_type === "tournament") return "Tournament";
   if (channel.channel_type === "game") return "Game";
   if (channel.channel_type === "group") return "Community";
+  if (channel.channel_type === "dm") return "DM";
   return "Channel";
 }
 
-function channelTitle(channel: Pick<ChatChannel, "slug" | "title">) {
-  return channel.slug === "global_lobby" ? "Global Chat" : channel.title;
+function channelTitle(channel: ChatChannelDisplay) {
+  return channelDisplayName(channel);
 }
 
 function channelPreview(channel: ChatChannel) {
   if (channel.last_message_body) {
     return `${channel.last_message_sender_label ?? "Player"}: ${channel.last_message_body}`;
+  }
+  if (channel.channel_type === "dm") {
+    return channel.dm_peer_username ? `@${channel.dm_peer_username}` : "DM";
   }
   return channel.description ?? `${channelTypeLabel(channel)} channel`;
 }
@@ -258,11 +362,11 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
   const [notice, setNotice] = useState<string | null>(null);
   const [streamStatus, setStreamStatus] = useState<"starting" | "live" | "reconnecting">("starting");
   const [showChannelInfo, setShowChannelInfo] = useState(false);
-  const [infoTab, setInfoTab] = useState<"members" | "channels" | "media" | "pins" | "settings">("members");
+  const [infoTab, setInfoTab] = useState<"members" | "messages" | "channels" | "media" | "pins" | "settings">("members");
   const [mediaByChannel, setMediaByChannel] = useState<Record<string, MediaPage>>({});
   const [isLoadingMedia, setIsLoadingMedia] = useState(false);
   const [mediaError, setMediaError] = useState<string | null>(null);
-  const [pendingImages, setPendingImages] = useState<PendingImage[]>([]);
+  const [pendingAttachments, setPendingAttachments] = useState<PendingAttachment[]>([]);
   const [showAttachmentMenu, setShowAttachmentMenu] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [emojiGroup, setEmojiGroup] = useState<(typeof emojiGroups)[number]["key"]>("recent");
@@ -341,12 +445,14 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
   const messageViewportRef = useRef<HTMLDivElement | null>(null);
   const composerRef = useRef<HTMLTextAreaElement | null>(null);
   const imageInputRef = useRef<HTMLInputElement | null>(null);
+  const documentInputRef = useRef<HTMLInputElement | null>(null);
   const uploadRequestsRef = useRef<Map<string, XMLHttpRequest>>(new Map());
   const longPressTimerRef = useRef<number | null>(null);
   const seenIdsRef = useRef<Set<string>>(new Set(initialMessages.map((message) => message.id)));
   const messagesByChannelRef = useRef(messagesByChannel);
   const shouldStickLatestRef = useRef(true);
   const initialLinkHandledRef = useRef(false);
+  const backgroundAuthPauseUntilRef = useRef(0);
 
   const messages = messagesByChannel[activeChannel.slug] ?? emptyMessages;
   const pageInfo = pageInfoByChannel[activeChannel.slug] ?? { has_older: false, older_cursor: null };
@@ -363,15 +469,21 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
   const currentPinnedMessage = bannerPinnedMessages[pinBannerIndex] ?? null;
   const presence = presenceByChannel[activeChannel.slug] ?? emptyPresence;
   const charactersLeft = 1000 - body.length;
-  const readyImages = pendingImages.filter((image) => image.state === "ready" && image.attachment);
-  const uploadInProgress = pendingImages.some((image) => image.state === "uploading");
+  const readyAttachments = pendingAttachments.filter((attachment) => attachment.state === "ready" && attachment.attachment);
+  const uploadInProgress = pendingAttachments.some((attachment) => attachment.state === "uploading");
   const canManageAnyPin = ["support", "moderator", "admin", "owner"].includes(currentUserRole);
   const canModerateMessages = ["moderator", "admin", "owner"].includes(currentUserRole);
   const cooldownSeconds = cooldownUntil ? Math.max(0, Math.ceil((Date.parse(cooldownUntil) - cooldownClock) / 1000)) : 0;
   const lockdownSeconds = activeChannel.lockdown_until ? Math.max(0, Math.ceil((Date.parse(activeChannel.lockdown_until) - cooldownClock) / 1000)) : 0;
   const isSendControlled = !canModerateMessages && (cooldownSeconds > 0 || lockdownSeconds > 0);
-  const canSend = (body.trim().length > 0 || readyImages.length > 0) && body.trim().length <= 1000 && !uploadInProgress && !isSending && !isLoadingChannel && !isSendControlled;
+  const canSend = (body.trim().length > 0 || readyAttachments.length > 0) && body.trim().length <= 1000 && !uploadInProgress && !isSending && !isLoadingChannel && !isSendControlled;
   const fullLayout = layout === "full";
+  const dmChannels = useMemo(() => channelList.filter((channel) => channel.channel_type === "dm"), [channelList]);
+  const communityChannels = useMemo(() => channelList.filter((channel) => channel.channel_type !== "dm"), [channelList]);
+  const pendingIncomingDmRequests = useMemo(
+    () => dmRequests.filter((request) => request.status === "pending" && request.recipient_user_id === currentUserId),
+    [currentUserId, dmRequests]
+  );
   const typingUsers = presence.typing.filter((user) => user.user_id !== currentUserId);
   const userDirectory = useMemo(() => {
     const users = new Map<string, { user_id: string; label: string; username?: string | null; is_online?: boolean }>();
@@ -390,6 +502,33 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
     }
     return Array.from(users.values());
   }, [messages, presence.active]);
+  const listedActiveChannel = useMemo(
+    () => channelList.find((item) => item.id === activeChannel.id || item.slug === activeChannel.slug) ?? null,
+    [activeChannel.id, activeChannel.slug, channelList]
+  );
+  const displayActiveChannel = useMemo(() => {
+    if (activeChannel.channel_type !== "dm") return activeChannel;
+    const peer = userDirectory.find((user) => user.user_id !== currentUserId);
+    const peerLabel =
+      activeChannel.dm_peer_label ??
+      listedActiveChannel?.dm_peer_label ??
+      activeChannel.dm_peer_display_name ??
+      listedActiveChannel?.dm_peer_display_name ??
+      activeChannel.dm_peer_username ??
+      listedActiveChannel?.dm_peer_username ??
+      peer?.label ??
+      "DM";
+    const peerUsername = activeChannel.dm_peer_username ?? listedActiveChannel?.dm_peer_username ?? peer?.username ?? null;
+    return {
+      ...activeChannel,
+      dm_peer_label: peerLabel,
+      dm_peer_display_name: activeChannel.dm_peer_display_name ?? listedActiveChannel?.dm_peer_display_name ?? peerLabel,
+      dm_peer_username: peerUsername
+    };
+  }, [activeChannel, currentUserId, listedActiveChannel, userDirectory]);
+  const activeChannelSubtitle = activeChannel.channel_type === "dm"
+    ? `${presence.online_count} online / DM`
+    : `${presence.online_count} online${communityChannels.length ? ` / ${communityChannels.length} channels` : ""}`;
   const mentionFragment = body.match(/(?:^|\s)@([A-Za-z0-9_]{0,24})$/)?.[1]?.toLowerCase() ?? null;
   const mentionSuggestions = mentionFragment === null ? [] : Array.from(new Map([...userDirectory, ...remoteMentionUsers]
     .filter((user) => user.username && user.user_id !== currentUserId && user.username.toLowerCase().startsWith(mentionFragment))
@@ -407,6 +546,19 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
   function insertMention(username: string) {
     setBody((current) => current.replace(/(^|\s)@([A-Za-z0-9_]{0,24})$/, `$1@${username} `));
   }
+
+  const backgroundChatRequest = useCallback(async (input: string, init: RequestInit) => {
+    if (Date.now() < backgroundAuthPauseUntilRef.current) return null;
+    const response = await fetch(input, {
+      ...init,
+      credentials: "same-origin"
+    });
+    if (response.status === 401) {
+      backgroundAuthPauseUntilRef.current = Date.now() + 60_000;
+      return null;
+    }
+    return response;
+  }, []);
 
   function openUserProfile(user: ChatProfileUser) {
     setProfileUser(user);
@@ -610,16 +762,16 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
     else void jumpToMessage(linkedMessageId);
     // Deep links are consumed once; rerunning after message updates can replace the user's current view.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeChannel.slug]);
+  }, [activeChannel.slug, backgroundChatRequest]);
 
-  async function markRead(channel: ChatChannel, nextMessages: ChatMessage[]) {
+  const markRead = useCallback(async (channel: ChatChannel, nextMessages: ChatMessage[]) => {
     const lastMessage = nextMessages.at(-1);
-    await fetch(`/api/community/channels/${encodeURIComponent(channel.slug)}/read`, {
+    await backgroundChatRequest(`/api/community/channels/${encodeURIComponent(channel.slug)}/read`, {
       method: "POST",
       headers: { "content-type": "application/json", accept: "application/json" },
       body: JSON.stringify({ message_id: lastMessage?.id })
     }).catch(() => undefined);
-  }
+  }, [backgroundChatRequest]);
 
   async function openChannel(channel: ChatChannel) {
     shouldStickLatestRef.current = true;
@@ -712,6 +864,11 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
 
   function handleBack() {
     if (closeLocalSurface()) return;
+    if (activeChannel.channel_type === "dm") {
+      setInfoTab("messages");
+      setShowChannelInfo(true);
+      return;
+    }
     if (activeChannel.slug !== "global_lobby") {
       setInfoTab("channels");
       setShowChannelInfo(true);
@@ -720,8 +877,7 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
     window.location.assign("/");
   }
 
-  function exitChat() {
-    if (closeLocalSurface()) return;
+  function goHome() {
     window.location.assign("/");
   }
 
@@ -730,10 +886,11 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
 
     async function beat() {
       try {
-        const response = await fetch(`/api/community/channels/${encodeURIComponent(activeChannel.slug)}/heartbeat`, {
+        const response = await backgroundChatRequest(`/api/community/channels/${encodeURIComponent(activeChannel.slug)}/heartbeat`, {
           method: "POST",
           headers: { accept: "application/json" }
         });
+        if (!response) return;
         const payload = (await response.json()) as ApiEnvelope<{ channel: ChatChannel; presence: ChatPresenceSummary }>;
         if (!closed && response.ok && payload.ok === true) {
           setPresenceByChannel((current) => ({ ...current, [payload.data.channel.slug]: payload.data.presence }));
@@ -750,11 +907,11 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
       closed = true;
       window.clearInterval(timer);
     };
-  }, [activeChannel.slug]);
+  }, [activeChannel.slug, backgroundChatRequest]);
 
   useEffect(() => {
     if (!body.trim()) {
-      void fetch(`/api/community/channels/${encodeURIComponent(activeChannel.slug)}/typing`, {
+      void backgroundChatRequest(`/api/community/channels/${encodeURIComponent(activeChannel.slug)}/typing`, {
         method: "POST",
         headers: { "content-type": "application/json", accept: "application/json" },
         body: JSON.stringify({ is_typing: false })
@@ -763,7 +920,7 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
     }
 
     const timer = window.setTimeout(() => {
-      void fetch(`/api/community/channels/${encodeURIComponent(activeChannel.slug)}/typing`, {
+      void backgroundChatRequest(`/api/community/channels/${encodeURIComponent(activeChannel.slug)}/typing`, {
         method: "POST",
         headers: { "content-type": "application/json", accept: "application/json" },
         body: JSON.stringify({ is_typing: true })
@@ -771,7 +928,7 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
     }, 350);
 
     return () => window.clearTimeout(timer);
-  }, [activeChannel.slug, body]);
+  }, [activeChannel.slug, backgroundChatRequest, body]);
 
   useEffect(() => {
     if (mentionFragment === null || mentionFragment.length < 1) {
@@ -969,56 +1126,61 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
     });
 
     return () => source.close();
-  }, [activeChannel, threadTarget]);
+  }, [activeChannel, markRead, threadTarget]);
 
-  function uploadImage(file: File, existingLocalId?: string) {
+  function uploadAttachment(file: File, existingLocalId?: string) {
     const localId = existingLocalId ?? crypto.randomUUID();
-    if (!existingLocalId && pendingImages.length >= 4) {
-      setError("You can add up to 4 images to one message.");
+    const kind = chatAttachmentKind(file);
+    if (!existingLocalId && pendingAttachments.length >= 4) {
+      setError("You can add up to 4 attachments to one message.");
       return;
     }
-    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type) || !file.size || file.size > 8 * 1024 * 1024) {
-      setError("Choose a JPG, PNG, or WEBP image up to 8MB.");
+    if (!kind) {
+      setError("Choose a JPG, PNG, WEBP, PDF, DOC, DOCX, ODT, or TXT file.");
       return;
     }
-    const previewUrl = existingLocalId
-      ? pendingImages.find((image) => image.localId === existingLocalId)?.previewUrl ?? URL.createObjectURL(file)
-      : URL.createObjectURL(file);
-    const next: PendingImage = { localId, file, previewUrl, state: "uploading", progress: 0 };
+    const maxBytes = kind === "image" ? maxChatImageBytes : maxChatDocumentBytes;
+    if (!file.size || file.size > maxBytes) {
+      setError(kind === "image" ? "Choose a JPG, PNG, or WEBP image up to 8MB." : "Choose a PDF, DOC, DOCX, ODT, or TXT document up to 12MB.");
+      return;
+    }
+    const existingPreview = existingLocalId ? pendingAttachments.find((attachment) => attachment.localId === existingLocalId)?.previewUrl : undefined;
+    const previewUrl = kind === "image" ? existingPreview ?? URL.createObjectURL(file) : undefined;
+    const next: PendingAttachment = { localId, file, previewUrl, state: "uploading", progress: 0 };
     setError(null);
-    setPendingImages((current) => existingLocalId ? current.map((image) => image.localId === localId ? next : image) : [...current, next]);
+    setPendingAttachments((current) => existingLocalId ? current.map((attachment) => attachment.localId === localId ? next : attachment) : [...current, next]);
     const form = new FormData();
-    form.append("image", file);
+    form.append("media", file);
     const request = new XMLHttpRequest();
     uploadRequestsRef.current.set(localId, request);
     request.open("POST", `/api/community/channels/${encodeURIComponent(activeChannel.slug)}/attachments`);
     request.setRequestHeader("accept", "application/json");
     request.upload.onprogress = (event) => {
       if (!event.lengthComputable) return;
-      setPendingImages((current) => current.map((image) => image.localId === localId ? { ...image, progress: Math.max(1, Math.round((event.loaded / event.total) * 100)) } : image));
+      setPendingAttachments((current) => current.map((attachment) => attachment.localId === localId ? { ...attachment, progress: Math.max(1, Math.round((event.loaded / event.total) * 100)) } : attachment));
     };
     request.onload = () => {
       uploadRequestsRef.current.delete(localId);
       try {
         const payload = JSON.parse(request.responseText) as ApiEnvelope<{ attachment: ChatAttachment }>;
-        if (request.status < 200 || request.status >= 300 || payload.ok !== true) throw new Error(payload.ok === false ? payload.error?.message ?? "Image upload failed." : "Image upload failed.");
-        setPendingImages((current) => current.map((image) => image.localId === localId ? { ...image, attachment: { ...payload.data.attachment, client_preview_url: image.previewUrl }, state: "ready", progress: 100, error: undefined } : image));
+        if (request.status < 200 || request.status >= 300 || payload.ok !== true) throw new Error(payload.ok === false ? payload.error?.message ?? "Attachment upload failed." : "Attachment upload failed.");
+        setPendingAttachments((current) => current.map((attachment) => attachment.localId === localId ? { ...attachment, attachment: attachment.previewUrl ? { ...payload.data.attachment, client_preview_url: attachment.previewUrl } : payload.data.attachment, state: "ready", progress: 100, error: undefined } : attachment));
       } catch (uploadError) {
-        setPendingImages((current) => current.map((image) => image.localId === localId ? { ...image, state: "failed", error: uploadError instanceof Error ? uploadError.message : "Image upload failed." } : image));
+        setPendingAttachments((current) => current.map((attachment) => attachment.localId === localId ? { ...attachment, state: "failed", error: uploadError instanceof Error ? uploadError.message : "Attachment upload failed." } : attachment));
       }
     };
     request.onerror = () => {
       uploadRequestsRef.current.delete(localId);
-      setPendingImages((current) => current.map((image) => image.localId === localId ? { ...image, state: "failed", error: "Connection lost during upload." } : image));
+      setPendingAttachments((current) => current.map((attachment) => attachment.localId === localId ? { ...attachment, state: "failed", error: "Connection lost during upload." } : attachment));
     };
     request.onabort = () => uploadRequestsRef.current.delete(localId);
     request.send(form);
   }
 
-  function removePendingImage(image: PendingImage) {
-    uploadRequestsRef.current.get(image.localId)?.abort();
-    URL.revokeObjectURL(image.previewUrl);
-    setPendingImages((current) => current.filter((item) => item.localId !== image.localId));
+  function removePendingAttachment(attachment: PendingAttachment) {
+    uploadRequestsRef.current.get(attachment.localId)?.abort();
+    if (attachment.previewUrl) URL.revokeObjectURL(attachment.previewUrl);
+    setPendingAttachments((current) => current.filter((item) => item.localId !== attachment.localId));
   }
 
   async function loadMedia(before?: string | null) {
@@ -1042,16 +1204,16 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
   }
 
   async function reportAttachment(attachment: ChatAttachment) {
-    if (!window.confirm("Report this image to the Skillsroom moderation team?")) return;
+    if (!window.confirm("Report this attachment to the Skillsroom moderation team?")) return;
     try {
       const response = await fetch(`/api/community/channels/${encodeURIComponent(activeChannel.slug)}/attachments/${encodeURIComponent(attachment.id)}/report`, {
-        method: "POST", headers: { "content-type": "application/json", accept: "application/json" }, body: JSON.stringify({ reason: "Image reported from channel viewer." })
+        method: "POST", headers: { "content-type": "application/json", accept: "application/json" }, body: JSON.stringify({ reason: "Attachment reported from channel viewer." })
       });
       const payload = await response.json() as ApiEnvelope<unknown>;
-      if (!response.ok || payload.ok !== true) throw new Error(payload.ok === false ? payload.error?.message ?? "Image could not be reported." : "Image could not be reported.");
-      setNotice("Image reported. The moderation team can now review it.");
+      if (!response.ok || payload.ok !== true) throw new Error(payload.ok === false ? payload.error?.message ?? "Attachment could not be reported." : "Attachment could not be reported.");
+      setNotice("Attachment reported. The moderation team can now review it.");
       setViewer(null);
-    } catch (reportError) { setError(reportError instanceof Error ? reportError.message : "Image could not be reported."); }
+    } catch (reportError) { setError(reportError instanceof Error ? reportError.message : "Attachment could not be reported."); }
   }
 
   async function deliverMessage(channel: ChatChannel, message: ChatMessage) {
@@ -1095,7 +1257,7 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
         last_message_at: payload.data.message.created_at
       } : item));
       void markRead(channel, [...(messagesByChannelRef.current[channel.slug] ?? []), payload.data.message]);
-      void fetch(`/api/community/channels/${encodeURIComponent(channel.slug)}/typing`, {
+      void backgroundChatRequest(`/api/community/channels/${encodeURIComponent(channel.slug)}/typing`, {
         method: "POST",
         headers: { "content-type": "application/json", accept: "application/json" },
         body: JSON.stringify({ is_typing: false })
@@ -1124,14 +1286,14 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
   async function sendMessage(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const trimmed = body.replace(/\s+/g, " ").trim();
-    if ((!trimmed && !readyImages.length) || trimmed.length > 1000 || uploadInProgress) return;
+    if ((!trimmed && !readyAttachments.length) || trimmed.length > 1000 || uploadInProgress) return;
     const clientMessageId = `web:${crypto.randomUUID()}`;
-    const attachments = readyImages.map((image) => ({ ...image.attachment!, client_preview_url: image.previewUrl }));
+    const attachments = readyAttachments.map((attachment) => attachment.previewUrl ? { ...attachment.attachment!, client_preview_url: attachment.previewUrl } : attachment.attachment!);
     const nextMessage = pendingMessage(activeChannel.id, currentUserId, trimmed, clientMessageId, replyTo, attachments);
     shouldStickLatestRef.current = true;
     setError(null);
     setBody("");
-    setPendingImages([]);
+    setPendingAttachments([]);
     setReplyTo(null);
     setMessagesByChannel((current) => ({
       ...current,
@@ -2096,12 +2258,12 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
       ].join(" ")}>
         <button aria-label="Go back" className={fullLayout ? "grid h-10 w-10 shrink-0 place-items-center rounded-full text-2xl text-white md:hidden" : "hidden"} onClick={handleBack} type="button">‹</button>
         <button aria-label="Open channel details" className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-navy-900 text-sm font-black text-action shadow-tight" onClick={() => setShowChannelInfo(true)} type="button">
-          {channelInitials(activeChannel)}
+          {channelInitials(displayActiveChannel)}
         </button>
         <button className="min-w-0 flex-1 text-left" onClick={() => setShowChannelInfo(true)} type="button">
-          <h2 className={["truncate text-lg font-black leading-tight", fullLayout ? "text-white" : "text-ink"].join(" ")}>{channelTitle(activeChannel)}</h2>
+          <h2 className={["truncate text-lg font-black leading-tight", fullLayout ? "text-white" : "text-ink"].join(" ")}>{channelTitle(displayActiveChannel)}</h2>
           <p className={["mt-0.5 truncate text-sm leading-5", fullLayout ? "text-slate-300" : "text-muted"].join(" ")}>
-            {presence.online_count} online{channelList.length ? ` · ${channelList.length} channels` : ""}
+            {activeChannelSubtitle}
           </p>
         </button>
         <div className={["hidden min-h-9 w-fit items-center gap-2 rounded-full border px-3 text-xs font-black sm:inline-flex", fullLayout ? "border-white/10 bg-white/5 text-slate-300" : "border-line bg-white text-muted"].join(" ")}>
@@ -2114,19 +2276,20 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
       </header>
 
       {showChannelInfo ? (
-        <div aria-label={`${channelTitle(activeChannel)} details`} aria-modal="true" className="fixed inset-0 z-50 grid max-w-[100vw] overflow-x-hidden bg-black/60 pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] sm:place-items-center sm:p-4" role="dialog">
+        <div aria-label={`${channelTitle(displayActiveChannel)} details`} aria-modal="true" className="fixed inset-0 z-50 grid max-w-[100vw] overflow-x-hidden bg-black/60 pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] sm:place-items-center sm:p-4" role="dialog">
           <section className="grid h-full min-h-0 w-full min-w-0 max-w-full grid-rows-[auto_auto_1fr] overflow-hidden bg-[#172331] text-white shadow-panel sm:h-[min(48rem,92vh)] sm:max-w-2xl sm:rounded-lg sm:border sm:border-white/10">
             <header className="flex min-w-0 items-center gap-2 border-b border-white/10 px-3 py-2.5 sm:gap-3 sm:p-4">
-              <button aria-label="Close channel details" className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-sm font-black text-white hover:bg-white/10" onClick={exitChat} title="Close details" type="button">X</button>
-              <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-navy-900 text-sm font-black text-action shadow-tight sm:h-14 sm:w-14 sm:text-base">{channelInitials(activeChannel)}</span>
+              <button aria-label="Close channel details" className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-sm font-black text-white hover:bg-white/10" onClick={() => setShowChannelInfo(false)} title="Close details" type="button">X</button>
+              <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-navy-900 text-sm font-black text-action shadow-tight sm:h-14 sm:w-14 sm:text-base">{channelInitials(displayActiveChannel)}</span>
               <div className="min-w-0 flex-1">
-                <h2 className="truncate text-base font-black text-white sm:text-xl">{channelTitle(activeChannel)}</h2>
-                <p className="mt-0.5 truncate text-xs font-bold text-slate-300 sm:mt-1 sm:text-sm">{presence.online_count} online / {userDirectory.length} active or recent</p>
+                <h2 className="truncate text-base font-black text-white sm:text-xl">{channelTitle(displayActiveChannel)}</h2>
+                <p className="mt-0.5 truncate text-xs font-bold text-slate-300 sm:mt-1 sm:text-sm">{activeChannelSubtitle} / {userDirectory.length} active or recent</p>
               </div>
+              <button aria-label="Go to home" className="min-h-9 shrink-0 rounded-full border border-white/10 bg-white/5 px-3 text-xs font-black text-white hover:bg-white/10" onClick={goHome} title="Go to home" type="button">Home</button>
             </header>
 
-            <div className="grid grid-cols-5 border-b border-white/10 px-1 sm:px-3">
-              {(["members", "channels", "media", "pins", "settings"] as const).map((tab) => (
+            <div className="grid grid-cols-6 border-b border-white/10 px-1 sm:px-3">
+              {(["members", "messages", "channels", "media", "pins", "settings"] as const).map((tab) => (
                 <button className={["min-h-11 min-w-0 truncate border-b-2 px-1 text-[0.62rem] font-black capitalize sm:min-h-12 sm:px-2 sm:text-sm", infoTab === tab ? "border-sky-400 text-sky-300" : "border-transparent text-slate-400 hover:text-white"].join(" ")} key={tab} onClick={() => {
                   setInfoTab(tab);
                   if (tab === "media" && !mediaByChannel[activeChannel.slug]) void loadMedia();
@@ -2135,7 +2298,7 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
                     void loadBlockedUsers();
                   }
                 }} type="button">
-                  {tab}{tab === "channels" ? ` ${channelList.length}` : tab === "pins" && pinnedMessages.length ? ` ${pinnedMessages.length}` : ""}
+                  {tab === "messages" ? "DMs" : tab}{tab === "messages" && dmChannels.length ? ` ${dmChannels.length}` : tab === "channels" ? ` ${communityChannels.length}` : tab === "pins" && pinnedMessages.length ? ` ${pinnedMessages.length}` : ""}
                 </button>
               ))}
             </div>
@@ -2159,10 +2322,26 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
                 </div>
               ) : null}
 
+              {infoTab === "messages" ? (
+                <div className="grid gap-2">
+                  <p className="mb-1 text-xs font-black uppercase tracking-[0.14em] text-slate-400">Direct messages</p>
+                  {dmChannels.length ? dmChannels.map((item) => (
+                    <button className={["flex min-w-0 items-center gap-3 rounded-md border p-3 text-left", item.id === activeChannel.id ? "border-sky-400 bg-sky-400/10" : "border-white/10 bg-white/5 hover:bg-white/10"].join(" ")} key={item.id} onClick={() => { setShowChannelInfo(false); void openChannel(item); }} type="button">
+                      <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-navy-900 px-1 text-xs font-black text-action">{channelInitials(item)}</span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm font-black text-white">{channelTitle(item)}</span>
+                        <span className="mt-1 block truncate text-xs font-bold text-slate-400">{channelPreview(item)}</span>
+                      </span>
+                      {(item.unread_count ?? 0) > 0 ? <span className="rounded-full bg-sky-500 px-2 py-1 text-xs font-black text-white">{item.unread_count}</span> : null}
+                    </button>
+                  )) : <p className="rounded-md border border-dashed border-white/10 p-5 text-center text-sm font-bold text-slate-400">Accepted DMs will appear here.</p>}
+                </div>
+              ) : null}
+
               {infoTab === "channels" ? (
                 <div className="grid gap-2">
                   <p className="mb-1 text-xs font-black uppercase tracking-[0.14em] text-slate-400">Your accessible channels</p>
-                  {channelList.map((item) => (
+                  {communityChannels.map((item) => (
                     <button className={["flex min-w-0 items-center gap-3 rounded-md border p-3 text-left", item.id === activeChannel.id ? "border-sky-400 bg-sky-400/10" : "border-white/10 bg-white/5 hover:bg-white/10"].join(" ")} key={item.id} onClick={() => { setShowChannelInfo(false); void openChannel(item); }} type="button">
                       <span className="grid h-11 w-11 shrink-0 place-items-center rounded-md bg-white/10 px-1 text-xs font-black text-sky-300">{channelInitials(item)}</span>
                       <span className="min-w-0 flex-1">
@@ -2178,19 +2357,19 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
               {infoTab === "media" ? (
                 <div className="grid gap-3">
                   <div className="flex items-center justify-between gap-3">
-                    <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-400">Shared images</p>
+                    <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-400">Shared media and files</p>
                     <span className="text-xs font-bold text-slate-500">{mediaByChannel[activeChannel.slug]?.attachments.length ?? 0}</span>
                   </div>
                   {mediaError ? <p className="rounded-md border border-red-400/30 bg-red-950/30 p-3 text-sm font-bold text-red-200">{mediaError}</p> : null}
                   {mediaByChannel[activeChannel.slug]?.attachments.length ? (
                     <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-4 sm:gap-2">
                       {mediaByChannel[activeChannel.slug].attachments.map((attachment) => (
-                        <ChatImage attachment={attachment} channelSlug={activeChannel.slug} className="aspect-square" key={attachment.id} onOpen={(url) => setViewer({ attachment, url })} />
+                        <ChatAttachmentTile attachment={attachment} channelSlug={activeChannel.slug} className={attachment.attachment_type === "image" ? "aspect-square" : "min-h-24"} key={attachment.id} onOpenImage={(url) => setViewer({ attachment, url })} />
                       ))}
                     </div>
-                  ) : !isLoadingMedia ? <p className="rounded-md border border-dashed border-white/10 p-6 text-center text-sm font-bold text-slate-400">Images shared in this channel will appear here.</p> : null}
+                  ) : !isLoadingMedia ? <p className="rounded-md border border-dashed border-white/10 p-6 text-center text-sm font-bold text-slate-400">Images and documents shared here will appear here.</p> : null}
                   {isLoadingMedia ? <p className="p-4 text-center text-sm font-bold text-slate-400">Loading media...</p> : null}
-                  {mediaByChannel[activeChannel.slug]?.page_info.has_more ? <button className="min-h-10 rounded-md border border-white/10 bg-white/5 text-sm font-black hover:bg-white/10" disabled={isLoadingMedia} onClick={() => void loadMedia(mediaByChannel[activeChannel.slug].page_info.next_before)} type="button">Load older images</button> : null}
+                  {mediaByChannel[activeChannel.slug]?.page_info.has_more ? <button className="min-h-10 rounded-md border border-white/10 bg-white/5 text-sm font-black hover:bg-white/10" disabled={isLoadingMedia} onClick={() => void loadMedia(mediaByChannel[activeChannel.slug].page_info.next_before)} type="button">Load older media</button> : null}
                 </div>
               ) : null}
 
@@ -2339,7 +2518,7 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
               <div className="mt-4 min-w-0">
                 <h2 className="break-words text-3xl font-black leading-tight text-white">{profileIsSelf ? "You" : profileUser.label}</h2>
                 <p className="mt-1 break-words text-base font-bold text-slate-300">{profileUser.username ? `@${profileUser.username}` : profileUser.label}</p>
-                <p className="mt-2 text-sm font-bold text-slate-400">{profileUser.is_online ? "Online now" : "Recent in this channel"} / {channelTitle(activeChannel)}</p>
+                <p className="mt-2 text-sm font-bold text-slate-400">{profileUser.is_online ? "Online now" : "Recent in this channel"} / {channelTitle(displayActiveChannel)}</p>
               </div>
 
               <div className="mt-5 grid gap-2 sm:grid-cols-[1fr_auto_auto]">
@@ -2384,11 +2563,11 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
       ) : null}
 
       {showSearch ? (
-        <div aria-label={`Search ${channelTitle(activeChannel)}`} aria-modal="true" className="fixed inset-0 z-[60] flex items-end bg-black/60 p-2 pb-[max(env(safe-area-inset-bottom),0.5rem)] sm:items-center sm:justify-center sm:p-4" role="dialog">
+        <div aria-label={`Search ${channelTitle(displayActiveChannel)}`} aria-modal="true" className="fixed inset-0 z-[60] flex items-end bg-black/60 p-2 pb-[max(env(safe-area-inset-bottom),0.5rem)] sm:items-center sm:justify-center sm:p-4" role="dialog">
           <section className="grid max-h-[92svh] w-full max-w-2xl grid-rows-[auto_auto_minmax(0,1fr)] overflow-hidden rounded-lg border border-white/10 bg-[#172331] text-white shadow-panel">
             <header className="flex items-center justify-between gap-3 border-b border-white/10 px-4 py-3">
               <div className="min-w-0">
-                <h2 className="truncate text-lg font-black">Search {channelTitle(activeChannel)}</h2>
+                <h2 className="truncate text-lg font-black">Search {channelTitle(displayActiveChannel)}</h2>
                 <p className="mt-0.5 text-xs text-slate-400">Find messages without leaving the channel.</p>
               </div>
               <button aria-label="Close search" className="grid h-9 w-9 place-items-center rounded-full text-xl hover:bg-white/10" onClick={() => setShowSearch(false)} type="button">X</button>
@@ -2641,7 +2820,7 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
             >
               <span>Message requests</span>
               <span className={["rounded-full px-2 py-0.5 text-xs", fullLayout ? "bg-white/10 text-white" : "bg-white text-cyan"].join(" ")}>
-                {dmRequests.filter((request) => request.status === "pending" && request.recipient_user_id === currentUserId).length}
+                {pendingIncomingDmRequests.length}
               </span>
             </a>
             <form className={["mb-3 grid gap-2 rounded-md border p-3", fullLayout ? "border-white/10 bg-white/5" : "border-line bg-surface"].join(" ")} onSubmit={createDmRequest}>
@@ -2661,10 +2840,10 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
               />
               <button className="min-h-10 rounded-md bg-action px-3 text-sm font-black text-navy-950 shadow-action" type="submit">Request DM</button>
             </form>
-            {dmRequests.filter((request) => request.status === "pending" && request.recipient_user_id === currentUserId).length ? (
+            {pendingIncomingDmRequests.length ? (
               <div className="mb-3 grid gap-2 rounded-md border border-line bg-white p-3">
                 <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-muted">Pending DMs</p>
-                {dmRequests.filter((request) => request.status === "pending" && request.recipient_user_id === currentUserId).slice(0, 3).map((request) => (
+                {pendingIncomingDmRequests.slice(0, 3).map((request) => (
                   <div className="grid gap-2 rounded-md bg-surfaceHigh p-2" key={request.id}>
                     <p className="text-xs font-bold text-ink">{request.requester_label}</p>
                     {request.intro_message ? <p className="text-xs text-muted">{request.intro_message}</p> : null}
@@ -2676,8 +2855,36 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
                 ))}
               </div>
             ) : null}
+            <div className="mb-3 grid gap-2">
+              <p className={["font-mono text-[0.68rem] font-black uppercase tracking-[0.14em]", fullLayout ? "text-sky-300" : "text-cyan"].join(" ")}>Messages</p>
+              {dmChannels.length ? dmChannels.map((item) => {
+                const active = item.id === activeChannel.id;
+                return (
+                  <button
+                    className={[
+                      "grid min-h-16 min-w-0 gap-1 rounded-md border px-3 py-2 text-left transition",
+                      fullLayout
+                        ? active ? "border-sky-400/50 bg-sky-400/10" : "border-white/10 bg-white/5 hover:bg-white/10"
+                        : active ? "border-cyan bg-cyanSoft" : "border-line bg-white hover:bg-surfaceHigh"
+                    ].join(" ")}
+                    key={item.id}
+                    onClick={() => openChannel(item)}
+                    type="button"
+                  >
+                    <span className="flex min-w-0 items-center justify-between gap-2">
+                      <strong className={["flex min-w-0 items-center gap-2 truncate text-sm font-black", fullLayout ? "text-white" : "text-ink"].join(" ")}><span className="grid h-8 min-w-8 shrink-0 place-items-center rounded-full bg-navy-900 px-1 text-[0.62rem] text-action">{channelInitials(item)}</span><span className="truncate">{channelTitle(item)}</span></strong>
+                      {(item.unread_count ?? 0) > 0 ? (
+                        <span className="rounded-md bg-danger px-2 py-0.5 text-[0.65rem] font-black text-white">{item.unread_count}</span>
+                      ) : null}
+                    </span>
+                    <span className={["truncate text-xs font-bold", fullLayout ? "text-slate-400" : "text-muted"].join(" ")}>{channelPreview(item)}</span>
+                  </button>
+                );
+              }) : <p className={["rounded-md border border-dashed p-3 text-xs font-bold", fullLayout ? "border-white/10 text-slate-400" : "border-line text-muted"].join(" ")}>Accepted DMs appear here.</p>}
+            </div>
             <div className="grid gap-2">
-              {channelList.map((item) => {
+              <p className={["font-mono text-[0.68rem] font-black uppercase tracking-[0.14em]", fullLayout ? "text-sky-300" : "text-cyan"].join(" ")}>Channels</p>
+              {communityChannels.map((item) => {
                 const active = item.id === activeChannel.id;
                 return (
                   <button
@@ -2869,7 +3076,7 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
                       {message.attachments?.length ? (
                         <div className={["mt-1 grid gap-1.5 overflow-hidden", message.attachments.length === 1 ? "grid-cols-1" : "grid-cols-2"].join(" ")}>
                           {message.attachments.map((attachment) => (
-                            <ChatImage attachment={attachment} channelSlug={activeChannel.slug} className={message.attachments?.length === 1 ? "max-h-[28rem] min-h-40" : "aspect-square"} key={attachment.id} onOpen={(url) => setViewer({ attachment, url })} />
+                            <ChatAttachmentTile attachment={attachment} channelSlug={activeChannel.slug} className={attachment.attachment_type === "image" ? message.attachments?.length === 1 ? "max-h-[28rem] min-h-40" : "aspect-square" : "min-h-24"} key={attachment.id} onOpenImage={(url) => setViewer({ attachment, url })} />
                           ))}
                         </div>
                       ) : null}
@@ -2980,15 +3187,24 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
                 ))}
               </div>
             ) : null}
-            {pendingImages.length ? (
+            {pendingAttachments.length ? (
               <div className="mb-2 flex max-w-full gap-2 overflow-x-auto rounded-xl border border-white/10 bg-[#223447] p-2">
-                {pendingImages.map((image) => (
-                  <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-md bg-black/20" key={image.localId}>
-                    <img alt={image.file.name} className="h-full w-full object-cover" src={image.previewUrl} />
+                {pendingAttachments.map((attachment) => (
+                  <div className="relative h-24 w-32 shrink-0 overflow-hidden rounded-md bg-black/20" key={attachment.localId}>
+                    {attachment.previewUrl ? (
+                      <img alt={attachment.file.name} className="h-full w-full object-cover" src={attachment.previewUrl} />
+                    ) : (
+                      <div className="grid h-full w-full place-items-center p-2 text-center">
+                        <span className="grid gap-1">
+                          <span className="mx-auto grid h-9 w-9 place-items-center rounded-md bg-sky-400/15 font-mono text-[0.62rem] font-black text-sky-200">{documentBadge(attachment.file.type)}</span>
+                          <span className="max-h-8 overflow-hidden text-[0.62rem] font-black leading-4 text-white">{attachment.file.name}</span>
+                        </span>
+                      </div>
+                    )}
                     <div className="absolute inset-x-0 bottom-0 bg-black/75 p-1.5 text-[0.62rem] font-black text-white">
-                      {image.state === "uploading" ? <><span>{image.progress}%</span><span className="mt-1 block h-1 overflow-hidden rounded-full bg-white/20"><span className="block h-full bg-sky-400" style={{ width: `${image.progress}%` }} /></span></> : image.state === "failed" ? <button className="w-full rounded-sm bg-red-600 px-1 py-1" onClick={() => uploadImage(image.file, image.localId)} type="button">Retry</button> : "Ready"}
+                      {attachment.state === "uploading" ? <><span>{attachment.progress}%</span><span className="mt-1 block h-1 overflow-hidden rounded-full bg-white/20"><span className="block h-full bg-sky-400" style={{ width: `${attachment.progress}%` }} /></span></> : attachment.state === "failed" ? <button className="w-full rounded-sm bg-red-600 px-1 py-1" onClick={() => uploadAttachment(attachment.file, attachment.localId)} type="button">Retry</button> : "Ready"}
                     </div>
-                    <button aria-label={`Remove ${image.file.name}`} className="absolute right-1 top-1 grid h-7 w-7 place-items-center rounded-full bg-black/75 text-xs font-black text-white" onClick={() => removePendingImage(image)} type="button">X</button>
+                    <button aria-label={`Remove ${attachment.file.name}`} className="absolute right-1 top-1 grid h-7 w-7 place-items-center rounded-full bg-black/75 text-xs font-black text-white" onClick={() => removePendingAttachment(attachment)} type="button">X</button>
                   </div>
                 ))}
               </div>
@@ -3004,14 +3220,16 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
               </div>
             ) : null}
             <div className="relative grid min-w-0 grid-cols-[auto_auto_minmax(0,1fr)_auto] items-end gap-1.5 sm:gap-2">
-              <input accept="image/jpeg,image/png,image/webp" className="sr-only" multiple onChange={(event) => { Array.from(event.target.files ?? []).slice(0, Math.max(0, 4 - pendingImages.length)).forEach((file) => uploadImage(file)); event.currentTarget.value = ""; }} ref={imageInputRef} type="file" />
-              <button aria-expanded={showAttachmentMenu} aria-label="Add an attachment" className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-white/10 bg-[#223447] text-2xl font-light text-slate-200 hover:bg-[#2c4358]" onClick={() => { setShowAttachmentMenu((current) => !current); setShowEmojiPicker(false); }} title="Add image" type="button">+</button>
+              <input accept="image/jpeg,image/png,image/webp" className="sr-only" multiple onChange={(event) => { Array.from(event.target.files ?? []).slice(0, Math.max(0, 4 - pendingAttachments.length)).forEach((file) => uploadAttachment(file)); event.currentTarget.value = ""; }} ref={imageInputRef} type="file" />
+              <input accept={acceptedChatDocuments} className="sr-only" multiple onChange={(event) => { Array.from(event.target.files ?? []).slice(0, Math.max(0, 4 - pendingAttachments.length)).forEach((file) => uploadAttachment(file)); event.currentTarget.value = ""; }} ref={documentInputRef} type="file" />
+              <button aria-expanded={showAttachmentMenu} aria-label="Add an attachment" className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-white/10 bg-[#223447] text-2xl font-light text-slate-200 hover:bg-[#2c4358]" onClick={() => { setShowAttachmentMenu((current) => !current); setShowEmojiPicker(false); }} title="Add attachment" type="button">+</button>
               {showAttachmentMenu ? <div className="absolute bottom-12 left-0 z-20 min-w-52 rounded-md border border-white/10 bg-[#26394b] p-1.5 text-white shadow-panel">
                 <button className="flex min-h-11 w-full items-center gap-3 rounded-sm px-3 text-left text-sm font-black hover:bg-white/10" onClick={() => { setShowAttachmentMenu(false); imageInputRef.current?.click(); }} type="button"><span aria-hidden="true">▣</span> Add photo</button>
+                <button className="flex min-h-11 w-full items-center gap-3 rounded-sm px-3 text-left text-sm font-black hover:bg-white/10" onClick={() => { setShowAttachmentMenu(false); documentInputRef.current?.click(); }} type="button"><span aria-hidden="true">▤</span> Add document</button>
                 <button className="flex min-h-11 w-full items-center gap-3 rounded-sm px-3 text-left text-sm font-black hover:bg-white/10" onClick={() => { setShowAttachmentMenu(false); setShowPollCreator(true); }} type="button"><span aria-hidden="true">◉</span> Create poll</button>
                 <button className="flex min-h-11 w-full items-center gap-3 rounded-sm px-3 text-left text-sm font-black hover:bg-white/10" onClick={() => { setShowAttachmentMenu(false); void loadBookmarks(); }} type="button"><span aria-hidden="true">★</span> Saved messages</button>
                 {isChatAdmin ? <button className="flex min-h-11 w-full items-center gap-3 rounded-sm px-3 text-left text-sm font-black hover:bg-white/10" onClick={() => { setShowAttachmentMenu(false); void loadScheduledAnnouncements(); }} type="button"><span aria-hidden="true">⌚</span> Schedule announcement</button> : null}
-                <p className="px-3 pb-2 text-[0.68rem] font-bold text-slate-400">Images first: JPG, PNG or WEBP, up to 8MB</p>
+                <p className="px-3 pb-2 text-[0.68rem] font-bold text-slate-400">Photos up to 8MB. Documents up to 12MB: PDF, DOC, DOCX, ODT, TXT.</p>
               </div> : null}
               <button aria-expanded={showEmojiPicker} aria-label="Choose emoji" className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-white/10 bg-[#223447] text-xl text-slate-200 hover:bg-[#2c4358]" onClick={() => { setShowEmojiPicker((current) => !current); setShowAttachmentMenu(false); }} title="Emoji" type="button">☺</button>
               <label className="grid min-w-0 gap-1">
@@ -3020,7 +3238,7 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
                   className="min-h-10 w-full min-w-0 max-h-28 resize-none overflow-y-hidden rounded-2xl border border-white/10 bg-[#223447] px-3 py-2 text-base leading-6 text-white outline-none placeholder:text-slate-400 focus:border-sky-400"
                   maxLength={1000}
                   onChange={(event) => setBody(event.target.value)}
-                  placeholder={`Message ${channelTitle(activeChannel)}`}
+                  placeholder={`Message ${channelTitle(displayActiveChannel)}`}
                   ref={composerRef}
                   rows={1}
                   value={body}
@@ -3086,7 +3304,7 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
           </div>
           <footer className="flex items-center justify-between gap-3 border-t border-white/10 px-3 py-2.5 sm:px-5">
             <span className="text-xs font-bold text-slate-400">{Math.max(1, Math.round(viewer.attachment.byte_size / 1024))} KB</span>
-            {viewer.attachment.uploader_user_id !== currentUserId ? <button className="min-h-10 rounded-full border border-red-400/40 px-4 text-xs font-black text-red-200 hover:bg-red-500/10" onClick={() => void reportAttachment(viewer.attachment)} type="button">Report image</button> : null}
+            {viewer.attachment.uploader_user_id !== currentUserId ? <button className="min-h-10 rounded-full border border-red-400/40 px-4 text-xs font-black text-red-200 hover:bg-red-500/10" onClick={() => void reportAttachment(viewer.attachment)} type="button">Report attachment</button> : null}
           </footer>
         </div>
       ) : null}

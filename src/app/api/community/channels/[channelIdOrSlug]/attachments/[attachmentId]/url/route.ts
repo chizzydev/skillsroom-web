@@ -8,7 +8,7 @@ type Context = { params: Promise<{ channelIdOrSlug: string; attachmentId: string
 
 export async function GET(_request: Request, context: Context) {
   const token = await getAccessToken();
-  if (!token) return Response.json({ ok: false, error: { code: "AUTH_REQUIRED", message: "Please sign in to view this image." } }, { status: 401 });
+  if (!token) return Response.json({ ok: false, error: { code: "AUTH_REQUIRED", message: "Please sign in to view this attachment." } }, { status: 401 });
   const { channelIdOrSlug, attachmentId } = await context.params;
   const response = await fetch(new URL(`/community/channels/${encodeURIComponent(channelIdOrSlug)}/attachments/${encodeURIComponent(attachmentId)}/access`, apiBaseUrl()), {
     headers: { accept: "application/json", authorization: `Bearer ${token}` }, cache: "no-store"

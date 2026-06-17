@@ -1,6 +1,8 @@
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { accessTokenCookieNames } from "./auth-cookies";
 import { apiBaseUrl } from "./api";
+
+const refreshedAccessTokenHeader = "x-skill-rooms-refreshed-access-token";
 
 export type CurrentUser = {
   id: string;
@@ -10,6 +12,10 @@ export type CurrentUser = {
 };
 
 export async function getAccessToken(): Promise<string | null> {
+  const headerStore = await headers();
+  const refreshedToken = headerStore.get(refreshedAccessTokenHeader);
+  if (refreshedToken) return refreshedToken;
+
   const cookieStore = await cookies();
   return (
     accessTokenCookieNames()

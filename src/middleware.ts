@@ -5,6 +5,7 @@ import { clearAuthCookies, setAuthCookies } from "./lib/auth-session";
 
 const mutatingMethods = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 const refreshBeforeExpirySeconds = 120;
+const refreshedAccessTokenHeader = "x-skill-rooms-refreshed-access-token";
 
 function accessTokenCookie(request: NextRequest) {
   return request.cookies.getAll().find((cookie) => accessTokenCookieNames().includes(cookie.name) && Boolean(cookie.value))?.value ?? null;
@@ -92,6 +93,14 @@ async function refreshSession(request: NextRequest) {
   return payload?.ok === true && payload.data ? payload.data : "failed";
 }
 
+function nextWithSession(request: NextRequest, refreshedSession: Awaited<ReturnType<typeof refreshSession>>) {
+  if (!refreshedSession || refreshedSession === "failed") return NextResponse.next();
+
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set(refreshedAccessTokenHeader, refreshedSession.access_token);
+  return NextResponse.next({ request: { headers: requestHeaders } });
+}
+
 export async function middleware(request: NextRequest) {
   const token = accessTokenCookie(request);
   const needsRefresh = accessTokenNeedsRefresh(token);
@@ -109,7 +118,7 @@ export async function middleware(request: NextRequest) {
   }
 
   if (!mutatingMethods.has(request.method)) {
-    const response = NextResponse.next();
+    const response = nextWithSession(request, refreshedSession);
     if (refreshedSession && refreshedSession !== "failed") {
       setAuthCookies(response, refreshedSession);
     } else if (refreshedSession === "failed") {
@@ -125,7 +134,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.json({ error: "Cross-origin mutation blocked" }, { status: 403 });
   }
 
-  const response = NextResponse.next();
+  const response = nextWithSession(request, refreshedSession);
   if (refreshedSession && refreshedSession !== "failed") {
     setAuthCookies(response, refreshedSession);
   } else if (refreshedSession === "failed") {
