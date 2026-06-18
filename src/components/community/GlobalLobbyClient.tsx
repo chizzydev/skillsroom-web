@@ -92,10 +92,18 @@ function attachmentPreviewLabel(attachment: ChatAttachment) {
   return attachment.attachment_type === "document" ? "Document" : "Photo";
 }
 
-function ChatImage({ attachment, channelSlug, className, onOpen }: { attachment: ChatAttachment; channelSlug: string; className?: string; onOpen?: (url: string) => void }) {
+function ChatImage({ attachment, autoLoad, channelSlug, className, onOpen }: { attachment: ChatAttachment; autoLoad?: boolean; channelSlug: string; className?: string; onOpen?: (url: string) => void }) {
   const [url, setUrl] = useState(attachment.client_preview_url ?? "");
   const [failed, setFailed] = useState(false);
-  const [loadRequested, setLoadRequested] = useState(Boolean(attachment.client_preview_url));
+  const [loadRequested, setLoadRequested] = useState(Boolean(autoLoad || attachment.client_preview_url));
+
+  useEffect(() => {
+    if (autoLoad && !loadRequested) setLoadRequested(true);
+  }, [autoLoad, loadRequested]);
+
+  useEffect(() => {
+    if (attachment.client_preview_url) setUrl(attachment.client_preview_url);
+  }, [attachment.client_preview_url]);
 
   useEffect(() => {
     if (!loadRequested || attachment.client_preview_url || attachment.status !== "attached") return;
@@ -120,12 +128,12 @@ function ChatImage({ attachment, channelSlug, className, onOpen }: { attachment:
   return <button aria-label={`Open image from ${attachment.uploader_label}`} className={["block min-w-0 overflow-hidden rounded-md bg-black/20", className].filter(Boolean).join(" ")} onClick={() => onOpen?.(url)} type="button"><img alt={attachment.alt_text ?? attachment.original_name ?? "Chat image"} className="h-full w-full object-cover" loading="lazy" src={url} /></button>;
 }
 
-function ChatAttachmentTile({ attachment, channelSlug, className, onOpenImage }: { attachment: ChatAttachment; channelSlug: string; className?: string; onOpenImage?: (url: string) => void }) {
+function ChatAttachmentTile({ attachment, autoLoadImage, channelSlug, className, onOpenImage }: { attachment: ChatAttachment; autoLoadImage?: boolean; channelSlug: string; className?: string; onOpenImage?: (url: string) => void }) {
   const [isOpening, setIsOpening] = useState(false);
   const [failed, setFailed] = useState(false);
 
   if (attachment.attachment_type === "image") {
-    return <ChatImage attachment={attachment} channelSlug={channelSlug} className={className} onOpen={onOpenImage} />;
+    return <ChatImage attachment={attachment} autoLoad={autoLoadImage} channelSlug={channelSlug} className={className} onOpen={onOpenImage} />;
   }
 
   const unavailable = attachment.status === "hidden" || attachment.status === "deleted" || attachment.status === "failed";
@@ -268,12 +276,37 @@ function pendingMessage(channelId: string, userId: string, body: string, clientM
   };
 }
 
+function preserveLocalAttachmentPreviews(next: ChatMessage, previous?: ChatMessage) {
+  if (!previous?.attachments?.length || !next.attachments?.length) return next;
+
+  const previewByAttachmentId = new Map(
+    previous.attachments
+      .filter((attachment) => attachment.client_preview_url)
+      .map((attachment) => [attachment.id, attachment.client_preview_url])
+  );
+  if (!previewByAttachmentId.size) return next;
+
+  return {
+    ...next,
+    attachments: next.attachments.map((attachment) => (
+      attachment.client_preview_url || !previewByAttachmentId.has(attachment.id)
+        ? attachment
+        : { ...attachment, client_preview_url: previewByAttachmentId.get(attachment.id) }
+    ))
+  };
+}
+
 function mergeMessage(current: ChatMessage[], next: ChatMessage) {
-  const withoutDuplicate = current.filter((item) => (
-    item.id !== next.id &&
-    (!next.client_message_id || item.client_message_id !== next.client_message_id)
+  const previous = current.find((item) => (
+    item.id === next.id ||
+    Boolean(next.client_message_id && item.client_message_id === next.client_message_id)
   ));
-  return [...withoutDuplicate, next]
+  const mergedNext = preserveLocalAttachmentPreviews(next, previous);
+  const withoutDuplicate = current.filter((item) => (
+    item.id !== mergedNext.id &&
+    (!mergedNext.client_message_id || item.client_message_id !== mergedNext.client_message_id)
+  ));
+  return [...withoutDuplicate, mergedNext]
     .sort((left, right) => Date.parse(left.created_at) - Date.parse(right.created_at))
     .slice(-120);
 }
@@ -377,7 +410,7 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
   const [pinBannerIndexByChannel, setPinBannerIndexByChannel] = useState<Record<string, number>>({});
   const [isPinning, setIsPinning] = useState(false);
   const [unpinningIds, setUnpinningIds] = useState<Set<string>>(new Set());
-  const [chatViewport, setChatViewport] = useState<{ height: number; top: number } | null>(null);
+  const [chatViewport, setChatViewport] = useState<{ height: number; top: number; keyboardActive: boolean } | null>(null);
   const [isLoadingOlder, setIsLoadingOlder] = useState(false);
   const [showJumpLatest, setShowJumpLatest] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
@@ -695,11 +728,15 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
     bodyElement.style.overscrollBehavior = "none";
 
     const updateViewport = () => {
+      const viewportHeight = Math.round(visualViewport?.height ?? window.innerHeight);
+      const offsetTop = Math.round(visualViewport?.offsetTop ?? 0);
+      const keyboardActive = Boolean(visualViewport && window.innerHeight - visualViewport.height > 120);
       const next = {
-        height: Math.round(visualViewport?.height ?? window.innerHeight),
-        top: Math.round(visualViewport?.offsetTop ?? 0)
+        height: viewportHeight,
+        top: keyboardActive ? offsetTop : 0,
+        keyboardActive
       };
-      setChatViewport((current) => current?.height === next.height && current.top === next.top ? current : next);
+      setChatViewport((current) => current?.height === next.height && current.top === next.top && current.keyboardActive === next.keyboardActive ? current : next);
     };
 
     updateViewport();
@@ -3076,7 +3113,7 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
                       {message.attachments?.length ? (
                         <div className={["mt-1 grid gap-1.5 overflow-hidden", message.attachments.length === 1 ? "grid-cols-1" : "grid-cols-2"].join(" ")}>
                           {message.attachments.map((attachment) => (
-                            <ChatAttachmentTile attachment={attachment} channelSlug={activeChannel.slug} className={attachment.attachment_type === "image" ? message.attachments?.length === 1 ? "max-h-[28rem] min-h-40" : "aspect-square" : "min-h-24"} key={attachment.id} onOpenImage={(url) => setViewer({ attachment, url })} />
+                            <ChatAttachmentTile attachment={attachment} autoLoadImage={mine || attachment.uploader_user_id === currentUserId} channelSlug={activeChannel.slug} className={attachment.attachment_type === "image" ? message.attachments?.length === 1 ? "max-h-[28rem] min-h-40" : "aspect-square" : "min-h-24"} key={attachment.id} onOpenImage={(url) => setViewer({ attachment, url })} />
                           ))}
                         </div>
                       ) : null}
