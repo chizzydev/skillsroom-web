@@ -68,7 +68,7 @@ export default function Image() {
                 Skillsroom
               </div>
               <div style={{ color: "#D9E7F7", display: "flex", fontSize: 34, lineHeight: 1.4 }}>
-                Verified rooms, tournament operations, evidence review, and controlled settlement flows for serious players.
+                Fair rooms, organized tournaments, clear reviews, and a gaming community people can trust.
               </div>
             </div>
             <div style={{ display: "flex", gap: 18 }}>

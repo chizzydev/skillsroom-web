@@ -12,7 +12,7 @@ import { shareMetadata, shareUrl } from "@/lib/share-cards";
 
 export const metadata: Metadata = shareMetadata({
   title: "Skillsroom Highlights",
-  description: "Approved tournament winners, verified finished events, and public-safe competition highlights.",
+  description: "Recent winners, finished tournaments, and public highlights from the Skillsroom community.",
   path: "/community/highlights"
 });
 
@@ -36,22 +36,22 @@ export default async function CommunityHighlightsPage() {
               <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(24,197,138,0.16),transparent_34%),radial-gradient(circle_at_bottom_left,rgba(33,170,255,0.18),transparent_36%)]" />
               <div className="relative">
                 <Badge tone="cyan">Highlights</Badge>
-                <h1 className="mt-3 text-3xl font-black leading-tight sm:text-4xl lg:text-5xl">Completed events worth sharing.</h1>
+                <h1 className="mt-3 text-3xl font-black leading-tight sm:text-4xl lg:text-5xl">See recent winners and finished events.</h1>
                 <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-300 md:text-base">
-                  This page only shows finished tournament results that are ready to be shared.
+                  This page shows completed tournament results that are ready for people to view and share.
                 </p>
                 <div className="mt-8 grid gap-3 xl:max-w-2xl xl:grid-cols-3">
                   <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
+                    <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Recent results</p>
+                    <p className="mt-2 text-sm leading-6 text-slate-200">See who won, what game it was, and how the event ended.</p>
+                  </div>
+                  <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
+                    <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Confirmed winners</p>
+                    <p className="mt-2 text-sm leading-6 text-slate-200">Only completed events show up here after the results are confirmed.</p>
+                  </div>
+                  <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
                     <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Easy to share</p>
-                    <p className="mt-2 text-sm leading-6 text-slate-200">Each result here is simple to open and share with other players.</p>
-                  </div>
-                  <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
-                    <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Real results</p>
-                    <p className="mt-2 text-sm leading-6 text-slate-200">Winners only show up here after the event has actually been completed.</p>
-                  </div>
-                  <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
-                    <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Worth checking</p>
-                    <p className="mt-2 text-sm leading-6 text-slate-200">This page should feel like a place to catch up on what happened, not just read stats.</p>
+                    <p className="mt-2 text-sm leading-6 text-slate-200">Open a result and send it to your friends, team, or group chat.</p>
                   </div>
                 </div>
               </div>
@@ -61,8 +61,8 @@ export default async function CommunityHighlightsPage() {
               <div className="absolute inset-0 bg-gradient-to-l from-transparent via-transparent to-[#08131f]/80" />
               <div className="absolute inset-x-4 bottom-4 md:inset-x-6">
                 <div className="rounded-2xl border border-white/10 bg-[#09131f]/78 p-4 backdrop-blur">
-                  <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-300">Winner stories</p>
-                  <p className="mt-2 text-sm leading-6 text-slate-200">Catch up on the latest winners and finished events here.</p>
+                  <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-300">Latest winners</p>
+                  <p className="mt-2 text-sm leading-6 text-slate-200">Catch up on the latest finished tournaments here.</p>
                 </div>
               </div>
             </div>
@@ -72,14 +72,14 @@ export default async function CommunityHighlightsPage() {
         {loadError ? <div className="rounded-md border border-danger bg-red-50 p-4 text-sm font-bold text-danger">{loadError}</div> : null}
 
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <StatusPanel detail="Completed or prize-ready events" label="Highlights" tone="cyan" value={highlights.length.toString()} />
-          <StatusPanel detail="Champion stories surfaced" label="Winners" tone="success" value={highlights.filter((item) => item.champion_entry_name).length.toString()} />
-          <StatusPanel detail="Approved competition history" label="Matches" tone="warning" value={highlights.reduce((sum, item) => sum + item.completed_match_count, 0).toString()} />
-          <StatusPanel detail="Public event reach" label="Games" tone="success" value={new Set(highlights.map((item) => item.game_slug)).size.toString()} />
+          <StatusPanel detail="Completed events shown here" label="Highlights" tone="cyan" value={highlights.length.toString()} />
+          <StatusPanel detail="Events with a named winner" label="Winners" tone="success" value={highlights.filter((item) => item.champion_entry_name).length.toString()} />
+          <StatusPanel detail="Approved matches across these events" label="Matches" tone="warning" value={highlights.reduce((sum, item) => sum + item.completed_match_count, 0).toString()} />
+          <StatusPanel detail="Games represented on this page" label="Games" tone="success" value={new Set(highlights.map((item) => item.game_slug)).size.toString()} />
         </div>
 
         <Panel>
-          <PanelHeader eyebrow="Public Feed" title="Tournament highlights" description="Every card leads to a share-ready public winner page." />
+          <PanelHeader eyebrow="Results" title="Tournament highlights" description="Open any card to see the public winner page." />
           {highlights.length ? (
             <div className="grid gap-4 p-4 md:grid-cols-2 xl:grid-cols-3">
               {highlights.map((item) => (
@@ -122,7 +122,7 @@ export default async function CommunityHighlightsPage() {
             </div>
           ) : (
             <div className="p-4">
-              <EmptyState description="Completed tournaments with public-safe placements will appear here once operators finalize results." title="No highlights yet" />
+              <EmptyState description="Completed tournaments will appear here after results are finalized." title="No highlights yet" />
             </div>
           )}
         </Panel>
@@ -130,9 +130,9 @@ export default async function CommunityHighlightsPage() {
         <Panel>
           <PublicSharePanel
             eyebrow="Share"
-            panelTitle="Share the highlights feed"
-            panelDescription="This page is tuned for mobile sharing when you want people to open approved winner stories fast."
-            summary="Approved tournament winners, verified finished events, and public-safe competition highlights on Skillsroom."
+            panelTitle="Share the highlights page"
+            panelDescription="Use this when you want to send recent winners or finished events to other players."
+            summary="Recent winners, finished tournaments, and public highlights from Skillsroom."
             title="Skillsroom Highlights"
             url={shareUrl("/community/highlights")}
           />

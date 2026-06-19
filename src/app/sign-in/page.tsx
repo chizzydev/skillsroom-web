@@ -69,15 +69,15 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
             ctaHref="/community"
             ctaLabel="View community pages"
             eyebrow="Account access"
-            summary="Rooms, tournaments, proof review, and disputes all stay easy to follow in one place."
-            title="Play with clear rules and clear decisions."
+            summary="Rooms, tournaments, reviews, and match history all stay in one place."
+            title="Sign in and pick up where you stopped."
           />
         </div>
         <section className="order-1 w-full min-w-0 rounded-[1.5rem] border border-white/10 bg-white/95 p-5 shadow-[0_30px_80px_rgba(3,10,20,0.3)] backdrop-blur sm:p-6 lg:order-2">
           <Badge tone="cyan">Account access</Badge>
           <h1 className="mt-3 text-2xl font-black text-ink sm:text-3xl">Welcome back</h1>
           <p className="mt-2 text-sm leading-6 text-muted">
-            Sign in with your Skillsroom account to manage rooms, tournament entries, funding reviews, evidence, and disputes.
+            Sign in to open your rooms, messages, tournament entries, and account settings.
           </p>
           {params?.error ? (
             <p className="mt-4 rounded-md border border-red-200 bg-red-50 p-3 text-sm font-bold text-red-700">
@@ -117,13 +117,13 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
             <div className="rounded-2xl border border-line bg-surfaceWarm p-4">
               <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Pick up where you stopped</p>
               <p className="mt-2 text-sm leading-6 text-muted">
-                Go back to your rooms, DMs, and tournament check-ins without starting over.
+                Go back to your rooms, DMs, and tournament activity without starting over.
               </p>
             </div>
             <div className="rounded-2xl border border-line bg-surfaceWarm p-4">
               <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">One account</p>
               <p className="mt-2 text-sm leading-6 text-muted">
-                Your match history, disputes, and profile stay attached to the same account.
+                Your profile, match history, and account activity stay attached to the same login.
               </p>
             </div>
           </div>

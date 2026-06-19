@@ -7,7 +7,7 @@ const googleSiteVerification =
 
 export const metadata: Metadata = {
   title: "Skillsroom",
-  description: "Private competitive gaming rooms with verified match review.",
+  description: "Fair match rooms, tournaments, and gaming community tools on Skillsroom.",
   metadataBase,
   icons: {
     icon: "/icon.svg",
@@ -19,7 +19,7 @@ export const metadata: Metadata = {
   },
   openGraph: {
     title: "Skillsroom",
-    description: "Private competitive gaming rooms with verified match review.",
+    description: "Fair match rooms, tournaments, and gaming community tools on Skillsroom.",
     images: [{ url: "/opengraph-image", width: 1200, height: 630 }],
     siteName: "Skillsroom",
     type: "website",
@@ -28,7 +28,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "Skillsroom",
-    description: "Private competitive gaming rooms with verified match review.",
+    description: "Fair match rooms, tournaments, and gaming community tools on Skillsroom.",
     images: ["/opengraph-image"]
   }
 };

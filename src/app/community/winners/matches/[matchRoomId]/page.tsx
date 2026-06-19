@@ -29,7 +29,7 @@ export async function generateMetadata({ params }: MatchWinnerPageProps): Promis
   } catch {
     return shareMetadata({
       title: "Skillsroom Match Winner",
-      description: "Approved room winner and public-safe result summary.",
+      description: "Match winner and public result summary on Skillsroom.",
       path: `/community/winners/matches/${encodeURIComponent(matchRoomId)}`
     });
   }
@@ -56,7 +56,7 @@ export default async function MatchWinnerPage({ params }: MatchWinnerPageProps) 
           </div>
           <h1 className="mt-3 text-2xl font-black text-ink md:text-3xl">{winnerPage.winner.label}</h1>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-muted md:text-base">
-            Approved winner for {winnerPage.room.title ?? winnerPage.room.room_code} inside the Skillsroom result review flow.
+            Winner for {winnerPage.room.title ?? winnerPage.room.room_code} after the result was approved.
           </p>
           <div className="mt-4 flex flex-wrap gap-2">
             <Link className="inline-flex min-h-control items-center justify-center rounded-md border border-line bg-white px-4 text-sm font-black text-ink shadow-tight hover:bg-surfaceHigh" href="/community/highlights">
@@ -79,7 +79,7 @@ export default async function MatchWinnerPage({ params }: MatchWinnerPageProps) 
 
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
           <Panel>
-            <PanelHeader eyebrow="Result" title="Approved summary" description="Public-safe result details only. Evidence and admin notes stay private." />
+            <PanelHeader eyebrow="Result" title="Approved summary" description="Only the public result details are shown here. Evidence and admin notes stay private." />
             <div className="grid gap-3 p-4">
               <div className="rounded-md border border-line bg-white p-4">
                 <p className="text-xs font-black uppercase tracking-[0.12em] text-muted">Score</p>

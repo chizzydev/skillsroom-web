@@ -12,8 +12,8 @@ function formatMinor(value: number) {
 }
 
 export default async function Image() {
-  let title = "Skillsroom social proof";
-  let subtitle = "Live public metrics for competition activity, winners, and queued obligations.";
+  let title = "Skillsroom platform numbers";
+  let subtitle = "Live platform numbers for matches, tournaments, winners, and payouts.";
   let metrics = [
     { label: "Public", value: "Live" },
     { label: "Payouts", value: "Locked" }
@@ -34,12 +34,12 @@ export default async function Image() {
 
   return new ImageResponse(
     shareCardShell({
-      eyebrow: "Social Proof",
+      eyebrow: "Platform Numbers",
       title,
       subtitle,
       accent: "#22c55e",
       metrics,
-      footer: "Truth-first public platform metrics"
+      footer: "Live platform numbers"
     }),
     size
   );

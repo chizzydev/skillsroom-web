@@ -31,7 +31,7 @@ import { createRoomInviteAction } from "./actions";
 
 export const metadata: Metadata = shareMetadata({
   title: "Skillsroom Community Leaderboards",
-  description: "Public player rankings, campus scenes, city filters, and verified competition history on Skillsroom.",
+  description: "Player rankings, local scenes, clans, and recent highlights from the Skillsroom community.",
   path: "/community"
 });
 
@@ -113,23 +113,23 @@ export default async function CommunityPage({ searchParams }: CommunityPageProps
               <div className="relative">
                 <Badge tone="cyan">Community</Badge>
                 <h1 className="mt-3 max-w-4xl break-words text-2xl font-black leading-tight [overflow-wrap:anywhere] md:text-4xl">
-                  Public leaderboards that feel worthy of serious players.
+                  See who is winning and what is happening in the community.
                 </h1>
                 <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-300 md:text-base">
-                  Rankings are built from public player profiles, completed match records, tournament placements, and trust penalties.
+                  Check player rankings, match records, tournament results, clans, and recent highlights in one place.
                 </p>
                 <div className="mt-6 grid gap-3 md:grid-cols-3">
                   <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
-                    <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Player proof</p>
-                    <p className="mt-2 text-sm leading-6 text-slate-200">Profiles, results, and trust history combine into a public competitive identity.</p>
+                    <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Player rankings</p>
+                    <p className="mt-2 text-sm leading-6 text-slate-200">See public profiles, finished matches, and tournament results without digging around.</p>
                   </div>
                   <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
-                    <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Scene visibility</p>
-                    <p className="mt-2 text-sm leading-6 text-slate-200">Cities, campuses, and games can feel like scenes instead of flat database rows.</p>
+                    <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Local scenes</p>
+                    <p className="mt-2 text-sm leading-6 text-slate-200">Browse players and teams by city, campus, region, or game.</p>
                   </div>
                   <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
-                    <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Winner energy</p>
-                    <p className="mt-2 text-sm leading-6 text-slate-200">Highlights and tournament proof should carry the atmosphere of real competition.</p>
+                    <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Recent winners</p>
+                    <p className="mt-2 text-sm leading-6 text-slate-200">Catch up on highlights from completed tournaments and standout players.</p>
                   </div>
                 </div>
               </div>
@@ -148,7 +148,7 @@ export default async function CommunityPage({ searchParams }: CommunityPageProps
         )}
 
         <Panel>
-          <PanelHeader eyebrow="Filters" title="Find the scene" description="Compare public players by game, city, campus, or region." />
+          <PanelHeader eyebrow="Filters" title="Find players faster" description="Filter the leaderboard by game, city, campus, or region." />
           <form className="grid gap-3 p-4 md:grid-cols-5" method="GET">
             <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" defaultValue={filters.game_slug ?? ""} name="game_slug" placeholder="Game slug" />
             <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" defaultValue={filters.city ?? ""} name="city" placeholder="City" />
@@ -174,10 +174,10 @@ export default async function CommunityPage({ searchParams }: CommunityPageProps
           <div className="overflow-hidden rounded-[1.5rem] border border-[#203244] bg-[#0a1521] shadow-[0_28px_80px_rgba(4,10,20,0.24)]">
             <div className="grid gap-0 lg:grid-cols-[minmax(0,1fr)_minmax(240px,40%)]">
               <div className="p-5 text-white">
-                <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">A community people want to join</p>
-                <h2 className="mt-3 text-2xl font-black leading-tight">People stay longer when the community looks alive.</h2>
+                <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Why this page matters</p>
+                <h2 className="mt-3 text-2xl font-black leading-tight">A strong community page gives people a reason to stay.</h2>
                 <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-300">
-                  Skillsroom should feel like a real gaming community, not just a list of tools. Rankings, highlights, clans, and updates should feel worth exploring.
+                  When people can quickly see rankings, results, clans, and updates, the platform feels active and easier to come back to.
                 </p>
               </div>
               <div className="relative min-h-[260px] border-t border-white/10 lg:border-l lg:border-t-0">
@@ -188,12 +188,12 @@ export default async function CommunityPage({ searchParams }: CommunityPageProps
           </div>
           <div className="grid gap-4">
             <div className="rounded-[1.5rem] border border-[#203244] bg-[#0a1521] p-5 text-white shadow-[0_28px_80px_rgba(4,10,20,0.24)]">
-              <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Better first impression</p>
-              <p className="mt-3 text-sm leading-6 text-slate-300">The community side should feel lively, easy to browse, and clearly made for gamers.</p>
+              <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Easy to browse</p>
+              <p className="mt-3 text-sm leading-6 text-slate-300">People should understand what they are seeing without guessing what each section means.</p>
             </div>
             <div className="rounded-[1.5rem] border border-[#203244] bg-[#0a1521] p-5 text-white shadow-[0_28px_80px_rgba(4,10,20,0.24)]">
-              <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Why it matters</p>
-              <p className="mt-3 text-sm leading-6 text-slate-300">When the community pages feel stronger, people are more likely to stay, share, and come back.</p>
+              <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Easy to share</p>
+              <p className="mt-3 text-sm leading-6 text-slate-300">Good rankings and highlights are easier for players to send to friends, teams, and group chats.</p>
             </div>
           </div>
         </section>
@@ -202,7 +202,7 @@ export default async function CommunityPage({ searchParams }: CommunityPageProps
           <PanelHeader
             eyebrow="Proof"
             title="Live platform proof"
-            description="Truth-first public metrics drawn from real rooms, tournaments, settlements, and queues."
+            description="Live numbers from real rooms, tournaments, winners, and pending payouts."
             action={
               <Link className="inline-flex min-h-control items-center justify-center rounded-md border border-line bg-white px-4 text-sm font-black text-ink shadow-tight hover:bg-surfaceHigh" href="/community/proof">
                 Open proof dashboard
@@ -211,14 +211,14 @@ export default async function CommunityPage({ searchParams }: CommunityPageProps
           />
           {socialProof ? (
             <div className="grid gap-3 p-4 sm:grid-cols-2 xl:grid-cols-4">
-              <StatusPanel detail="Finished and audit-retained" label="Matches Completed" tone="success" value={socialProof.matches_completed.toString()} />
-              <StatusPanel detail="Published or completed events" label="Tournaments Hosted" tone="warning" value={socialProof.tournaments_hosted.toString()} />
+              <StatusPanel detail="Finished matches on the platform" label="Matches Completed" tone="success" value={socialProof.matches_completed.toString()} />
+              <StatusPanel detail="Events that have been created or completed" label="Tournaments Hosted" tone="warning" value={socialProof.tournaments_hosted.toString()} />
               <StatusPanel detail="Approved room and tournament winners" label="Winners Crowned" tone="success" value={socialProof.winners_crowned.toString()} />
-              <StatusPanel detail="Reserved or queued obligations only" label="Payout Queue" tone="warning" value={socialProof.payout_queue_count.toString()} />
+              <StatusPanel detail="Payouts still waiting in queue" label="Payout Queue" tone="warning" value={socialProof.payout_queue_count.toString()} />
             </div>
           ) : (
             <div className="p-4">
-              <EmptyState title="Proof metrics unavailable" description="The live social proof snapshot could not be loaded right now." />
+              <EmptyState title="Platform numbers unavailable" description="The latest platform numbers could not be loaded right now." />
             </div>
           )}
         </Panel>
@@ -227,8 +227,8 @@ export default async function CommunityPage({ searchParams }: CommunityPageProps
           <PublicSharePanel
             eyebrow="Share"
             panelTitle="Share the community board"
-            panelDescription="Send rankings, proof metrics, and community activity into WhatsApp groups or social posts without weak previews."
-            summary="Public leaderboards, live community proof, tournament highlights, and verified competition history on Skillsroom."
+            panelDescription="Share rankings, highlights, and community activity to WhatsApp or social media with a clean preview."
+            summary="Public rankings, recent winners, live stats, and community activity on Skillsroom."
             title="Skillsroom Community"
             url={shareUrl("/community")}
           />
@@ -238,7 +238,7 @@ export default async function CommunityPage({ searchParams }: CommunityPageProps
           <PanelHeader
             eyebrow="Announcements"
             title="Platform and tournament news"
-            description="Published platform notices, maintenance updates, and tournament host posts."
+            description="Updates from Skillsroom and posts from tournament hosts."
             action={
               <Link className="inline-flex min-h-control items-center justify-center rounded-md border border-line bg-white px-4 text-sm font-black text-ink shadow-tight hover:bg-surfaceHigh" href="/community/announcements">
                 Open news feed
@@ -278,7 +278,7 @@ export default async function CommunityPage({ searchParams }: CommunityPageProps
           <PanelHeader
             eyebrow="Highlights"
             title="Recent winners and completed events"
-            description="Only approved and public-safe tournament finishes appear here."
+            description="Approved tournament results and public highlights show up here."
             action={
               <Link className="inline-flex min-h-control items-center justify-center rounded-md border border-line bg-white px-4 text-sm font-black text-ink shadow-tight hover:bg-surfaceHigh" href="/community/highlights">
                 Open highlights
@@ -316,7 +316,7 @@ export default async function CommunityPage({ searchParams }: CommunityPageProps
             </div>
           ) : (
             <div className="p-4">
-              <EmptyState description="Completed tournaments with approved public-safe winners will appear here." title="No highlights yet" />
+              <EmptyState description="Completed tournaments with approved winners will appear here." title="No highlights yet" />
             </div>
           )}
         </Panel>
@@ -324,8 +324,8 @@ export default async function CommunityPage({ searchParams }: CommunityPageProps
         <Panel>
           <PanelHeader
             eyebrow="Clans"
-            title="Public team identities"
-            description="Persistent clan profiles for captains, members, game focus, and verified team history."
+            title="Public clans and team profiles"
+            description="See captains, game focus, team records, and public clan identity."
             action={
               <Link className="inline-flex min-h-control items-center justify-center rounded-md border border-line bg-white px-4 text-sm font-black text-ink shadow-tight hover:bg-surfaceHigh" href="/community/clans">
                 Open clans
@@ -365,7 +365,7 @@ export default async function CommunityPage({ searchParams }: CommunityPageProps
         </Panel>
 
         <Panel>
-          <PanelHeader eyebrow="Leaderboard" title="Top public players" description="Score combines reputation, wins, completed activity, tournament results, disputes, and no-shows." />
+          <PanelHeader eyebrow="Leaderboard" title="Top public players" description="Scores reflect wins, activity, tournament results, disputes, and no-shows." />
           {leaderboard.length ? (
             <DataTable
               columns={[
@@ -398,7 +398,7 @@ export default async function CommunityPage({ searchParams }: CommunityPageProps
 
         <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1fr)_420px]">
           <Panel>
-            <PanelHeader eyebrow="Activity" title="Community feed" description={user ? "Signed-in community activity and room momentum." : "Sign in to see private room invites and activity."} />
+            <PanelHeader eyebrow="Activity" title="Community feed" description={user ? "Recent platform activity and room updates." : "Sign in to see your private invites and account activity."} />
             {feed.length ? (
               <DataTable
                 columns={[
@@ -418,7 +418,7 @@ export default async function CommunityPage({ searchParams }: CommunityPageProps
 
           {user ? (
             <Panel>
-              <PanelHeader eyebrow="Invite" title="Invite a player to a room" description="Use the visible room code and the player's Skillsroom username." />
+              <PanelHeader eyebrow="Invite" title="Invite a player to a room" description="Enter your room code and the player's Skillsroom username." />
               <form action={createRoomInviteAction} className="grid gap-3 p-4">
                 <input className="min-h-11 rounded-md border border-line bg-white px-3 font-mono text-sm uppercase outline-none focus:border-action" name="match_room_code" placeholder="Room code, e.g. SR8K21" required />
                 <input
@@ -437,7 +437,7 @@ export default async function CommunityPage({ searchParams }: CommunityPageProps
             </Panel>
           ) : (
             <Panel>
-              <PanelHeader eyebrow="Join" title="Claim your ranking" description="Create a public player profile to appear in city, campus, and game leaderboards." />
+              <PanelHeader eyebrow="Join" title="Get on the board" description="Sign in to build your profile and appear in public rankings." />
               <div className="grid gap-3 p-4">
                 <Link className="inline-flex min-h-control items-center justify-center rounded-md bg-action px-4 text-sm font-black text-navy-950 shadow-action hover:bg-actionHover" href="/sign-in?redirect=/profile">
                   Sign in

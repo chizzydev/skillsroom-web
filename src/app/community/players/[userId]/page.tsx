@@ -35,13 +35,13 @@ export async function generateMetadata({ params }: { params: Promise<{ userId: s
     const ranking = await getCommunityPlayerRanking(userId);
     return shareMetadata({
       title: `${displayName(ranking.player)} on Skillsroom`,
-      description: `Rank #${ranking.player.rank} public competitor profile with verified match and tournament record.`,
+      description: `Rank #${ranking.player.rank} player profile with match record and tournament results on Skillsroom.`,
       path: `/community/players/${encodeURIComponent(userId)}`
     });
   } catch {
     return shareMetadata({
       title: "Skillsroom Player Ranking",
-      description: "Public competitor profile and verified ranking history.",
+      description: "Player profile, rank, and public match history on Skillsroom.",
       path: `/community/players/${encodeURIComponent(userId)}`
     });
   }
@@ -83,7 +83,7 @@ export default async function CommunityPlayerPage({ params, searchParams }: Play
                 </h1>
                 <p className="mt-2 font-mono text-sm font-bold text-slate-300">@{player.username}</p>
                 <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-300 md:text-base">
-                  Public Skillsroom ranking based on verified competition history, reputation, tournament placements, and trust penalties.
+                  This ranking is based on match history, reputation, tournament finishes, and trust penalties.
                 </p>
                 <div className="mt-8 grid gap-3 xl:max-w-2xl xl:grid-cols-3">
                   <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
@@ -107,7 +107,7 @@ export default async function CommunityPlayerPage({ params, searchParams }: Play
               <div className="absolute inset-x-4 bottom-4 md:inset-x-6">
                 <div className="rounded-2xl border border-white/10 bg-[#09131f]/78 p-4 backdrop-blur">
                   <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-300">Public competitor card</p>
-                  <p className="mt-2 text-sm leading-6 text-slate-200">A cleaner way to show ranking, reputation, and verified competition history without exposing private ops data.</p>
+                  <p className="mt-2 text-sm leading-6 text-slate-200">A simple way to show rank, reputation, and match history without exposing private admin data.</p>
                 </div>
               </div>
             </div>

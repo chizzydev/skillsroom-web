@@ -9,7 +9,7 @@ export const contentType = "image/png";
 
 export default async function Image() {
   let title = "Skillsroom announcements";
-  let subtitle = "Platform news, tournament updates, and public-safe community notices.";
+  let subtitle = "Platform news, tournament updates, and community notices from Skillsroom.";
   let metrics = [
     { label: "News", value: "Live" },
     { label: "Public", value: "Safe" }
@@ -36,7 +36,7 @@ export default async function Image() {
       subtitle,
       accent: "#38bdf8",
       metrics,
-      footer: "Published platform and tournament updates"
+      footer: "Platform and tournament updates"
     }),
     size
   );

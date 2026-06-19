@@ -12,7 +12,7 @@ import { shareMetadata } from "@/lib/share-cards";
 
 export const metadata: Metadata = shareMetadata({
   title: "Skillsroom Clans",
-  description: "Public clan and team profiles with members, captain identity, game focus, and verified competition record.",
+  description: "Clan and team pages with members, captains, game focus, and match history on Skillsroom.",
   path: "/community/clans"
 });
 
@@ -72,9 +72,9 @@ export default async function CommunityClansPage({ searchParams }: ClanListPageP
               <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(24,197,138,0.16),transparent_34%),radial-gradient(circle_at_bottom_left,rgba(33,170,255,0.18),transparent_36%)]" />
               <div className="relative">
                 <Badge tone="cyan">Clans</Badge>
-                <h1 className="mt-3 text-3xl font-black leading-tight sm:text-4xl lg:text-5xl">Public clan and team profiles.</h1>
+                <h1 className="mt-3 text-3xl font-black leading-tight sm:text-4xl lg:text-5xl">Find clans, teams, and local groups.</h1>
                 <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-300 md:text-base">
-                  Real member rosters, captain identity, game focus, and clan-linked tournament history live here.
+                  See team members, captains, game focus, and past results in one place.
                 </p>
                 <div className="mt-8 grid gap-3 xl:max-w-2xl xl:grid-cols-3">
                   <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
@@ -108,7 +108,7 @@ export default async function CommunityClansPage({ searchParams }: ClanListPageP
         {loadError ? <div className="rounded-md border border-danger bg-red-50 p-4 text-sm font-bold text-danger">{loadError}</div> : null}
 
         <Panel>
-          <PanelHeader eyebrow="Filters" title="Find a scene" description="Narrow the public clan board by game, city, campus, or region." />
+          <PanelHeader eyebrow="Filters" title="Find teams faster" description="Filter the clan list by game, city, campus, or region." />
           <form className="grid gap-3 p-4 md:grid-cols-5" method="GET">
             <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" defaultValue={filters.game_slug ?? ""} name="game_slug" placeholder="Game slug" />
             <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" defaultValue={filters.city ?? ""} name="city" placeholder="City" />
@@ -124,14 +124,14 @@ export default async function CommunityClansPage({ searchParams }: ClanListPageP
         </Panel>
 
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <StatusPanel detail="Public team identities" label="Clans" tone="cyan" value={clans.length.toString()} />
-          <StatusPanel detail="Active roster spots" label="Members" tone="success" value={totals.members.toString()} />
-          <StatusPanel detail="Completed clan-linked events" label="Tourneys" tone="warning" value={totals.tournaments.toString()} />
+          <StatusPanel detail="Public clan pages" label="Clans" tone="cyan" value={clans.length.toString()} />
+          <StatusPanel detail="Listed team members" label="Members" tone="success" value={totals.members.toString()} />
+          <StatusPanel detail="Completed clan events" label="Tourneys" tone="warning" value={totals.tournaments.toString()} />
           <StatusPanel detail="First-place finishes" label="Titles" tone="success" value={totals.wins.toString()} />
         </div>
 
         <Panel>
-          <PanelHeader eyebrow="Board" title="Public clans" description="Only public, moderation-safe clan profiles are listed." />
+          <PanelHeader eyebrow="Clans" title="Public clans" description="Only public clan profiles are listed here." />
           {clans.length ? (
             <div className="grid gap-4 p-4 md:grid-cols-2 xl:grid-cols-3">
               {clans.map((clan) => (

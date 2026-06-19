@@ -37,15 +37,15 @@ export default async function RegisterPage({ searchParams }: RegisterPageProps) 
             ctaHref="/rules"
             ctaLabel="Read the rules first"
             eyebrow="Player onboarding"
-            summary="Create one account for rooms, tournament check-ins, proof uploads, and your public profile."
-            title="Create an account you can keep using."
+            summary="Use one account for rooms, tournaments, messages, and your public profile."
+            title="Create your account and get started."
           />
         </div>
         <section className="order-1 w-full min-w-0 rounded-[1.5rem] border border-white/10 bg-white/95 p-5 shadow-[0_30px_80px_rgba(3,10,20,0.3)] backdrop-blur sm:p-6 lg:order-2">
           <Badge tone="cyan">Player access</Badge>
           <h1 className="mt-3 text-2xl font-black text-ink sm:text-3xl">Create your account</h1>
           <p className="mt-2 text-sm leading-6 text-muted">
-            Your account keeps rooms, game handles, evidence, notifications, dispute history, and competitive identity tied to you.
+            Your account keeps your rooms, game names, messages, tournament entries, and profile tied to you.
           </p>
           {params?.error ? (
             <p className="mt-4 rounded-md border border-red-200 bg-red-50 p-3 text-sm font-bold text-red-700">
@@ -111,7 +111,7 @@ export default async function RegisterPage({ searchParams }: RegisterPageProps) 
             <div className="rounded-2xl border border-line bg-surfaceWarm p-4">
               <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Ready for rooms and tournaments</p>
               <p className="mt-2 text-sm leading-6 text-muted">
-                Use the same profile for room invites, tournament entries, and result checks.
+                Use the same profile for room invites, tournament entries, and result updates.
               </p>
             </div>
             <div className="rounded-2xl border border-line bg-surfaceWarm p-4">

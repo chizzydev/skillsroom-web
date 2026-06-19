@@ -9,7 +9,7 @@ export const contentType = "image/png";
 
 export default async function Image() {
   let title = "Skillsroom public leaderboards";
-  let subtitle = "Verified player rankings by game, city, campus, and competition record.";
+  let subtitle = "Player rankings by game, city, campus, and match history.";
   let metrics = [{ label: "Ranks", value: "Live" }];
 
   try {
@@ -17,7 +17,7 @@ export default async function Image() {
     if (result.leaderboard.length) {
       const player = result.leaderboard[0];
       title = `${player.display_name || player.username} leads the board`;
-      subtitle = `${player.primary_game_name ?? "Skillsroom"} rankings with verified public competition data.`;
+      subtitle = `${player.primary_game_name ?? "Skillsroom"} rankings with player records and recent results.`;
       metrics = [
         { label: "Score", value: player.leaderboard_score.toString() },
         { label: "Record", value: `${player.wins}-${player.losses}` },
@@ -33,7 +33,7 @@ export default async function Image() {
       subtitle,
       accent: "#38bdf8",
       metrics,
-      footer: "Public verified player rankings"
+      footer: "Public player rankings"
     }),
     size
   );

@@ -57,7 +57,7 @@ export default async function CommunityAnnouncementsPage() {
                   </div>
                   <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
                     <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Tournament news</p>
-                    <p className="mt-2 text-sm leading-6 text-slate-200">Tournament posts stay easy to read without showing private admin details.</p>
+                    <p className="mt-2 text-sm leading-6 text-slate-200">Tournament posts stay easy to read without showing private admin notes.</p>
                   </div>
                   <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
                     <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Easy to read on phone</p>
@@ -121,8 +121,8 @@ export default async function CommunityAnnouncementsPage() {
         <Panel>
           <PublicSharePanel
             eyebrow="Share"
-            panelTitle="Share the news feed"
-            panelDescription="Made for quick forwarding when platform updates or tournament notices need reach on mobile."
+            panelTitle="Share the news page"
+            panelDescription="Useful when you want to forward platform updates or tournament news on mobile."
             summary="Platform news, tournament updates, maintenance notices, and winner posts from Skillsroom."
             title="Skillsroom Community Announcements"
             url={shareUrl("/community/announcements")}

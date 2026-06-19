@@ -8,8 +8,8 @@ export const size = shareCardSize;
 export const contentType = "image/png";
 
 export default async function Image() {
-  let title = "Completed events worth sharing";
-  let subtitle = "Approved tournament winners, verified finishes, and public-safe competition highlights.";
+  let title = "Recent winners and finished events";
+  let subtitle = "Completed tournaments, winners, and public highlights from Skillsroom.";
   let metrics = [
     { label: "Highlights", value: "Live" },
     { label: "Public", value: "Safe" }
@@ -36,7 +36,7 @@ export default async function Image() {
       subtitle,
       accent: "#38bdf8",
       metrics,
-      footer: "Approved public result feed"
+      footer: "Public winner and event feed"
     }),
     size
   );

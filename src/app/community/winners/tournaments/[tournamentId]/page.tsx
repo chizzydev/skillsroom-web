@@ -26,7 +26,7 @@ export async function generateMetadata({ params }: TournamentWinnerPageProps): P
   } catch {
     return shareMetadata({
       title: "Skillsroom Tournament Winner",
-      description: "Approved tournament winner and verified public result summary.",
+      description: "Tournament winner and public result summary on Skillsroom.",
       path: `/community/winners/tournaments/${encodeURIComponent(tournamentId)}`
     });
   }
@@ -53,7 +53,7 @@ export default async function TournamentWinnerPage({ params }: TournamentWinnerP
           </div>
           <h1 className="mt-3 text-2xl font-black text-ink md:text-3xl">{winnerPage.winner.player_label}</h1>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-muted md:text-base">
-            {winnerPage.winner.entry_name} won {winnerPage.tournament.title} under approved Skillsroom tournament results.
+            {winnerPage.winner.entry_name} won {winnerPage.tournament.title} after the final result was approved.
           </p>
           <div className="mt-4 flex flex-wrap gap-2">
             <Link className="inline-flex min-h-control items-center justify-center rounded-md border border-line bg-white px-4 text-sm font-black text-ink shadow-tight hover:bg-surfaceHigh" href="/community/highlights">
@@ -76,7 +76,7 @@ export default async function TournamentWinnerPage({ params }: TournamentWinnerP
 
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
           <Panel>
-            <PanelHeader eyebrow="Podium" title="Top placements" description="Only approved, public-safe final placements are shown here." />
+            <PanelHeader eyebrow="Podium" title="Top placements" description="Only approved final placements are shown here." />
             <div className="grid gap-3 p-4">
               {winnerPage.placements.map((placement) => (
                 <div className="rounded-md border border-line bg-white p-4" key={placement.entry_id}>
@@ -128,7 +128,7 @@ export default async function TournamentWinnerPage({ params }: TournamentWinnerP
                 <div className="rounded-md border border-line bg-white p-4" key={match.match_id}>
                   <p className="text-xs font-black uppercase tracking-[0.12em] text-muted">{match.round_name}</p>
                   <p className="mt-2 font-black text-ink">{match.winner_entry_name}</p>
-                  <p className="mt-2 text-sm text-muted">{match.result_summary ?? "Approved result retained in the tournament audit."}</p>
+                  <p className="mt-2 text-sm text-muted">{match.result_summary ?? "Approved result kept in the event record."}</p>
                   <div className="mt-3 flex flex-wrap gap-2">
                     {match.winner_match_path ? (
                       <Link className="inline-flex min-h-10 items-center justify-center rounded-md border border-line bg-white px-3 text-sm font-black text-ink shadow-tight hover:bg-surfaceHigh" href={match.winner_match_path}>
@@ -141,7 +141,7 @@ export default async function TournamentWinnerPage({ params }: TournamentWinnerP
             </div>
           ) : (
             <div className="p-4">
-              <EmptyState description="Approved match highlights will appear here when completed rounds carry public-safe result summaries." title="No notable matches yet" />
+              <EmptyState description="Approved match highlights will appear here when completed rounds have result summaries ready to show." title="No notable matches yet" />
             </div>
           )}
         </Panel>

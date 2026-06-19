@@ -202,13 +202,12 @@ export default async function HomePage({ searchParams }: HomePageProps) {
               <div className="relative p-5 md:p-7 lg:p-9">
                 <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(24,197,138,0.16),transparent_34%),radial-gradient(circle_at_bottom_left,rgba(33,170,255,0.18),transparent_36%)]" />
                 <div className="relative">
-                  <Badge tone="cyan">Skill-based competition platform</Badge>
+                  <Badge tone="cyan">Skill-based gaming platform</Badge>
                   <h1 className="mt-4 max-w-4xl text-3xl font-black leading-tight sm:text-4xl lg:text-5xl">
-                    Structured rooms, evidence review, and serious tournament play.
+                    Create fair match rooms, join tournaments, and play under clear rules.
                   </h1>
                   <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-300 md:text-base">
-                    Skillsroom helps players and operators run private match rooms and competitive events with clear rules,
-                    visible dispute handling, and controlled settlement workflows.
+                    Skillsroom gives players and organizers one place to manage rooms, results, disputes, and tournament play without confusing side chats and guesswork.
                   </p>
                   <div className="mt-5 grid gap-2 sm:flex sm:flex-wrap">
                     <PendingLink
@@ -235,16 +234,16 @@ export default async function HomePage({ searchParams }: HomePageProps) {
                   </div>
                   <div className="relative mt-8 grid gap-3 xl:max-w-2xl xl:grid-cols-3">
                     <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
-                      <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Visible flow</p>
-                      <p className="mt-2 text-sm leading-6 text-slate-200">Rooms, evidence, disputes, and settlements stay attached to the same record.</p>
+                      <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">One clear flow</p>
+                      <p className="mt-2 text-sm leading-6 text-slate-200">Room setup, proof, disputes, and final decisions all stay in one place.</p>
                     </div>
                     <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
-                      <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Serious play</p>
-                      <p className="mt-2 text-sm leading-6 text-slate-200">Designed for competitive rooms, operator oversight, and game-community trust.</p>
+                      <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Built for real matches</p>
+                      <p className="mt-2 text-sm leading-6 text-slate-200">It is made for competitive players, hosts, and communities that want things handled properly.</p>
                     </div>
                     <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
-                      <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Public proof</p>
-                      <p className="mt-2 text-sm leading-6 text-slate-200">Community pages and policies are visible before sign-in so people can inspect first.</p>
+                      <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Check before joining</p>
+                      <p className="mt-2 text-sm leading-6 text-slate-200">Public community pages and policies are open first, so people can look around before signing in.</p>
                     </div>
                   </div>
                 </div>
@@ -254,17 +253,17 @@ export default async function HomePage({ searchParams }: HomePageProps) {
                 <div className="absolute inset-0 bg-gradient-to-l from-transparent via-transparent to-[#08131f]/80" />
                 <div className="absolute inset-x-4 bottom-4 grid gap-3 md:inset-x-6">
                   <div className="rounded-2xl border border-white/10 bg-[#09131f]/78 p-4 backdrop-blur">
-                    <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-300">How trust works</p>
+                    <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-300">How it works</p>
                     <div className="mt-3 grid gap-3 text-sm leading-6 text-slate-200">
                       <p className="rounded-xl border border-white/10 bg-white/5 p-3">
-                    Players join rooms and tournaments under visible rules instead of hidden chats and loose transfers.
-                  </p>
+                        Players join rooms and tournaments with clear rules instead of trying to sort everything out in random chats.
+                      </p>
                       <p className="rounded-xl border border-white/10 bg-white/5 p-3">
-                    Funding proof, evidence, disputes, and operator decisions stay attached to the match or tournament record.
-                  </p>
+                        Payment checks, match proof, disputes, and admin decisions stay attached to the room or tournament record.
+                      </p>
                       <p className="rounded-xl border border-white/10 bg-white/5 p-3">
-                    Public policies, support pages, and community surfaces remain available before sign-in so new players can inspect the platform first.
-                  </p>
+                        Public policies, support pages, and community sections are visible before sign-in so new users can look around first.
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -281,29 +280,29 @@ export default async function HomePage({ searchParams }: HomePageProps) {
               />
               <div className="grid gap-4 bg-[#0b1622] p-4 xl:grid-cols-3">
                 <PremiumFeatureCard
-                  description="Create or join serious one-on-one rooms with visible rule checks, proof, funding review, and clean settlement flow."
-                  eyebrow="Head-to-head rooms"
+                  description="Create or join private rooms with clear rules, proof checks, payment review, and a proper result flow."
+                  eyebrow="Match rooms"
                   image={premiumArtwork.matchRooms}
-                  title="Competitive matches feel disciplined from the first click."
+                  title="Private matches should feel clear from the first click."
                 />
                 <PremiumFeatureCard
-                  description="Build real social momentum through global chat, game channels, identity, and community activity that feels alive."
-                  eyebrow="Community energy"
+                  description="Use global chat, game channels, rankings, and player identity to make the platform feel active."
+                  eyebrow="Community"
                   image={premiumArtwork.community}
-                  title="A gaming community should look as exciting as it feels."
+                  title="A gaming platform should not feel empty when people arrive."
                 />
                 <PremiumFeatureCard
-                  description="Run brackets, stages, and winner moments with a surface that looks worthy of operators, hosts, and serious teams."
-                  eyebrow="Tournament ops"
+                  description="Run brackets, stages, and winner updates in a way players and organizers can actually follow."
+                  eyebrow="Tournaments"
                   image={premiumArtwork.tournaments}
-                  title="Tournament operations deserve stage-level presentation."
+                  title="Tournaments should feel organized, not stressful."
                 />
               </div>
             </Panel>
 
             <div className="grid gap-6">
               <Panel>
-                <PanelHeader eyebrow="Inspect first" title="Public pages" />
+                <PanelHeader eyebrow="Look around first" title="Public pages" />
                 <div className="grid gap-2 p-4">
                   <PendingLink className="rounded-md border border-line bg-white px-4 py-3 text-sm font-black text-ink hover:bg-surfaceHigh" href="/community" pendingLabel="Opening community...">
                     Community and leaderboards
