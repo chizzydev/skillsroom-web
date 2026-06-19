@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import Image from "next/image";
 import { AppShell } from "@/components/layout/AppShell";
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -65,12 +66,43 @@ export default async function CommunityClansPage({ searchParams }: ClanListPageP
   return (
     <AppShell active="community">
       <section className="grid gap-6">
-        <section className="rounded-lg border border-line bg-white p-5 shadow-panel md:p-7">
-          <Badge tone="cyan">Clans</Badge>
-          <h1 className="mt-3 text-2xl font-black text-ink md:text-3xl">Public clan and team profiles.</h1>
-          <p className="mt-3 max-w-3xl text-sm leading-6 text-muted md:text-base">
-            Real member rosters, captain identity, game focus, and clan-linked tournament history live here.
-          </p>
+        <section className="overflow-hidden rounded-[1.75rem] border border-[#24364a] bg-[#08131f] text-white shadow-[0_40px_120px_rgba(4,10,20,0.35)]">
+          <div className="grid gap-0 xl:grid-cols-[minmax(0,1fr)_minmax(320px,38%)]">
+            <div className="relative p-5 md:p-7 lg:p-9">
+              <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(24,197,138,0.16),transparent_34%),radial-gradient(circle_at_bottom_left,rgba(33,170,255,0.18),transparent_36%)]" />
+              <div className="relative">
+                <Badge tone="cyan">Clans</Badge>
+                <h1 className="mt-3 text-3xl font-black leading-tight sm:text-4xl lg:text-5xl">Public clan and team profiles.</h1>
+                <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-300 md:text-base">
+                  Real member rosters, captain identity, game focus, and clan-linked tournament history live here.
+                </p>
+                <div className="mt-8 grid gap-3 xl:max-w-2xl xl:grid-cols-3">
+                  <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
+                    <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Team identity</p>
+                    <p className="mt-2 text-sm leading-6 text-slate-200">Clans can finally feel like real scenes instead of plain rows of text and links.</p>
+                  </div>
+                  <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
+                    <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Captain-led</p>
+                    <p className="mt-2 text-sm leading-6 text-slate-200">Players can quickly see who runs the team, where they play, and how active they are.</p>
+                  </div>
+                  <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
+                    <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Verified record</p>
+                    <p className="mt-2 text-sm leading-6 text-slate-200">Clan reputation and tournament history stay attached to a public identity people can recognize.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="relative min-h-[300px] border-t border-white/10 xl:min-h-full xl:border-l xl:border-t-0">
+              <Image alt="Premium Skillsroom clan scene artwork" className="object-cover" fill priority sizes="(min-width: 1280px) 38vw, 100vw" src="/marketing/skillsroom-premium/community-premium.png" />
+              <div className="absolute inset-0 bg-gradient-to-l from-transparent via-transparent to-[#08131f]/80" />
+              <div className="absolute inset-x-4 bottom-4 md:inset-x-6">
+                <div className="rounded-2xl border border-white/10 bg-[#09131f]/78 p-4 backdrop-blur">
+                  <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-300">Public team board</p>
+                  <p className="mt-2 text-sm leading-6 text-slate-200">A stronger surface for discovering squads, local scenes, and competitive group identities.</p>
+                </div>
+              </div>
+            </div>
+          </div>
         </section>
 
         {loadError ? <div className="rounded-md border border-danger bg-red-50 p-4 text-sm font-bold text-danger">{loadError}</div> : null}
@@ -103,7 +135,7 @@ export default async function CommunityClansPage({ searchParams }: ClanListPageP
           {clans.length ? (
             <div className="grid gap-4 p-4 md:grid-cols-2 xl:grid-cols-3">
               {clans.map((clan) => (
-                <Link className="grid gap-4 rounded-md border border-line bg-white p-4 transition hover:border-action hover:bg-surfaceHigh" href={`/community/clans/${encodeURIComponent(clan.slug)}`} key={clan.id}>
+                <Link className="grid gap-4 rounded-[1.25rem] border border-line bg-white p-4 transition hover:border-action hover:bg-surfaceHigh" href={`/community/clans/${encodeURIComponent(clan.slug)}`} key={clan.id}>
                   <div className="flex flex-wrap items-center gap-2">
                     <Badge tone="cyan">{clan.tag ?? "Clan"}</Badge>
                     {clan.game_focus.slice(0, 2).map((game) => (

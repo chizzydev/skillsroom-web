@@ -41,6 +41,8 @@ import {
   updateRiskFlagStatusAction
 } from "./actions";
 
+export const dynamic = "force-dynamic";
+
 function severityTone(severity: string) {
   if (severity === "critical" || severity === "high") return "danger" as const;
   if (severity === "medium") return "warning" as const;

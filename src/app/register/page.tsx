@@ -8,6 +8,11 @@ import { authFieldClassName } from "@/components/auth/field-styles";
 import { PendingLink } from "@/components/ui/PendingLink";
 import { SubmitButton } from "@/components/ui/SubmitButton";
 
+const premiumArtwork = {
+  hero: "/marketing/skillsroom-premium/hero-premium.png",
+  tournaments: "/marketing/skillsroom-premium/tournaments-premium.png"
+} as const;
+
 type RegisterPageProps = {
   searchParams?: Promise<{ redirect?: string; error?: string; ref?: string }>;
 };
@@ -23,17 +28,20 @@ export default async function RegisterPage({ searchParams }: RegisterPageProps) 
   }
 
   return (
-    <main className="min-h-screen bg-bg px-4 py-6 sm:py-10">
+    <main className="min-h-screen overflow-x-hidden bg-[#07111c] px-4 py-6 sm:py-10">
       <div className="mx-auto grid max-w-6xl gap-4 sm:gap-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(22rem,28rem)] lg:items-center">
         <div className="order-2 lg:order-1">
           <AuthTrustPanel
+            artworkAlt="Premium tournament operations artwork"
+            artworkSrc={premiumArtwork.tournaments}
             ctaHref="/rules"
             ctaLabel="Review competition rules first"
+            eyebrow="Player onboarding"
             summary="Create one account for verified rooms, tournament check-ins, evidence submissions, community identity, and future competitive history."
             title="Create a player identity you can keep across matches and tournaments."
           />
         </div>
-        <section className="order-1 w-full min-w-0 rounded-lg border border-line bg-surface p-5 shadow-panel sm:p-6 lg:order-2">
+        <section className="order-1 w-full min-w-0 rounded-[1.5rem] border border-white/10 bg-white/95 p-5 shadow-[0_30px_80px_rgba(3,10,20,0.3)] backdrop-blur sm:p-6 lg:order-2">
           <Badge tone="cyan">Player access</Badge>
           <h1 className="mt-3 text-2xl font-black text-ink sm:text-3xl">Create your account</h1>
           <p className="mt-2 text-sm leading-6 text-muted">
@@ -99,6 +107,20 @@ export default async function RegisterPage({ searchParams }: RegisterPageProps) 
             <PasswordField autoComplete="new-password" enterKeyHint="done" label="Confirm password" minLength={10} name="password_confirm" />
             <SubmitButton fullWidth idleLabel="Create account" pendingLabel="Creating account..." />
           </form>
+          <div className="mt-5 grid gap-3 sm:grid-cols-2">
+            <div className="rounded-2xl border border-line bg-surfaceWarm p-4">
+              <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Tournament ready</p>
+              <p className="mt-2 text-sm leading-6 text-muted">
+                Keep one profile for room invites, tournament entries, proofs, and result review trails.
+              </p>
+            </div>
+            <div className="rounded-2xl border border-line bg-surfaceWarm p-4">
+              <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Community identity</p>
+              <p className="mt-2 text-sm leading-6 text-muted">
+                Build a public-facing name that can later connect to rankings, clans, and featured wins.
+              </p>
+            </div>
+          </div>
           <div className="mt-5 grid gap-3 text-sm font-semibold text-muted">
             <p>
               Want to inspect the platform first?{" "}

@@ -1,3 +1,4 @@
+import Image from "next/image";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { AppShell } from "@/components/layout/AppShell";
@@ -43,6 +44,11 @@ type CommunityPageProps = {
     region?: string;
   }>;
 };
+
+const premiumArtwork = {
+  community: "/marketing/skillsroom-premium/community-premium.png",
+  tournaments: "/marketing/skillsroom-premium/tournaments-premium.png"
+} as const;
 
 function cleanFilter(value?: string) {
   const trimmed = value?.trim();
@@ -100,14 +106,39 @@ export default async function CommunityPage({ searchParams }: CommunityPageProps
   return (
     <AppShell active="community">
       <section className="grid gap-6">
-        <section className="min-w-0 rounded-lg border border-line bg-white p-5 shadow-panel md:p-7">
-          <Badge tone="cyan">Community</Badge>
-          <h1 className="mt-3 max-w-4xl break-words text-2xl font-black leading-tight text-ink [overflow-wrap:anywhere] md:text-3xl">
-            Public leaderboards for Skillsroom players.
-          </h1>
-          <p className="mt-3 max-w-3xl text-sm leading-6 text-muted md:text-base">
-            Rankings are built from public player profiles, completed match records, tournament placements, and trust penalties.
-          </p>
+        <section className="overflow-hidden rounded-[1.6rem] border border-[#203244] bg-[#09131f] shadow-[0_36px_100px_rgba(4,10,20,0.28)]">
+          <div className="grid gap-0 lg:grid-cols-[minmax(0,1fr)_minmax(320px,40%)]">
+            <div className="relative p-5 text-white md:p-7">
+              <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(24,197,138,0.15),transparent_30%),radial-gradient(circle_at_bottom_left,rgba(33,170,255,0.18),transparent_32%)]" />
+              <div className="relative">
+                <Badge tone="cyan">Community</Badge>
+                <h1 className="mt-3 max-w-4xl break-words text-2xl font-black leading-tight [overflow-wrap:anywhere] md:text-4xl">
+                  Public leaderboards that feel worthy of serious players.
+                </h1>
+                <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-300 md:text-base">
+                  Rankings are built from public player profiles, completed match records, tournament placements, and trust penalties.
+                </p>
+                <div className="mt-6 grid gap-3 md:grid-cols-3">
+                  <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
+                    <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Player proof</p>
+                    <p className="mt-2 text-sm leading-6 text-slate-200">Profiles, results, and trust history combine into a public competitive identity.</p>
+                  </div>
+                  <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
+                    <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Scene visibility</p>
+                    <p className="mt-2 text-sm leading-6 text-slate-200">Cities, campuses, and games can feel like scenes instead of flat database rows.</p>
+                  </div>
+                  <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
+                    <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Winner energy</p>
+                    <p className="mt-2 text-sm leading-6 text-slate-200">Highlights and tournament proof should carry the atmosphere of real competition.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="relative min-h-[320px] border-t border-white/10 lg:border-l lg:border-t-0">
+              <Image alt="Skillsroom community artwork" className="object-cover" fill priority sizes="(min-width: 1024px) 40vw, 100vw" src={premiumArtwork.community} />
+              <div className="absolute inset-0 bg-gradient-to-l from-transparent via-transparent to-[#09131f]/72" />
+            </div>
+          </div>
         </section>
 
         {(params.error || loadError) && (
@@ -138,6 +169,34 @@ export default async function CommunityPage({ searchParams }: CommunityPageProps
           <StatusPanel detail="Completed events entered" label="Tournaments" tone="warning" value={(summary?.completed_tournaments ?? 0).toString()} />
           <StatusPanel detail="Winner/podium signals" label="Podiums" tone="success" value={(summary?.podium_finishes ?? 0).toString()} />
         </div>
+
+        <section className="grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
+          <div className="overflow-hidden rounded-[1.5rem] border border-[#203244] bg-[#0a1521] shadow-[0_28px_80px_rgba(4,10,20,0.24)]">
+            <div className="grid gap-0 lg:grid-cols-[minmax(0,1fr)_minmax(240px,40%)]">
+              <div className="p-5 text-white">
+                <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Community momentum</p>
+                <h2 className="mt-3 text-2xl font-black leading-tight">People stay longer when the community looks alive.</h2>
+                <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-300">
+                  Skillsroom should feel like a real gaming scene, not just a utility dashboard. Public proof, highlights, clans, and rankings deserve more atmosphere.
+                </p>
+              </div>
+              <div className="relative min-h-[260px] border-t border-white/10 lg:border-l lg:border-t-0">
+                <Image alt="Skillsroom tournament artwork" className="object-cover" fill sizes="(min-width: 1024px) 32vw, 100vw" src={premiumArtwork.tournaments} />
+                <div className="absolute inset-0 bg-gradient-to-l from-transparent to-[#0a1521]/72" />
+              </div>
+            </div>
+          </div>
+          <div className="grid gap-4">
+            <div className="rounded-[1.5rem] border border-[#203244] bg-[#0a1521] p-5 text-white shadow-[0_28px_80px_rgba(4,10,20,0.24)]">
+              <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Premium direction</p>
+              <p className="mt-3 text-sm leading-6 text-slate-300">A premium gaming product needs visual stakes: cinematic art, stronger section contrast, and fewer plain white blocks.</p>
+            </div>
+            <div className="rounded-[1.5rem] border border-[#203244] bg-[#0a1521] p-5 text-white shadow-[0_28px_80px_rgba(4,10,20,0.24)]">
+              <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">What this unlocks</p>
+              <p className="mt-3 text-sm leading-6 text-slate-300">More emotional pull on landing pages, better shareability, and a stronger sense that Skillsroom is made for gaming culture.</p>
+            </div>
+          </div>
+        </section>
 
         <Panel>
           <PanelHeader

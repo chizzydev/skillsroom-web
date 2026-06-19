@@ -9,6 +9,11 @@ import { authFieldClassName } from "@/components/auth/field-styles";
 import { PendingLink } from "@/components/ui/PendingLink";
 import { SubmitButton } from "@/components/ui/SubmitButton";
 
+const premiumArtwork = {
+  hero: "/marketing/skillsroom-premium/hero-premium.png",
+  community: "/marketing/skillsroom-premium/community-premium.png"
+} as const;
+
 type SignInPageProps = {
   searchParams?: Promise<{ redirect?: string; error?: string; ref?: string }>;
 };
@@ -55,17 +60,20 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
   }
 
   return (
-    <main className="min-h-screen bg-bg px-4 py-6 sm:py-10">
+    <main className="min-h-screen overflow-x-hidden bg-[#07111c] px-4 py-6 sm:py-10">
       <div className="mx-auto grid max-w-6xl gap-4 sm:gap-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(22rem,28rem)] lg:items-center">
         <div className="order-2 lg:order-1">
           <AuthTrustPanel
+            artworkAlt="Competitive gaming community artwork"
+            artworkSrc={premiumArtwork.community}
             ctaHref="/community"
             ctaLabel="Review public community pages"
+            eyebrow="Account access"
             summary="Structured rooms, tournament operations, evidence review, dispute handling, and controlled settlement workflows for competitive players."
             title="Competitive gaming with visible rules and review."
           />
         </div>
-        <section className="order-1 w-full min-w-0 rounded-lg border border-line bg-surface p-5 shadow-panel sm:p-6 lg:order-2">
+        <section className="order-1 w-full min-w-0 rounded-[1.5rem] border border-white/10 bg-white/95 p-5 shadow-[0_30px_80px_rgba(3,10,20,0.3)] backdrop-blur sm:p-6 lg:order-2">
           <Badge tone="cyan">Account access</Badge>
           <h1 className="mt-3 text-2xl font-black text-ink sm:text-3xl">Welcome back</h1>
           <p className="mt-2 text-sm leading-6 text-muted">
@@ -105,6 +113,20 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
             <PasswordField autoComplete="current-password" enterKeyHint="go" label="Password" name="password" />
             <SubmitButton fullWidth idleLabel="Sign in" pendingLabel="Signing in..." />
           </form>
+          <div className="mt-5 grid gap-3 sm:grid-cols-2">
+            <div className="rounded-2xl border border-line bg-surfaceWarm p-4">
+              <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Fast re-entry</p>
+              <p className="mt-2 text-sm leading-6 text-muted">
+                Get back into rooms, unread DMs, tournament check-ins, and evidence threads without losing your place.
+              </p>
+            </div>
+            <div className="rounded-2xl border border-line bg-surfaceWarm p-4">
+              <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">One player record</p>
+              <p className="mt-2 text-sm leading-6 text-muted">
+                Match history, disputes, platform moderation, and community identity remain tied to one account.
+              </p>
+            </div>
+          </div>
           <div className="mt-5 grid gap-3 text-sm font-semibold text-muted">
             <p>
               Need a closer look first?{" "}

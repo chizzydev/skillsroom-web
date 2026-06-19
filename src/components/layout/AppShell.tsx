@@ -65,7 +65,7 @@ export async function AppShell({ active, children }: AppShellProps) {
           </div>
         </div>
       </header>
-      <div className="mx-auto min-w-0 max-w-7xl px-page py-5 md:py-7">{children}</div>
+      <div className="mx-auto min-w-0 max-w-7xl px-page py-4 sm:py-5 md:py-7">{children}</div>
       <footer className="border-t border-white/10 bg-navy-900">
         <div className="mx-auto grid max-w-7xl gap-4 px-page pt-6 pb-[calc(6.5rem+env(safe-area-inset-bottom))] md:grid-cols-[minmax(0,1fr)_auto] md:items-center md:py-6">
           <div className="min-w-0">
@@ -87,12 +87,12 @@ export async function AppShell({ active, children }: AppShellProps) {
         </div>
       </footer>
       <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-white/95 px-2 pb-[max(env(safe-area-inset-bottom),0.65rem)] pt-2 shadow-[0_-18px_40px_rgba(15,23,42,0.08)] backdrop-blur md:hidden">
-        <div className="mx-auto grid max-w-md grid-cols-5 gap-1">
+        <div className="mx-auto grid max-w-md grid-cols-5 gap-1.5">
           {nav.map((item) => (
             <Link
               className={[
-                "grid min-h-12 min-w-0 place-items-center rounded-md px-0.5 text-center text-[0.62rem] font-black leading-tight sm:text-[0.68rem]",
-                item.key === active ? "bg-cyanSoft text-ink" : "text-muted"
+                "grid min-h-[3.15rem] min-w-0 place-items-center rounded-xl px-1 text-center text-[0.62rem] font-black leading-tight sm:text-[0.68rem]",
+                item.key === active ? "bg-cyanSoft text-ink shadow-tight" : "text-muted"
               ].join(" ")}
               href={item.href}
               key={item.key}

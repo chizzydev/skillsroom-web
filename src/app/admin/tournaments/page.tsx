@@ -46,6 +46,8 @@ import {
   updateTournamentHostEventAction
 } from "./actions";
 
+export const dynamic = "force-dynamic";
+
 const formatOptions: Array<{ value: TournamentFormat; label: string; note: string }> = [
   { value: "single_elimination", label: "Single elimination", note: "Knockout bracket" },
   { value: "double_elimination", label: "Double elimination", note: "Winners and losers brackets" },

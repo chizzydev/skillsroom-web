@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { AppShell } from "@/components/layout/AppShell";
 import { Badge } from "@/components/ui/Badge";
@@ -39,6 +40,13 @@ const roomSteps = [
   ["Play", "Run the match under the listed ruleset."],
   ["Review", "Result evidence is checked before settlement."]
 ] as const;
+
+const premiumArtwork = {
+  hero: "/marketing/skillsroom-premium/hero-premium.png",
+  matchRooms: "/marketing/skillsroom-premium/match-rooms-premium.png",
+  community: "/marketing/skillsroom-premium/community-premium.png",
+  tournaments: "/marketing/skillsroom-premium/tournaments-premium.png"
+} as const;
 
 function statusTone(status: MatchRoomStatus) {
   if (status === "open") return "cyan" as const;
@@ -127,6 +135,36 @@ function RoomCard({ room }: { room: MatchRoom }) {
   );
 }
 
+function PremiumFeatureCard({
+  image,
+  eyebrow,
+  title,
+  description
+}: {
+  image: string;
+  eyebrow: string;
+  title: string;
+  description: string;
+}) {
+  return (
+    <article className="group overflow-hidden rounded-[1.35rem] border border-white/10 bg-[#132131] shadow-[0_30px_80px_rgba(3,10,20,0.32)]">
+      <div className="relative h-72 overflow-hidden">
+        <Image alt={title} className="object-cover transition duration-500 group-hover:scale-[1.03]" fill sizes="(min-width: 1280px) 30vw, (min-width: 768px) 50vw, 100vw" src={image} />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#09131f] via-[#09131f]/28 to-transparent" />
+        <div className="absolute inset-x-4 bottom-4">
+          <span className="inline-flex rounded-full border border-white/15 bg-black/25 px-3 py-1 font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">
+            {eyebrow}
+          </span>
+        </div>
+      </div>
+      <div className="p-5 text-white">
+        <h3 className="text-xl font-black leading-tight">{title}</h3>
+        <p className="mt-3 text-sm leading-6 text-slate-300">{description}</p>
+      </div>
+    </article>
+  );
+}
+
 export default async function HomePage({ searchParams }: HomePageProps) {
   const user = await getCurrentUser();
   if (!user) {
@@ -159,53 +197,76 @@ export default async function HomePage({ searchParams }: HomePageProps) {
         </header>
 
         <div className="mx-auto grid max-w-7xl gap-6 px-page py-6 md:py-8">
-          <section className="rounded-lg border border-line bg-navy-900 p-5 text-white shadow-panel md:p-7">
-            <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_24rem] lg:items-end">
-              <div>
-                <Badge tone="cyan">Skill-based competition platform</Badge>
-                <h1 className="mt-4 max-w-4xl text-3xl font-black leading-tight sm:text-4xl lg:text-5xl">
-                  Structured rooms, evidence review, and serious tournament play.
-                </h1>
-                <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-300 md:text-base">
-                  Skillsroom helps players and operators run private match rooms and competitive events with clear rules,
-                  visible dispute handling, and controlled settlement workflows.
-                </p>
-                <div className="mt-5 grid gap-2 sm:flex sm:flex-wrap">
-                  <PendingLink
-                    className="inline-flex min-h-10 w-full items-center justify-center rounded-md bg-action px-4 text-sm font-black text-navy-950 shadow-action hover:bg-actionHover sm:w-auto"
-                    href="/register"
-                    pendingLabel="Opening registration..."
-                  >
-                    Create account
-                  </PendingLink>
-                  <PendingLink
-                    className="inline-flex min-h-10 w-full items-center justify-center rounded-md border border-white/10 bg-white px-4 text-sm font-black text-ink hover:bg-surfaceHigh sm:w-auto"
-                    href="/sign-in?redirect=/"
-                    pendingLabel="Opening sign in..."
-                  >
-                    Sign in
-                  </PendingLink>
-                  <PendingLink
-                    className="inline-flex min-h-10 w-full items-center justify-center rounded-md border border-white/10 bg-white px-4 text-sm font-black text-ink hover:bg-surfaceHigh sm:w-auto"
-                    href="/community"
-                    pendingLabel="Opening community..."
-                  >
-                    View public community
-                  </PendingLink>
+          <section className="overflow-hidden rounded-[1.75rem] border border-[#24364a] bg-[#08131f] text-white shadow-[0_40px_120px_rgba(4,10,20,0.35)]">
+            <div className="grid gap-0 lg:grid-cols-[minmax(0,1fr)_minmax(320px,42%)]">
+              <div className="relative p-5 md:p-7 lg:p-9">
+                <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(24,197,138,0.16),transparent_34%),radial-gradient(circle_at_bottom_left,rgba(33,170,255,0.18),transparent_36%)]" />
+                <div className="relative">
+                  <Badge tone="cyan">Skill-based competition platform</Badge>
+                  <h1 className="mt-4 max-w-4xl text-3xl font-black leading-tight sm:text-4xl lg:text-5xl">
+                    Structured rooms, evidence review, and serious tournament play.
+                  </h1>
+                  <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-300 md:text-base">
+                    Skillsroom helps players and operators run private match rooms and competitive events with clear rules,
+                    visible dispute handling, and controlled settlement workflows.
+                  </p>
+                  <div className="mt-5 grid gap-2 sm:flex sm:flex-wrap">
+                    <PendingLink
+                      className="inline-flex min-h-10 w-full items-center justify-center rounded-md bg-action px-4 text-sm font-black text-navy-950 shadow-action hover:bg-actionHover sm:w-auto"
+                      href="/register"
+                      pendingLabel="Opening registration..."
+                    >
+                      Create account
+                    </PendingLink>
+                    <PendingLink
+                      className="inline-flex min-h-10 w-full items-center justify-center rounded-md border border-white/10 bg-white px-4 text-sm font-black text-ink hover:bg-surfaceHigh sm:w-auto"
+                      href="/sign-in?redirect=/"
+                      pendingLabel="Opening sign in..."
+                    >
+                      Sign in
+                    </PendingLink>
+                    <PendingLink
+                      className="inline-flex min-h-10 w-full items-center justify-center rounded-md border border-white/10 bg-white px-4 text-sm font-black text-ink hover:bg-surfaceHigh sm:w-auto"
+                      href="/community"
+                      pendingLabel="Opening community..."
+                    >
+                      View public community
+                    </PendingLink>
+                  </div>
+                  <div className="relative mt-8 grid gap-3 xl:max-w-2xl xl:grid-cols-3">
+                    <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
+                      <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Visible flow</p>
+                      <p className="mt-2 text-sm leading-6 text-slate-200">Rooms, evidence, disputes, and settlements stay attached to the same record.</p>
+                    </div>
+                    <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
+                      <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Serious play</p>
+                      <p className="mt-2 text-sm leading-6 text-slate-200">Designed for competitive rooms, operator oversight, and game-community trust.</p>
+                    </div>
+                    <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
+                      <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Public proof</p>
+                      <p className="mt-2 text-sm leading-6 text-slate-200">Community pages and policies are visible before sign-in so people can inspect first.</p>
+                    </div>
+                  </div>
                 </div>
               </div>
-              <div className="rounded-lg border border-white/10 bg-white/5 p-4">
-                <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-300">How trust works</p>
-                <div className="mt-3 grid gap-3 text-sm leading-6 text-slate-200">
-                  <p className="rounded-md border border-white/10 bg-white/5 p-3">
+              <div className="relative min-h-[320px] border-t border-white/10 lg:min-h-full lg:border-l lg:border-t-0">
+                <Image alt="Premium Skillsroom competitive gaming scene" className="object-cover" fill priority sizes="(min-width: 1024px) 42vw, 100vw" src={premiumArtwork.hero} />
+                <div className="absolute inset-0 bg-gradient-to-l from-transparent via-transparent to-[#08131f]/80" />
+                <div className="absolute inset-x-4 bottom-4 grid gap-3 md:inset-x-6">
+                  <div className="rounded-2xl border border-white/10 bg-[#09131f]/78 p-4 backdrop-blur">
+                    <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-300">How trust works</p>
+                    <div className="mt-3 grid gap-3 text-sm leading-6 text-slate-200">
+                      <p className="rounded-xl border border-white/10 bg-white/5 p-3">
                     Players join rooms and tournaments under visible rules instead of hidden chats and loose transfers.
                   </p>
-                  <p className="rounded-md border border-white/10 bg-white/5 p-3">
+                      <p className="rounded-xl border border-white/10 bg-white/5 p-3">
                     Funding proof, evidence, disputes, and operator decisions stay attached to the match or tournament record.
                   </p>
-                  <p className="rounded-md border border-white/10 bg-white/5 p-3">
+                      <p className="rounded-xl border border-white/10 bg-white/5 p-3">
                     Public policies, support pages, and community surfaces remain available before sign-in so new players can inspect the platform first.
                   </p>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -218,31 +279,25 @@ export default async function HomePage({ searchParams }: HomePageProps) {
                 title="What players can do here"
                 description="Skillsroom is built for competitive gaming, not chance-based betting."
               />
-              <div className="grid gap-3 p-4 md:grid-cols-2">
-                <div className="rounded-md border border-line bg-surfaceWarm p-4">
-                  <p className="text-sm font-black text-ink">Private match rooms</p>
-                  <p className="mt-2 text-sm leading-6 text-muted">
-                    Create or join head-to-head rooms, submit transfer proof, play, and move through result review with evidence attached.
-                  </p>
-                </div>
-                <div className="rounded-md border border-line bg-surfaceWarm p-4">
-                  <p className="text-sm font-black text-ink">Tournament operations</p>
-                  <p className="mt-2 text-sm leading-6 text-muted">
-                    Run brackets, Swiss, round robin, group stages, leagues, and cumulative-score formats with operator oversight.
-                  </p>
-                </div>
-                <div className="rounded-md border border-line bg-surfaceWarm p-4">
-                  <p className="text-sm font-black text-ink">Evidence and disputes</p>
-                  <p className="mt-2 text-sm leading-6 text-muted">
-                    Keep screenshots, clips, and decision history connected to the exact room or tournament match under review.
-                  </p>
-                </div>
-                <div className="rounded-md border border-line bg-surfaceWarm p-4">
-                  <p className="text-sm font-black text-ink">Public trust surfaces</p>
-                  <p className="mt-2 text-sm leading-6 text-muted">
-                    Review community pages, policies, winner pages, and public competition context before you ever create an account.
-                  </p>
-                </div>
+              <div className="grid gap-4 bg-[#0b1622] p-4 xl:grid-cols-3">
+                <PremiumFeatureCard
+                  description="Create or join serious one-on-one rooms with visible rule checks, proof, funding review, and clean settlement flow."
+                  eyebrow="Head-to-head rooms"
+                  image={premiumArtwork.matchRooms}
+                  title="Competitive matches feel disciplined from the first click."
+                />
+                <PremiumFeatureCard
+                  description="Build real social momentum through global chat, game channels, identity, and community activity that feels alive."
+                  eyebrow="Community energy"
+                  image={premiumArtwork.community}
+                  title="A gaming community should look as exciting as it feels."
+                />
+                <PremiumFeatureCard
+                  description="Run brackets, stages, and winner moments with a surface that looks worthy of operators, hosts, and serious teams."
+                  eyebrow="Tournament ops"
+                  image={premiumArtwork.tournaments}
+                  title="Tournament operations deserve stage-level presentation."
+                />
               </div>
             </Panel>
 
@@ -351,6 +406,24 @@ export default async function HomePage({ searchParams }: HomePageProps) {
                 </PendingLink>
               </div>
             </form>
+          </div>
+          <div className="mt-6 overflow-hidden rounded-[1.5rem] border border-white/10 bg-[#0d1824]">
+            <div className="grid gap-0 lg:grid-cols-[1.2fr_0.8fr]">
+              <div className="relative min-h-[280px]">
+                <Image alt="Skillsroom premium hero" className="object-cover" fill sizes="(min-width: 1024px) 55vw, 100vw" src={premiumArtwork.hero} />
+                <div className="absolute inset-0 bg-gradient-to-r from-[#08131f]/12 via-[#08131f]/38 to-[#08131f]" />
+              </div>
+              <div className="grid gap-3 p-5">
+                <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                  <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Premium competition</p>
+                  <p className="mt-2 text-sm leading-6 text-slate-200">The room experience should feel premium before the match even starts: clear rules, clean status, and visible trust signals.</p>
+                </div>
+                <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                  <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Built for momentum</p>
+                  <p className="mt-2 text-sm leading-6 text-slate-200">Players move from community to room to review without getting thrown into disconnected tools and dead surfaces.</p>
+                </div>
+              </div>
+            </div>
           </div>
         </section>
 

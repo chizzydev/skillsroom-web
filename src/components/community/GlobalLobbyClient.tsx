@@ -55,9 +55,12 @@ const chatDocumentMimeTypes = [
   "application/vnd.oasis.opendocument.text",
   "text/plain"
 ] as const;
+const chatImageExtensions = [".jpg", ".jpeg", ".png", ".webp"] as const;
+const chatDocumentExtensions = [".pdf", ".doc", ".docx", ".odt", ".txt"] as const;
 const acceptedChatDocuments = ".pdf,.doc,.docx,.odt,.txt,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.oasis.opendocument.text,text/plain";
-const maxChatImageBytes = 8 * 1024 * 1024;
-const maxChatDocumentBytes = 12 * 1024 * 1024;
+const chatMessageMaxLength = 5000;
+const composerMinHeightPx = 44;
+const composerMaxHeightPx = 128;
 
 function isChatImageMime(mimeType: string | null | undefined) {
   return chatImageMimeTypes.includes(mimeType as (typeof chatImageMimeTypes)[number]);
@@ -67,9 +70,18 @@ function isChatDocumentMime(mimeType: string | null | undefined) {
   return chatDocumentMimeTypes.includes(mimeType as (typeof chatDocumentMimeTypes)[number]);
 }
 
+function fileExtension(fileName: string | null | undefined) {
+  const normalized = fileName?.trim().toLowerCase() ?? "";
+  const lastDot = normalized.lastIndexOf(".");
+  return lastDot >= 0 ? normalized.slice(lastDot) : "";
+}
+
 function chatAttachmentKind(file: File): "image" | "document" | null {
   if (isChatImageMime(file.type)) return "image";
   if (isChatDocumentMime(file.type)) return "document";
+  const extension = fileExtension(file.name);
+  if (chatImageExtensions.includes(extension as (typeof chatImageExtensions)[number])) return "image";
+  if (chatDocumentExtensions.includes(extension as (typeof chatDocumentExtensions)[number])) return "document";
   return null;
 }
 
@@ -123,9 +135,9 @@ function ChatImage({ attachment, autoLoad, channelSlug, className, onOpen }: { a
     return <div className={["grid min-h-28 place-items-center rounded-md border border-dashed border-white/15 bg-black/10 p-4 text-center text-xs font-bold text-slate-400", className].filter(Boolean).join(" ")}>Image removed by moderation.</div>;
   }
   if (failed) return <button className={["grid min-h-28 place-items-center rounded-md bg-black/15 p-4 text-xs font-black text-slate-300", className].filter(Boolean).join(" ")} onClick={() => { setFailed(false); setLoadRequested(false); window.requestAnimationFrame(() => setLoadRequested(true)); }} type="button">Image unavailable. Tap to retry.</button>;
-  if (!loadRequested) return <button aria-label={`Load image from ${attachment.uploader_label}`} className={["grid min-h-32 place-items-center rounded-md border border-white/10 bg-black/20 p-4 text-center text-slate-200", className].filter(Boolean).join(" ")} onClick={() => setLoadRequested(true)} type="button"><span className="grid gap-2"><span aria-hidden="true" className="text-2xl">&#8595;</span><span className="text-xs font-black">Load image</span><span className="text-[0.68rem] font-bold text-slate-400">{Math.max(1, Math.round(attachment.byte_size / 1024))} KB</span></span></button>;
-  if (!url) return <div className={["grid min-h-32 animate-pulse place-items-center rounded-md bg-black/15 text-xs font-bold text-slate-400", className].filter(Boolean).join(" ")} aria-label="Loading image">Loading image...</div>;
-  return <button aria-label={`Open image from ${attachment.uploader_label}`} className={["block min-w-0 overflow-hidden rounded-md bg-black/20", className].filter(Boolean).join(" ")} onClick={() => onOpen?.(url)} type="button"><img alt={attachment.alt_text ?? attachment.original_name ?? "Chat image"} className="h-full w-full object-cover" loading="lazy" src={url} /></button>;
+  if (!loadRequested) return <button aria-label={`Load image from ${attachment.uploader_label}`} className={["grid place-items-center rounded-md border border-white/10 bg-black/20 p-4 text-center text-slate-200", className].filter(Boolean).join(" ")} onClick={() => setLoadRequested(true)} type="button"><span className="grid gap-2"><span aria-hidden="true" className="text-2xl">&#8595;</span><span className="text-xs font-black">Load image</span><span className="text-[0.68rem] font-bold text-slate-400">{Math.max(1, Math.round(attachment.byte_size / 1024))} KB</span></span></button>;
+  if (!url) return <div className={["grid animate-pulse place-items-center rounded-md bg-black/15 text-xs font-bold text-slate-400", className].filter(Boolean).join(" ")} aria-label="Loading image">Loading image...</div>;
+  return <button aria-label={`Open image from ${attachment.uploader_label}`} className={["grid h-full min-w-0 place-items-center overflow-hidden rounded-md bg-black/20", className].filter(Boolean).join(" ")} onClick={() => onOpen?.(url)} type="button"><img alt={attachment.alt_text ?? attachment.original_name ?? "Chat image"} className="h-full max-h-full w-full object-contain" loading="lazy" src={url} /></button>;
 }
 
 function ChatAttachmentTile({ attachment, autoLoadImage, channelSlug, className, onOpenImage }: { attachment: ChatAttachment; autoLoadImage?: boolean; channelSlug: string; className?: string; onOpenImage?: (url: string) => void }) {
@@ -288,11 +300,24 @@ function preserveLocalAttachmentPreviews(next: ChatMessage, previous?: ChatMessa
 
   return {
     ...next,
-    attachments: next.attachments.map((attachment) => (
-      attachment.client_preview_url || !previewByAttachmentId.has(attachment.id)
-        ? attachment
-        : { ...attachment, client_preview_url: previewByAttachmentId.get(attachment.id) }
-    ))
+    attachments: next.attachments.map((attachment, index) => {
+      if (attachment.client_preview_url) return attachment;
+
+      const previewById = previewByAttachmentId.get(attachment.id);
+      if (previewById) {
+        return { ...attachment, client_preview_url: previewById };
+      }
+
+      const previousAttachment = previous.attachments?.[index];
+      if (
+        previousAttachment?.client_preview_url &&
+        previousAttachment.attachment_type === attachment.attachment_type
+      ) {
+        return { ...attachment, client_preview_url: previousAttachment.client_preview_url };
+      }
+
+      return attachment;
+    })
   };
 }
 
@@ -479,6 +504,10 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
   const composerRef = useRef<HTMLTextAreaElement | null>(null);
   const imageInputRef = useRef<HTMLInputElement | null>(null);
   const documentInputRef = useRef<HTMLInputElement | null>(null);
+  const attachmentTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const attachmentMenuRef = useRef<HTMLDivElement | null>(null);
+  const emojiTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const emojiPickerRef = useRef<HTMLDivElement | null>(null);
   const uploadRequestsRef = useRef<Map<string, XMLHttpRequest>>(new Map());
   const longPressTimerRef = useRef<number | null>(null);
   const seenIdsRef = useRef<Set<string>>(new Set(initialMessages.map((message) => message.id)));
@@ -501,7 +530,7 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
   const pinBannerIndex = Math.min(pinBannerIndexByChannel[activeChannel.slug] ?? 0, Math.max(0, bannerPinnedMessages.length - 1));
   const currentPinnedMessage = bannerPinnedMessages[pinBannerIndex] ?? null;
   const presence = presenceByChannel[activeChannel.slug] ?? emptyPresence;
-  const charactersLeft = 1000 - body.length;
+  const charactersLeft = chatMessageMaxLength - body.length;
   const readyAttachments = pendingAttachments.filter((attachment) => attachment.state === "ready" && attachment.attachment);
   const uploadInProgress = pendingAttachments.some((attachment) => attachment.state === "uploading");
   const canManageAnyPin = ["support", "moderator", "admin", "owner"].includes(currentUserRole);
@@ -509,7 +538,7 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
   const cooldownSeconds = cooldownUntil ? Math.max(0, Math.ceil((Date.parse(cooldownUntil) - cooldownClock) / 1000)) : 0;
   const lockdownSeconds = activeChannel.lockdown_until ? Math.max(0, Math.ceil((Date.parse(activeChannel.lockdown_until) - cooldownClock) / 1000)) : 0;
   const isSendControlled = !canModerateMessages && (cooldownSeconds > 0 || lockdownSeconds > 0);
-  const canSend = (body.trim().length > 0 || readyAttachments.length > 0) && body.trim().length <= 1000 && !uploadInProgress && !isSending && !isLoadingChannel && !isSendControlled;
+  const canSend = (body.trim().length > 0 || readyAttachments.length > 0) && body.trim().length <= chatMessageMaxLength && !uploadInProgress && !isSending && !isLoadingChannel && !isSendControlled;
   const fullLayout = layout === "full";
   const dmChannels = useMemo(() => channelList.filter((channel) => channel.channel_type === "dm"), [channelList]);
   const communityChannels = useMemo(() => channelList.filter((channel) => channel.channel_type !== "dm"), [channelList]);
@@ -559,7 +588,8 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
       dm_peer_username: peerUsername
     };
   }, [activeChannel, currentUserId, listedActiveChannel, userDirectory]);
-  const activeChannelSubtitle = activeChannel.channel_type === "dm"
+  const isDirectMessage = activeChannel.channel_type === "dm";
+  const activeChannelSubtitle = isDirectMessage
     ? `${presence.online_count} online / DM`
     : `${presence.online_count} online${communityChannels.length ? ` / ${communityChannels.length} channels` : ""}`;
   const mentionFragment = body.match(/(?:^|\s)@([A-Za-z0-9_]{0,24})$/)?.[1]?.toLowerCase() ?? null;
@@ -569,6 +599,7 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
   const isChatAdmin = ["admin", "owner"].includes(currentUserRole);
   const activeEmojiGroup = emojiGroups.find((group) => group.key === emojiGroup) ?? emojiGroups[0];
   const profileIsSelf = profileUser?.user_id === currentUserId;
+  const composerPlaceholder = "Message";
 
   const statusLabel = useMemo(() => {
     if (streamStatus === "live") return "Live";
@@ -759,10 +790,34 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
   useEffect(() => {
     const composer = composerRef.current;
     if (!composer) return;
-    composer.style.height = "0px";
-    composer.style.height = `${Math.min(composer.scrollHeight, 112)}px`;
-    composer.style.overflowY = composer.scrollHeight > 112 ? "auto" : "hidden";
+    composer.style.height = `${composerMinHeightPx}px`;
+    composer.style.height = `${Math.min(Math.max(composer.scrollHeight, composerMinHeightPx), composerMaxHeightPx)}px`;
+    composer.style.overflowY = composer.scrollHeight > composerMaxHeightPx ? "auto" : "hidden";
   }, [body]);
+
+  useEffect(() => {
+    if (!showAttachmentMenu && !showEmojiPicker) return;
+
+    function handlePointerDown(event: PointerEvent) {
+      const target = event.target;
+      if (!(target instanceof Node)) return;
+
+      const clickedAttachmentMenu = attachmentMenuRef.current?.contains(target) ?? false;
+      const clickedAttachmentTrigger = attachmentTriggerRef.current?.contains(target) ?? false;
+      const clickedEmojiPicker = emojiPickerRef.current?.contains(target) ?? false;
+      const clickedEmojiTrigger = emojiTriggerRef.current?.contains(target) ?? false;
+
+      if (showAttachmentMenu && !clickedAttachmentMenu && !clickedAttachmentTrigger) {
+        setShowAttachmentMenu(false);
+      }
+      if (showEmojiPicker && !clickedEmojiPicker && !clickedEmojiTrigger) {
+        setShowEmojiPicker(false);
+      }
+    }
+
+    window.addEventListener("pointerdown", handlePointerDown);
+    return () => window.removeEventListener("pointerdown", handlePointerDown);
+  }, [showAttachmentMenu, showEmojiPicker]);
 
   useEffect(() => {
     if (!pinnedMessages.length) return;
@@ -1176,9 +1231,13 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
       setError("Choose a JPG, PNG, WEBP, PDF, DOC, DOCX, ODT, or TXT file.");
       return;
     }
-    const maxBytes = kind === "image" ? maxChatImageBytes : maxChatDocumentBytes;
-    if (!file.size || file.size > maxBytes) {
-      setError(kind === "image" ? "Choose a JPG, PNG, or WEBP image up to 8MB." : "Choose a PDF, DOC, DOCX, ODT, or TXT document up to 12MB.");
+    const maxBytes = kind === "image" ? 8 * 1024 * 1024 : 12 * 1024 * 1024;
+    if (file.size > maxBytes) {
+      setError(
+        kind === "image"
+          ? `Image is ${formatAttachmentSize(file.size)}. Max is 8 MB.`
+          : `Document is ${formatAttachmentSize(file.size)}. Max is 12 MB.`
+      );
       return;
     }
     const existingPreview = existingLocalId ? pendingAttachments.find((attachment) => attachment.localId === existingLocalId)?.previewUrl : undefined;
@@ -1323,7 +1382,7 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
   async function sendMessage(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const trimmed = body.replace(/\s+/g, " ").trim();
-    if ((!trimmed && !readyAttachments.length) || trimmed.length > 1000 || uploadInProgress) return;
+    if ((!trimmed && !readyAttachments.length) || trimmed.length > chatMessageMaxLength || uploadInProgress) return;
     const clientMessageId = `web:${crypto.randomUUID()}`;
     const attachments = readyAttachments.map((attachment) => attachment.previewUrl ? { ...attachment.attachment!, client_preview_url: attachment.previewUrl } : attachment.attachment!);
     const nextMessage = pendingMessage(activeChannel.id, currentUserId, trimmed, clientMessageId, replyTo, attachments);
@@ -1544,7 +1603,7 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
     event.preventDefault();
     if (!editTarget || isEditing) return;
     const trimmed = editBody.replace(/\s+/g, " ").trim();
-    if (!trimmed || trimmed === editTarget.body || trimmed.length > 1000) return;
+    if (!trimmed || trimmed === editTarget.body || trimmed.length > chatMessageMaxLength) return;
 
     setError(null);
     setIsEditing(true);
@@ -1744,7 +1803,7 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
     event.preventDefault();
     if (!threadTarget || isSendingThread) return;
     const trimmed = threadBody.replace(/\s+/g, " ").trim();
-    if (!trimmed || trimmed.length > 1000) return;
+    if (!trimmed || trimmed.length > chatMessageMaxLength) return;
     setIsSendingThread(true);
     setError(null);
     try {
@@ -2284,11 +2343,15 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
     }
   }
 
+  const fullLayoutHeight = fullLayout && chatViewport
+    ? `min(${chatViewport.height}px, calc(100dvh - ${chatViewport.top}px))`
+    : undefined;
+
   return (
     <section className={[
       "min-w-0 overflow-hidden shadow-tight",
       fullLayout ? "fixed inset-x-0 top-0 grid h-[100dvh] grid-rows-[auto_minmax(0,1fr)] border-0 bg-[#0f1b29]" : "rounded-lg border border-line bg-white"
-    ].join(" ")} style={fullLayout && chatViewport ? { height: `${chatViewport.height}px`, top: `${chatViewport.top}px` } : undefined}>
+    ].join(" ")} style={fullLayout && chatViewport ? { height: fullLayoutHeight, maxHeight: fullLayoutHeight, top: `${chatViewport.top}px` } : undefined}>
       <header className={[
         "flex min-w-0 items-center gap-3 border-b p-3 sm:p-4",
         fullLayout ? "border-white/10 bg-[#172331] text-white" : "border-line bg-white"
@@ -2731,7 +2794,7 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
           <form className="w-full max-w-lg rounded-lg border border-white/10 bg-[#172331] p-4 text-white shadow-panel sm:p-5" onSubmit={saveMessageEdit}>
             <h2 className="text-lg font-black">Edit message</h2>
             <p className="mt-1 text-sm text-slate-300">Your edit will be marked, and the previous version remains available to authorized moderators.</p>
-            <textarea autoFocus className="mt-4 min-h-28 w-full resize-y rounded-md border border-white/10 bg-[#223447] p-3 text-base leading-6 text-white outline-none focus:border-sky-400" disabled={isEditing} maxLength={1000} onChange={(event) => setEditBody(event.target.value)} value={editBody} />
+            <textarea autoFocus className="mt-4 min-h-28 w-full resize-y rounded-md border border-white/10 bg-[#223447] p-3 text-base leading-6 text-white outline-none focus:border-sky-400" disabled={isEditing} maxLength={chatMessageMaxLength} onChange={(event) => setEditBody(event.target.value)} value={editBody} />
             <div className="mt-4 grid grid-cols-2 gap-2">
               <button className="min-h-11 rounded-md border border-white/10 bg-white/5 px-4 font-black hover:bg-white/10 disabled:opacity-50" disabled={isEditing} onClick={() => { setEditTarget(null); setEditBody(""); }} type="button">Cancel</button>
               <button className="min-h-11 rounded-md bg-sky-500 px-4 font-black hover:bg-sky-400 disabled:cursor-wait disabled:bg-slate-600" disabled={isEditing || !editBody.trim() || editBody.replace(/\s+/g, " ").trim() === editTarget.body} type="submit">{isEditing ? "Saving..." : "Save edit"}</button>
@@ -2768,7 +2831,7 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
               )}
             </div>
             <form className="grid grid-cols-[minmax(0,1fr)_auto] gap-2 border-t border-white/10 p-3" onSubmit={sendThreadReply}>
-              <input className="min-h-11 rounded-full border border-white/10 bg-[#223447] px-4 text-base outline-none focus:border-sky-400" maxLength={1000} onChange={(event) => setThreadBody(event.target.value)} placeholder="Reply in thread" value={threadBody} />
+              <input className="min-h-11 rounded-full border border-white/10 bg-[#223447] px-4 text-base outline-none focus:border-sky-400" maxLength={chatMessageMaxLength} onChange={(event) => setThreadBody(event.target.value)} placeholder="Reply in thread" value={threadBody} />
               <button className="min-h-11 rounded-full bg-sky-500 px-4 font-black disabled:bg-slate-600" disabled={isSendingThread || !threadBody.trim()} type="submit">{isSendingThread ? "..." : "Send"}</button>
             </form>
           </section>
@@ -2949,7 +3012,7 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
           </div>
         </aside>
 
-        <div className="grid h-full min-h-0 min-w-0 grid-rows-[auto_minmax(0,1fr)_auto] border-x border-white/10 bg-[#132333] bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.06)_0,rgba(255,255,255,0)_22rem)] shadow-panel">
+        <div className="flex h-full max-h-full min-h-0 min-w-0 flex-col overflow-hidden border-x border-white/10 bg-[#132333] bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.06)_0,rgba(255,255,255,0)_22rem)] shadow-panel">
           {currentPinnedMessage ? (
             <div className="z-10 grid min-h-12 min-w-0 grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-1 overflow-hidden border-b border-white/10 bg-[#172331] px-2 py-1.5 shadow-tight sm:gap-2 sm:px-4">
               <button className="flex min-w-0 items-center gap-2 overflow-hidden text-left" onClick={openPinnedBannerMessage} type="button">
@@ -2970,9 +3033,9 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
             </div>
           ) : null}
           <div className={[
-            "min-h-0 overflow-y-auto p-3 sm:p-4",
-            fullLayout ? "max-h-none xl:px-6" : "max-h-[58vh]"
-          ].join(" ")} onScroll={(event) => {
+            "min-h-0 min-w-0 flex-1 overflow-x-hidden overscroll-contain overflow-y-auto p-3 sm:p-4",
+            fullLayout ? "xl:px-6" : "max-h-[58vh]"
+          ].join(" ")} style={{ WebkitOverflowScrolling: "touch" }} onScroll={(event) => {
             const viewport = event.currentTarget;
             const nearLatest = viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight < 120;
             shouldStickLatestRef.current = nearLatest;
@@ -2990,8 +3053,8 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
               </div>
             ) : null}
             {isLoadingChannel ? (
-              <div className="mx-auto grid h-full min-h-[18rem] w-full max-w-4xl place-items-center rounded-md border border-dashed border-line bg-white p-6 text-center">
-                <p className="text-sm font-black text-muted">Loading channel...</p>
+              <div className={["mx-auto grid w-full max-w-4xl place-items-center rounded-md border border-dashed p-6 text-center", isDirectMessage ? "min-h-36 border-white/10 bg-[#203244]/80 text-slate-200" : "h-full min-h-[18rem] border-line bg-white"].join(" ")}>
+                <p className={["text-sm font-black", isDirectMessage ? "text-slate-200" : "text-muted"].join(" ")}>{isDirectMessage ? "Opening conversation..." : "Loading channel..."}</p>
               </div>
             ) : messages.length ? (
               <div className="mx-auto grid w-full max-w-4xl gap-2">
@@ -3112,9 +3175,17 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
                       ) : null}
                       {message.attachments?.length ? (
                         <div className={["mt-1 grid gap-1.5 overflow-hidden", message.attachments.length === 1 ? "grid-cols-1" : "grid-cols-2"].join(" ")}>
-                          {message.attachments.map((attachment) => (
-                            <ChatAttachmentTile attachment={attachment} autoLoadImage={mine || attachment.uploader_user_id === currentUserId} channelSlug={activeChannel.slug} className={attachment.attachment_type === "image" ? message.attachments?.length === 1 ? "max-h-[28rem] min-h-40" : "aspect-square" : "min-h-24"} key={attachment.id} onOpenImage={(url) => setViewer({ attachment, url })} />
-                          ))}
+                          {message.attachments.map((attachment) => {
+                            const singleAttachment = message.attachments?.length === 1;
+                            const imageSizeClass = singleAttachment
+                              ? isDirectMessage
+                                ? "h-[20dvh] min-h-24 max-h-44 sm:max-h-56"
+                                : "h-[32dvh] min-h-36 max-h-80 sm:max-h-96"
+                              : "aspect-square max-h-56";
+                            return (
+                              <ChatAttachmentTile attachment={attachment} autoLoadImage={mine || attachment.uploader_user_id === currentUserId} channelSlug={activeChannel.slug} className={attachment.attachment_type === "image" ? imageSizeClass : "min-h-24"} key={attachment.id} onOpenImage={(url) => setViewer({ attachment, url })} />
+                            );
+                          })}
                         </div>
                       ) : null}
                       {!deleted && message.poll ? (
@@ -3173,18 +3244,18 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
                 })}
               </div>
             ) : (
-              <div className="mx-auto grid h-full min-h-[18rem] w-full max-w-4xl place-items-center rounded-md border border-dashed border-white/10 bg-white/95 p-6 text-center">
+              <div className="mx-auto grid w-full max-w-2xl place-items-center rounded-2xl border border-white/10 bg-[#203244]/80 p-6 text-center text-slate-200 shadow-tight">
                 <div>
-                  <h3 className="text-lg font-black text-ink">No messages yet</h3>
-                  <p className="mt-2 max-w-sm text-sm leading-6 text-muted">Start this channel with a clean, public-safe message.</p>
+                  <h3 className="text-lg font-black text-white">No messages yet</h3>
+                  <p className="mt-2 max-w-sm text-sm leading-6 text-slate-300">{isDirectMessage ? "Say hello and start the conversation." : "Start the conversation in this channel."}</p>
                 </div>
               </div>
             )}
             {showJumpLatest || isContextView ? <button className="sticky bottom-2 ml-auto mt-3 block min-h-10 rounded-full bg-sky-500 px-4 text-xs font-black text-white shadow-panel hover:bg-sky-400" onClick={() => void jumpToLatest()} type="button">Jump to latest</button> : null}
           </div>
 
-          <form className="min-w-0 border-t border-white/10 bg-[#172331] px-2 pt-2 pb-[max(env(safe-area-inset-bottom),0.75rem)] sm:p-3 xl:px-6" onSubmit={sendMessage}>
-            <div className="mx-auto grid w-full max-w-4xl gap-2">
+          <form className="z-20 min-w-0 shrink-0 border-t border-white/10 bg-[#172331] px-2 py-2 sm:px-3 sm:py-2.5 xl:px-6" onSubmit={sendMessage}>
+            <div className={["mx-auto grid w-full max-w-4xl gap-2 pb-[max(env(safe-area-inset-bottom),0.5rem)]", showAttachmentMenu || showEmojiPicker ? "overflow-visible" : "overflow-y-auto overscroll-contain", isDirectMessage ? "max-h-[min(36dvh,18rem)]" : "max-h-[min(38dvh,20rem)]"].join(" ")}>
             {!canModerateMessages && lockdownSeconds > 0 ? (
               <p className="mb-2 rounded-md border border-amber-300/20 bg-amber-950/40 px-3 py-2 text-xs font-bold text-amber-100">
                 Posting is paused for {Math.floor(lockdownSeconds / 60)}m {lockdownSeconds % 60}s{activeChannel.lockdown_reason ? `: ${activeChannel.lockdown_reason}` : "."}
@@ -3225,7 +3296,7 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
               </div>
             ) : null}
             {pendingAttachments.length ? (
-              <div className="mb-2 flex max-w-full gap-2 overflow-x-auto rounded-xl border border-white/10 bg-[#223447] p-2">
+              <div className="mb-2 flex max-w-full gap-2 overflow-x-auto overflow-y-hidden rounded-xl border border-white/10 bg-[#223447] p-2">
                 {pendingAttachments.map((attachment) => (
                   <div className="relative h-24 w-32 shrink-0 overflow-hidden rounded-md bg-black/20" key={attachment.localId}>
                     {attachment.previewUrl ? (
@@ -3246,8 +3317,8 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
                 ))}
               </div>
             ) : null}
-            {showEmojiPicker ? (
-              <div className="mb-2 grid max-w-full gap-2 rounded-xl border border-white/10 bg-[#223447] p-2" role="dialog" aria-label="Emoji picker">
+              {showEmojiPicker ? (
+              <div className="mb-2 grid max-w-full gap-2 rounded-xl border border-white/10 bg-[#223447] p-2" ref={emojiPickerRef} role="dialog" aria-label="Emoji picker">
                 <div className="flex gap-1 overflow-x-auto">
                   {emojiGroups.map((group) => <button className={["min-h-8 shrink-0 rounded-full px-3 text-[0.68rem] font-black", emojiGroup === group.key ? "bg-sky-400 text-navy-950" : "bg-white/10 text-slate-200"].join(" ")} key={group.key} onClick={() => setEmojiGroup(group.key)} type="button">{group.label}</button>)}
                 </div>
@@ -3259,23 +3330,22 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
             <div className="relative grid min-w-0 grid-cols-[auto_auto_minmax(0,1fr)_auto] items-end gap-1.5 sm:gap-2">
               <input accept="image/jpeg,image/png,image/webp" className="sr-only" multiple onChange={(event) => { Array.from(event.target.files ?? []).slice(0, Math.max(0, 4 - pendingAttachments.length)).forEach((file) => uploadAttachment(file)); event.currentTarget.value = ""; }} ref={imageInputRef} type="file" />
               <input accept={acceptedChatDocuments} className="sr-only" multiple onChange={(event) => { Array.from(event.target.files ?? []).slice(0, Math.max(0, 4 - pendingAttachments.length)).forEach((file) => uploadAttachment(file)); event.currentTarget.value = ""; }} ref={documentInputRef} type="file" />
-              <button aria-expanded={showAttachmentMenu} aria-label="Add an attachment" className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-white/10 bg-[#223447] text-2xl font-light text-slate-200 hover:bg-[#2c4358]" onClick={() => { setShowAttachmentMenu((current) => !current); setShowEmojiPicker(false); }} title="Add attachment" type="button">+</button>
-              {showAttachmentMenu ? <div className="absolute bottom-12 left-0 z-20 min-w-52 rounded-md border border-white/10 bg-[#26394b] p-1.5 text-white shadow-panel">
+              <button aria-expanded={showAttachmentMenu} aria-label="Add an attachment" className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-white/10 bg-[#223447] text-2xl font-light text-slate-200 hover:bg-[#2c4358]" onClick={() => { setShowAttachmentMenu((current) => !current); setShowEmojiPicker(false); }} ref={attachmentTriggerRef} title="Add attachment" type="button">+</button>
+              {showAttachmentMenu ? <div className="absolute bottom-12 left-0 z-20 min-w-52 rounded-md border border-white/10 bg-[#26394b] p-1.5 text-white shadow-panel" ref={attachmentMenuRef}>
                 <button className="flex min-h-11 w-full items-center gap-3 rounded-sm px-3 text-left text-sm font-black hover:bg-white/10" onClick={() => { setShowAttachmentMenu(false); imageInputRef.current?.click(); }} type="button"><span aria-hidden="true">▣</span> Add photo</button>
                 <button className="flex min-h-11 w-full items-center gap-3 rounded-sm px-3 text-left text-sm font-black hover:bg-white/10" onClick={() => { setShowAttachmentMenu(false); documentInputRef.current?.click(); }} type="button"><span aria-hidden="true">▤</span> Add document</button>
                 <button className="flex min-h-11 w-full items-center gap-3 rounded-sm px-3 text-left text-sm font-black hover:bg-white/10" onClick={() => { setShowAttachmentMenu(false); setShowPollCreator(true); }} type="button"><span aria-hidden="true">◉</span> Create poll</button>
                 <button className="flex min-h-11 w-full items-center gap-3 rounded-sm px-3 text-left text-sm font-black hover:bg-white/10" onClick={() => { setShowAttachmentMenu(false); void loadBookmarks(); }} type="button"><span aria-hidden="true">★</span> Saved messages</button>
                 {isChatAdmin ? <button className="flex min-h-11 w-full items-center gap-3 rounded-sm px-3 text-left text-sm font-black hover:bg-white/10" onClick={() => { setShowAttachmentMenu(false); void loadScheduledAnnouncements(); }} type="button"><span aria-hidden="true">⌚</span> Schedule announcement</button> : null}
-                <p className="px-3 pb-2 text-[0.68rem] font-bold text-slate-400">Photos up to 8MB. Documents up to 12MB: PDF, DOC, DOCX, ODT, TXT.</p>
+                <p className="px-3 pb-2 text-[0.68rem] font-bold text-slate-400">Photos must be smaller than 8MB. Documents must be smaller than 12MB.</p>
               </div> : null}
-              <button aria-expanded={showEmojiPicker} aria-label="Choose emoji" className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-white/10 bg-[#223447] text-xl text-slate-200 hover:bg-[#2c4358]" onClick={() => { setShowEmojiPicker((current) => !current); setShowAttachmentMenu(false); }} title="Emoji" type="button">☺</button>
-              <label className="grid min-w-0 gap-1">
+              <button aria-expanded={showEmojiPicker} aria-label="Choose emoji" className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-white/10 bg-[#223447] text-xl text-slate-200 hover:bg-[#2c4358]" onClick={() => { setShowEmojiPicker((current) => !current); setShowAttachmentMenu(false); }} ref={emojiTriggerRef} title="Emoji" type="button">☺</button>
+              <label className="grid min-w-0 gap-1 self-end">
                 <span className="sr-only">Message</span>
                 <textarea
-                  className="min-h-10 w-full min-w-0 max-h-28 resize-none overflow-y-hidden rounded-2xl border border-white/10 bg-[#223447] px-3 py-2 text-base leading-6 text-white outline-none placeholder:text-slate-400 focus:border-sky-400"
-                  maxLength={1000}
+                  className="h-11 min-h-0 w-full min-w-0 resize-none overflow-y-hidden rounded-2xl border border-white/10 bg-[#223447] px-3 py-[0.65rem] text-[0.95rem] leading-5 text-white outline-none placeholder:text-slate-400 focus:border-sky-400"
                   onChange={(event) => setBody(event.target.value)}
-                  placeholder={`Message ${channelTitle(displayActiveChannel)}`}
+                  placeholder={composerPlaceholder}
                   ref={composerRef}
                   rows={1}
                   value={body}
@@ -3348,3 +3418,4 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
     </section>
   );
 }
+

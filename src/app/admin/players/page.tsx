@@ -11,6 +11,8 @@ import { canAccessAdmin, getCurrentUser } from "@/lib/auth-bridge";
 import { listAdminGameAccounts, listLeaderboard, type AdminGameAccount, type LeaderboardRow } from "@/lib/match-room-api";
 import { reviewGameAccountAction } from "./actions";
 
+export const dynamic = "force-dynamic";
+
 function disputeTone(row: LeaderboardRow) {
   if (row.disputes_lost > 1 || row.no_shows > 1) return "danger" as const;
   if (row.disputes_lost > 0 || row.no_shows > 0) return "warning" as const;

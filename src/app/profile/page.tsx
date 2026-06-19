@@ -1,10 +1,12 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { GoogleAuthButton } from "@/components/auth/GoogleAuthButton";
 import { AppShell } from "@/components/layout/AppShell";
 import { PlayerTrustCard } from "@/components/trust/PlayerTrustCard";
 import { Badge } from "@/components/ui/Badge";
 import { DataTable } from "@/components/ui/DataTable";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { Panel, PanelHeader } from "@/components/ui/Panel";
 import { StatusPanel } from "@/components/ui/StatusPanel";
 import { SubmitButton } from "@/components/ui/SubmitButton";
@@ -25,6 +27,11 @@ import {
 import { updateProfileAction, upsertCommunityClanAction, upsertGameAccountAction, upsertPayoutProfileAction } from "./actions";
 
 const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3100";
+
+const premiumArtwork = {
+  hero: "/marketing/skillsroom-premium/hero-premium.png",
+  community: "/marketing/skillsroom-premium/community-premium.png"
+} as const;
 
 function accountTone(status: UserGameAccount["status"]) {
   if (status === "verified") return "success" as const;
@@ -151,12 +158,43 @@ export default async function ProfilePage({ searchParams }: ProfilePageProps) {
   return (
     <AppShell active="profile">
       <section className="grid min-w-0 gap-5">
-        <section className="min-w-0 rounded-lg border border-line bg-white p-4 shadow-tight md:p-5">
-          <Badge tone="cyan">Player Profile</Badge>
-          <h1 className="mt-3 text-2xl font-black text-ink md:text-3xl">Trusted Player Identity</h1>
-          <p className="mt-2 max-w-3xl text-sm leading-6 text-muted md:text-base">
-            Your profile connects login, game handles, reputation, and review history so rooms can be settled with less confusion.
-          </p>
+        <section className="overflow-hidden rounded-[1.75rem] border border-[#24364a] bg-[#08131f] text-white shadow-[0_40px_120px_rgba(4,10,20,0.35)]">
+          <div className="grid gap-0 xl:grid-cols-[minmax(0,1fr)_minmax(320px,40%)]">
+            <div className="relative p-4 md:p-6 lg:p-8">
+              <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(24,197,138,0.16),transparent_34%),radial-gradient(circle_at_bottom_left,rgba(33,170,255,0.18),transparent_36%)]" />
+              <div className="relative">
+                <Badge tone="cyan">Player Profile</Badge>
+                <h1 className="mt-3 text-3xl font-black leading-tight sm:text-4xl lg:text-5xl">Trusted player identity.</h1>
+                <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-300 md:text-base">
+                  Your profile connects login, game handles, reputation, payout readiness, and review history so rooms and tournaments can move with less friction.
+                </p>
+                <div className="mt-8 grid gap-3 xl:max-w-2xl xl:grid-cols-3">
+                  <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
+                    <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Identity</p>
+                    <p className="mt-2 text-sm leading-6 text-slate-200">Keep one public-facing name tied to rooms, disputes, rankings, and clan activity.</p>
+                  </div>
+                  <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
+                    <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Trust</p>
+                    <p className="mt-2 text-sm leading-6 text-slate-200">Reputation and review history stay close to the same player record instead of being fragmented.</p>
+                  </div>
+                  <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
+                    <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Readiness</p>
+                    <p className="mt-2 text-sm leading-6 text-slate-200">Complete the critical checks once, then use the profile across matches and tournament operations.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="relative min-h-[300px] border-t border-white/10 xl:min-h-full xl:border-l xl:border-t-0">
+              <Image alt="Premium Skillsroom player identity artwork" className="object-cover" fill priority sizes="(min-width: 1280px) 40vw, 100vw" src={premiumArtwork.hero} />
+              <div className="absolute inset-0 bg-gradient-to-l from-transparent via-transparent to-[#08131f]/80" />
+              <div className="absolute inset-x-4 bottom-4 grid gap-3 md:inset-x-6">
+                <div className="rounded-2xl border border-white/10 bg-[#09131f]/78 p-4 backdrop-blur">
+                  <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-300">Profile value</p>
+                  <p className="mt-2 text-sm leading-6 text-slate-200">Handles, payouts, referrals, and community identity live together so trust compounds over time.</p>
+                </div>
+              </div>
+            </div>
+          </div>
         </section>
 
         {loadError ? (
@@ -203,10 +241,7 @@ export default async function ProfilePage({ searchParams }: ProfilePageProps) {
               {trustData ? (
                 <PlayerTrustCard trust={trustData} />
               ) : (
-                <div className="rounded-lg border border-dashed border-line bg-surfaceWarm p-6">
-                  <p className="text-lg font-black text-ink">Trust profile unavailable</p>
-                  <p className="mt-2 text-sm leading-6 text-muted">Sign in again or complete your profile to refresh trust signals.</p>
-                </div>
+                <EmptyState description="Sign in again or complete your profile to refresh trust signals." title="Trust profile unavailable" />
               )}
             </div>
           </Panel>

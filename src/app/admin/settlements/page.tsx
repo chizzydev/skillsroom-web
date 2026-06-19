@@ -41,6 +41,8 @@ import {
   updateTournamentRefundInstructionsAction
 } from "./actions";
 
+export const dynamic = "force-dynamic";
+
 function money(currency: string, amountMinor: number) {
   return formatEntryAmount({ currency, entry_amount_minor: amountMinor });
 }

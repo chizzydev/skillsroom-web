@@ -25,6 +25,8 @@ import {
 } from "@/lib/match-room-api";
 import { reviewResultClaimAction } from "./actions";
 
+export const dynamic = "force-dynamic";
+
 function countStatus(rows: MatchResultClaim[], status: ResultClaimStatus) {
   return rows.filter((row) => row.status === status).length.toString();
 }

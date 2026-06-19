@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { redirect } from "next/navigation";
 import { AppShell } from "@/components/layout/AppShell";
 import { Badge, type BadgeTone } from "@/components/ui/Badge";
@@ -39,6 +40,11 @@ const formatGroups: Array<{ formats: TournamentFormat[]; label: string }> = [
   { label: "Leagues", formats: ["league", "season"] },
   { label: "Scores", formats: ["free_for_all", "leaderboard", "race", "time_trial", "grand_prix"] }
 ];
+
+const premiumArtwork = {
+  tournaments: "/marketing/skillsroom-premium/tournaments-premium.png",
+  hero: "/marketing/skillsroom-premium/hero-premium.png"
+} as const;
 
 function statusTone(status: TournamentStatus): BadgeTone {
   if (["completed", "refunded"].includes(status)) return "success";
@@ -158,27 +164,58 @@ export default async function TournamentsPage({
   return (
     <AppShell active="tournaments">
       <section className="grid min-w-0 gap-6">
-        <section className="min-w-0 rounded-lg border border-line bg-white p-5 shadow-panel md:p-7">
-          <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_auto] xl:items-end">
-            <div className="min-w-0">
-              <Badge tone="cyan">Tournaments</Badge>
-              <h1 className="mt-3 max-w-4xl text-3xl font-black leading-tight text-ink sm:text-4xl lg:text-5xl">
-                Find serious Skillsroom events.
-              </h1>
-              <p className="mt-3 max-w-3xl text-sm leading-6 text-muted md:text-base">
-                Browse brackets, groups, Swiss events, leagues, and cumulative-score tournaments across supported games.
-              </p>
+        <section className="overflow-hidden rounded-[1.75rem] border border-[#24364a] bg-[#08131f] text-white shadow-[0_40px_120px_rgba(4,10,20,0.35)]">
+          <div className="grid gap-0 xl:grid-cols-[minmax(0,1fr)_minmax(320px,40%)]">
+            <div className="relative p-5 md:p-7 lg:p-9">
+              <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(24,197,138,0.16),transparent_34%),radial-gradient(circle_at_bottom_left,rgba(33,170,255,0.18),transparent_36%)]" />
+              <div className="relative">
+                <Badge tone="cyan">Tournaments</Badge>
+                <h1 className="mt-3 max-w-4xl text-3xl font-black leading-tight sm:text-4xl lg:text-5xl">
+                  Find serious Skillsroom events.
+                </h1>
+                <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-300 md:text-base">
+                  Browse brackets, groups, Swiss events, leagues, and score-driven formats across supported games with public-safe history and visible operator flow.
+                </p>
+                <div className="mt-5 flex flex-wrap gap-2">
+                  {canAccessAdmin(user) ? (
+                    <PendingLink
+                      className="inline-flex min-h-10 items-center justify-center rounded-md border border-white/10 bg-white px-4 text-sm font-black text-ink hover:bg-surfaceHigh"
+                      href="/admin/tournaments"
+                      pendingLabel="Opening tournament ops..."
+                    >
+                      Manage events
+                    </PendingLink>
+                  ) : null}
+                </div>
+                <div className="mt-8 grid gap-3 xl:max-w-2xl xl:grid-cols-3">
+                  <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
+                    <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Operator ready</p>
+                    <p className="mt-2 text-sm leading-6 text-slate-200">Registration, seeding, review, and settlement states stay visible across the same workflow.</p>
+                  </div>
+                  <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
+                    <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Multi-format</p>
+                    <p className="mt-2 text-sm leading-6 text-slate-200">Run brackets, leagues, Swiss ladders, and cumulative score events from one surface.</p>
+                  </div>
+                  <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
+                    <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Public history</p>
+                    <p className="mt-2 text-sm leading-6 text-slate-200">Completed events can stay visible without exposing ops-only evidence or contribution data.</p>
+                  </div>
+                </div>
+              </div>
             </div>
-            <div className="flex flex-wrap gap-2">
-              {canAccessAdmin(user) ? (
-                <PendingLink
-                  className="inline-flex min-h-10 items-center justify-center rounded-md border border-line bg-white px-4 text-sm font-black text-ink hover:bg-surfaceHigh"
-                  href="/admin/tournaments"
-                  pendingLabel="Opening tournament ops..."
-                >
-                  Manage events
-                </PendingLink>
-              ) : null}
+            <div className="relative min-h-[320px] border-t border-white/10 xl:min-h-full xl:border-l xl:border-t-0">
+              <Image alt="Premium tournament control room artwork" className="object-cover" fill priority sizes="(min-width: 1280px) 40vw, 100vw" src={premiumArtwork.tournaments} />
+              <div className="absolute inset-0 bg-gradient-to-l from-transparent via-transparent to-[#08131f]/80" />
+              <div className="absolute inset-x-4 bottom-4 grid gap-3 md:inset-x-6">
+                <div className="rounded-2xl border border-white/10 bg-[#09131f]/78 p-4 backdrop-blur">
+                  <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-300">What players see</p>
+                  <p className="mt-2 text-sm leading-6 text-slate-200">Open events, completed highlights, rule-backed formats, and serious match cadence.</p>
+                </div>
+                <div className="rounded-2xl border border-white/10 bg-[#09131f]/78 p-4 backdrop-blur">
+                  <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-300">What operators keep</p>
+                  <p className="mt-2 text-sm leading-6 text-slate-200">Moderation, funding verification, disputes, and settlement states connected to the same event record.</p>
+                </div>
+              </div>
             </div>
           </div>
         </section>
@@ -206,7 +243,7 @@ export default async function TournamentsPage({
               <PanelHeader eyebrow="Formats" title="Competition lanes" />
               <div className="grid gap-2 p-4">
                 {formatGroups.map((group) => (
-                  <div className="rounded-md border border-line bg-white p-3" key={group.label}>
+                  <div className="rounded-2xl border border-line bg-surfaceWarm p-3" key={group.label}>
                     <p className="text-sm font-black text-ink">{group.label}</p>
                     <p className="mt-1 text-xs font-bold leading-5 text-muted">
                       {group.formats.map(displayEnumLabel).join(", ")}
@@ -219,10 +256,10 @@ export default async function TournamentsPage({
             <Panel>
               <PanelHeader eyebrow="Money" title="Prize models" />
               <div className="grid gap-3 p-4 text-sm leading-6 text-muted">
-                <p className="rounded-md border border-line bg-surfaceWarm p-3">
+                <p className="rounded-2xl border border-line bg-surfaceWarm p-3">
                   Events can be free, paid entry, sponsored, or hybrid, with manual settlement until provider automation is approved.
                 </p>
-                <p className="rounded-md border border-line bg-surfaceWarm p-3">
+                <p className="rounded-2xl border border-line bg-surfaceWarm p-3">
                   Prize pools can come from participant entries, sponsors, platform bonuses, and approved manual adjustments.
                 </p>
               </div>

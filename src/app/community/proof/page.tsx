@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import { AppShell } from "@/components/layout/AppShell";
 import { PublicSharePanel } from "@/components/community/PublicSharePanel";
+import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Panel, PanelHeader } from "@/components/ui/Panel";
 import { StatusPanel } from "@/components/ui/StatusPanel";
@@ -71,13 +73,44 @@ export default async function CommunityProofPage() {
   return (
     <AppShell active="community">
       <section className="grid gap-6">
-        <Panel>
-          <PanelHeader
-            eyebrow="Social Proof"
-            title="Public platform metrics"
-            description="These numbers come from live product states only. Verified payout completion stays hidden until Kora-approved reconciliation exists."
-          />
-        </Panel>
+        <section className="overflow-hidden rounded-[1.75rem] border border-[#24364a] bg-[#08131f] text-white shadow-[0_40px_120px_rgba(4,10,20,0.35)]">
+          <div className="grid gap-0 xl:grid-cols-[minmax(0,1fr)_minmax(320px,38%)]">
+            <div className="relative p-5 md:p-7 lg:p-9">
+              <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(24,197,138,0.16),transparent_34%),radial-gradient(circle_at_bottom_left,rgba(33,170,255,0.18),transparent_36%)]" />
+              <div className="relative">
+                <Badge tone="cyan">Social Proof</Badge>
+                <h1 className="mt-3 text-3xl font-black leading-tight sm:text-4xl lg:text-5xl">Public platform metrics</h1>
+                <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-300 md:text-base">
+                  These numbers come from live product states only. Verified payout completion stays hidden until Kora-approved reconciliation exists.
+                </p>
+                <div className="mt-8 grid gap-3 xl:max-w-2xl xl:grid-cols-3">
+                  <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
+                    <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Honest metrics</p>
+                    <p className="mt-2 text-sm leading-6 text-slate-200">Only real platform counts belong here. Nothing padded. Nothing claimed ahead of verification.</p>
+                  </div>
+                  <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
+                    <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Trust before hype</p>
+                    <p className="mt-2 text-sm leading-6 text-slate-200">Reserved and queued values are visible now because they are supportable, auditable, and precise.</p>
+                  </div>
+                  <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
+                    <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Shareable traction</p>
+                    <p className="mt-2 text-sm leading-6 text-slate-200">This gives Skillsroom a stronger story when people ask whether the platform is actually active.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="relative min-h-[300px] border-t border-white/10 xl:min-h-full xl:border-l xl:border-t-0">
+              <Image alt="Premium Skillsroom proof metrics artwork" className="object-cover" fill priority sizes="(min-width: 1280px) 38vw, 100vw" src="/marketing/skillsroom-premium/hero-premium.png" />
+              <div className="absolute inset-0 bg-gradient-to-l from-transparent via-transparent to-[#08131f]/80" />
+              <div className="absolute inset-x-4 bottom-4 md:inset-x-6">
+                <div className="rounded-2xl border border-white/10 bg-[#09131f]/78 p-4 backdrop-blur">
+                  <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-300">Proof dashboard</p>
+                  <p className="mt-2 text-sm leading-6 text-slate-200">A cleaner way to show momentum and trust without making claims the platform cannot yet verify.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
 
         {metrics ? (
           <>
@@ -89,13 +122,13 @@ export default async function CommunityProofPage() {
                 description="Skillsroom can truthfully show reserved and queued obligations before provider automation goes live."
               />
               <div className="grid gap-4 p-4 md:grid-cols-2">
-                <div className="rounded-md border border-line bg-white p-4">
+                <div className="rounded-[1.25rem] border border-line bg-white p-4">
                   <h2 className="text-base font-black text-ink">Allowed now</h2>
                   <p className="mt-2 text-sm leading-6 text-muted">
                     Prize reservations, payout queues, and refund queues are based on actual settlement and queue rows in the platform ledger.
                   </p>
                 </div>
-                <div className="rounded-md border border-line bg-white p-4">
+                <div className="rounded-[1.25rem] border border-line bg-white p-4">
                   <h2 className="text-base font-black text-ink">Blocked until Kora</h2>
                   <p className="mt-2 text-sm leading-6 text-muted">
                     Completed payout totals stay intentionally unavailable until payment-provider approval and reconciliation are fully verified.

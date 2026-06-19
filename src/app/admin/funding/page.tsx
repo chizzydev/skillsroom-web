@@ -13,6 +13,8 @@ import { canAccessAdmin, getCurrentUser } from "@/lib/auth-bridge";
 import { formatEntryAmount, listFundingSubmissions, type ManualFundingSubmission } from "@/lib/match-room-api";
 import { reviewFundingSubmissionAction } from "./actions";
 
+export const dynamic = "force-dynamic";
+
 function countStatus(rows: ManualFundingSubmission[], status: ManualFundingSubmission["status"]) {
   return rows.filter((row) => row.status === status).length.toString();
 }

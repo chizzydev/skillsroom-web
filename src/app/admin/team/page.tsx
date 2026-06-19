@@ -13,6 +13,8 @@ import { canAccessAdmin, getCurrentUser } from "@/lib/auth-bridge";
 import { listAdminTeamMembers, type AdminTeamMember, type TeamRole } from "@/lib/match-room-api";
 import { updateTeamRoleAction } from "./actions";
 
+export const dynamic = "force-dynamic";
+
 const roleDescriptions: Record<TeamRole, string> = {
   owner: "Full platform control. Kept to the single platform owner account.",
   admin: "Money movement, funding decisions, settlements, refunds, and high-risk operations.",

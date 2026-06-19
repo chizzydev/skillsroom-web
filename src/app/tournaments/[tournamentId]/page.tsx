@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { AppShell } from "@/components/layout/AppShell";
 import { LiveUpdateStream } from "@/components/realtime/LiveUpdateStream";
 import { Badge, type BadgeTone } from "@/components/ui/Badge";
@@ -46,6 +47,10 @@ import {
   registerForTournamentAction,
   submitTournamentContributionAction
 } from "./actions";
+
+const premiumArtwork = {
+  tournaments: "/marketing/skillsroom-premium/tournaments-premium.png"
+} as const;
 
 function statusTone(status: string): BadgeTone {
   if (["completed", "paid", "approved", "ready"].includes(status)) return "success";
@@ -426,40 +431,67 @@ export default async function TournamentDetailPage({
   return (
     <AppShell active="tournaments">
       <section className="grid min-w-0 gap-6">
-        <section className="min-w-0 rounded-lg border border-line bg-navy-900 p-5 text-white shadow-panel md:p-7">
-          <div className="grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1fr)_auto] xl:items-end">
-            <div className="min-w-0">
-              <div className="flex flex-wrap gap-2">
-                <Badge tone={statusTone(detail.status)}>{displayEnumLabel(detail.status)}</Badge>
-                <Badge tone={statusTone(detail.fee_mode)}>{displayEnumLabel(detail.fee_mode)}</Badge>
-                <span className="rounded-md border border-white/10 bg-white/5 px-2 py-1 font-mono text-xs font-black text-white">
-                  {displayEnumLabel(detail.format)}
-                </span>
+        <section className="overflow-hidden rounded-[1.75rem] border border-[#24364a] bg-[#08131f] text-white shadow-[0_40px_120px_rgba(4,10,20,0.35)]">
+          <div className="grid gap-0 xl:grid-cols-[minmax(0,1fr)_minmax(320px,38%)]">
+            <div className="relative p-5 md:p-7 lg:p-9">
+              <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(24,197,138,0.16),transparent_34%),radial-gradient(circle_at_bottom_left,rgba(33,170,255,0.18),transparent_36%)]" />
+              <div className="relative min-w-0">
+                <div className="flex flex-wrap gap-2">
+                  <Badge tone={statusTone(detail.status)}>{displayEnumLabel(detail.status)}</Badge>
+                  <Badge tone={statusTone(detail.fee_mode)}>{displayEnumLabel(detail.fee_mode)}</Badge>
+                  <span className="rounded-md border border-white/10 bg-white/5 px-2 py-1 font-mono text-xs font-black text-white">
+                    {displayEnumLabel(detail.format)}
+                  </span>
+                </div>
+                <h1 className="mt-4 max-w-5xl break-words text-3xl font-black leading-tight [overflow-wrap:anywhere] sm:text-4xl lg:text-5xl">
+                  {detail.title}
+                </h1>
+                <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-300 md:text-base">
+                  {detail.description ?? `${detail.game_name ?? "Skillsroom"} tournament with ${displayEnumLabel(detail.scoring_mode)} scoring.`}
+                </p>
+                <div className="mt-5 flex flex-wrap gap-2">
+                  <PendingLink
+                    className="inline-flex min-h-10 items-center justify-center rounded-md border border-white/10 bg-white px-4 text-sm font-black text-ink hover:bg-surfaceHigh"
+                    href="/tournaments"
+                    pendingLabel="Opening tournaments..."
+                  >
+                    All tournaments
+                  </PendingLink>
+                  {canAccessAdmin(user) ? (
+                    <PendingLink
+                      className="inline-flex min-h-10 items-center justify-center rounded-md bg-action px-4 text-sm font-black text-navy-950 shadow-action hover:bg-actionHover"
+                      href="/admin/tournaments"
+                      pendingLabel="Opening tournament ops..."
+                    >
+                      Manage
+                    </PendingLink>
+                  ) : null}
+                </div>
+                <div className="mt-8 grid gap-3 xl:max-w-2xl xl:grid-cols-3">
+                  <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
+                    <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Event state</p>
+                    <p className="mt-2 text-sm leading-6 text-slate-200">Registration, check-in, review, and settlement all stay attached to one tournament record.</p>
+                  </div>
+                  <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
+                    <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Player clarity</p>
+                    <p className="mt-2 text-sm leading-6 text-slate-200">Players can read the current state, prize model, and format without digging through operator-only detail.</p>
+                  </div>
+                  <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
+                    <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Competitive history</p>
+                    <p className="mt-2 text-sm leading-6 text-slate-200">Finished results can stay public while sensitive evidence and payout records remain restricted.</p>
+                  </div>
+                </div>
               </div>
-              <h1 className="mt-4 max-w-5xl break-words text-3xl font-black leading-tight [overflow-wrap:anywhere] sm:text-4xl lg:text-5xl">
-                {detail.title}
-              </h1>
-              <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-300 md:text-base">
-                {detail.description ?? `${detail.game_name ?? "Skillsroom"} tournament with ${displayEnumLabel(detail.scoring_mode)} scoring.`}
-              </p>
             </div>
-            <div className="flex flex-wrap gap-2 xl:justify-end">
-              <PendingLink
-                className="inline-flex min-h-10 items-center justify-center rounded-md border border-white/10 bg-white px-4 text-sm font-black text-ink hover:bg-surfaceHigh"
-                href="/tournaments"
-                pendingLabel="Opening tournaments..."
-              >
-                All tournaments
-              </PendingLink>
-              {canAccessAdmin(user) ? (
-                <PendingLink
-                  className="inline-flex min-h-10 items-center justify-center rounded-md bg-action px-4 text-sm font-black text-navy-950 shadow-action hover:bg-actionHover"
-                  href="/admin/tournaments"
-                  pendingLabel="Opening tournament ops..."
-                >
-                  Manage
-                </PendingLink>
-              ) : null}
+            <div className="relative min-h-[300px] border-t border-white/10 xl:min-h-full xl:border-l xl:border-t-0">
+              <Image alt="Premium tournament detail artwork" className="object-cover" fill priority sizes="(min-width: 1280px) 38vw, 100vw" src={premiumArtwork.tournaments} />
+              <div className="absolute inset-0 bg-gradient-to-l from-transparent via-transparent to-[#08131f]/80" />
+              <div className="absolute inset-x-4 bottom-4 md:inset-x-6">
+                <div className="rounded-2xl border border-white/10 bg-[#09131f]/78 p-4 backdrop-blur">
+                  <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-300">Tournament surface</p>
+                  <p className="mt-2 text-sm leading-6 text-slate-200">A clearer event page for registrations, standings, host updates, and public-safe outcomes.</p>
+                </div>
+              </div>
             </div>
           </div>
         </section>
@@ -481,7 +513,7 @@ export default async function TournamentDetailPage({
               description="This finished-event summary stays visible while contribution proofs, payout instructions, and operator-only review details stay restricted."
             />
             <div className="grid gap-4 p-4 xl:grid-cols-[minmax(0,1fr)_22rem]">
-              <div className="rounded-md border border-line bg-white p-4">
+              <div className="rounded-[1.25rem] border border-line bg-white p-4">
                 <div className="flex flex-wrap items-center gap-2">
                   <Badge tone="success">{winnerPage.winner.result_label}</Badge>
                   {winnerPage.tournament.game_name ? <Badge tone="cyan">{winnerPage.tournament.game_name}</Badge> : null}
@@ -501,7 +533,7 @@ export default async function TournamentDetailPage({
                 </div>
               </div>
               <div className="grid gap-3">
-                <div className="rounded-md border border-line bg-surfaceWarm p-4">
+                <div className="rounded-[1.25rem] border border-line bg-surfaceWarm p-4">
                   <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.12em] text-dim">Visibility boundary</p>
                   <ul className="mt-3 grid gap-2 text-sm leading-6 text-muted">
                     <li>Signed-in users can inspect finished tournament outcomes.</li>

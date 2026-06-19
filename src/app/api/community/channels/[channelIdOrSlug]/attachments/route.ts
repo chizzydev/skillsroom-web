@@ -12,7 +12,15 @@ export async function POST(request: Request, context: Context) {
   const token = await getAccessToken();
   if (!token) return Response.json({ ok: false, error: { code: "AUTH_REQUIRED", message: "Please sign in to upload an attachment." } }, { status: 401 });
   const { channelIdOrSlug } = await context.params;
-  const form = await request.formData();
+  let form: FormData;
+  try {
+    form = await request.formData();
+  } catch {
+    return Response.json(
+      { ok: false, error: { code: "ATTACHMENT_FORMDATA_INVALID", message: "Attachment upload could not be read. Try again with a file smaller than 12MB." } },
+      { status: 400 }
+    );
+  }
   const file = form.get("media") ?? form.get("image");
   if (!(file instanceof File)) return Response.json({ ok: false, error: { code: "ATTACHMENT_REQUIRED", message: "Choose an attachment to upload." } }, { status: 400 });
   const base = `/community/channels/${encodeURIComponent(channelIdOrSlug)}/attachments`;

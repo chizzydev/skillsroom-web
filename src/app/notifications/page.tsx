@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { AppShell } from "@/components/layout/AppShell";
 import { LiveUpdateStream } from "@/components/realtime/LiveUpdateStream";
 import { Badge } from "@/components/ui/Badge";
@@ -28,6 +29,10 @@ import {
   respondToRoomInviteAction,
   updateNotificationPreferencesAction
 } from "./actions";
+
+const premiumArtwork = {
+  community: "/marketing/skillsroom-premium/community-premium.png"
+} as const;
 
 function inviteSender(invite: RoomInvite) {
   return invite.inviter_display_name || invite.inviter_username || "A Skillsroom player";
@@ -81,14 +86,45 @@ export default async function NotificationsPage({ searchParams }: { searchParams
   return (
     <AppShell active="notifications">
       <section className="grid gap-6">
-        <section className="min-w-0 rounded-lg border border-line bg-white p-5 shadow-panel md:p-7">
-          <Badge tone="warning">Inbox</Badge>
-          <h1 className="mt-3 max-w-full break-words text-2xl font-black leading-tight text-ink [overflow-wrap:anywhere] md:text-3xl">
-            Inbox and invites.
-          </h1>
-          <p className="mt-3 max-w-3xl text-sm leading-6 text-muted md:text-base">
-            In-app notifications are the primary channel. Email can be activated once the provider configuration is present and your preferences allow it.
-          </p>
+        <section className="overflow-hidden rounded-[1.75rem] border border-[#24364a] bg-[#08131f] text-white shadow-[0_40px_120px_rgba(4,10,20,0.35)]">
+          <div className="grid gap-0 xl:grid-cols-[minmax(0,1fr)_minmax(300px,38%)]">
+            <div className="relative p-5 md:p-7 lg:p-9">
+              <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(24,197,138,0.16),transparent_34%),radial-gradient(circle_at_bottom_left,rgba(33,170,255,0.18),transparent_36%)]" />
+              <div className="relative">
+                <Badge tone="warning">Inbox</Badge>
+                <h1 className="mt-3 max-w-full break-words text-3xl font-black leading-tight [overflow-wrap:anywhere] sm:text-4xl lg:text-5xl">
+                  Inbox, invites, and player signals.
+                </h1>
+                <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-300 md:text-base">
+                  In-app notifications are the primary channel. Email and SMS can layer in later, but this surface keeps the live match, invite, and DM decision flow visible first.
+                </p>
+                <div className="mt-8 grid gap-3 xl:max-w-2xl xl:grid-cols-3">
+                  <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
+                    <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Decision speed</p>
+                    <p className="mt-2 text-sm leading-6 text-slate-200">Handle room invites, DM requests, and unread updates without digging through separate surfaces.</p>
+                  </div>
+                  <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
+                    <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Live state</p>
+                    <p className="mt-2 text-sm leading-6 text-slate-200">Realtime activity stays anchored to a clear inbox instead of getting buried under generic alerts.</p>
+                  </div>
+                  <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
+                    <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Preference control</p>
+                    <p className="mt-2 text-sm leading-6 text-slate-200">Players can decide which channels matter most before external messaging gets involved.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="relative min-h-[300px] border-t border-white/10 xl:min-h-full xl:border-l xl:border-t-0">
+              <Image alt="Premium community communications artwork" className="object-cover" fill priority sizes="(min-width: 1280px) 38vw, 100vw" src={premiumArtwork.community} />
+              <div className="absolute inset-0 bg-gradient-to-l from-transparent via-transparent to-[#08131f]/80" />
+              <div className="absolute inset-x-4 bottom-4 grid gap-3 md:inset-x-6">
+                <div className="rounded-2xl border border-white/10 bg-[#09131f]/78 p-4 backdrop-blur">
+                  <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-300">What this page handles</p>
+                  <p className="mt-2 text-sm leading-6 text-slate-200">Unread updates, pending invites, DM approvals, and the preference layer that shapes future contact.</p>
+                </div>
+              </div>
+            </div>
+          </div>
         </section>
 
         <LiveUpdateStream eventTypePrefixes={["notification.", "room.invite.", "chat.dm.request."]} label="Inbox live" />

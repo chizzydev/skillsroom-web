@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import Image from "next/image";
 import { notFound } from "next/navigation";
 import { AppShell } from "@/components/layout/AppShell";
 import { Badge } from "@/components/ui/Badge";
@@ -68,18 +69,49 @@ export default async function CommunityPlayerPage({ params, searchParams }: Play
   return (
     <AppShell active="community">
       <section className="grid gap-6">
-        <section className="min-w-0 rounded-lg border border-line bg-white p-5 shadow-panel md:p-7">
-          <div className="flex min-w-0 flex-wrap items-center gap-2">
-            <Badge tone="cyan">Player ranking</Badge>
-            <Badge tone={player.rank <= 3 ? "success" : "neutral"}>Rank #{player.rank}</Badge>
+        <section className="overflow-hidden rounded-[1.75rem] border border-[#24364a] bg-[#08131f] text-white shadow-[0_40px_120px_rgba(4,10,20,0.35)]">
+          <div className="grid gap-0 xl:grid-cols-[minmax(0,1fr)_minmax(320px,38%)]">
+            <div className="relative p-5 md:p-7 lg:p-9">
+              <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(24,197,138,0.16),transparent_34%),radial-gradient(circle_at_bottom_left,rgba(33,170,255,0.18),transparent_36%)]" />
+              <div className="relative">
+                <div className="flex min-w-0 flex-wrap items-center gap-2">
+                  <Badge tone="cyan">Player ranking</Badge>
+                  <Badge tone={player.rank <= 3 ? "success" : "neutral"}>Rank #{player.rank}</Badge>
+                </div>
+                <h1 className="mt-3 break-words text-3xl font-black leading-tight [overflow-wrap:anywhere] sm:text-4xl lg:text-5xl">
+                  {displayName(player)}
+                </h1>
+                <p className="mt-2 font-mono text-sm font-bold text-slate-300">@{player.username}</p>
+                <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-300 md:text-base">
+                  Public Skillsroom ranking based on verified competition history, reputation, tournament placements, and trust penalties.
+                </p>
+                <div className="mt-8 grid gap-3 xl:max-w-2xl xl:grid-cols-3">
+                  <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
+                    <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Visible score</p>
+                    <p className="mt-2 text-sm leading-6 text-slate-200">Public rank turns verified history into something players can quickly read and compare.</p>
+                  </div>
+                  <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
+                    <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Verified play</p>
+                    <p className="mt-2 text-sm leading-6 text-slate-200">Wins, losses, tournament finishes, and trust penalties all influence the same public record.</p>
+                  </div>
+                  <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
+                    <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Scene context</p>
+                    <p className="mt-2 text-sm leading-6 text-slate-200">Game focus and location filters help people understand the environment behind the ranking.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="relative min-h-[300px] border-t border-white/10 xl:min-h-full xl:border-l xl:border-t-0">
+              <Image alt="Premium Skillsroom community player artwork" className="object-cover" fill priority sizes="(min-width: 1280px) 38vw, 100vw" src="/marketing/skillsroom-premium/community-premium.png" />
+              <div className="absolute inset-0 bg-gradient-to-l from-transparent via-transparent to-[#08131f]/80" />
+              <div className="absolute inset-x-4 bottom-4 md:inset-x-6">
+                <div className="rounded-2xl border border-white/10 bg-[#09131f]/78 p-4 backdrop-blur">
+                  <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-300">Public competitor card</p>
+                  <p className="mt-2 text-sm leading-6 text-slate-200">A cleaner way to show ranking, reputation, and verified competition history without exposing private ops data.</p>
+                </div>
+              </div>
+            </div>
           </div>
-          <h1 className="mt-3 break-words text-2xl font-black leading-tight text-ink [overflow-wrap:anywhere] md:text-3xl">
-            {displayName(player)}
-          </h1>
-          <p className="mt-2 font-mono text-sm font-bold text-muted">@{player.username}</p>
-          <p className="mt-3 max-w-3xl text-sm leading-6 text-muted md:text-base">
-            Public Skillsroom ranking based on verified competition history, reputation, tournament placements, and trust penalties.
-          </p>
         </section>
 
         <div className="grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -103,12 +135,12 @@ export default async function CommunityPlayerPage({ params, searchParams }: Play
           <Panel>
             <PanelHeader eyebrow="Scene" title="Game and location" />
             <div className="grid gap-3 p-4 text-sm">
-              <div className="rounded-md border border-line bg-white p-4">
+              <div className="rounded-2xl border border-line bg-surfaceWarm p-4">
                 <p className="text-xs font-black uppercase tracking-[0.18em] text-muted">Game</p>
                 <p className="mt-2 font-black text-ink">{player.primary_game_name ?? "Any game"}</p>
                 {player.primary_game_handle ? <p className="mt-1 font-mono text-xs font-bold text-muted">{player.primary_game_handle}</p> : null}
               </div>
-              <div className="rounded-md border border-line bg-white p-4">
+              <div className="rounded-2xl border border-line bg-surfaceWarm p-4">
                 <p className="text-xs font-black uppercase tracking-[0.18em] text-muted">Location</p>
                 <p className="mt-2 font-black text-ink">{[player.city, player.campus].filter(Boolean).join(" / ") || player.region}</p>
               </div>
