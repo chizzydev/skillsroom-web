@@ -68,16 +68,16 @@ export default async function CommunityClanDetailPage({ params }: ClanDetailPage
                 </div>
                 <div className="mt-8 grid gap-3 xl:max-w-2xl xl:grid-cols-3">
                   <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
-                    <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Roster identity</p>
-                    <p className="mt-2 text-sm leading-6 text-slate-200">Members, captain, and match reputation stay attached to one visible team record.</p>
+                    <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Members</p>
+                    <p className="mt-2 text-sm leading-6 text-slate-200">See who is in the clan and who leads it.</p>
                   </div>
                   <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
-                    <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Verified history</p>
-                    <p className="mt-2 text-sm leading-6 text-slate-200">Tournament results here come from actual clan-linked entries, not guessed name matches.</p>
+                    <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Match history</p>
+                    <p className="mt-2 text-sm leading-6 text-slate-200">The results shown here come from real clan entries, not guessed matches.</p>
                   </div>
                   <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
-                    <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Scene signal</p>
-                    <p className="mt-2 text-sm leading-6 text-slate-200">Location, game focus, and performance give the clan a more premium public presence.</p>
+                    <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Team details</p>
+                    <p className="mt-2 text-sm leading-6 text-slate-200">Game focus, location, and results help people understand the team quickly.</p>
                   </div>
                 </div>
               </div>
@@ -87,8 +87,8 @@ export default async function CommunityClanDetailPage({ params }: ClanDetailPage
               <div className="absolute inset-0 bg-gradient-to-l from-transparent via-transparent to-[#08131f]/80" />
               <div className="absolute inset-x-4 bottom-4 md:inset-x-6">
                 <div className="rounded-2xl border border-white/10 bg-[#09131f]/78 p-4 backdrop-blur">
-                  <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-300">Clan profile</p>
-                  <p className="mt-2 text-sm leading-6 text-slate-200">A sharper public-facing team surface built for discovery, pride, and competitive credibility.</p>
+                  <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-300">Clan page</p>
+                  <p className="mt-2 text-sm leading-6 text-slate-200">This page helps people quickly understand the team and its record.</p>
                 </div>
               </div>
             </div>

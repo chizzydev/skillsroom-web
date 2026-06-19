@@ -38,20 +38,20 @@ export default async function CommunityHighlightsPage() {
                 <Badge tone="cyan">Highlights</Badge>
                 <h1 className="mt-3 text-3xl font-black leading-tight sm:text-4xl lg:text-5xl">Completed events worth sharing.</h1>
                 <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-300 md:text-base">
-                  This feed only shows approved, public-safe tournament finishes. No unresolved disputes. No fake payout claims.
+                  This page only shows finished tournament results that are ready to be shared.
                 </p>
                 <div className="mt-8 grid gap-3 xl:max-w-2xl xl:grid-cols-3">
                   <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
-                    <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Share-ready</p>
-                    <p className="mt-2 text-sm leading-6 text-slate-200">Each highlight is meant to be forwarded fast without exposing messy backstage records.</p>
+                    <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Easy to share</p>
+                    <p className="mt-2 text-sm leading-6 text-slate-200">Each result here is simple to open and share with other players.</p>
                   </div>
                   <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
-                    <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Verified wins</p>
-                    <p className="mt-2 text-sm leading-6 text-slate-200">Champion stories only appear after public-safe results have actually been finalized.</p>
+                    <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Real results</p>
+                    <p className="mt-2 text-sm leading-6 text-slate-200">Winners only show up here after the event has actually been completed.</p>
                   </div>
                   <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
-                    <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Gaming energy</p>
-                    <p className="mt-2 text-sm leading-6 text-slate-200">The public face of Skillsroom should feel like a real competitive scene, not a spreadsheet.</p>
+                    <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Worth checking</p>
+                    <p className="mt-2 text-sm leading-6 text-slate-200">This page should feel like a place to catch up on what happened, not just read stats.</p>
                   </div>
                 </div>
               </div>
@@ -61,8 +61,8 @@ export default async function CommunityHighlightsPage() {
               <div className="absolute inset-0 bg-gradient-to-l from-transparent via-transparent to-[#08131f]/80" />
               <div className="absolute inset-x-4 bottom-4 md:inset-x-6">
                 <div className="rounded-2xl border border-white/10 bg-[#09131f]/78 p-4 backdrop-blur">
-                  <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-300">Public winner stories</p>
-                  <p className="mt-2 text-sm leading-6 text-slate-200">A cleaner highlight wall for results that deserve to travel across chats and communities.</p>
+                  <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-300">Winner stories</p>
+                  <p className="mt-2 text-sm leading-6 text-slate-200">Catch up on the latest winners and finished events here.</p>
                 </div>
               </div>
             </div>

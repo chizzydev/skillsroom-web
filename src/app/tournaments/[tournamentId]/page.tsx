@@ -469,16 +469,16 @@ export default async function TournamentDetailPage({
                 </div>
                 <div className="mt-8 grid gap-3 xl:max-w-2xl xl:grid-cols-3">
                   <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
-                    <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Event state</p>
-                    <p className="mt-2 text-sm leading-6 text-slate-200">Registration, check-in, review, and settlement all stay attached to one tournament record.</p>
+                    <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Current status</p>
+                    <p className="mt-2 text-sm leading-6 text-slate-200">See whether the event is open, in progress, under review, or finished.</p>
                   </div>
                   <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
-                    <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Player clarity</p>
-                    <p className="mt-2 text-sm leading-6 text-slate-200">Players can read the current state, prize model, and format without digging through operator-only detail.</p>
+                    <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">What players need</p>
+                    <p className="mt-2 text-sm leading-6 text-slate-200">The key details players need are easy to find without opening extra sections.</p>
                   </div>
                   <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
-                    <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Competitive history</p>
-                    <p className="mt-2 text-sm leading-6 text-slate-200">Finished results can stay public while sensitive evidence and payout records remain restricted.</p>
+                    <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Finished results</p>
+                    <p className="mt-2 text-sm leading-6 text-slate-200">People can still view the result later without seeing private review or payout details.</p>
                   </div>
                 </div>
               </div>
@@ -488,8 +488,8 @@ export default async function TournamentDetailPage({
               <div className="absolute inset-0 bg-gradient-to-l from-transparent via-transparent to-[#08131f]/80" />
               <div className="absolute inset-x-4 bottom-4 md:inset-x-6">
                 <div className="rounded-2xl border border-white/10 bg-[#09131f]/78 p-4 backdrop-blur">
-                  <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-300">Tournament surface</p>
-                  <p className="mt-2 text-sm leading-6 text-slate-200">A clearer event page for registrations, standings, host updates, and public-safe outcomes.</p>
+                  <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-300">Tournament page</p>
+                  <p className="mt-2 text-sm leading-6 text-slate-200">Use this page for registration, standings, updates, and final results.</p>
                 </div>
               </div>
             </div>

@@ -13,9 +13,9 @@ type AuthTrustPanelProps = {
 };
 
 const trustPoints = [
-  "Skillsroom is a competitive gaming platform for structured match rooms and tournaments.",
-  "Entry proof, evidence review, disputes, and settlements stay inside one auditable workflow.",
-  "Policies, support, and public community pages remain visible before sign-in so players can inspect the platform first."
+  "Skillsroom helps players use match rooms and tournaments without confusion.",
+  "Proof, disputes, and payouts stay connected to the same match or event.",
+  "You can read the rules, support pages, and community pages before you sign in."
 ] as const;
 
 const quickLinks = [
@@ -31,8 +31,8 @@ export function AuthTrustPanel({
   ctaHref,
   ctaLabel,
   artworkSrc,
-  artworkAlt = "Skillsroom premium artwork",
-  eyebrow = "Skill-based competition"
+  artworkAlt = "Skillsroom artwork",
+  eyebrow = "Skillsroom"
 }: AuthTrustPanelProps) {
   return (
     <section className="relative overflow-hidden rounded-[1.75rem] border border-white/10 bg-[#08131f] text-white shadow-[0_40px_120px_rgba(4,10,20,0.35)]">
@@ -64,9 +64,9 @@ export function AuthTrustPanel({
           </div>
 
           <div className="mt-6 rounded-[1.25rem] border border-cyan/25 bg-white/5 p-4">
-            <p className="text-xs font-black uppercase tracking-[0.14em] text-cyan-200">Before you continue</p>
+            <p className="text-xs font-black uppercase tracking-[0.14em] text-cyan-200">New here?</p>
             <p className="mt-2 text-sm leading-6 text-slate-200">
-              Review the public product, competition rules, and trust policies first if you are new here.
+              You can look around first before making an account.
             </p>
             <Link
               className="mt-4 inline-flex min-h-10 items-center justify-center rounded-md bg-action px-4 text-sm font-black text-navy-950 shadow-action hover:bg-actionHover"
@@ -88,15 +88,15 @@ export function AuthTrustPanel({
           )}
           <div className="absolute inset-x-4 bottom-4 grid gap-3 sm:inset-x-5">
             <div className="rounded-2xl border border-white/10 bg-[#09131f]/78 p-4 backdrop-blur">
-              <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Trust flow</p>
+              <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">One account</p>
               <p className="mt-2 text-sm leading-6 text-slate-200">
-                Create one identity for rooms, tournament check-ins, disputes, and future public history.
+                Use one account for rooms, tournament check-ins, disputes, and your profile.
               </p>
             </div>
             <div className="rounded-2xl border border-white/10 bg-[#09131f]/78 p-4 backdrop-blur">
-              <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Operator visible</p>
+              <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Easy to check</p>
               <p className="mt-2 text-sm leading-6 text-slate-200">
-                Policies stay visible, and moderation or review workflows are tied back to the same account record.
+                Your rules, support pages, and account activity are easy to follow in one place.
               </p>
             </div>
           </div>

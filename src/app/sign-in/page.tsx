@@ -67,10 +67,10 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
             artworkAlt="Competitive gaming community artwork"
             artworkSrc={premiumArtwork.community}
             ctaHref="/community"
-            ctaLabel="Review public community pages"
+            ctaLabel="View community pages"
             eyebrow="Account access"
-            summary="Structured rooms, tournament operations, evidence review, dispute handling, and controlled settlement workflows for competitive players."
-            title="Competitive gaming with visible rules and review."
+            summary="Rooms, tournaments, proof review, and disputes all stay easy to follow in one place."
+            title="Play with clear rules and clear decisions."
           />
         </div>
         <section className="order-1 w-full min-w-0 rounded-[1.5rem] border border-white/10 bg-white/95 p-5 shadow-[0_30px_80px_rgba(3,10,20,0.3)] backdrop-blur sm:p-6 lg:order-2">
@@ -115,15 +115,15 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
           </form>
           <div className="mt-5 grid gap-3 sm:grid-cols-2">
             <div className="rounded-2xl border border-line bg-surfaceWarm p-4">
-              <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Fast re-entry</p>
+              <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Pick up where you stopped</p>
               <p className="mt-2 text-sm leading-6 text-muted">
-                Get back into rooms, unread DMs, tournament check-ins, and evidence threads without losing your place.
+                Go back to your rooms, DMs, and tournament check-ins without starting over.
               </p>
             </div>
             <div className="rounded-2xl border border-line bg-surfaceWarm p-4">
-              <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">One player record</p>
+              <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">One account</p>
               <p className="mt-2 text-sm leading-6 text-muted">
-                Match history, disputes, platform moderation, and community identity remain tied to one account.
+                Your match history, disputes, and profile stay attached to the same account.
               </p>
             </div>
           </div>

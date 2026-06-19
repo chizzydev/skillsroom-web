@@ -78,23 +78,23 @@ export default async function CommunityProofPage() {
             <div className="relative p-5 md:p-7 lg:p-9">
               <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(24,197,138,0.16),transparent_34%),radial-gradient(circle_at_bottom_left,rgba(33,170,255,0.18),transparent_36%)]" />
               <div className="relative">
-                <Badge tone="cyan">Social Proof</Badge>
+                <Badge tone="cyan">Platform numbers</Badge>
                 <h1 className="mt-3 text-3xl font-black leading-tight sm:text-4xl lg:text-5xl">Public platform metrics</h1>
                 <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-300 md:text-base">
-                  These numbers come from live product states only. Verified payout completion stays hidden until Kora-approved reconciliation exists.
+                  These numbers come from real platform activity. Finished payout totals stay hidden until full payment verification is in place.
                 </p>
                 <div className="mt-8 grid gap-3 xl:max-w-2xl xl:grid-cols-3">
                   <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
-                    <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Honest metrics</p>
-                    <p className="mt-2 text-sm leading-6 text-slate-200">Only real platform counts belong here. Nothing padded. Nothing claimed ahead of verification.</p>
+                    <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Real numbers</p>
+                    <p className="mt-2 text-sm leading-6 text-slate-200">Only actual platform counts belong here. Nothing added just to look bigger.</p>
                   </div>
                   <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
-                    <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Trust before hype</p>
-                    <p className="mt-2 text-sm leading-6 text-slate-200">Reserved and queued values are visible now because they are supportable, auditable, and precise.</p>
+                    <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">What we can show now</p>
+                    <p className="mt-2 text-sm leading-6 text-slate-200">Reserved and queued amounts are shown because they can already be checked properly.</p>
                   </div>
                   <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
-                    <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Shareable traction</p>
-                    <p className="mt-2 text-sm leading-6 text-slate-200">This gives Skillsroom a stronger story when people ask whether the platform is actually active.</p>
+                    <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Why people check this</p>
+                    <p className="mt-2 text-sm leading-6 text-slate-200">It helps people see that the platform is active and being used.</p>
                   </div>
                 </div>
               </div>
@@ -104,8 +104,8 @@ export default async function CommunityProofPage() {
               <div className="absolute inset-0 bg-gradient-to-l from-transparent via-transparent to-[#08131f]/80" />
               <div className="absolute inset-x-4 bottom-4 md:inset-x-6">
                 <div className="rounded-2xl border border-white/10 bg-[#09131f]/78 p-4 backdrop-blur">
-                  <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-300">Proof dashboard</p>
-                  <p className="mt-2 text-sm leading-6 text-slate-200">A cleaner way to show momentum and trust without making claims the platform cannot yet verify.</p>
+                  <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-300">Numbers at a glance</p>
+                  <p className="mt-2 text-sm leading-6 text-slate-200">See what the platform can honestly show right now.</p>
                 </div>
               </div>
             </div>

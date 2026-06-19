@@ -93,23 +93,23 @@ export default async function NotificationsPage({ searchParams }: { searchParams
               <div className="relative">
                 <Badge tone="warning">Inbox</Badge>
                 <h1 className="mt-3 max-w-full break-words text-3xl font-black leading-tight [overflow-wrap:anywhere] sm:text-4xl lg:text-5xl">
-                  Inbox, invites, and player signals.
+                  Your inbox and invites.
                 </h1>
                 <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-300 md:text-base">
-                  In-app notifications are the primary channel. Email and SMS can layer in later, but this surface keeps the live match, invite, and DM decision flow visible first.
+                  This is where you see new invites, direct message requests, and match updates first.
                 </p>
                 <div className="mt-8 grid gap-3 xl:max-w-2xl xl:grid-cols-3">
                   <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
-                    <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Decision speed</p>
-                    <p className="mt-2 text-sm leading-6 text-slate-200">Handle room invites, DM requests, and unread updates without digging through separate surfaces.</p>
+                    <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Quick actions</p>
+                    <p className="mt-2 text-sm leading-6 text-slate-200">Reply to invites, open DMs, and deal with new updates from one place.</p>
                   </div>
                   <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
-                    <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Live state</p>
-                    <p className="mt-2 text-sm leading-6 text-slate-200">Realtime activity stays anchored to a clear inbox instead of getting buried under generic alerts.</p>
+                    <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Live updates</p>
+                    <p className="mt-2 text-sm leading-6 text-slate-200">New activity shows up here clearly instead of getting lost.</p>
                   </div>
                   <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
-                    <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Preference control</p>
-                    <p className="mt-2 text-sm leading-6 text-slate-200">Players can decide which channels matter most before external messaging gets involved.</p>
+                    <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Your settings</p>
+                    <p className="mt-2 text-sm leading-6 text-slate-200">Choose how you want Skillsroom to reach you.</p>
                   </div>
                 </div>
               </div>
@@ -119,8 +119,8 @@ export default async function NotificationsPage({ searchParams }: { searchParams
               <div className="absolute inset-0 bg-gradient-to-l from-transparent via-transparent to-[#08131f]/80" />
               <div className="absolute inset-x-4 bottom-4 grid gap-3 md:inset-x-6">
                 <div className="rounded-2xl border border-white/10 bg-[#09131f]/78 p-4 backdrop-blur">
-                  <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-300">What this page handles</p>
-                  <p className="mt-2 text-sm leading-6 text-slate-200">Unread updates, pending invites, DM approvals, and the preference layer that shapes future contact.</p>
+                  <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-300">What you can do here</p>
+                  <p className="mt-2 text-sm leading-6 text-slate-200">Check unread updates, respond to invites, and manage message alerts.</p>
                 </div>
               </div>
             </div>

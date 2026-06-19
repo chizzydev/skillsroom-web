@@ -61,6 +61,29 @@ const acceptedChatDocuments = ".pdf,.doc,.docx,.odt,.txt,application/pdf,applica
 const chatMessageMaxLength = 5000;
 const composerMinHeightPx = 44;
 const composerMaxHeightPx = 128;
+const chatLoadedImageStoragePrefix = "skillsroom-chat-image-opened:";
+
+function loadedImageStorageKey(attachmentId: string) {
+  return `${chatLoadedImageStoragePrefix}${attachmentId}`;
+}
+
+function hasLoadedImageBefore(attachmentId: string) {
+  if (typeof window === "undefined") return false;
+  try {
+    return window.localStorage.getItem(loadedImageStorageKey(attachmentId)) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function rememberLoadedImage(attachmentId: string) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(loadedImageStorageKey(attachmentId), "1");
+  } catch {
+    // Ignore storage errors; chat still works without persistence.
+  }
+}
 
 function isChatImageMime(mimeType: string | null | undefined) {
   return chatImageMimeTypes.includes(mimeType as (typeof chatImageMimeTypes)[number]);
@@ -107,15 +130,26 @@ function attachmentPreviewLabel(attachment: ChatAttachment) {
 function ChatImage({ attachment, autoLoad, channelSlug, className, onOpen }: { attachment: ChatAttachment; autoLoad?: boolean; channelSlug: string; className?: string; onOpen?: (url: string) => void }) {
   const [url, setUrl] = useState(attachment.client_preview_url ?? "");
   const [failed, setFailed] = useState(false);
-  const [loadRequested, setLoadRequested] = useState(Boolean(autoLoad || attachment.client_preview_url));
+  const [loadRequested, setLoadRequested] = useState(() =>
+    Boolean(autoLoad || attachment.client_preview_url || hasLoadedImageBefore(attachment.id))
+  );
 
   useEffect(() => {
     if (autoLoad && !loadRequested) setLoadRequested(true);
   }, [autoLoad, loadRequested]);
 
   useEffect(() => {
+    if (hasLoadedImageBefore(attachment.id) && !loadRequested) setLoadRequested(true);
+  }, [attachment.id, loadRequested]);
+
+  useEffect(() => {
     if (attachment.client_preview_url) setUrl(attachment.client_preview_url);
   }, [attachment.client_preview_url]);
+
+  useEffect(() => {
+    if (!url || failed) return;
+    rememberLoadedImage(attachment.id);
+  }, [attachment.id, failed, url]);
 
   useEffect(() => {
     if (!loadRequested || attachment.client_preview_url || attachment.status !== "attached") return;
@@ -125,7 +159,10 @@ function ChatImage({ attachment, autoLoad, channelSlug, className, onOpen }: { a
       .then(async (response) => {
         const payload = await response.json() as ApiEnvelope<{ url: string }>;
         if (!response.ok || payload.ok !== true) throw new Error("Image unavailable.");
-        if (active) setUrl(payload.data.url);
+        if (active) {
+          setUrl(payload.data.url);
+          rememberLoadedImage(attachment.id);
+        }
       })
       .catch(() => { if (active) setFailed(true); });
     return () => { active = false; };

@@ -78,16 +78,16 @@ export default async function CommunityClansPage({ searchParams }: ClanListPageP
                 </p>
                 <div className="mt-8 grid gap-3 xl:max-w-2xl xl:grid-cols-3">
                   <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
-                    <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Team identity</p>
-                    <p className="mt-2 text-sm leading-6 text-slate-200">Clans can finally feel like real scenes instead of plain rows of text and links.</p>
+                    <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Real teams</p>
+                    <p className="mt-2 text-sm leading-6 text-slate-200">Each clan has its own page instead of feeling like just another name on a list.</p>
                   </div>
                   <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
-                    <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Captain-led</p>
-                    <p className="mt-2 text-sm leading-6 text-slate-200">Players can quickly see who runs the team, where they play, and how active they are.</p>
+                    <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Who runs the team</p>
+                    <p className="mt-2 text-sm leading-6 text-slate-200">You can quickly see the captain, where the team plays, and how active it is.</p>
                   </div>
                   <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
-                    <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Verified record</p>
-                    <p className="mt-2 text-sm leading-6 text-slate-200">Clan reputation and tournament history stay attached to a public identity people can recognize.</p>
+                    <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Past results</p>
+                    <p className="mt-2 text-sm leading-6 text-slate-200">The clan record and tournament history stay easy to check.</p>
                   </div>
                 </div>
               </div>
@@ -97,8 +97,8 @@ export default async function CommunityClansPage({ searchParams }: ClanListPageP
               <div className="absolute inset-0 bg-gradient-to-l from-transparent via-transparent to-[#08131f]/80" />
               <div className="absolute inset-x-4 bottom-4 md:inset-x-6">
                 <div className="rounded-2xl border border-white/10 bg-[#09131f]/78 p-4 backdrop-blur">
-                  <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-300">Public team board</p>
-                  <p className="mt-2 text-sm leading-6 text-slate-200">A stronger surface for discovering squads, local scenes, and competitive group identities.</p>
+                  <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-300">Find teams</p>
+                  <p className="mt-2 text-sm leading-6 text-slate-200">Look through teams, local groups, and active clan pages here.</p>
                 </div>
               </div>
             </div>

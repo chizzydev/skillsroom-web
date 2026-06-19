@@ -174,7 +174,7 @@ export default async function TournamentsPage({
                   Find serious Skillsroom events.
                 </h1>
                 <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-300 md:text-base">
-                  Browse brackets, groups, Swiss events, leagues, and score-driven formats across supported games with public-safe history and visible operator flow.
+                  Browse brackets, groups, Swiss events, leagues, and score-based formats across supported games.
                 </p>
                 <div className="mt-5 flex flex-wrap gap-2">
                   {canAccessAdmin(user) ? (
@@ -189,16 +189,16 @@ export default async function TournamentsPage({
                 </div>
                 <div className="mt-8 grid gap-3 xl:max-w-2xl xl:grid-cols-3">
                   <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
-                    <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Operator ready</p>
-                    <p className="mt-2 text-sm leading-6 text-slate-200">Registration, seeding, review, and settlement states stay visible across the same workflow.</p>
+                    <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Easy to follow</p>
+                    <p className="mt-2 text-sm leading-6 text-slate-200">You can quickly see whether an event is open, live, under review, or finished.</p>
                   </div>
                   <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
-                    <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Multi-format</p>
-                    <p className="mt-2 text-sm leading-6 text-slate-200">Run brackets, leagues, Swiss ladders, and cumulative score events from one surface.</p>
+                    <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Different event types</p>
+                    <p className="mt-2 text-sm leading-6 text-slate-200">You can run brackets, leagues, Swiss events, and score-based competitions here.</p>
                   </div>
                   <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
-                    <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Public history</p>
-                    <p className="mt-2 text-sm leading-6 text-slate-200">Completed events can stay visible without exposing ops-only evidence or contribution data.</p>
+                    <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Finished events stay visible</p>
+                    <p className="mt-2 text-sm leading-6 text-slate-200">Completed events can still be viewed later without showing private review details.</p>
                   </div>
                 </div>
               </div>
@@ -208,12 +208,12 @@ export default async function TournamentsPage({
               <div className="absolute inset-0 bg-gradient-to-l from-transparent via-transparent to-[#08131f]/80" />
               <div className="absolute inset-x-4 bottom-4 grid gap-3 md:inset-x-6">
                 <div className="rounded-2xl border border-white/10 bg-[#09131f]/78 p-4 backdrop-blur">
-                  <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-300">What players see</p>
-                  <p className="mt-2 text-sm leading-6 text-slate-200">Open events, completed highlights, rule-backed formats, and serious match cadence.</p>
+                  <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-300">For players</p>
+                  <p className="mt-2 text-sm leading-6 text-slate-200">See open events, finished highlights, and the format each tournament is using.</p>
                 </div>
                 <div className="rounded-2xl border border-white/10 bg-[#09131f]/78 p-4 backdrop-blur">
-                  <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-300">What operators keep</p>
-                  <p className="mt-2 text-sm leading-6 text-slate-200">Moderation, funding verification, disputes, and settlement states connected to the same event record.</p>
+                  <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-300">Behind the scenes</p>
+                  <p className="mt-2 text-sm leading-6 text-slate-200">Reviews, funding checks, disputes, and payouts all stay tied to the same event.</p>
                 </div>
               </div>
             </div>

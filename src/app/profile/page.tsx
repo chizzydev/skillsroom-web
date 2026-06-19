@@ -164,22 +164,22 @@ export default async function ProfilePage({ searchParams }: ProfilePageProps) {
               <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(24,197,138,0.16),transparent_34%),radial-gradient(circle_at_bottom_left,rgba(33,170,255,0.18),transparent_36%)]" />
               <div className="relative">
                 <Badge tone="cyan">Player Profile</Badge>
-                <h1 className="mt-3 text-3xl font-black leading-tight sm:text-4xl lg:text-5xl">Trusted player identity.</h1>
+                <h1 className="mt-3 text-3xl font-black leading-tight sm:text-4xl lg:text-5xl">Your player profile.</h1>
                 <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-300 md:text-base">
-                  Your profile connects login, game handles, reputation, payout readiness, and review history so rooms and tournaments can move with less friction.
+                  Your profile keeps your login, game handles, reputation, and payout details in one place.
                 </p>
                 <div className="mt-8 grid gap-3 xl:max-w-2xl xl:grid-cols-3">
                   <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
-                    <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Identity</p>
-                    <p className="mt-2 text-sm leading-6 text-slate-200">Keep one public-facing name tied to rooms, disputes, rankings, and clan activity.</p>
+                    <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Your name</p>
+                    <p className="mt-2 text-sm leading-6 text-slate-200">Use one name across rooms, disputes, rankings, and clan activity.</p>
                   </div>
                   <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
-                    <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Trust</p>
-                    <p className="mt-2 text-sm leading-6 text-slate-200">Reputation and review history stay close to the same player record instead of being fragmented.</p>
+                    <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Your record</p>
+                    <p className="mt-2 text-sm leading-6 text-slate-200">Your reputation and review history stay attached to the same player profile.</p>
                   </div>
                   <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
-                    <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Readiness</p>
-                    <p className="mt-2 text-sm leading-6 text-slate-200">Complete the critical checks once, then use the profile across matches and tournament operations.</p>
+                    <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Ready to use</p>
+                    <p className="mt-2 text-sm leading-6 text-slate-200">Finish the important setup once, then use the profile across matches and tournaments.</p>
                   </div>
                 </div>
               </div>
@@ -189,8 +189,8 @@ export default async function ProfilePage({ searchParams }: ProfilePageProps) {
               <div className="absolute inset-0 bg-gradient-to-l from-transparent via-transparent to-[#08131f]/80" />
               <div className="absolute inset-x-4 bottom-4 grid gap-3 md:inset-x-6">
                 <div className="rounded-2xl border border-white/10 bg-[#09131f]/78 p-4 backdrop-blur">
-                  <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-300">Profile value</p>
-                  <p className="mt-2 text-sm leading-6 text-slate-200">Handles, payouts, referrals, and community identity live together so trust compounds over time.</p>
+                  <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-300">What this profile holds</p>
+                  <p className="mt-2 text-sm leading-6 text-slate-200">Your handles, payouts, referrals, and public profile all stay together here.</p>
                 </div>
               </div>
             </div>

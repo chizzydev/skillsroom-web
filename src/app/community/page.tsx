@@ -174,10 +174,10 @@ export default async function CommunityPage({ searchParams }: CommunityPageProps
           <div className="overflow-hidden rounded-[1.5rem] border border-[#203244] bg-[#0a1521] shadow-[0_28px_80px_rgba(4,10,20,0.24)]">
             <div className="grid gap-0 lg:grid-cols-[minmax(0,1fr)_minmax(240px,40%)]">
               <div className="p-5 text-white">
-                <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Community momentum</p>
+                <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">A community people want to join</p>
                 <h2 className="mt-3 text-2xl font-black leading-tight">People stay longer when the community looks alive.</h2>
                 <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-300">
-                  Skillsroom should feel like a real gaming scene, not just a utility dashboard. Public proof, highlights, clans, and rankings deserve more atmosphere.
+                  Skillsroom should feel like a real gaming community, not just a list of tools. Rankings, highlights, clans, and updates should feel worth exploring.
                 </p>
               </div>
               <div className="relative min-h-[260px] border-t border-white/10 lg:border-l lg:border-t-0">
@@ -188,12 +188,12 @@ export default async function CommunityPage({ searchParams }: CommunityPageProps
           </div>
           <div className="grid gap-4">
             <div className="rounded-[1.5rem] border border-[#203244] bg-[#0a1521] p-5 text-white shadow-[0_28px_80px_rgba(4,10,20,0.24)]">
-              <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Premium direction</p>
-              <p className="mt-3 text-sm leading-6 text-slate-300">A premium gaming product needs visual stakes: cinematic art, stronger section contrast, and fewer plain white blocks.</p>
+              <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Better first impression</p>
+              <p className="mt-3 text-sm leading-6 text-slate-300">The community side should feel lively, easy to browse, and clearly made for gamers.</p>
             </div>
             <div className="rounded-[1.5rem] border border-[#203244] bg-[#0a1521] p-5 text-white shadow-[0_28px_80px_rgba(4,10,20,0.24)]">
-              <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">What this unlocks</p>
-              <p className="mt-3 text-sm leading-6 text-slate-300">More emotional pull on landing pages, better shareability, and a stronger sense that Skillsroom is made for gaming culture.</p>
+              <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Why it matters</p>
+              <p className="mt-3 text-sm leading-6 text-slate-300">When the community pages feel stronger, people are more likely to stay, share, and come back.</p>
             </div>
           </div>
         </section>

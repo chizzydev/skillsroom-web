@@ -48,20 +48,20 @@ export default async function CommunityAnnouncementsPage() {
                 <Badge tone="cyan">Community News</Badge>
                 <h1 className="mt-3 text-3xl font-black leading-tight sm:text-4xl lg:text-5xl">Announcements and tournament updates</h1>
                 <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-300 md:text-base">
-                  Only published platform notices and public-safe tournament updates appear here.
+                  This is where published platform updates and tournament news appear.
                 </p>
                 <div className="mt-8 grid gap-3 xl:max-w-2xl xl:grid-cols-3">
                   <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
-                    <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Platform voice</p>
-                    <p className="mt-2 text-sm leading-6 text-slate-200">News should feel official, current, and strong enough to represent the whole product.</p>
+                    <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Platform updates</p>
+                    <p className="mt-2 text-sm leading-6 text-slate-200">Read the latest important updates from Skillsroom here.</p>
                   </div>
                   <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
-                    <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Public-safe updates</p>
-                    <p className="mt-2 text-sm leading-6 text-slate-200">Tournament notices stay visible without leaking host-only, moderation, or settlement internals.</p>
+                    <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Tournament news</p>
+                    <p className="mt-2 text-sm leading-6 text-slate-200">Tournament posts stay easy to read without showing private admin details.</p>
                   </div>
                   <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
-                    <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Mobile forwardable</p>
-                    <p className="mt-2 text-sm leading-6 text-slate-200">This page is meant to read cleanly when someone lands from a shared link on their phone.</p>
+                    <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Easy to read on phone</p>
+                    <p className="mt-2 text-sm leading-6 text-slate-200">It should still read clearly when someone opens it from a shared link.</p>
                   </div>
                 </div>
               </div>
@@ -71,8 +71,8 @@ export default async function CommunityAnnouncementsPage() {
               <div className="absolute inset-0 bg-gradient-to-l from-transparent via-transparent to-[#08131f]/80" />
               <div className="absolute inset-x-4 bottom-4 md:inset-x-6">
                 <div className="rounded-2xl border border-white/10 bg-[#09131f]/78 p-4 backdrop-blur">
-                  <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-300">News feed</p>
-                  <p className="mt-2 text-sm leading-6 text-slate-200">A more premium place for platform updates, tournament notices, and community momentum.</p>
+                  <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-300">Latest posts</p>
+                  <p className="mt-2 text-sm leading-6 text-slate-200">Check the newest platform and tournament updates here.</p>
                 </div>
               </div>
             </div>

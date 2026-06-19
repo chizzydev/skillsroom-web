@@ -35,10 +35,10 @@ export default async function RegisterPage({ searchParams }: RegisterPageProps) 
             artworkAlt="Premium tournament operations artwork"
             artworkSrc={premiumArtwork.tournaments}
             ctaHref="/rules"
-            ctaLabel="Review competition rules first"
+            ctaLabel="Read the rules first"
             eyebrow="Player onboarding"
-            summary="Create one account for verified rooms, tournament check-ins, evidence submissions, community identity, and future competitive history."
-            title="Create a player identity you can keep across matches and tournaments."
+            summary="Create one account for rooms, tournament check-ins, proof uploads, and your public profile."
+            title="Create an account you can keep using."
           />
         </div>
         <section className="order-1 w-full min-w-0 rounded-[1.5rem] border border-white/10 bg-white/95 p-5 shadow-[0_30px_80px_rgba(3,10,20,0.3)] backdrop-blur sm:p-6 lg:order-2">
@@ -109,15 +109,15 @@ export default async function RegisterPage({ searchParams }: RegisterPageProps) 
           </form>
           <div className="mt-5 grid gap-3 sm:grid-cols-2">
             <div className="rounded-2xl border border-line bg-surfaceWarm p-4">
-              <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Tournament ready</p>
+              <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Ready for rooms and tournaments</p>
               <p className="mt-2 text-sm leading-6 text-muted">
-                Keep one profile for room invites, tournament entries, proofs, and result review trails.
+                Use the same profile for room invites, tournament entries, and result checks.
               </p>
             </div>
             <div className="rounded-2xl border border-line bg-surfaceWarm p-4">
-              <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Community identity</p>
+              <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Your public name</p>
               <p className="mt-2 text-sm leading-6 text-muted">
-                Build a public-facing name that can later connect to rankings, clans, and featured wins.
+                Pick the name people will see in rankings, clans, and match history.
               </p>
             </div>
           </div>
