@@ -29,7 +29,7 @@ import { updateProfileAction, upsertCommunityClanAction, upsertGameAccountAction
 const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3100";
 
 const premiumArtwork = {
-  hero: "/marketing/skillsroom-premium/hero-premium.png",
+  hero: "/marketing/skillsroom-premium/hero-premium.jpg",
   community: "/marketing/skillsroom-premium/community-premium.png"
 } as const;
 

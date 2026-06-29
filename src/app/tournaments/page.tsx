@@ -43,7 +43,7 @@ const formatGroups: Array<{ formats: TournamentFormat[]; label: string }> = [
 
 const premiumArtwork = {
   tournaments: "/marketing/skillsroom-premium/tournaments-premium.png",
-  hero: "/marketing/skillsroom-premium/hero-premium.png"
+  hero: "/marketing/skillsroom-premium/hero-premium.jpg"
 } as const;
 
 function statusTone(status: TournamentStatus): BadgeTone {

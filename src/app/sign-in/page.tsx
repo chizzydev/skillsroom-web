@@ -10,7 +10,7 @@ import { PendingLink } from "@/components/ui/PendingLink";
 import { SubmitButton } from "@/components/ui/SubmitButton";
 
 const premiumArtwork = {
-  hero: "/marketing/skillsroom-premium/hero-premium.png",
+  hero: "/marketing/skillsroom-premium/hero-premium.jpg",
   community: "/marketing/skillsroom-premium/community-premium.png"
 } as const;
 

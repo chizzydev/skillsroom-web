@@ -42,7 +42,7 @@ const roomSteps = [
 ] as const;
 
 const premiumArtwork = {
-  hero: "/marketing/skillsroom-premium/hero-premium.png",
+  hero: "/marketing/skillsroom-premium/hero-premium.jpg",
   matchRooms: "/marketing/skillsroom-premium/match-rooms-premium.png",
   community: "/marketing/skillsroom-premium/community-premium.png",
   tournaments: "/marketing/skillsroom-premium/tournaments-premium.png"
