@@ -20,6 +20,7 @@ const nav = [
 
 export async function AdminShell({ active, children }: AdminShellProps) {
   const user = await getCurrentUser();
+  const navItems = nav.filter((item) => item.key !== "team" || user?.role === "owner");
 
   return (
     <main className="min-h-screen bg-bg lg:grid lg:grid-cols-[18rem_1fr]">
@@ -39,7 +40,7 @@ export async function AdminShell({ active, children }: AdminShellProps) {
           </div>
         </div>
         <nav className="flex gap-1 overflow-x-auto p-3 lg:grid lg:overflow-visible">
-          {nav.map((item) => (
+          {navItems.map((item) => (
             <Link
               className={[
                 "whitespace-nowrap rounded-md px-3 py-2 text-sm font-black transition",

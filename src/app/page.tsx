@@ -248,11 +248,29 @@ export default async function HomePage({ searchParams }: HomePageProps) {
                   </div>
                 </div>
               </div>
-              <div className="relative min-h-[320px] border-t border-white/10 lg:min-h-full lg:border-l lg:border-t-0">
-                <Image alt="Premium Skillsroom competitive gaming scene" className="object-cover" fill priority sizes="(min-width: 1024px) 42vw, 100vw" src={premiumArtwork.hero} />
-                <div className="absolute inset-0 bg-gradient-to-l from-transparent via-transparent to-[#08131f]/80" />
-                <div className="absolute inset-x-4 bottom-4 grid gap-3 md:inset-x-6">
-                  <div className="rounded-2xl border border-white/10 bg-[#09131f]/78 p-4 backdrop-blur">
+              <div className="border-t border-white/10 lg:min-h-full lg:border-l lg:border-t-0">
+                <div className="relative min-h-[320px] md:min-h-[380px] lg:min-h-full">
+                  <Image alt="Premium Skillsroom competitive gaming scene" className="object-cover" fill priority sizes="(min-width: 1024px) 42vw, 100vw" src={premiumArtwork.hero} />
+                  <div className="absolute inset-0 bg-gradient-to-l from-transparent via-transparent to-[#08131f]/80" />
+                  <div className="absolute inset-x-4 bottom-4 hidden gap-3 md:inset-x-6 md:grid">
+                    <div className="rounded-2xl border border-white/10 bg-[#09131f]/78 p-4 backdrop-blur">
+                      <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-300">How it works</p>
+                      <div className="mt-3 grid gap-3 text-sm leading-6 text-slate-200">
+                        <p className="rounded-xl border border-white/10 bg-white/5 p-3">
+                          Players join rooms and tournaments with clear rules instead of trying to sort everything out in random chats.
+                        </p>
+                        <p className="rounded-xl border border-white/10 bg-white/5 p-3">
+                          Payment checks, match proof, disputes, and admin decisions stay attached to the room or tournament record.
+                        </p>
+                        <p className="rounded-xl border border-white/10 bg-white/5 p-3">
+                          Public policies, support pages, and community sections are visible before sign-in so new users can look around first.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div className="grid gap-3 border-t border-white/10 bg-[#08131f] p-4 md:hidden">
+                  <div className="rounded-2xl border border-white/10 bg-[#09131f] p-4">
                     <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-300">How it works</p>
                     <div className="mt-3 grid gap-3 text-sm leading-6 text-slate-200">
                       <p className="rounded-xl border border-white/10 bg-white/5 p-3">

@@ -39,13 +39,26 @@ export async function POST(request: NextRequest) {
   }
 
   const payload = (await response.json()) as {
-    data: {
-      access_token: string;
-      refresh_token: string;
-      access_token_expires_at: string;
-      refresh_token_expires_at: string;
-    };
+    data:
+      | {
+          access_token: string;
+          refresh_token: string;
+          access_token_expires_at: string;
+          refresh_token_expires_at: string;
+        }
+      | {
+          verification_required: true;
+          email: string;
+        };
   };
+
+  if ("verification_required" in payload.data) {
+    const signInUrl = new URL("/sign-in", request.url);
+    signInUrl.searchParams.set("verify_email", "sent");
+    signInUrl.searchParams.set("email", payload.data.email);
+    return redirectAfterPost(signInUrl);
+  }
+
   const nextResponse = redirectAfterPost(new URL(redirectTo, request.url));
   clearAdminStepUpCookies(nextResponse);
   setAuthCookies(nextResponse, payload.data);

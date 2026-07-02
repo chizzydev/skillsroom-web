@@ -16,6 +16,9 @@ function withError(path: string, message: string) {
 }
 
 function actionErrorMessage(error: unknown) {
+  if (error instanceof ApiRequestError && error.code === "STEP_UP_PASSWORD_NOT_CONFIGURED") {
+    return "This admin account does not have a Skillsroom password yet. Open Profile and send yourself a password setup link first.";
+  }
   if (error instanceof ApiRequestError) return error.message;
   if (error instanceof Error) return error.message;
   return "Sensitive actions could not be unlocked.";

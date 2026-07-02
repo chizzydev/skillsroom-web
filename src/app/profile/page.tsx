@@ -79,6 +79,7 @@ type ProfilePageProps = {
     clan_saved?: string;
     google_linked?: string;
     google_link_error?: string;
+    password_link?: string;
     payout_profile_saved?: string;
     profile_updated?: string;
   }>;
@@ -231,6 +232,11 @@ export default async function ProfilePage({ searchParams }: ProfilePageProps) {
         {params?.google_link_error ? (
           <div className="rounded-md border border-danger bg-red-50 p-4 text-sm font-bold text-danger">
             Could not link that Google account. It may already be linked to another Skillsroom account.
+          </div>
+        ) : null}
+        {params?.password_link ? (
+          <div className="rounded-md border border-success bg-successSoft p-4 text-sm font-bold text-success">
+            A password setup link has been sent if this account email can receive mail.
           </div>
         ) : null}
 
@@ -695,6 +701,27 @@ export default async function ProfilePage({ searchParams }: ProfilePageProps) {
             ) : (
               <GoogleAuthButton action="/api/auth/identity/link" label="Link Google account" redirectTo="/profile" />
             )}
+          </div>
+        </Panel>
+
+        <Panel>
+          <PanelHeader
+            description="Use this if you signed up with Google and want a normal Skillsroom password too, especially for sensitive admin actions."
+            eyebrow="Password Setup"
+            title="Add a Skillsroom password"
+          />
+          <div className="grid gap-4 p-4 md:grid-cols-[minmax(0,1fr)_minmax(0,360px)] md:items-center">
+            <div className="rounded-md border border-line bg-white p-4">
+              <p className="text-sm font-black text-ink">Get a secure email link</p>
+              <p className="mt-2 break-words text-sm leading-6 text-muted">
+                We will send a secure link to {user.email ?? "your email"} so you can create or change the password tied to this account.
+              </p>
+            </div>
+            <form action="/api/auth/password-reset/request" className="grid gap-3" method="post">
+              <input name="email" type="hidden" value={user.email ?? ""} />
+              <input name="redirect" type="hidden" value="/profile" />
+              <SubmitButton fullWidth idleLabel="Email me the password link" pendingLabel="Sending password link..." variant="secondary" />
+            </form>
           </div>
         </Panel>
 

@@ -15,7 +15,14 @@ const premiumArtwork = {
 } as const;
 
 type SignInPageProps = {
-  searchParams?: Promise<{ redirect?: string; error?: string; ref?: string }>;
+  searchParams?: Promise<{
+    redirect?: string;
+    error?: string;
+    ref?: string;
+    verify_email?: string;
+    email?: string;
+    password_reset?: string;
+  }>;
 };
 
 function signInErrorMessage(error?: string) {
@@ -32,6 +39,8 @@ function signInErrorMessage(error?: string) {
       return "Google sign-in could not reach the API. Check NEXT_PUBLIC_API_BASE_URL on Vercel and confirm Railway is online.";
     case "google_failed":
       return "Google sign-in failed. If your client ID is correct, check that this exact origin is allowed in Google Authorized JavaScript origins.";
+    case "EMAIL_NOT_VERIFIED":
+      return "Check your email first and confirm this account before signing in.";
     default:
       return "Sign in failed. Check your email, username, or password.";
   }
@@ -79,6 +88,18 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
           <p className="mt-2 text-sm leading-6 text-muted">
             Sign in to open your rooms, messages, tournament entries, and account settings.
           </p>
+          {params?.verify_email ? (
+            <div className="mt-4 rounded-md border border-success bg-successSoft p-3 text-sm font-bold text-success">
+              {params.verify_email === "resent"
+                ? "If this account still needs verification, a fresh email has been sent."
+                : "Check your email and confirm your account before signing in."}
+            </div>
+          ) : null}
+          {params?.password_reset ? (
+            <div className="mt-4 rounded-md border border-success bg-successSoft p-3 text-sm font-bold text-success">
+              Your new password is ready. Sign in with it now.
+            </div>
+          ) : null}
           {params?.error ? (
             <p className="mt-4 rounded-md border border-red-200 bg-red-50 p-3 text-sm font-bold text-red-700">
               {signInErrorMessage(params.error)}
@@ -113,6 +134,25 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
             <PasswordField autoComplete="current-password" enterKeyHint="go" label="Password" name="password" />
             <SubmitButton fullWidth idleLabel="Sign in" pendingLabel="Signing in..." />
           </form>
+          {params?.error === "EMAIL_NOT_VERIFIED" || params?.verify_email ? (
+            <form action="/api/auth/email-verification/request" className="mt-4 grid gap-3 rounded-2xl border border-line bg-surfaceWarm p-4" method="post">
+              <input name="redirect" type="hidden" value={`/sign-in${redirectTo ? `?redirect=${encodeURIComponent(redirectTo)}` : ""}`} />
+              <label className="grid gap-2 text-sm font-bold text-ink">
+                Need us to send the verification email again?
+                <input
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  className={authFieldClassName}
+                  defaultValue={params?.email ?? ""}
+                  name="email"
+                  required
+                  spellCheck={false}
+                  type="email"
+                />
+              </label>
+              <SubmitButton fullWidth idleLabel="Send verification email again" pendingLabel="Sending verification email..." variant="secondary" />
+            </form>
+          ) : null}
           <div className="mt-5 grid gap-3 sm:grid-cols-2">
             <div className="rounded-2xl border border-line bg-surfaceWarm p-4">
               <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Pick up where you stopped</p>
@@ -132,6 +172,13 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
               Need a closer look first?{" "}
               <PendingLink className="text-ink underline decoration-action decoration-2 underline-offset-4" href="/policies" pendingLabel="Opening policies...">
                 Read the public rules and policies
+              </PendingLink>
+              .
+            </p>
+            <p>
+              Forgot your password, or need to create one for a Google-based account?{" "}
+              <PendingLink className="text-ink underline decoration-action decoration-2 underline-offset-4" href="/forgot-password" pendingLabel="Opening password help...">
+                Send yourself a password link
               </PendingLink>
               .
             </p>
