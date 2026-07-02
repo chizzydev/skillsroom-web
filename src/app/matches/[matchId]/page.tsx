@@ -381,7 +381,7 @@ export default async function MatchDetailPage({
       ? (["Check in for this match", "Confirm you are present before playing or submitting result evidence."] as const)
       : [baseNextTitle, baseNextDetail];
   const canOpen = room.status === "draft" && room.created_by_user_id === user.id;
-  const roomAllowsFundingSubmission = ["awaiting_funding", "funding_review", "open"].includes(room.status);
+  const roomAllowsFundingSubmission = ["awaiting_funding", "funding_review"].includes(room.status);
   const currentFundingStatus = currentParticipant?.funding_status ?? null;
   const canSubmitFunding =
     roomAllowsFundingSubmission &&
@@ -965,6 +965,9 @@ export default async function MatchDetailPage({
               ) : null}
               {!canSubmitFunding && currentFundingStatus === "submitted" ? (
                 <p className="text-xs font-bold leading-5 text-muted">A submission already exists for your slot, so this form stays locked until admin reviews it.</p>
+              ) : null}
+              {!canSubmitFunding && room.status === "open" && currentParticipant ? (
+                <p className="text-xs font-bold leading-5 text-muted">Share the room code first. Payment proof opens as soon as the second player joins.</p>
               ) : null}
               {!canSubmitFunding && !currentParticipant ? (
                 <p className="text-xs font-bold leading-5 text-muted">Only joined room participants can submit funding for this room.</p>

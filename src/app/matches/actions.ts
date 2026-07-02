@@ -54,6 +54,7 @@ export async function createMatchRoomAction(formData: FormData) {
     });
 
     roomId = result.room.id;
+    await openMatchRoom(roomId);
   } catch (error) {
     redirect(withError("/matches/new", error));
   }

@@ -8,7 +8,7 @@ import { PendingLink } from "@/components/ui/PendingLink";
 import { Panel, PanelHeader } from "@/components/ui/Panel";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 
-export type RoomActivityStatus = "open" | "awaiting_funding" | "funding_review";
+export type RoomActivityStatus = "draft" | "open" | "awaiting_funding" | "funding_review";
 
 type RoomActivityRow = {
   id: string;
@@ -21,21 +21,24 @@ type RoomActivityRow = {
   max_participants: number;
 };
 
-const queueStatuses: RoomActivityStatus[] = ["open", "awaiting_funding", "funding_review"];
+const defaultQueueStatuses: RoomActivityStatus[] = ["open", "awaiting_funding", "funding_review"];
 const queueSwitchDelayMs = 140;
 
 function queueLabel(status: RoomActivityStatus) {
+  if (status === "draft") return "Drafts";
   if (status === "open") return "Open";
   if (status === "awaiting_funding") return "Awaiting Funding";
   return "Funding Review";
 }
 
 function statusTone(status: RoomActivityStatus) {
+  if (status === "draft") return "neutral" as const;
   if (status === "open") return "cyan" as const;
   return "warning" as const;
 }
 
-function queuePanelTone(status: RoomActivityStatus) {
+function queuePanelTone(status: RoomActivityStatus): "neutral" | "cyan" | "warning" {
+  if (status === "draft") return "neutral";
   return status === "open" ? "cyan" : "warning";
 }
 
@@ -77,10 +80,20 @@ export function RoomActivityPanelClient({ rooms, initialQueue }: RoomActivityPan
   const [selectedQueue, setSelectedQueue] = useState<RoomActivityStatus>(initialQueue);
   const [switchingTo, setSwitchingTo] = useState<RoomActivityStatus | null>(null);
   const switchTimerRef = useRef<number | null>(null);
+  const queueStatuses = useMemo<RoomActivityStatus[]>(
+    () => rooms.some((room) => room.status === "draft") ? ["draft", ...defaultQueueStatuses] : defaultQueueStatuses,
+    [rooms]
+  );
 
   useEffect(() => {
     setSelectedQueue(initialQueue);
   }, [initialQueue]);
+
+  useEffect(() => {
+    if (!queueStatuses.includes(selectedQueue)) {
+      setSelectedQueue("open");
+    }
+  }, [queueStatuses, selectedQueue]);
 
   useEffect(() => {
     return () => {

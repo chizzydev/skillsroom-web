@@ -11,8 +11,8 @@ import { listGameCatalog, type Game, type MatchRuleset } from "@/lib/match-room-
 import { createMatchRoomAction } from "../actions";
 
 const steps = [
-  { label: "Draft", detail: "Room is created privately with the selected game and ruleset.", status: "current" as const },
-  { label: "Open", detail: "Share code or publish to lobby after confirming details.", status: "pending" as const },
+  { label: "Create", detail: "Room is created with the selected game, ruleset, and entry amount.", status: "current" as const },
+  { label: "Share code", detail: "Send the room code to the second player so they can join.", status: "pending" as const },
   { label: "Opponent joins", detail: "Room moves to awaiting funding when player B joins.", status: "pending" as const },
   { label: "Funding review", detail: "Both entries must be checked before play starts.", status: "pending" as const }
 ];
@@ -42,9 +42,9 @@ export default async function NewMatchPage({ searchParams }: { searchParams: Pro
       <section className="grid gap-6">
         <section className="rounded-lg border border-line bg-white p-5 shadow-panel md:p-7">
           <Badge tone="cyan">Create Room</Badge>
-          <h1 className="mt-3 text-3xl font-black text-ink md:text-5xl">Set up a verified match room.</h1>
+          <h1 className="mt-3 text-3xl font-black text-ink md:text-5xl">Create a match room.</h1>
           <p className="mt-3 max-w-3xl text-sm leading-6 text-muted md:text-base">
-            Skillsroom rooms are game-aware from the first step: choose the title, lock the ruleset, set the entry, and keep every state change auditable.
+            Choose the game, ruleset, and entry amount. Skillsroom will create a joinable room code for the second player.
           </p>
         </section>
 
@@ -87,7 +87,7 @@ export default async function NewMatchPage({ searchParams }: { searchParams: Pro
                 <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="title" placeholder="Room title" />
               </label>
               <div className="flex flex-wrap gap-2 md:col-span-2">
-                <SubmitButton idleLabel="Create draft" pendingLabel="Creating draft..." />
+                <SubmitButton idleLabel="Create room" pendingLabel="Creating room..." />
               </div>
             </form>
             ) : (

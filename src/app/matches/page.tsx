@@ -10,7 +10,7 @@ import { formatEntryAmount, listMatchRooms, matchStatusLabel, type MatchRoom, ty
 import { joinMatchRoomAction } from "./actions";
 import { RoomActivityPanelClient, type RoomActivityStatus } from "./RoomActivityPanelClient";
 
-const roomActivityStatuses: RoomActivityStatus[] = ["open", "awaiting_funding", "funding_review"];
+const roomActivityStatuses: RoomActivityStatus[] = ["draft", "open", "awaiting_funding", "funding_review"];
 
 function parseRoomQueue(value: string | undefined): RoomActivityStatus {
   if (value && roomActivityStatuses.includes(value as RoomActivityStatus)) {
@@ -48,7 +48,7 @@ export default async function MatchesPage({ searchParams }: { searchParams: Prom
       id: room.id,
       room_code: room.room_code,
       title: room.title,
-      status: room.status as "open" | "awaiting_funding" | "funding_review",
+      status: room.status as RoomActivityStatus,
       status_label: matchStatusLabel(room.status),
       entry_label: formatEntryAmount(room),
       participant_count: room.participant_count ?? 0,
@@ -86,7 +86,7 @@ export default async function MatchesPage({ searchParams }: { searchParams: Prom
         <div className="grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <StatusPanel detail="Visible to lobby" label="Open" tone="cyan" value={countStatus(rooms, "open")} />
           <StatusPanel detail="Manual transfer next" label="Awaiting Funding" tone="warning" value={countStatus(rooms, "awaiting_funding")} />
-          <StatusPanel detail="Evidence check" label="Under Review" tone="danger" value={countStatus(rooms, "under_review")} />
+          <StatusPanel detail="Payment proof check" label="Funding Review" tone="danger" value={countStatus(rooms, "funding_review")} />
           <StatusPanel detail="Visible rooms" label="Tracked" tone="success" value={rooms.length.toString()} />
         </div>
 
