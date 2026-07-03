@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth-bridge";
 import { storeEvidenceFile } from "@/lib/evidence-storage";
+import { manualCollectionAccount } from "@/lib/manual-payment";
 import {
   archiveCommunityLivestream,
   createMatchRoom,
@@ -150,6 +151,9 @@ export async function submitManualFundingAction(formData: FormData) {
 
     await submitManualFunding(matchRoomId, {
       amount_minor: Math.round(amountNaira * 100),
+      collection_bank_name: manualCollectionAccount.bankName,
+      collection_account_number: manualCollectionAccount.accountNumber,
+      collection_account_name: manualCollectionAccount.accountName,
       transfer_reference: optionalString(formData, "transfer_reference"),
       sender_account_name: String(formData.get("sender_account_name") || "").trim(),
       sender_bank_name: String(formData.get("sender_bank_name") || "").trim(),

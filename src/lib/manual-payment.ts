@@ -1,7 +1,7 @@
 export const manualCollectionAccount = {
   bankName: "Opay",
-  accountNumber: "8149055775",
-  accountName: "Damilola Emmanuel Fagbemi"
+  accountNumber: "8134979631",
+  accountName: "Chizaram Anthony Chukwuka"
 } as const;
 
 export const manualCollectionPolicy = {

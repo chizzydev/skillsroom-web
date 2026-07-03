@@ -1891,6 +1891,9 @@ export function submitTournamentContribution(
   input: {
     source: TournamentPrizeContribution["source"];
     amount_minor: number;
+    collection_bank_name?: string;
+    collection_account_number?: string;
+    collection_account_name?: string;
     external_reference?: string;
     proof_url?: string;
     payout_recipient_name?: string;
@@ -2321,6 +2324,9 @@ export function submitManualFunding(
   matchRoomId: string,
   input: {
     amount_minor: number;
+    collection_bank_name: string;
+    collection_account_number: string;
+    collection_account_name: string;
     transfer_reference?: string;
     sender_account_name: string;
     sender_bank_name: string;

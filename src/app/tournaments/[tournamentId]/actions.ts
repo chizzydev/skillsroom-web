@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth-bridge";
 import { storeEvidenceFile } from "@/lib/evidence-storage";
+import { manualCollectionAccount } from "@/lib/manual-payment";
 import {
   archiveCommunityLivestream,
   ApiRequestError,
@@ -75,6 +76,9 @@ export async function submitTournamentContributionAction(formData: FormData) {
     await submitTournamentContribution(tournamentId, {
       source: String(formData.get("source") || "participant_entries") as never,
       amount_minor: Math.round(amountNaira * 100),
+      collection_bank_name: manualCollectionAccount.bankName,
+      collection_account_number: manualCollectionAccount.accountNumber,
+      collection_account_name: manualCollectionAccount.accountName,
       external_reference: optionalString(formData, "external_reference"),
       proof_url: storedProof?.url ?? optionalString(formData, "proof_url"),
       payout_recipient_name: optionalString(formData, "payout_recipient_name"),
