@@ -10,7 +10,7 @@ import { PendingLink } from "@/components/ui/PendingLink";
 import { Panel, PanelHeader } from "@/components/ui/Panel";
 import { StatusPanel } from "@/components/ui/StatusPanel";
 import { TransientStatusBanner } from "@/components/ui/TransientStatusBanner";
-import { canAccessAdmin, getCurrentUser } from "@/lib/auth-bridge";
+import { canAccessAdmin, canUseAdminSection, getCurrentUser } from "@/lib/auth-bridge";
 import {
   getMatchRoomTimeline,
   getPlayerTrustSummary,
@@ -149,6 +149,7 @@ const queueStatuses: Array<{
 export default async function AdminResultsPage({ searchParams }: { searchParams: Promise<{ error?: string; success?: string }> }) {
   const user = await getCurrentUser();
   if (!canAccessAdmin(user)) redirect("/sign-in?redirect=/admin/results");
+  if (!canUseAdminSection(user, "results")) redirect("/admin");
   const { error, success } = await searchParams;
 
   let claims: MatchResultClaim[] = [];

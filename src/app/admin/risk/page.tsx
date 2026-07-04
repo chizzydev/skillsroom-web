@@ -9,7 +9,7 @@ import { DataTable } from "@/components/ui/DataTable";
 import { FormActionButton } from "@/components/ui/FormActionButton";
 import { Panel, PanelHeader } from "@/components/ui/Panel";
 import { StatusPanel } from "@/components/ui/StatusPanel";
-import { canAccessAdmin, getCurrentUser } from "@/lib/auth-bridge";
+import { canAccessAdmin, canUseAdminSection, getCurrentUser } from "@/lib/auth-bridge";
 import { listEvidenceRetentionReport } from "@/lib/evidence-storage";
 import {
   getRiskDashboard,
@@ -140,6 +140,7 @@ function reviewTone(verdict: EvidenceReviewRow["verdict"]) {
 export default async function AdminRiskPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
   const user = await getCurrentUser();
   if (!canAccessAdmin(user)) redirect("/sign-in?redirect=/admin/risk");
+  if (!canUseAdminSection(user, "risk")) redirect("/admin");
   const { error } = await searchParams;
 
   let flags: UserRiskFlag[] = [];

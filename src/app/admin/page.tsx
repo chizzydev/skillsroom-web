@@ -10,7 +10,7 @@ import { FormActionButton } from "@/components/ui/FormActionButton";
 import { PendingLink } from "@/components/ui/PendingLink";
 import { Panel, PanelHeader } from "@/components/ui/Panel";
 import { TransientStatusBanner } from "@/components/ui/TransientStatusBanner";
-import { canAccessAdmin, getCurrentUser } from "@/lib/auth-bridge";
+import { canAccessAdmin, canUseAdminSection, getCurrentUser } from "@/lib/auth-bridge";
 import {
   formatEntryAmount,
   listManageableAnnouncements,
@@ -161,30 +161,69 @@ export default async function AdminPage({
   let flags: UserRiskFlag[] = [];
   let holds: RoomModerationHold[] = [];
   let announcements: CommunityAnnouncement[] = [];
-  let loadError: string | null = null;
+  const loadErrors: string[] = [];
+  const canSeeFunding = canUseAdminSection(user, "funding");
+  const canSeeResults = canUseAdminSection(user, "results");
+  const canSeeSettlements = canUseAdminSection(user, "settlements");
+  const canSeeRisk = canUseAdminSection(user, "risk");
+  const canManageCommunity = user?.role === "owner" || user?.role === "admin";
+  const roleBoundaryCards = [
+    user?.role === "owner" ? ["Owner", "Full", "Full platform control, team roles, money, risk, and public operations."] : null,
+    user?.role === "admin" || user?.role === "owner" ? ["Admin", "Money", "Funding, wallet top-ups, payouts, refunds, tournaments, and result support."] : null,
+    user?.role === "moderator" || user?.role === "owner" ? ["Moderator", "Trust", "Result evidence, disputes, room holds, player trust, and tournament moderation."] : null,
+    user?.role === "support" || user?.role === "owner" ? ["Support", "Assist", "Player context, support notes, and safe risk visibility."] : null
+  ].filter((item): item is [string, string, string] => Boolean(item));
 
-  try {
-      const settlementResult = await listSettlements("payout_pending");
-      const [fundingResult, resultClaims, payoutResult, refundResult, flagResult, holdResult, announcementResult] =
-        await Promise.all([
-          listFundingSubmissions("submitted"),
-          listResultClaims("submitted"),
-          listPayouts("queued"),
-          listRefunds("queued"),
-          listRiskFlags("open"),
-          listRoomHolds("active"),
-          listManageableAnnouncements({ scope: "platform", limit: 8 })
-        ]);
-    funding = fundingResult.submissions;
-    results = resultClaims.claims;
-    settlements = settlementResult.settlements;
-    payouts = payoutResult.payouts;
-    refunds = refundResult.refunds;
-    flags = flagResult.flags;
-    holds = holdResult.holds;
-    announcements = announcementResult.announcements;
-  } catch {
-    loadError = "Unable to load the operations queue.";
+  if (canSeeFunding) {
+    try {
+      const fundingResult = await listFundingSubmissions("submitted");
+      funding = fundingResult.submissions;
+    } catch {
+      loadErrors.push("Funding queue could not be loaded.");
+    }
+  }
+
+  if (canSeeResults) {
+    try {
+      const resultClaims = await listResultClaims("submitted");
+      results = resultClaims.claims;
+    } catch {
+      loadErrors.push("Result review queue could not be loaded.");
+    }
+  }
+
+  if (canSeeSettlements) {
+    try {
+      const [settlementResult, payoutResult, refundResult] = await Promise.all([
+        listSettlements("payout_pending"),
+        listPayouts("queued"),
+        listRefunds("queued")
+      ]);
+      settlements = settlementResult.settlements;
+      payouts = payoutResult.payouts;
+      refunds = refundResult.refunds;
+    } catch {
+      loadErrors.push("Money operations queue could not be loaded.");
+    }
+  }
+
+  if (canSeeRisk) {
+    try {
+      const [flagResult, holdResult] = await Promise.all([listRiskFlags("open"), listRoomHolds("active")]);
+      flags = flagResult.flags;
+      holds = holdResult.holds;
+    } catch {
+      loadErrors.push("Risk and support queue could not be loaded.");
+    }
+  }
+
+  if (canManageCommunity) {
+    try {
+      const announcementResult = await listManageableAnnouncements({ scope: "platform", limit: 8 });
+      announcements = announcementResult.announcements;
+    } catch {
+      loadErrors.push("Community publishing tools could not be loaded.");
+    }
   }
 
   const workItems = [
@@ -222,17 +261,18 @@ export default async function AdminPage({
         {announcementPublished ? <TransientStatusBanner clearKeys={["announcement_published"]} durationMs={12000} message="Announcement published." tone="success" /> : null}
         {announcementArchived ? <TransientStatusBanner clearKeys={["announcement_archived"]} durationMs={12000} message="Announcement archived." tone="success" /> : null}
         {channelSaved ? <TransientStatusBanner clearKeys={["channel_saved"]} durationMs={12000} message="Community channel saved." tone="success" /> : null}
-        {loadError ? (
-          <div className="rounded-md border border-danger bg-red-50 p-4 text-sm font-bold text-danger">{loadError}</div>
+        {loadErrors.length ? (
+          <div className="rounded-md border border-danger bg-red-50 p-4 text-sm font-bold text-danger">{loadErrors.join(" ")}</div>
         ) : null}
 
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <AdminQueueCard detail="Manual transfers waiting for approval." href="/admin/funding" label="Funding" tone="warning" value={funding.length.toString()} />
-          <AdminQueueCard detail="Score claims and evidence needing operator review." href="/admin/results" label="Results" tone="cyan" value={results.length.toString()} />
-          <AdminQueueCard detail="Winner payouts and player refunds waiting on bank action." href="/admin/settlements" label="Money Ops" tone="success" value={(payouts.length + refunds.length).toString()} />
-          <AdminQueueCard detail="Open player flags and active room holds." href="/admin/risk" label="Risk" tone="danger" value={(flags.length + holds.length).toString()} />
+          {canSeeFunding ? <AdminQueueCard detail="Manual transfers waiting for approval." href="/admin/funding" label="Funding" tone="warning" value={funding.length.toString()} /> : null}
+          {canSeeResults ? <AdminQueueCard detail="Score claims and evidence needing operator review." href="/admin/results" label="Results" tone="cyan" value={results.length.toString()} /> : null}
+          {canSeeSettlements ? <AdminQueueCard detail="Winner payouts and player refunds waiting on bank action." href="/admin/settlements" label="Money Ops" tone="success" value={(payouts.length + refunds.length).toString()} /> : null}
+          {canSeeRisk ? <AdminQueueCard detail="Open player flags and active room holds." href="/admin/risk" label="Risk" tone="danger" value={(flags.length + holds.length).toString()} /> : null}
         </div>
 
+        {canManageCommunity ? (
         <Panel>
           <PanelHeader
             description="Post public platform notices for maintenance windows, community updates, winner stories, or policy changes."
@@ -325,7 +365,9 @@ export default async function AdminPage({
             </div>
           </div>
         </Panel>
+        ) : null}
 
+        {canManageCommunity ? (
         <Panel>
           <PanelHeader
             description="Create broad community channels, or ensure game, tournament, and room-linked channels for the signed-in channel list."
@@ -353,6 +395,7 @@ export default async function AdminPage({
             <input className="min-h-11 rounded-md border border-line bg-white px-3 font-mono text-sm outline-none focus:border-action" name="match_room_id" placeholder="room id" />
           </form>
         </Panel>
+        ) : null}
 
         <Panel>
           <PanelHeader
@@ -401,17 +444,12 @@ export default async function AdminPage({
 
         <Panel>
           <PanelHeader
-            description="Use scoped team roles for real operations: owner keeps full control, admins handle money movement, moderators handle evidence, and support handles notes."
+            description="Each operator sees the lanes they are meant to work on. Owner-only and money lanes stay hidden from support and moderator accounts."
             eyebrow="Access"
-            title="Owner-controlled operations"
+            title="Role boundaries"
           />
           <div className="grid min-w-0 gap-3 p-4 sm:grid-cols-2 lg:grid-cols-4">
-            {[
-              ["Owner", "100%", "Full platform control"],
-              ["Admin", "Money", "Funding, payouts, and refunds"],
-              ["Moderator", "Results", "Evidence, disputes, and holds"],
-              ["Support", "Assist", "Player context and notes"]
-            ].map(([role, scope, detail]) => (
+            {roleBoundaryCards.map(([role, scope, detail]) => (
               <div className="rounded-md border border-line bg-white p-4" key={role}>
                 <span className="font-mono text-xs font-bold uppercase tracking-[0.12em] text-dim">{role}</span>
                 <strong className="mt-2 block text-xl font-black text-ink">{scope}</strong>

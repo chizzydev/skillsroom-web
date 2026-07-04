@@ -3,7 +3,7 @@ import { AccountMenu } from "./AccountMenu";
 import { canAccessAdmin, getCurrentUser } from "@/lib/auth-bridge";
 
 type AppShellProps = {
-  active: "home" | "lobby" | "matches" | "tournaments" | "community" | "notifications" | "profile";
+  active: "home" | "lobby" | "matches" | "tournaments" | "community" | "notifications" | "wallet" | "profile";
   children: React.ReactNode;
 };
 
@@ -12,8 +12,11 @@ const nav = [
   { key: "matches", label: "Rooms", short: "Rooms", href: "/matches" },
   { key: "tournaments", label: "Tournaments", short: "Tourneys", href: "/tournaments" },
   { key: "notifications", label: "Notifications", short: "Inbox", href: "/notifications" },
+  { key: "wallet", label: "Wallet", short: "Wallet", href: "/wallet" },
   { key: "profile", label: "Profile", short: "Profile", href: "/profile" }
 ] as const;
+
+const mobileNav = nav.filter((item) => item.key !== "notifications");
 
 const footerLinks = [
   { label: "Policies", href: "/policies" },
@@ -88,7 +91,7 @@ export async function AppShell({ active, children }: AppShellProps) {
       </footer>
       <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-white/95 px-2 pb-[max(env(safe-area-inset-bottom),0.65rem)] pt-2 shadow-[0_-18px_40px_rgba(15,23,42,0.08)] backdrop-blur md:hidden">
         <div className="mx-auto grid max-w-md grid-cols-5 gap-1.5">
-          {nav.map((item) => (
+          {mobileNav.map((item) => (
             <Link
               className={[
                 "grid min-h-[3.15rem] min-w-0 place-items-center rounded-xl px-1 text-center text-[0.62rem] font-black leading-tight sm:text-[0.68rem]",

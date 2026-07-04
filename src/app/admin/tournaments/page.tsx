@@ -14,7 +14,7 @@ import { Panel, PanelHeader } from "@/components/ui/Panel";
 import { PendingLink } from "@/components/ui/PendingLink";
 import { StatusPanel } from "@/components/ui/StatusPanel";
 import { SubmitButton } from "@/components/ui/SubmitButton";
-import { canAccessAdmin, getCurrentUser } from "@/lib/auth-bridge";
+import { canAccessAdmin, canUseAdminSection, getCurrentUser } from "@/lib/auth-bridge";
 import {
   displayEnumLabel,
   formatMinorMoney,
@@ -207,6 +207,7 @@ export default async function AdminTournamentsPage({
 }) {
   const user = await getCurrentUser();
   if (!canAccessAdmin(user)) redirect("/sign-in?redirect=/admin/tournaments");
+  if (!canUseAdminSection(user, "tournaments")) redirect("/admin");
   const { error, created, seeded, structured, linked, scored, result_reviewed: resultReviewed, settlement_reserved: settlementReserved, refunds_reserved: refundsReserved, host_granted: hostGranted, event_updated: eventUpdated } = await searchParams;
 
   let games: Game[] = [];

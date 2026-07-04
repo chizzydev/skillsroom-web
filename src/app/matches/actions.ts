@@ -12,6 +12,7 @@ import {
   checkInTournamentMatchRoom,
   joinMatchRoom,
   openMatchRoom,
+  payRoomWithBalance,
   startMatchPlay,
   submitManualFunding,
   submitResultClaim,
@@ -127,6 +128,18 @@ export async function startMatchPlayAction(formData: FormData) {
   }
 
   redirect(`/matches/${matchRoomId}?play_started=1`);
+}
+
+export async function payRoomWithBalanceAction(formData: FormData) {
+  const matchRoomId = String(formData.get("match_room_id") || "");
+
+  try {
+    await payRoomWithBalance(matchRoomId);
+  } catch (error) {
+    redirect(withError(`/matches/${matchRoomId}`, error));
+  }
+
+  redirect(`/matches/${matchRoomId}?balance_funded=1`);
 }
 
 export async function submitManualFundingAction(formData: FormData) {
@@ -245,8 +258,9 @@ export async function createMatchLivestreamAction(formData: FormData) {
     await createCommunityLivestream({
       target_type: "match_room",
       match_room_id: matchRoomId,
-      provider: String(formData.get("provider") || "youtube") as never,
       visibility: String(formData.get("visibility") || "public") as never,
+      stream_role: String(formData.get("stream_role") || "official") as never,
+      playback_status: String(formData.get("playback_status") || "live") as never,
       title: String(formData.get("title") || "").trim(),
       stream_url: String(formData.get("stream_url") || "").trim(),
       display_order: Number(formData.get("display_order") || 0),

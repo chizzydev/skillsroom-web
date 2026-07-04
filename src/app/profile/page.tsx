@@ -19,12 +19,23 @@ import {
   getPlayerTrustSummary,
   getProfileMe,
   listGameCatalog,
+  listStreamingAccounts,
   type Game,
   type MatchPayout,
   type MatchRefund,
+  type StreamingConnectedAccount,
   type UserGameAccount
 } from "@/lib/match-room-api";
-import { updateProfileAction, upsertCommunityClanAction, upsertGameAccountAction, upsertPayoutProfileAction } from "./actions";
+import {
+  connectManualStreamingAccountAction,
+  disconnectStreamingAccountAction,
+  startStreamingOauthAction,
+  syncStreamingAccountAction,
+  updateProfileAction,
+  upsertCommunityClanAction,
+  upsertGameAccountAction,
+  upsertPayoutProfileAction
+} from "./actions";
 
 const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3100";
 
@@ -72,6 +83,17 @@ function roomLabel(row: MatchPayout | MatchRefund) {
   return row.room_title || row.room_code || "Match room";
 }
 
+function streamProviderLabel(provider: StreamingConnectedAccount["provider"]) {
+  return provider === "youtube" ? "YouTube" : "Twitch";
+}
+
+function streamStatusTone(status: StreamingConnectedAccount["live_status"]) {
+  if (status === "live") return "success" as const;
+  if (status === "offline" || status === "replay") return "neutral" as const;
+  if (status === "unavailable") return "danger" as const;
+  return "warning" as const;
+}
+
 type ProfilePageProps = {
   searchParams?: Promise<{
     error?: string;
@@ -82,6 +104,10 @@ type ProfilePageProps = {
     password_link?: string;
     payout_profile_saved?: string;
     profile_updated?: string;
+    streaming_connected?: string;
+    streaming_removed?: string;
+    streaming_saved?: string;
+    streaming_synced?: string;
   }>;
 };
 
@@ -95,16 +121,18 @@ export default async function ProfilePage({ searchParams }: ProfilePageProps) {
   let clanData: Awaited<ReturnType<typeof getMyCommunityClan>> | null = null;
   let referralData: Awaited<ReturnType<typeof getMyReferralProgram>> | null = null;
   let googleLinkStatus: Awaited<ReturnType<typeof getGoogleLinkStatus>> | null = null;
+  let streamingAccounts: StreamingConnectedAccount[] = [];
   let games: Game[] = [];
   let loadError: string | null = null;
 
   try {
-    const [profileResult, trustResult, clanResult, referralResult, googleResult, catalogResult] = await Promise.all([
+    const [profileResult, trustResult, clanResult, referralResult, googleResult, streamingResult, catalogResult] = await Promise.all([
       getProfileMe(),
       getPlayerTrustSummary(user.id),
       getMyCommunityClan(),
       getMyReferralProgram(),
       getGoogleLinkStatus(),
+      listStreamingAccounts(),
       listGameCatalog()
     ]);
     profileData = profileResult;
@@ -112,6 +140,7 @@ export default async function ProfilePage({ searchParams }: ProfilePageProps) {
     clanData = clanResult;
     referralData = referralResult;
     googleLinkStatus = googleResult;
+    streamingAccounts = streamingResult.accounts;
     games = catalogResult.games;
   } catch {
     loadError = "Unable to load your player profile.";
@@ -217,6 +246,15 @@ export default async function ProfilePage({ searchParams }: ProfilePageProps) {
         {params?.game_account_saved ? (
           <div className="rounded-md border border-success bg-successSoft p-4 text-sm font-bold text-success">
             Game account saved. Admins can now verify it during room review.
+          </div>
+        ) : null}
+        {params?.streaming_connected || params?.streaming_saved || params?.streaming_synced || params?.streaming_removed ? (
+          <div className="rounded-md border border-success bg-successSoft p-4 text-sm font-bold text-success">
+            {params?.streaming_removed
+              ? "Streaming account disconnected."
+              : params?.streaming_synced
+                ? "Streaming status refreshed."
+                : "Streaming account saved."}
           </div>
         ) : null}
         {params?.clan_saved ? (
@@ -723,6 +761,127 @@ export default async function ProfilePage({ searchParams }: ProfilePageProps) {
               <SubmitButton fullWidth idleLabel="Email me the password link" pendingLabel="Sending password link..." variant="secondary" />
             </form>
           </div>
+        </Panel>
+
+        <Panel>
+          <PanelHeader
+            description="Connect the channels you use for match streams. Skillsroom can show live status automatically when OAuth is configured, and manual channel links still work for MVP."
+            eyebrow="Streaming Accounts"
+            title="YouTube and Twitch"
+          />
+          <div className="grid gap-4 border-b border-line p-4 lg:grid-cols-[minmax(0,1fr)_320px]">
+            <div className="rounded-md border border-cyan bg-cyanSoft p-4 text-sm leading-6 text-muted">
+              <p className="font-black text-ink">What this unlocks</p>
+              <p className="mt-2">
+                Your match room can pull from saved stream channels instead of asking you to paste the same link every time.
+                Tournament hosts can also mark connected channels as official streamers for an event.
+              </p>
+            </div>
+            <div className="grid gap-3">
+              <form action={startStreamingOauthAction}>
+                <input name="provider" type="hidden" value="youtube" />
+                <SubmitButton fullWidth idleLabel="Connect YouTube" pendingLabel="Opening YouTube..." variant="secondary" />
+              </form>
+              <form action={startStreamingOauthAction}>
+                <input name="provider" type="hidden" value="twitch" />
+                <SubmitButton fullWidth idleLabel="Connect Twitch" pendingLabel="Opening Twitch..." variant="secondary" />
+              </form>
+            </div>
+          </div>
+
+          {streamingAccounts.length ? (
+            <DataTable
+              columns={[
+                {
+                  key: "provider",
+                  label: "Channel",
+                  render: (row) => (
+                    <div className="grid gap-1">
+                      <span className="text-sm font-black text-ink">{row.display_name}</span>
+                      <span className="text-xs font-bold text-muted">{streamProviderLabel(row.provider)}</span>
+                    </div>
+                  )
+                },
+                {
+                  key: "status",
+                  label: "Connection",
+                  render: (row) => (
+                    <Badge tone={row.status === "connected" ? "success" : row.status === "needs_reauth" ? "warning" : "neutral"}>
+                      {row.status === "needs_reauth" ? "Reconnect" : row.status === "manual" ? "Manual" : "Connected"}
+                    </Badge>
+                  )
+                },
+                {
+                  key: "live_status",
+                  label: "Live",
+                  render: (row) => (
+                    <div className="grid gap-1">
+                      <Badge tone={streamStatusTone(row.live_status)}>{row.live_status === "unknown" ? "Not checked" : row.live_status}</Badge>
+                      {row.last_live_checked_at ? (
+                        <span className="text-xs text-muted">{new Date(row.last_live_checked_at).toLocaleString("en-NG")}</span>
+                      ) : null}
+                    </div>
+                  )
+                },
+                {
+                  key: "actions",
+                  label: "Actions",
+                  render: (row) => (
+                    <div className="flex flex-wrap gap-2">
+                      <Link className="rounded-full border border-line px-3 py-2 text-xs font-black text-ink hover:border-action" href={row.live_stream_url || row.channel_url} target="_blank">
+                        Open
+                      </Link>
+                      <form action={syncStreamingAccountAction}>
+                        <input name="account_id" type="hidden" value={row.id} />
+                        <button className="rounded-full border border-line px-3 py-2 text-xs font-black text-ink hover:border-action" type="submit">
+                          Sync
+                        </button>
+                      </form>
+                      <form action={disconnectStreamingAccountAction}>
+                        <input name="account_id" type="hidden" value={row.id} />
+                        <button className="rounded-full border border-danger px-3 py-2 text-xs font-black text-danger hover:bg-red-50" type="submit">
+                          Remove
+                        </button>
+                      </form>
+                    </div>
+                  )
+                }
+              ]}
+              rows={streamingAccounts}
+            />
+          ) : (
+            <div className="p-4">
+              <EmptyState
+                title="Connect a channel before your next streamed match."
+                description="Start with YouTube or Twitch OAuth. If keys are not configured yet, save the public channel link manually below."
+              />
+            </div>
+          )}
+
+          <form action={connectManualStreamingAccountAction} className="grid gap-4 border-t border-line p-4 md:grid-cols-2" id="streaming-accounts">
+            <label className="grid gap-2 text-sm font-bold text-ink">
+              Provider
+              <select className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="provider">
+                <option value="youtube">YouTube</option>
+                <option value="twitch">Twitch</option>
+              </select>
+            </label>
+            <label className="grid gap-2 text-sm font-bold text-ink">
+              Display name
+              <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" maxLength={120} minLength={2} name="display_name" placeholder="Example: Chizzy Live" required />
+            </label>
+            <label className="grid gap-2 text-sm font-bold text-ink">
+              Channel link
+              <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" maxLength={500} name="channel_url" placeholder="https://www.youtube.com/@..." required type="url" />
+            </label>
+            <label className="grid gap-2 text-sm font-bold text-ink">
+              Channel handle
+              <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" maxLength={120} name="provider_login" placeholder="Optional, useful for Twitch embeds" />
+            </label>
+            <div className="md:col-span-2">
+              <SubmitButton idleLabel="Save manual stream channel" pendingLabel="Saving stream channel..." />
+            </div>
+          </form>
         </Panel>
 
         <Panel>

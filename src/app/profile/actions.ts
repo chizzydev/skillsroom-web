@@ -3,6 +3,10 @@
 import { redirect } from "next/navigation";
 import {
   ApiRequestError,
+  connectManualStreamingAccount,
+  disconnectStreamingAccount,
+  startStreamingOauth,
+  syncStreamingAccount,
   updatePlayerProfile,
   upsertCommunityClan,
   upsertGameAccount,
@@ -96,4 +100,51 @@ export async function upsertPayoutProfileAction(formData: FormData) {
   }
 
   redirect("/profile?payout_profile_saved=1#payout-profile");
+}
+
+export async function startStreamingOauthAction(formData: FormData) {
+  try {
+    const result = await startStreamingOauth({
+      provider: String(formData.get("provider") || "youtube") as "youtube" | "twitch",
+      redirect_path: "/profile"
+    });
+    redirect(result.authorization_url);
+  } catch (error) {
+    redirect(`/profile?error=${encodeURIComponent(actionErrorMessage(error))}#streaming-accounts`);
+  }
+}
+
+export async function connectManualStreamingAccountAction(formData: FormData) {
+  try {
+    await connectManualStreamingAccount({
+      provider: String(formData.get("provider") || "youtube") as "youtube" | "twitch",
+      channel_url: String(formData.get("channel_url") || "").trim(),
+      display_name: String(formData.get("display_name") || "").trim(),
+      provider_login: cleanOptional(formData.get("provider_login"))
+    });
+  } catch (error) {
+    redirect(`/profile?error=${encodeURIComponent(actionErrorMessage(error))}#streaming-accounts`);
+  }
+
+  redirect("/profile?streaming_saved=1#streaming-accounts");
+}
+
+export async function syncStreamingAccountAction(formData: FormData) {
+  try {
+    await syncStreamingAccount(String(formData.get("account_id") || ""));
+  } catch (error) {
+    redirect(`/profile?error=${encodeURIComponent(actionErrorMessage(error))}#streaming-accounts`);
+  }
+
+  redirect("/profile?streaming_synced=1#streaming-accounts");
+}
+
+export async function disconnectStreamingAccountAction(formData: FormData) {
+  try {
+    await disconnectStreamingAccount(String(formData.get("account_id") || ""));
+  } catch (error) {
+    redirect(`/profile?error=${encodeURIComponent(actionErrorMessage(error))}#streaming-accounts`);
+  }
+
+  redirect("/profile?streaming_removed=1#streaming-accounts");
 }

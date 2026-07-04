@@ -7,7 +7,7 @@ import { DataTable } from "@/components/ui/DataTable";
 import { FormActionButton } from "@/components/ui/FormActionButton";
 import { Panel, PanelHeader } from "@/components/ui/Panel";
 import { StatusPanel } from "@/components/ui/StatusPanel";
-import { canAccessAdmin, getCurrentUser } from "@/lib/auth-bridge";
+import { canAccessAdmin, canUseAdminSection, getCurrentUser } from "@/lib/auth-bridge";
 import { listAdminGameAccounts, listLeaderboard, type AdminGameAccount, type LeaderboardRow } from "@/lib/match-room-api";
 import { reviewGameAccountAction } from "./actions";
 
@@ -29,6 +29,8 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams?
   const params = await searchParams;
   const user = await getCurrentUser();
   if (!canAccessAdmin(user)) redirect("/sign-in?redirect=/admin/players");
+  if (!canUseAdminSection(user, "players")) redirect("/admin");
+  const canReviewGameAccounts = user?.role === "moderator" || user?.role === "admin" || user?.role === "owner";
 
   let leaderboard: LeaderboardRow[] = [];
   let gameAccounts: AdminGameAccount[] = [];
@@ -101,8 +103,9 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams?
                 { key: "status", label: "Status", render: (row) => <Badge tone={accountTone(row.status)}>{row.status}</Badge> },
                 {
                   key: "id",
-                  label: "Review",
+                  label: canReviewGameAccounts ? "Review" : "Access",
                   render: (row) => (
+                    canReviewGameAccounts ? (
                     <form action={reviewGameAccountAction} className="grid min-w-48 gap-2">
                       <input name="game_account_id" type="hidden" value={row.id} />
                       <input
@@ -115,6 +118,9 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams?
                         <FormActionButton className="text-xs" idleLabel="Reject" name="status" pendingLabel="Rejecting..." size="sm" value="rejected" variant="danger" />
                       </div>
                     </form>
+                    ) : (
+                      <span className="text-xs font-bold leading-5 text-muted">Support can view player context, but handle decisions are for moderators and above.</span>
+                    )
                   )
                 }
               ]}

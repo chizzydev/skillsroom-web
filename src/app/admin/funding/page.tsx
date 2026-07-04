@@ -9,7 +9,7 @@ import { FormActionButton } from "@/components/ui/FormActionButton";
 import { Panel, PanelHeader } from "@/components/ui/Panel";
 import { StatusPanel } from "@/components/ui/StatusPanel";
 import { TransientStatusBanner } from "@/components/ui/TransientStatusBanner";
-import { canAccessAdmin, getCurrentUser } from "@/lib/auth-bridge";
+import { canAccessAdmin, canUseAdminSection, getCurrentUser } from "@/lib/auth-bridge";
 import { formatEntryAmount, listFundingSubmissions, type ManualFundingSubmission } from "@/lib/match-room-api";
 import { reviewFundingSubmissionAction } from "./actions";
 
@@ -26,6 +26,7 @@ function amountLabel(row: ManualFundingSubmission) {
 export default async function AdminFundingPage({ searchParams }: { searchParams: Promise<{ error?: string; success?: string }> }) {
   const user = await getCurrentUser();
   if (!canAccessAdmin(user)) redirect("/sign-in?redirect=/admin/funding");
+  if (!canUseAdminSection(user, "funding")) redirect("/admin");
   const { error, success } = await searchParams;
 
   let submissions: ManualFundingSubmission[] = [];

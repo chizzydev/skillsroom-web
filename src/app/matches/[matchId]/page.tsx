@@ -12,6 +12,7 @@ import { TransientStatusBanner } from "@/components/ui/TransientStatusBanner";
 import { getCurrentUser } from "@/lib/auth-bridge";
 import {
   formatEntryAmount,
+  formatMinorMoney,
   getMatchWinnerPage,
   listAccessibleLivestreams,
   listManageableLivestreams,
@@ -20,6 +21,7 @@ import {
   getMatchRoomTimeline,
   getRoomFunding,
   getRoomResults,
+  getWalletOverview,
   matchStatusLabel,
   type CommunityLivestreamLink,
   type CommunityMatchWinnerPage,
@@ -42,6 +44,7 @@ import {
   createMatchLivestreamAction,
   createRoomInviteAction,
   openMatchRoomAction,
+  payRoomWithBalanceAction,
   respondToResultClaimAction,
   startMatchPlayAction,
   submitManualFundingAction,
@@ -92,29 +95,25 @@ function nextAction(room: MatchRoom, participantCount: number) {
 }
 
 function buildProcessTimeline(room: MatchRoom) {
-  const order: MatchRoomStatus[] = [
-    "open",
-    "awaiting_funding",
-    "funded",
-    "active",
-    "awaiting_results",
-    "under_review",
-    "settlement_pending",
-    "completed"
-  ];
-  const currentIndex = order.includes(room.status) ? order.indexOf(room.status) : room.status === "draft" ? -1 : order.length;
+  const openDone = !["draft", "cancelled"].includes(room.status);
+  const fundingDone = ["funded", "active", "awaiting_results", "under_review", "disputed", "settlement_pending", "completed", "refunded"].includes(room.status);
+  const fundingCurrent = ["awaiting_funding", "funding_review"].includes(room.status);
+  const playDone = ["awaiting_results", "under_review", "disputed", "settlement_pending", "completed", "refunded"].includes(room.status);
+  const playCurrent = ["funded", "active"].includes(room.status);
+  const evidenceDone = ["settlement_pending", "completed", "refunded"].includes(room.status);
+  const evidenceCurrent = ["awaiting_results", "under_review", "disputed"].includes(room.status);
   const settlementStatus =
     room.status === "completed" || room.status === "refunded" || room.status === "voided"
       ? ("done" as const)
-      : currentIndex >= 6
+      : room.status === "settlement_pending"
         ? ("current" as const)
         : ("pending" as const);
 
   return [
-    { label: "Open", detail: "Room is visible or shareable by code.", status: currentIndex >= 0 ? "done" as const : "current" as const },
-    { label: "Fund", detail: "Both players submit exact entry proof for review.", status: currentIndex > 1 ? "done" as const : currentIndex === 1 ? "current" as const : "pending" as const },
-    { label: "Play", detail: "Match starts only after funding is approved.", status: currentIndex > 3 ? "done" as const : currentIndex === 2 || currentIndex === 3 ? "current" as const : "pending" as const },
-    { label: "Evidence", detail: "Winner claim, opponent response, and proof stay attached.", status: currentIndex > 5 ? "done" as const : currentIndex === 4 || currentIndex === 5 ? "current" as const : "pending" as const },
+    { label: "Open", detail: "Room is visible or shareable by code.", status: openDone ? "done" as const : "current" as const },
+    { label: "Fund", detail: "Both player entries must be approved before play.", status: fundingDone ? "done" as const : fundingCurrent ? "current" as const : "pending" as const },
+    { label: "Play", detail: "Match starts only after funding is approved.", status: playDone ? "done" as const : playCurrent ? "current" as const : "pending" as const },
+    { label: "Evidence", detail: "Winner claim, opponent response, and proof stay attached.", status: evidenceDone ? "done" as const : evidenceCurrent ? "current" as const : "pending" as const },
     { label: "Settle", detail: "Approved result moves to payout or refund workflow.", status: settlementStatus }
   ];
 }
@@ -180,6 +179,121 @@ function selectFundingSubmission(submissions: ManualFundingSubmission[] | undefi
   return relevant.find((item) => item.status === "approved") ?? relevant[0] ?? null;
 }
 
+function fundingMethodSummary(funding: RoomFundingOverview | null, participant: MatchParticipant | undefined) {
+  if (!participant) {
+    return {
+      label: "Waiting",
+      detail: "This slot has not been joined yet.",
+      tone: "neutral" as const
+    };
+  }
+
+  const submission = selectFundingSubmission(funding?.submissions, participant.id);
+  const escrowEntry = funding?.ledger_entries.find(
+    (entry) =>
+      entry.participant_id === participant.id &&
+      entry.entry_type === "manual_funding_approved" &&
+      entry.direction === "credit" &&
+      entry.account_type === "match_escrow"
+  );
+
+  if (participant.funding_status === "approved" && escrowEntry?.source_type === "wallet_hold") {
+    return {
+      label: "Balance",
+      detail: "Entry fee is locked from Skillsroom Balance.",
+      tone: "success" as const
+    };
+  }
+
+  if (participant.funding_status === "approved" && (submission?.status === "approved" || escrowEntry)) {
+    return {
+      label: "Manual transfer",
+      detail: "Transfer proof is approved and funds are in match escrow.",
+      tone: "success" as const
+    };
+  }
+
+  if (submission?.status === "submitted" || participant.funding_status === "submitted") {
+    return {
+      label: "Manual review",
+      detail: "Transfer proof is waiting for operator approval.",
+      tone: "warning" as const
+    };
+  }
+
+  if (submission?.status === "rejected" || participant.funding_status === "rejected") {
+    return {
+      label: "Needs correction",
+      detail: "The last proof was rejected. Player should submit a corrected proof.",
+      tone: "danger" as const
+    };
+  }
+
+  if (participant.funding_status === "refunded") {
+    return {
+      label: "Refunded",
+      detail: "This entry has been returned through the refund flow.",
+      tone: "neutral" as const
+    };
+  }
+
+  return {
+    label: "Not funded",
+    detail: "Player still needs to use balance or submit transfer proof.",
+    tone: "neutral" as const
+  };
+}
+
+function resultCheckpointSummary(room: MatchRoom, latestClaim: MatchResultClaim | null) {
+  if (!latestClaim) {
+    return {
+      label: "No result yet",
+      detail: ["active", "awaiting_results", "under_review", "disputed"].includes(room.status)
+        ? "Players can submit winner evidence after play."
+        : "Result evidence opens after funding and live play.",
+      tone: "neutral" as const
+    };
+  }
+
+  return {
+    label: displayLabel(latestClaim.status),
+    detail: scoreSummaryLabel(latestClaim.score_summary),
+    tone: resultTone(latestClaim.status)
+  };
+}
+
+function payoutCheckpointSummary(room: MatchRoom, latestClaim: MatchResultClaim | null) {
+  if (room.status === "completed") {
+    return {
+      label: "Paid / completed",
+      detail: "Settlement is complete and retained in the audit trail.",
+      tone: "success" as const
+    };
+  }
+
+  if (room.status === "settlement_pending") {
+    return {
+      label: "Payout pending",
+      detail: "Winner is approved. Operator payout or wallet credit is the next step.",
+      tone: "warning" as const
+    };
+  }
+
+  if (latestClaim && ["admin_approved", "opponent_agreed"].includes(latestClaim.status)) {
+    return {
+      label: "Ready for settlement",
+      detail: "The result is accepted and can move to settlement.",
+      tone: "warning" as const
+    };
+  }
+
+  return {
+    label: "Not ready",
+    detail: "Payout stays locked until funding, play, and result review are complete.",
+    tone: "neutral" as const
+  };
+}
+
 function resultReadinessMessage(room: MatchRoom, canStartPlay: boolean) {
   if (room.status === "funded") {
     return canStartPlay
@@ -195,8 +309,46 @@ function resultReadinessMessage(room: MatchRoom, canStartPlay: boolean) {
   return "Result evidence becomes available once the room reaches live play.";
 }
 
-function hasEmbeddableLivestream(links: CommunityLivestreamLink[]) {
-  return links.some((item) => Boolean(item.embed_url));
+type LivestreamRole = "official" | "player_a" | "player_b";
+type LivestreamPlaybackStatus = "live" | "offline" | "replay" | "unavailable";
+
+function livestreamRole(item: CommunityLivestreamLink): LivestreamRole {
+  const value = item.metadata?.stream_role;
+  return value === "player_a" || value === "player_b" || value === "official" ? value : "official";
+}
+
+function livestreamPlaybackStatus(item: CommunityLivestreamLink): LivestreamPlaybackStatus {
+  const value = item.metadata?.playback_status;
+  if (value === "live" || value === "offline" || value === "replay" || value === "unavailable") return value;
+  return item.embed_url ? "live" : "unavailable";
+}
+
+function livestreamRoleLabel(role: LivestreamRole) {
+  if (role === "player_a") return "Player A";
+  if (role === "player_b") return "Player B";
+  return "Official room stream";
+}
+
+function livestreamStatusTone(status: LivestreamPlaybackStatus) {
+  if (status === "live") return "success" as const;
+  if (status === "replay") return "cyan" as const;
+  if (status === "unavailable") return "danger" as const;
+  return "neutral" as const;
+}
+
+function livestreamStatusLabel(status: LivestreamPlaybackStatus) {
+  if (status === "live") return "Live";
+  if (status === "offline") return "Offline";
+  if (status === "replay") return "Replay";
+  return "Link unavailable";
+}
+
+function livestreamWatchRank(item: CommunityLivestreamLink) {
+  const status = livestreamPlaybackStatus(item);
+  const role = livestreamRole(item);
+  const statusScore = status === "live" ? 0 : status === "replay" ? 1 : status === "offline" ? 2 : 3;
+  const roleScore = role === "official" ? 0 : role === "player_a" ? 1 : 2;
+  return statusScore * 10 + roleScore + (item.embed_url ? 0 : 5) - (item.is_featured ? 1 : 0);
 }
 
 function tournamentMatchContext(detail: TournamentDetail | null, tournamentMatchId: string | null) {
@@ -275,7 +427,7 @@ export default async function MatchDetailPage({
   searchParams
 }: {
   params: Promise<{ matchId: string }>;
-  searchParams: Promise<{ error?: string; invite_sent?: string; checked_in?: string; livestream_saved?: string; livestream_archived?: string; play_started?: string }>;
+  searchParams: Promise<{ error?: string; invite_sent?: string; checked_in?: string; livestream_saved?: string; livestream_archived?: string; play_started?: string; balance_funded?: string }>;
 }) {
   const user = await getCurrentUser();
   if (!user) redirect("/sign-in?redirect=/matches");
@@ -286,12 +438,14 @@ export default async function MatchDetailPage({
     checked_in: checkedInSuccess,
     livestream_saved: livestreamSaved,
     livestream_archived: livestreamArchived,
-    play_started: playStarted
+    play_started: playStarted,
+    balance_funded: balanceFunded
   } = await searchParams;
 
   let data: MatchTimeline | null = null;
   let funding: RoomFundingOverview | null = null;
   let results: RoomResultOverview | null = null;
+  let walletOverview: Awaited<ReturnType<typeof getWalletOverview>> | null = null;
   let tournamentDetail: TournamentDetail | null = null;
   let publicWinnerPage: CommunityMatchWinnerPage | null = null;
   let livestreams: CommunityLivestreamLink[] = [];
@@ -351,7 +505,7 @@ export default async function MatchDetailPage({
 
   if (canViewSensitiveInternals) {
     try {
-      [funding, results] = await Promise.all([getRoomFunding(matchId), getRoomResults(matchId)]);
+      [funding, results, walletOverview] = await Promise.all([getRoomFunding(matchId), getRoomResults(matchId), getWalletOverview()]);
     } catch {
       loadError = loadError ?? "Room summary loaded, but detailed funding or result records could not be loaded right now.";
     }
@@ -375,6 +529,10 @@ export default async function MatchDetailPage({
   );
   const trustByUserId = new Map<string, PlayerTrustSummary | null>(trustResults);
   const latestClaim = results?.claims[0] ?? null;
+  const fundedParticipants = participants.filter((participant) => participant.funding_status === "approved");
+  const fundsLockedMinor = fundedParticipants.length * room.entry_amount_minor;
+  const resultCheckpoint = resultCheckpointSummary(room, latestClaim);
+  const payoutCheckpoint = payoutCheckpointSummary(room, latestClaim);
   const [baseNextTitle, baseNextDetail] = nextAction(room, participants.length);
   const [nextTitle, nextDetail] =
     isTournamentRoom && !currentPlayerCheckedIn && currentParticipant
@@ -387,6 +545,8 @@ export default async function MatchDetailPage({
     roomAllowsFundingSubmission &&
     Boolean(currentParticipant) &&
     (currentFundingStatus === "pending" || currentFundingStatus === "rejected");
+  const availableBalanceMinor = walletOverview?.account.available_balance_minor ?? 0;
+  const canPayWithBalance = canSubmitFunding && availableBalanceMinor >= room.entry_amount_minor;
   const canStartPlay =
     room.status === "funded" &&
     participants.length === room.max_participants &&
@@ -421,6 +581,10 @@ export default async function MatchDetailPage({
       loadError = loadError ?? "Match room loaded, but livestream controls could not be loaded.";
     }
   }
+  const primaryLivestream = [...livestreams]
+    .filter((item) => Boolean(item.embed_url))
+    .sort((left, right) => livestreamWatchRank(left) - livestreamWatchRank(right))[0] ?? null;
+  const livestreamRoles: LivestreamRole[] = ["official", "player_a", "player_b"];
 
   return (
     <AppShell active="matches">
@@ -476,6 +640,7 @@ export default async function MatchDetailPage({
         {livestreamSaved ? <TransientStatusBanner clearKeys={["livestream_saved"]} durationMs={12000} message="Livestream link saved." tone="success" /> : null}
         {livestreamArchived ? <TransientStatusBanner clearKeys={["livestream_archived"]} durationMs={12000} message="Livestream archived." tone="success" /> : null}
         {playStarted ? <TransientStatusBanner clearKeys={["play_started"]} durationMs={10000} message="Match play started. Submit result evidence after the game is complete." tone="success" /> : null}
+        {balanceFunded ? <TransientStatusBanner clearKeys={["balance_funded"]} durationMs={10000} message="Entry paid from Skillsroom Balance. Your funds are locked for this room." tone="success" /> : null}
 
         <div className="grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <Panel className="p-4">
@@ -627,93 +792,127 @@ export default async function MatchDetailPage({
 
         <Panel>
           <PanelHeader
-            eyebrow="Broadcast"
-            title="Watch links"
-            description="Official livestream and watch-party links for this room."
+            eyebrow="Watch Live"
+            title="Match watch room"
+            description="Watch the official room feed or either player stream without leaving the match record."
           />
-          {livestreams.length ? (
-            <div className="grid gap-4 p-4">
-              {hasEmbeddableLivestream(livestreams) ? (
-                <div className="grid gap-4 xl:grid-cols-[minmax(0,1.3fr)_minmax(0,0.7fr)]">
-                  <div className="overflow-hidden rounded-md border border-line bg-black">
-                    <iframe
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                      allowFullScreen
-                      className="aspect-video w-full"
-                      referrerPolicy="strict-origin-when-cross-origin"
-                      src={livestreams.find((item) => item.embed_url)?.embed_url ?? undefined}
-                      title={livestreams.find((item) => item.embed_url)?.title ?? "Match livestream"}
-                    />
-                  </div>
-                  <div className="grid gap-3">
-                    {livestreams.map((item) => (
-                      <a
-                        className="rounded-md border border-line bg-white p-4 transition hover:border-action hover:bg-surfaceHigh"
-                        href={item.stream_url}
-                        key={item.id}
-                        rel="noreferrer"
-                        target="_blank"
-                      >
-                        <div className="flex flex-wrap items-center gap-2">
-                          <Badge tone={item.is_featured ? "success" : "cyan"}>{item.provider}</Badge>
-                          <Badge tone="neutral">{item.visibility}</Badge>
-                        </div>
-                        <h2 className="mt-3 text-base font-black text-ink">{item.title}</h2>
-                        <p className="mt-2 text-sm text-muted">
-                          {item.embed_url ? "Embedded watch available here." : "Opens on the provider because inline embed is not trusted for this source."}
-                        </p>
-                      </a>
-                    ))}
-                  </div>
-                </div>
-              ) : (
-                <div className="grid gap-3 md:grid-cols-2">
-                  {livestreams.map((item) => (
-                    <a
-                      className="rounded-md border border-line bg-white p-4 transition hover:border-action hover:bg-surfaceHigh"
-                      href={item.stream_url}
-                      key={item.id}
-                      rel="noreferrer"
-                      target="_blank"
-                    >
+          <div className="grid gap-4 p-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(18rem,0.65fr)]">
+            <div className="overflow-hidden rounded-xl border border-line bg-navy-950 text-white">
+              {primaryLivestream?.embed_url ? (
+                <>
+                  <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 bg-white/5 px-4 py-3">
+                    <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
-                        <Badge tone={item.is_featured ? "success" : "cyan"}>{item.provider}</Badge>
-                        <Badge tone="neutral">{item.visibility}</Badge>
+                        <Badge tone={livestreamStatusTone(livestreamPlaybackStatus(primaryLivestream))}>
+                          {livestreamStatusLabel(livestreamPlaybackStatus(primaryLivestream))}
+                        </Badge>
+                        <Badge tone="cyan">{livestreamRoleLabel(livestreamRole(primaryLivestream))}</Badge>
+                        <Badge tone="neutral">{primaryLivestream.provider}</Badge>
                       </div>
-                      <h2 className="mt-3 text-base font-black text-ink">{item.title}</h2>
-                      <p className="mt-2 text-sm text-muted">Open stream on {item.provider}.</p>
+                      <h2 className="mt-2 truncate text-lg font-black text-white">{primaryLivestream.title}</h2>
+                    </div>
+                    <a className="text-sm font-black text-cyan hover:text-action" href={primaryLivestream.stream_url} rel="noreferrer" target="_blank">
+                      Open source
                     </a>
-                  ))}
+                  </div>
+                  <iframe
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                    allowFullScreen
+                    className="aspect-video w-full"
+                    referrerPolicy="strict-origin-when-cross-origin"
+                    src={primaryLivestream.embed_url}
+                    title={primaryLivestream.title}
+                  />
+                </>
+              ) : (
+                <div className="grid min-h-[18rem] place-items-center p-6 text-center">
+                  <div className="max-w-md">
+                    <Badge tone="neutral">Stand by</Badge>
+                    <h2 className="mt-4 text-2xl font-black text-white">No in-room player yet</h2>
+                    <p className="mt-3 text-sm leading-6 text-slate-300">
+                      Add a YouTube, Twitch, or TikTok video link to bring the stream into this room. If a platform blocks embeds, players can still open the source link.
+                    </p>
+                  </div>
                 </div>
               )}
             </div>
-          ) : (
-            <div className="p-4">
-              <p className="text-sm font-bold text-muted">No livestream links yet for this room.</p>
+
+            <div className="grid gap-3">
+              <div className="grid gap-3">
+                {livestreamRoles.map((role) => {
+                  const roleStreams = livestreams.filter((item) => livestreamRole(item) === role);
+                  const bestStream = [...roleStreams].sort((left, right) => livestreamWatchRank(left) - livestreamWatchRank(right))[0] ?? null;
+                  const status = bestStream ? livestreamPlaybackStatus(bestStream) : "unavailable";
+                  return (
+                    <div className="rounded-lg border border-line bg-white p-4" key={role}>
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div>
+                          <p className="font-mono text-xs font-black uppercase tracking-[0.12em] text-cyan">{livestreamRoleLabel(role)}</p>
+                          <h3 className="mt-2 text-base font-black text-ink">{bestStream?.title ?? "No stream added"}</h3>
+                        </div>
+                        <Badge tone={livestreamStatusTone(status)}>{livestreamStatusLabel(status)}</Badge>
+                      </div>
+                      <p className="mt-2 text-sm leading-6 text-muted">
+                        {bestStream
+                          ? bestStream.embed_url
+                            ? "Available inside this watch room."
+                            : "Saved, but this provider may need to open outside Skillsroom."
+                          : role === "official"
+                            ? "Add the host or community stream here."
+                            : "Add this player’s own stream when available."}
+                      </p>
+                      {bestStream ? (
+                        <a className="mt-3 inline-flex text-sm font-black text-cyan hover:text-action" href={bestStream.stream_url} rel="noreferrer" target="_blank">
+                          Open {bestStream.provider}
+                        </a>
+                      ) : null}
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="rounded-lg border border-cyan bg-cyanSoft p-4">
+                <p className="font-mono text-xs font-black uppercase tracking-[0.12em] text-cyan">Match controls nearby</p>
+                <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-1">
+                  <a className="inline-flex min-h-10 items-center justify-center rounded-md border border-line bg-white px-3 text-sm font-black text-ink hover:bg-surfaceHigh" href="/chat">
+                    Open chat
+                  </a>
+                  {canViewSensitiveInternals ? (
+                    <a className="inline-flex min-h-10 items-center justify-center rounded-md border border-line bg-white px-3 text-sm font-black text-ink hover:bg-surfaceHigh" href="#result">
+                      Result and evidence
+                    </a>
+                  ) : null}
+                  {canViewSensitiveInternals && !isTournamentRoom ? (
+                    <a className="inline-flex min-h-10 items-center justify-center rounded-md border border-line bg-white px-3 text-sm font-black text-ink hover:bg-surfaceHigh" href="#funding">
+                      Funding status
+                    </a>
+                  ) : null}
+                  <a className="inline-flex min-h-10 items-center justify-center rounded-md border border-line bg-white px-3 text-sm font-black text-ink hover:bg-surfaceHigh" href="#room-flow">
+                    Room checkpoints
+                  </a>
+                </div>
+              </div>
             </div>
-          )}
+          </div>
         </Panel>
 
         {canManageLivestreams ? (
           <Panel>
             <PanelHeader
               eyebrow="Broadcast Controls"
-              title="Manage room livestreams"
-              description="Room creators, operators, and linked tournament hosts can attach official watch links."
+              title="Add livestream"
+              description="Paste a YouTube, Twitch, or TikTok link. Skillsroom detects the provider and embeds trusted streams inside the room when the platform allows it."
             />
             <div className="grid gap-5 p-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
               <form action={createMatchLivestreamAction} className="grid gap-3 rounded-md border border-line bg-white p-4">
                 <input name="match_room_id" type="hidden" value={room.id} />
-                <div className="grid gap-3 md:grid-cols-2">
+                <div className="grid gap-3 md:grid-cols-3">
                   <label className="grid gap-2 text-sm font-bold text-ink">
-                    Provider
-                    <select className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="provider">
-                      <option value="youtube">YouTube</option>
-                      <option value="twitch">Twitch</option>
-                      <option value="facebook">Facebook</option>
-                      <option value="tiktok">TikTok</option>
-                      <option value="kick">Kick</option>
-                      <option value="generic">Generic HTTPS</option>
+                    Stream slot
+                    <select className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="stream_role">
+                      <option value="official">Official room stream</option>
+                      <option value="player_a">Player A stream</option>
+                      <option value="player_b">Player B stream</option>
                     </select>
                   </label>
                   <label className="grid gap-2 text-sm font-bold text-ink">
@@ -723,15 +922,33 @@ export default async function MatchDetailPage({
                       <option value="participants">Participants</option>
                     </select>
                   </label>
+                  <label className="grid gap-2 text-sm font-bold text-ink">
+                    Status
+                    <select className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="playback_status">
+                      <option value="live">Live</option>
+                      <option value="offline">Offline</option>
+                      <option value="replay">Replay</option>
+                      <option value="unavailable">Link unavailable</option>
+                    </select>
+                  </label>
                 </div>
                 <label className="grid gap-2 text-sm font-bold text-ink">
                   Title
                   <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" maxLength={140} name="title" required />
                 </label>
                 <label className="grid gap-2 text-sm font-bold text-ink">
-                  Stream URL
-                  <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="stream_url" required type="url" />
+                  Stream link
+                  <input
+                    className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action"
+                    name="stream_url"
+                    placeholder="https://youtube.com/watch?v=... or https://twitch.tv/..."
+                    required
+                    type="url"
+                  />
                 </label>
+                <p className="text-xs font-bold leading-5 text-muted">
+                  YouTube and Twitch play inside the room. TikTok videos embed when possible; TikTok Live may open on TikTok if their player blocks inline viewing.
+                </p>
                 <div className="grid gap-3 md:grid-cols-2">
                   <label className="grid gap-2 text-sm font-bold text-ink">
                     Display order
@@ -752,6 +969,10 @@ export default async function MatchDetailPage({
                       <div className="flex flex-wrap items-center gap-2">
                         <Badge tone={item.status === "active" ? "success" : "danger"}>{item.status}</Badge>
                         <Badge tone="cyan">{item.provider}</Badge>
+                        <Badge tone="neutral">{livestreamRoleLabel(livestreamRole(item))}</Badge>
+                        <Badge tone={livestreamStatusTone(livestreamPlaybackStatus(item))}>
+                          {livestreamStatusLabel(livestreamPlaybackStatus(item))}
+                        </Badge>
                       </div>
                       <h3 className="mt-3 text-base font-black text-ink">{item.title}</h3>
                       <p className="mt-2 text-sm text-muted">{item.stream_url}</p>
@@ -815,13 +1036,75 @@ export default async function MatchDetailPage({
             </div>
           </Panel>
 
-          <Panel>
+          <Panel id="room-flow">
             <PanelHeader eyebrow="Flow" title="Room checkpoints" />
             <div className="p-4">
               <Timeline items={buildProcessTimeline(room)} />
             </div>
           </Panel>
         </div>
+
+        {canViewSensitiveInternals ? (
+          <Panel>
+            <PanelHeader
+              eyebrow="Money Trail"
+              title="Financial checkpoint"
+              description="This is a read-only summary from server records. The browser never decides balances, entry amounts, locks, credits, or payouts."
+            />
+            <div className="grid gap-3 p-4 lg:grid-cols-2">
+              {(["player_a", "player_b"] as const).map((slot) => {
+                const participant = participants.find((item) => item.slot === slot);
+                const trust = participant ? trustByUserId.get(participant.user_id) : null;
+                const fundingMethod = fundingMethodSummary(funding, participant);
+                return (
+                  <div className="rounded-lg border border-line bg-surfaceWarm p-4" key={slot}>
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="font-mono text-xs font-bold uppercase tracking-[0.12em] text-dim">{slot.replace("_", " ")}</p>
+                        <p className="mt-2 text-lg font-black text-ink">{playerDisplayName(participant, trust)}</p>
+                      </div>
+                      <Badge tone={fundingMethod.tone}>{fundingMethod.label}</Badge>
+                    </div>
+                    <p className="mt-3 text-sm leading-6 text-muted">{fundingMethod.detail}</p>
+                    <div className="mt-4 grid gap-2 rounded-md border border-line bg-white p-3 text-sm">
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="font-bold text-muted">Entry amount</span>
+                        <span className="font-black text-ink">{formatEntryAmount(room)}</span>
+                      </div>
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="font-bold text-muted">Funding status</span>
+                        <span className="font-black text-ink">{participant ? displayLabel(participant.funding_status) : "Open slot"}</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="grid gap-3 border-t border-line p-4 md:grid-cols-3">
+              <div className="rounded-lg border border-line bg-white p-4">
+                <p className="font-mono text-xs font-black uppercase tracking-[0.12em] text-cyan">Funds locked</p>
+                <p className="mt-2 text-2xl font-black text-ink">{formatMinorMoney(room.currency, fundsLockedMinor)}</p>
+                <p className="mt-2 text-sm leading-6 text-muted">
+                  {fundedParticipants.length}/{room.max_participants} player entries approved for this room.
+                </p>
+              </div>
+              <div className="rounded-lg border border-line bg-white p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="font-mono text-xs font-black uppercase tracking-[0.12em] text-cyan">Result</p>
+                  <Badge tone={resultCheckpoint.tone}>{resultCheckpoint.label}</Badge>
+                </div>
+                <p className="mt-3 text-sm leading-6 text-muted">{resultCheckpoint.detail}</p>
+              </div>
+              <div className="rounded-lg border border-line bg-white p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="font-mono text-xs font-black uppercase tracking-[0.12em] text-cyan">Payout</p>
+                  <Badge tone={payoutCheckpoint.tone}>{payoutCheckpoint.label}</Badge>
+                </div>
+                <p className="mt-3 text-sm leading-6 text-muted">{payoutCheckpoint.detail}</p>
+              </div>
+            </div>
+          </Panel>
+        ) : null}
 
         {canStartPlay ? (
           <Panel>
@@ -847,9 +1130,33 @@ export default async function MatchDetailPage({
           <Panel>
             <PanelHeader
               eyebrow="Funding"
-              title="Submit payment proof before play"
-              description="Once both players are in, each player submits exact transfer proof for admin review."
+              title="Choose how to fund this room"
+              description="Use your approved Skillsroom Balance for instant locking, or use manual transfer proof if you prefer."
             />
+            <div className="grid gap-3 border-b border-line p-4">
+              <div className="rounded-lg border border-cyan bg-cyanSoft p-4">
+                <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                  <div className="min-w-0">
+                    <p className="font-mono text-xs font-black uppercase tracking-[0.14em] text-cyan">Skillsroom Balance</p>
+                    <h2 className="mt-2 text-xl font-black text-ink">Pay instantly from balance</h2>
+                    <p className="mt-2 text-sm leading-6 text-muted">
+                      Available: <span className="font-black text-ink">{formatMinorMoney(room.currency, availableBalanceMinor)}</span>. Required: <span className="font-black text-ink">{formatEntryAmount(room)}</span>.
+                    </p>
+                  </div>
+                  <form action={payRoomWithBalanceAction} className="shrink-0">
+                    <input name="match_room_id" type="hidden" value={room.id} />
+                    <SubmitButton disabled={!canPayWithBalance} idleLabel="Use balance" pendingLabel="Locking funds..." />
+                  </form>
+                </div>
+                {!canSubmitFunding && currentFundingStatus === "approved" ? (
+                  <p className="mt-3 text-sm font-bold text-success">Your room entry is already funded.</p>
+                ) : canSubmitFunding && !canPayWithBalance ? (
+                  <p className="mt-3 text-sm font-bold text-muted">
+                    Your balance is not enough for this room. <a className="font-black text-cyan hover:text-action" href="/wallet">Top up your wallet</a> or use manual transfer below.
+                  </p>
+                ) : null}
+              </div>
+            </div>
             <div className="border-b border-line p-4">
               <ManualPaymentPanel
                 amountLabel="Exact transfer amount"

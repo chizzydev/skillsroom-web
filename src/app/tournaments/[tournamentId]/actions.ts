@@ -11,6 +11,7 @@ import {
   checkInForTournament,
   createCommunityLivestream,
   createCommunityAnnouncement,
+  payTournamentEntryWithBalance,
   publishCommunityAnnouncement,
   registerForTournament,
   submitTournamentContribution,
@@ -59,6 +60,18 @@ export async function checkInForTournamentAction(formData: FormData) {
   }
 
   redirect(`/tournaments/${tournamentId}?checked_in=1`);
+}
+
+export async function payTournamentEntryWithBalanceAction(formData: FormData) {
+  const tournamentId = String(formData.get("tournament_id") || "");
+
+  try {
+    await payTournamentEntryWithBalance(tournamentId);
+  } catch (error) {
+    redirect(`/tournaments/${tournamentId}?error=${encodeURIComponent(actionErrorMessage(error))}`);
+  }
+
+  redirect(`/tournaments/${tournamentId}?balance_funded=1`);
 }
 
 export async function submitTournamentContributionAction(formData: FormData) {

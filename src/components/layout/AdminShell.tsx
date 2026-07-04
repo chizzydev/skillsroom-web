@@ -1,15 +1,16 @@
 import Link from "next/link";
 import { AccountMenu } from "./AccountMenu";
-import { getCurrentUser } from "@/lib/auth-bridge";
+import { canUseAdminSection, getCurrentUser, type AdminSection } from "@/lib/auth-bridge";
 
 type AdminShellProps = {
-  active: "overview" | "funding" | "results" | "settlements" | "tournaments" | "matches" | "players" | "team" | "disputes" | "risk";
+  active: AdminSection | "matches" | "disputes";
   children: React.ReactNode;
 };
 
-const nav = [
+const nav: Array<{ key: AdminSection; label: string; href: string }> = [
   { key: "overview", label: "Overview", href: "/admin" },
   { key: "funding", label: "Funding", href: "/admin/funding" },
+  { key: "wallet", label: "Wallet", href: "/admin/wallet" },
   { key: "results", label: "Results", href: "/admin/results" },
   { key: "settlements", label: "Settlements", href: "/admin/settlements" },
   { key: "tournaments", label: "Tournaments", href: "/admin/tournaments" },
@@ -20,7 +21,7 @@ const nav = [
 
 export async function AdminShell({ active, children }: AdminShellProps) {
   const user = await getCurrentUser();
-  const navItems = nav.filter((item) => item.key !== "team" || user?.role === "owner");
+  const navItems = nav.filter((item) => canUseAdminSection(user, item.key));
 
   return (
     <main className="min-h-screen bg-bg lg:grid lg:grid-cols-[18rem_1fr]">

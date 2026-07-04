@@ -11,7 +11,7 @@ import { FormActionButton } from "@/components/ui/FormActionButton";
 import { Panel, PanelHeader } from "@/components/ui/Panel";
 import { StatusPanel } from "@/components/ui/StatusPanel";
 import { TransientStatusBanner } from "@/components/ui/TransientStatusBanner";
-import { canAccessAdmin, getCurrentUser } from "@/lib/auth-bridge";
+import { canAccessAdmin, canUseAdminSection, getCurrentUser } from "@/lib/auth-bridge";
 import {
   ApiRequestError,
   formatEntryAmount,
@@ -138,7 +138,8 @@ function IdentifierLabel({
 
 export default async function AdminSettlementsPage({ searchParams }: { searchParams: Promise<{ error?: string; success?: string }> }) {
   const user = await getCurrentUser();
-  if (!user || !canAccessAdmin(user) || !["admin", "owner"].includes(user.role)) redirect("/sign-in?redirect=/admin/settlements");
+  if (!canAccessAdmin(user)) redirect("/sign-in?redirect=/admin/settlements");
+  if (!canUseAdminSection(user, "settlements")) redirect("/admin");
   const { error, success } = await searchParams;
 
   let settlements: MatchSettlement[] = [];

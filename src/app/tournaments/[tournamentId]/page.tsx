@@ -19,6 +19,7 @@ import {
   formatMinorMoney,
   getTournamentDetail,
   getTournamentWinnerPage,
+  getWalletOverview,
   listAccessibleLivestreams,
   listCommunityAnnouncements,
   listManageableAnnouncements,
@@ -35,7 +36,8 @@ import {
   type TournamentStage,
   type TournamentStanding,
   type TournamentStateEvent,
-  type TournamentStatus
+  type TournamentStatus,
+  type WalletOverview
 } from "@/lib/match-room-api";
 import {
   archiveTournamentAnnouncementAction,
@@ -43,6 +45,7 @@ import {
   checkInForTournamentAction,
   createTournamentAnnouncementAction,
   createTournamentLivestreamAction,
+  payTournamentEntryWithBalanceAction,
   publishTournamentAnnouncementAction,
   registerForTournamentAction,
   submitTournamentContributionAction
@@ -319,6 +322,7 @@ export default async function TournamentDetailPage({
     error?: string;
     registered?: string;
     checked_in?: string;
+    balance_funded?: string;
     contribution_submitted?: string;
     announcement_saved?: string;
     announcement_published?: string;
@@ -334,6 +338,7 @@ export default async function TournamentDetailPage({
     error,
     registered,
     checked_in: checkedInSuccess,
+    balance_funded: balanceFunded,
     contribution_submitted: contributionSubmitted,
     announcement_saved: announcementSaved,
     announcement_published: announcementPublished,
@@ -348,6 +353,7 @@ export default async function TournamentDetailPage({
   let livestreams: CommunityLivestreamLink[] = [];
   let manageableAnnouncements: CommunityAnnouncement[] = [];
   let manageableLivestreams: CommunityLivestreamLink[] = [];
+  let walletOverview: WalletOverview | null = null;
   let loadError: string | null = null;
 
   try {
@@ -392,6 +398,20 @@ export default async function TournamentDetailPage({
   const registrationOpen = detail.status === "registration_open";
   const checkInOpen = ["registration_open", "registration_locked"].includes(detail.status);
   const canCheckIn = Boolean(myEntry && myEntry.status === "registered" && checkInOpen);
+  const tournamentNeedsEntryFunding = ["paid", "hybrid"].includes(detail.fee_mode) && detail.entry_fee_amount_minor > 0;
+  const canPayEntryWithBalance = Boolean(
+    myEntry && tournamentNeedsEntryFunding && ["pending", "rejected"].includes(myEntry.funding_status)
+  );
+  if (canPayEntryWithBalance) {
+    try {
+      walletOverview = await getWalletOverview();
+    } catch {
+      loadError = loadError ?? "Tournament loaded, but your balance could not be checked.";
+    }
+  }
+  const walletCurrencyMatches = walletOverview?.account.currency === detail.currency;
+  const walletAvailableMinor = walletCurrencyMatches && walletOverview ? walletOverview.account.available_balance_minor : 0;
+  const hasEnoughTournamentBalance = walletAvailableMinor >= detail.entry_fee_amount_minor;
   const canManageAnnouncements = canAccessAdmin(user) || canManageTournamentAnnouncements(user.id, detail.hosts) || detail.created_by_user_id === user.id;
   if (canManageAnnouncements) {
     try {
@@ -551,7 +571,7 @@ export default async function TournamentDetailPage({
           </Panel>
         ) : null}
 
-        {(error || registered || checkedInSuccess || contributionSubmitted || announcementSaved || announcementPublished || announcementArchived || livestreamSaved || livestreamArchived) ? (
+        {(error || registered || checkedInSuccess || balanceFunded || contributionSubmitted || announcementSaved || announcementPublished || announcementArchived || livestreamSaved || livestreamArchived) ? (
           <div
             className={[
               "rounded-md border p-4 text-sm font-bold",
@@ -569,11 +589,13 @@ export default async function TournamentDetailPage({
                       ? "Livestream archived."
                       : livestreamSaved
                         ? "Livestream saved."
-                    : contributionSubmitted
-                      ? "Contribution proof submitted for admin review."
-                      : checkedInSuccess
-                        ? "Check-in complete. Your entry is ready for seeding."
-                        : "Registration received. Your entry is now attached to this tournament.")}
+                    : balanceFunded
+                      ? "Entry fee locked from your Skillsroom Balance. You are funded for this tournament."
+                      : contributionSubmitted
+                        ? "Contribution proof submitted for admin review."
+                        : checkedInSuccess
+                          ? "Check-in complete. Your entry is ready for seeding."
+                          : "Registration received. Your entry is now attached to this tournament.")}
           </div>
         ) : null}
 
@@ -896,6 +918,46 @@ export default async function TournamentDetailPage({
 
           <Panel>
             <PanelHeader eyebrow="Contribution" title="Submit prize or entry funding" />
+            {canPayEntryWithBalance ? (
+              <div className="grid gap-3 border-b border-line bg-surfaceWarm p-4">
+                <div className="rounded-[1.25rem] border border-cyan/40 bg-white p-4 shadow-sm">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <p className="font-mono text-xs font-black uppercase tracking-[0.12em] text-cyan">Skillsroom Balance</p>
+                      <h3 className="mt-2 text-lg font-black text-ink">Pay this entry instantly</h3>
+                      <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">
+                        We will lock exactly {formatMinorMoney(detail.currency, detail.entry_fee_amount_minor)} from your balance for this tournament. No transfer proof is needed.
+                      </p>
+                    </div>
+                    <div className="rounded-md border border-line bg-surfaceHigh px-4 py-3 text-right">
+                      <p className="font-mono text-[0.65rem] font-black uppercase tracking-[0.12em] text-dim">Available</p>
+                      <strong className="mt-1 block text-xl font-black text-ink">
+                        {walletOverview ? formatMinorMoney(walletOverview.account.currency, walletOverview.account.available_balance_minor) : "Unavailable"}
+                      </strong>
+                    </div>
+                  </div>
+                  {!walletCurrencyMatches && walletOverview ? (
+                    <p className="mt-3 rounded-md border border-warning/40 bg-yellow-50 px-3 py-2 text-sm font-bold text-warning">
+                      Your balance is in {walletOverview.account.currency}, but this tournament is priced in {detail.currency}.
+                    </p>
+                  ) : null}
+                  {!hasEnoughTournamentBalance ? (
+                    <p className="mt-3 text-sm font-bold leading-6 text-muted">
+                      Your balance is not enough yet. You can <Link className="text-action underline" href="/wallet">fund your wallet</Link> or use manual transfer below.
+                    </p>
+                  ) : null}
+                  <form action={payTournamentEntryWithBalanceAction} className="mt-4">
+                    <input name="tournament_id" type="hidden" value={detail.id} />
+                    <SubmitButton
+                      className="disabled:opacity-50"
+                      disabled={!walletOverview || !walletCurrencyMatches || !hasEnoughTournamentBalance}
+                      idleLabel="Use Skillsroom Balance"
+                      pendingLabel="Locking entry fee..."
+                    />
+                  </form>
+                </div>
+              </div>
+            ) : null}
             <div className="border-b border-line p-4">
               <ManualPaymentPanel
                 amountLabel={detail.entry_fee_amount_minor > 0 ? "Standard entry fee" : "Current entry fee"}

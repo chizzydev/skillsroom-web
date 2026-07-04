@@ -35,7 +35,7 @@ export type StoredEvidenceMetadata = {
   version: 1;
   fileName: string;
   contextId: string;
-  contextType: "match_room" | "tournament";
+  contextType: "match_room" | "tournament" | "wallet";
   uploadedByUserId: string;
   mimeType: string;
   evidenceType: EvidenceItemType;
@@ -58,7 +58,7 @@ export type StoredEvidenceRetention = {
   retentionDays: number;
   retainUntil: string;
   legalHold: boolean;
-  reason: "match_room_evidence" | "tournament_evidence";
+  reason: "match_room_evidence" | "tournament_evidence" | "wallet_topup_proof";
   legalHoldReason?: string;
   legalHoldByUserId?: string;
   legalHoldAt?: string;
@@ -160,12 +160,18 @@ export function buildEvidenceRetention(input: {
   createdAt?: Date;
 }): StoredEvidenceRetention {
   const createdAt = input.createdAt ?? new Date();
+  const reason =
+    input.contextType === "wallet"
+      ? "wallet_topup_proof"
+      : input.contextType === "tournament"
+        ? "tournament_evidence"
+        : "match_room_evidence";
   return {
     policyId: evidenceRetentionPolicy.policyId,
     retentionDays: evidenceRetentionPolicy.defaultRetentionDays,
     retainUntil: addDays(createdAt, evidenceRetentionPolicy.defaultRetentionDays).toISOString(),
     legalHold: false,
-    reason: input.contextType === "tournament" ? "tournament_evidence" : "match_room_evidence"
+    reason
   };
 }
 
@@ -712,7 +718,7 @@ export async function storeEvidenceFile(input: {
   file: File;
   matchRoomId: string;
   userId: string;
-  contextType?: "match_room" | "tournament";
+  contextType?: StoredEvidenceMetadata["contextType"];
 }) {
   if (!input.file.size) return null;
 

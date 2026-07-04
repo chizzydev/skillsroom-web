@@ -11,6 +11,17 @@ export type CurrentUser = {
   status: "active" | "locked" | "disabled";
 };
 
+export type AdminSection =
+  | "overview"
+  | "funding"
+  | "wallet"
+  | "results"
+  | "settlements"
+  | "tournaments"
+  | "players"
+  | "team"
+  | "risk";
+
 export async function getAccessToken(): Promise<string | null> {
   const headerStore = await headers();
   const refreshedToken = headerStore.get(refreshedAccessTokenHeader);
@@ -86,4 +97,17 @@ export async function getGoogleLinkStatus(): Promise<{
 
 export function canAccessAdmin(user: CurrentUser | null) {
   return Boolean(user && ["support", "moderator", "admin", "owner"].includes(user.role) && user.status === "active");
+}
+
+export function canUseAdminSection(user: CurrentUser | null, section: AdminSection) {
+  if (!canAccessAdmin(user)) return false;
+  if (user?.role === "owner") return true;
+
+  const sectionsByRole: Record<Exclude<CurrentUser["role"], "player" | "owner">, AdminSection[]> = {
+    admin: ["overview", "funding", "wallet", "results", "settlements", "tournaments"],
+    moderator: ["overview", "results", "tournaments", "players", "risk"],
+    support: ["overview", "players", "risk"]
+  };
+
+  return user ? sectionsByRole[user.role as Exclude<CurrentUser["role"], "player" | "owner">]?.includes(section) ?? false : false;
 }

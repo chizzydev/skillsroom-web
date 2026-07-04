@@ -99,6 +99,198 @@ export type ManualFundingSubmission = {
   review_note: string | null;
 };
 
+export type WalletTopupStatus = "submitted" | "approved" | "rejected" | "cancelled";
+export type WalletPayoutRequestStatus = "requested" | "approved" | "paid" | "rejected" | "cancelled" | "failed";
+
+export type StreamingProvider = "youtube" | "twitch";
+export type StreamingAccountStatus = "connected" | "needs_reauth" | "revoked" | "manual";
+export type StreamingLiveStatus = "unknown" | "live" | "offline" | "replay" | "unavailable";
+
+export type StreamingConnectedAccount = {
+  id: string;
+  user_id: string;
+  provider: StreamingProvider;
+  provider_account_id: string;
+  provider_login: string | null;
+  display_name: string;
+  channel_url: string;
+  avatar_url: string | null;
+  status: StreamingAccountStatus;
+  scopes: string[];
+  token_expires_at: string | null;
+  live_status: StreamingLiveStatus;
+  live_stream_url: string | null;
+  live_embed_url: string | null;
+  live_title: string | null;
+  last_live_checked_at: string | null;
+  metadata?: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+  has_token: boolean;
+};
+
+export type TournamentOfficialStreamer = {
+  id: string;
+  tournament_id: string;
+  streaming_account_id: string;
+  assigned_by_user_id: string;
+  label: string;
+  is_primary: boolean;
+  status: "active" | "archived";
+  metadata?: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+};
+
+export type WalletAccount = {
+  id: string;
+  user_id: string;
+  currency: string;
+  available_balance_minor: number;
+  locked_balance_minor: number;
+  winnings_balance_minor: number;
+  status: "active" | "frozen" | "closed";
+  version: number;
+  metadata?: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+};
+
+export type WalletLedgerEntry = {
+  id: string;
+  transaction_id: string;
+  wallet_account_id: string;
+  user_id: string;
+  bucket: "available" | "locked" | "winnings";
+  entry_type: string;
+  direction: "credit" | "debit";
+  currency: string;
+  amount_minor: number;
+  balance_after_available_minor: number;
+  balance_after_locked_minor: number;
+  balance_after_winnings_minor: number;
+  source_type: string;
+  source_id: string | null;
+  idempotency_key: string;
+  metadata?: Record<string, unknown>;
+  created_by_user_id: string | null;
+  created_at: string;
+};
+
+export type WalletHold = {
+  id: string;
+  wallet_account_id: string;
+  user_id: string;
+  currency: string;
+  amount_minor: number;
+  status: "active" | "released" | "captured" | "cancelled" | "expired";
+  source_type: string;
+  source_id: string;
+  reason: string;
+  created_ledger_transaction_id: string | null;
+  release_ledger_transaction_id: string | null;
+  capture_ledger_transaction_id: string | null;
+  expires_at: string | null;
+  released_at: string | null;
+  captured_at: string | null;
+  metadata?: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+};
+
+export type SuspiciousWalletTopupGroup = {
+  duplicate_type: "transfer_reference" | "proof_url";
+  group_key: string;
+  occurrence_count: number;
+  user_count: number;
+  amount_minor_total: number;
+  first_seen_at: string;
+  last_seen_at: string;
+  sample_topup_ids: string[];
+};
+
+export type WalletFinancialTimelineItem = {
+  id: string;
+  event_type: string;
+  source_table: string;
+  user_id: string | null;
+  currency: string | null;
+  amount_minor: number;
+  status: string | null;
+  detail: string | null;
+  created_at: string;
+  metadata?: Record<string, unknown>;
+};
+
+export type WalletTopup = {
+  id: string;
+  wallet_account_id: string | null;
+  user_id: string;
+  currency: string;
+  amount_minor: number;
+  collection_bank_name: string;
+  collection_account_number: string;
+  collection_account_name: string;
+  transfer_reference: string | null;
+  sender_account_name: string | null;
+  sender_bank_name: string | null;
+  proof_url: string;
+  proof_note: string | null;
+  status: WalletTopupStatus;
+  submitted_at: string;
+  reviewed_by_user_id: string | null;
+  reviewed_at: string | null;
+  review_note: string | null;
+  wallet_ledger_transaction_id: string | null;
+  metadata?: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+};
+
+export type WalletPayoutRequest = {
+  id: string;
+  wallet_account_id: string;
+  user_id: string;
+  currency: string;
+  amount_minor: number;
+  status: WalletPayoutRequestStatus;
+  payout_recipient_name: string;
+  payout_bank_name: string;
+  payout_account_number?: string;
+  payout_account_number_masked: string;
+  payout_bank_code: string | null;
+  payout_note: string | null;
+  requested_ledger_transaction_id: string | null;
+  paid_ledger_transaction_id: string | null;
+  requested_at: string;
+  reviewed_by_user_id: string | null;
+  reviewed_at: string | null;
+  review_note: string | null;
+  paid_at: string | null;
+  payment_reference: string | null;
+  metadata?: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+};
+
+export type WalletOverview = {
+  account: WalletAccount;
+  ledger_entries: WalletLedgerEntry[];
+  topups: WalletTopup[];
+  payout_requests: WalletPayoutRequest[];
+};
+
+export type AdminWalletDashboard = {
+  pending_topups: WalletTopup[];
+  suspicious_duplicates: SuspiciousWalletTopupGroup[];
+  active_holds: WalletHold[];
+  payout_requests: WalletPayoutRequest[];
+  recent_ledger_entries: WalletLedgerEntry[];
+  room_financial_timeline: WalletFinancialTimelineItem[];
+  tournament_financial_timeline: WalletFinancialTimelineItem[];
+  guardrails: string[];
+};
+
 export type LedgerEntry = {
   id: string;
   transaction_id: string;
@@ -928,6 +1120,8 @@ export type CommunityLivestreamTargetType = "tournament" | "match_room";
 export type CommunityLivestreamProvider = "youtube" | "twitch" | "facebook" | "tiktok" | "kick" | "generic";
 export type CommunityLivestreamStatus = "active" | "archived";
 export type CommunityLivestreamVisibility = "public" | "participants";
+export type CommunityLivestreamStreamRole = "official" | "player_a" | "player_b";
+export type CommunityLivestreamPlaybackStatus = "live" | "offline" | "replay" | "unavailable";
 
 export type CommunityLivestreamLink = {
   id: string;
@@ -1886,6 +2080,13 @@ export function checkInForTournament(tournamentId: string) {
   });
 }
 
+export function payTournamentEntryWithBalance(tournamentId: string) {
+  return apiRequest<{ entry: TournamentEntry }>(`/tournaments/${encodeURIComponent(tournamentId)}/balance-entry`, {
+    method: "POST",
+    body: JSON.stringify({})
+  });
+}
+
 export function submitTournamentContribution(
   tournamentId: string,
   input: {
@@ -2345,6 +2546,16 @@ export function submitManualFunding(
   });
 }
 
+export function payRoomWithBalance(matchRoomId: string) {
+  return apiRequest<{ room: MatchRoom; participant: MatchParticipant; hold: unknown }>(
+    `/match-rooms/${encodeURIComponent(matchRoomId)}/balance-funding`,
+    {
+      method: "POST",
+      body: JSON.stringify({})
+    }
+  );
+}
+
 export function listFundingSubmissions(status: ManualFundingSubmissionStatus = "submitted") {
   return apiRequest<{ submissions: ManualFundingSubmission[] }>(
     `/admin/funding/submissions?status=${encodeURIComponent(status)}`
@@ -2360,6 +2571,95 @@ export function reviewFundingSubmission(
     headers: { "x-admin-step-up": input.stepUpToken },
     body: JSON.stringify({ decision: input.decision, note: input.note })
   });
+}
+
+export function getWalletOverview() {
+  return apiRequest<WalletOverview>("/wallet");
+}
+
+export function submitWalletTopup(input: {
+  amount_minor: number;
+  collection_bank_name: string;
+  collection_account_number: string;
+  collection_account_name: string;
+  transfer_reference?: string;
+  sender_account_name?: string;
+  sender_bank_name?: string;
+  proof_url: string;
+  proof_note?: string;
+}) {
+  return apiRequest<{ topup: WalletTopup }>("/wallet/topups", {
+    method: "POST",
+    body: JSON.stringify(input)
+  });
+}
+
+export function requestWalletPayout(input: {
+  amount_minor: number;
+  payout_recipient_name: string;
+  payout_bank_name: string;
+  payout_account_number: string;
+  payout_bank_code?: string;
+  payout_note?: string;
+}) {
+  return apiRequest<{ payout_request: WalletPayoutRequest; ledger_entries: WalletLedgerEntry[] }>("/wallet/payout-requests", {
+    method: "POST",
+    body: JSON.stringify(input)
+  });
+}
+
+export function listWalletTopups(status: WalletTopupStatus = "submitted") {
+  return apiRequest<{ topups: WalletTopup[] }>(`/admin/wallet/topups?status=${encodeURIComponent(status)}`);
+}
+
+export function listWalletPayoutRequests(status: WalletPayoutRequestStatus = "requested") {
+  return apiRequest<{ payout_requests: WalletPayoutRequest[] }>(
+    `/admin/wallet/payout-requests?status=${encodeURIComponent(status)}`
+  );
+}
+
+export function getAdminWalletDashboard(input: {
+  userId?: string;
+  matchRoomId?: string;
+  tournamentId?: string;
+  limit?: number;
+} = {}) {
+  const params = new URLSearchParams();
+  if (input.userId) params.set("user_id", input.userId);
+  if (input.matchRoomId) params.set("match_room_id", input.matchRoomId);
+  if (input.tournamentId) params.set("tournament_id", input.tournamentId);
+  if (input.limit) params.set("limit", String(input.limit));
+  const query = params.toString();
+  return apiRequest<AdminWalletDashboard>(`/admin/wallet/dashboard${query ? `?${query}` : ""}`);
+}
+
+export function reviewWalletTopup(
+  topupId: string,
+  input: { decision: "approve" | "reject"; note?: string; stepUpToken: string }
+) {
+  return apiRequest<{ topup: WalletTopup; ledger_entries: WalletLedgerEntry[] }>(`/admin/wallet/topups/${topupId}/review`, {
+    method: "POST",
+    headers: { "x-admin-step-up": input.stepUpToken },
+    body: JSON.stringify({ decision: input.decision, note: input.note })
+  });
+}
+
+export function reviewWalletPayoutRequest(
+  payoutRequestId: string,
+  input: { decision: "mark_paid" | "reject"; payment_reference?: string; note?: string; stepUpToken: string }
+) {
+  return apiRequest<{ payout_request: WalletPayoutRequest; ledger_entries: WalletLedgerEntry[] }>(
+    `/admin/wallet/payout-requests/${payoutRequestId}/review`,
+    {
+      method: "POST",
+      headers: { "x-admin-step-up": input.stepUpToken },
+      body: JSON.stringify({
+        decision: input.decision,
+        payment_reference: input.payment_reference,
+        note: input.note
+      })
+    }
+  );
 }
 
 export function getRoomResults(matchRoomId: string) {
@@ -2947,8 +3247,10 @@ export function createCommunityLivestream(input: {
   target_type: CommunityLivestreamTargetType;
   tournament_id?: string;
   match_room_id?: string;
-  provider: CommunityLivestreamProvider;
+  provider?: CommunityLivestreamProvider;
   visibility: CommunityLivestreamVisibility;
+  stream_role?: CommunityLivestreamStreamRole;
+  playback_status?: CommunityLivestreamPlaybackStatus;
   title: string;
   stream_url: string;
   display_order?: number;
@@ -3089,4 +3391,68 @@ export function upsertCommunityClan(input: {
 
 export function getMyReferralProgram() {
   return apiRequest<MyReferralProgramResponse>("/community/referrals/me");
+}
+
+export function listStreamingAccounts() {
+  return apiRequest<{ accounts: StreamingConnectedAccount[] }>("/streaming/accounts");
+}
+
+export function startStreamingOauth(input: { provider: StreamingProvider; redirect_path?: string }) {
+  return apiRequest<{ authorization_url: string }>("/streaming/oauth/start", {
+    method: "POST",
+    body: JSON.stringify(input)
+  });
+}
+
+export function completeStreamingOauth(input: { state: string; code: string }) {
+  return publicApiRequest<{ account: StreamingConnectedAccount; redirect_path: string }>("/streaming/oauth/complete", {
+    method: "POST",
+    body: JSON.stringify(input)
+  });
+}
+
+export function connectManualStreamingAccount(input: {
+  provider: StreamingProvider;
+  channel_url: string;
+  display_name: string;
+  provider_account_id?: string;
+  provider_login?: string;
+}) {
+  return apiRequest<{ account: StreamingConnectedAccount }>("/streaming/accounts/manual", {
+    method: "POST",
+    body: JSON.stringify(input)
+  });
+}
+
+export function syncStreamingAccount(accountId: string) {
+  return apiRequest<{ account: StreamingConnectedAccount }>(`/streaming/accounts/${encodeURIComponent(accountId)}/sync`, {
+    method: "POST",
+    body: JSON.stringify({})
+  });
+}
+
+export function disconnectStreamingAccount(accountId: string) {
+  return apiRequest<{ account: StreamingConnectedAccount }>(`/streaming/accounts/${encodeURIComponent(accountId)}`, {
+    method: "DELETE"
+  });
+}
+
+export function listTournamentOfficialStreamers(tournamentId: string) {
+  return publicApiRequest<{ streamers: StreamingConnectedAccount[] }>(
+    `/streaming/tournaments/${encodeURIComponent(tournamentId)}/streamers`
+  );
+}
+
+export function assignTournamentOfficialStreamer(tournamentId: string, input: {
+  streaming_account_id: string;
+  label?: string;
+  is_primary?: boolean;
+}) {
+  return apiRequest<{ assignment: TournamentOfficialStreamer; account: StreamingConnectedAccount }>(
+    `/streaming/tournaments/${encodeURIComponent(tournamentId)}/streamers`,
+    {
+      method: "POST",
+      body: JSON.stringify(input)
+    }
+  );
 }
