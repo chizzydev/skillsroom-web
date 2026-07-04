@@ -59,9 +59,9 @@ function accountStatusLabel(status: UserGameAccount["status"]) {
 
 function accountStatusDetail(status: UserGameAccount["status"]) {
   if (status === "verified") return "This handle has already been confirmed in admin review.";
-  if (status === "rejected") return "Update this handle or UID if ops flagged a mismatch.";
+  if (status === "rejected") return "Update this handle or UID if the Skillsroom team flagged a mismatch.";
   if (status === "disabled") return "This handle is no longer active for rooms.";
-  return "This handle is usable in rooms now. Ops can still verify it later if evidence review needs extra confirmation.";
+  return "This handle is usable in rooms now. The Skillsroom team can still verify it later if proof review needs extra confirmation.";
 }
 
 function missingLabel(value: string) {
@@ -427,7 +427,7 @@ export default async function ProfilePage({ searchParams }: ProfilePageProps) {
             <PanelHeader
               eyebrow="Payout Instructions"
               title="Winner and refund destination"
-              description="Ops uses this snapshot when a room result is approved or a refund is queued, so keep it current."
+              description="Keep this updated so winnings and refunds can be sent to the right account."
             />
             <form action={upsertPayoutProfileAction} className="grid gap-4 p-4 md:grid-cols-2">
               <label className="grid gap-2 text-sm font-bold text-ink">
@@ -490,11 +490,11 @@ export default async function ProfilePage({ searchParams }: ProfilePageProps) {
                   defaultValue={payoutProfile?.payout_note ?? ""}
                   maxLength={240}
                   name="payout_note"
-                  placeholder="Optional note for ops, like preferred bank account label."
+                  placeholder="Optional note, like your preferred account label."
                 />
               </label>
               <div className="rounded-md border border-cyan bg-cyanSoft p-4 text-sm leading-6 text-muted md:col-span-2">
-                The latest approved room result snapshots these instructions into the payout queue, so later profile edits do not rewrite older ops records.
+                New payouts use the bank details saved here. Older payouts keep the details that were saved at the time.
               </div>
               <div className="md:col-span-2">
                 <SubmitButton idleLabel="Save payout instructions" pendingLabel="Saving payout instructions..." />
@@ -503,10 +503,10 @@ export default async function ProfilePage({ searchParams }: ProfilePageProps) {
           </Panel>
 
           <Panel>
-            <PanelHeader eyebrow="Ops Snapshot" title="Current payout card" />
+            <PanelHeader eyebrow="Payment Details" title="Current payout card" />
             <div className="grid gap-3 p-4 sm:grid-cols-2 xl:grid-cols-1">
               <StatusPanel
-                detail={payoutProfile?.bank_name ?? "Add the bank you want ops to use"}
+                detail={payoutProfile?.bank_name ?? "Add the bank you want Skillsroom to use"}
                 label="Destination"
                 tone={payoutProfile ? "success" : "warning"}
                 value={payoutProfile ? "Ready" : "Missing"}
@@ -562,7 +562,7 @@ export default async function ProfilePage({ searchParams }: ProfilePageProps) {
           </Panel>
 
           <Panel>
-            <PanelHeader eyebrow="Refund History" title="Refund settlement timeline" description="Refund records stay visible here so you can see what ops has queued or completed." />
+            <PanelHeader eyebrow="Refund History" title="Refund timeline" description="Refund records stay visible here so you can see what has been queued or completed." />
             {refundHistory.length ? (
               <DataTable
                 columns={[
@@ -649,7 +649,7 @@ export default async function ProfilePage({ searchParams }: ProfilePageProps) {
           </Panel>
 
           <Panel>
-            <PanelHeader eyebrow="Clan Snapshot" title="Public team signals" />
+            <PanelHeader eyebrow="Clan" title="Public team signals" />
             <div className="grid gap-3 p-4 sm:grid-cols-2 xl:grid-cols-1">
               <StatusPanel detail="Active members on the public roster" label="Members" tone="cyan" value={clanMembers.length.toString()} />
               <StatusPanel detail="Current clan reputation score" label="Reputation" tone="success" value={(clan?.reputation_score ?? 1000).toString()} />
@@ -765,7 +765,7 @@ export default async function ProfilePage({ searchParams }: ProfilePageProps) {
 
         <Panel>
           <PanelHeader
-            description="Connect the channels you use for match streams. Skillsroom can show live status automatically when OAuth is configured, and manual channel links still work for MVP."
+            description="Connect or save the channel you use for match streams so players can watch from the match room."
             eyebrow="Streaming Accounts"
             title="YouTube and Twitch"
           />
@@ -773,8 +773,8 @@ export default async function ProfilePage({ searchParams }: ProfilePageProps) {
             <div className="rounded-md border border-cyan bg-cyanSoft p-4 text-sm leading-6 text-muted">
               <p className="font-black text-ink">What this unlocks</p>
               <p className="mt-2">
-                Your match room can pull from saved stream channels instead of asking you to paste the same link every time.
-                Tournament hosts can also mark connected channels as official streamers for an event.
+                Your match room can use your saved channel instead of asking you to paste the same link every time.
+                Tournament hosts can also mark a saved channel as the official stream for an event.
               </p>
             </div>
             <div className="grid gap-3">
@@ -853,7 +853,7 @@ export default async function ProfilePage({ searchParams }: ProfilePageProps) {
             <div className="p-4">
               <EmptyState
                 title="Connect a channel before your next streamed match."
-                description="Start with YouTube or Twitch OAuth. If keys are not configured yet, save the public channel link manually below."
+                description="Use the buttons above, or save a public channel link below if you prefer to add it yourself."
               />
             </div>
           )}

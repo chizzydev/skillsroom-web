@@ -29,7 +29,7 @@ export async function AdminShell({ active, children }: AdminShellProps) {
         <div className="flex items-center justify-between gap-3 border-b border-white/10 p-4 lg:block lg:p-5">
           <Link className="flex min-w-0 items-center gap-3 text-lg font-black" href="/admin">
             <span className="grid h-10 w-10 shrink-0 place-items-center rounded-md bg-action text-sm text-navy-950 shadow-action">SR</span>
-            <span className="truncate">Skillsroom Ops</span>
+            <span className="truncate">Skillsroom Admin</span>
           </Link>
           <div className="flex items-center gap-2 lg:mt-4">
             <Link className="inline-flex min-h-9 items-center rounded-md border border-white/10 px-3 text-xs font-black text-slate-200 hover:bg-white/10" href="/">
@@ -65,8 +65,8 @@ export async function AdminShell({ active, children }: AdminShellProps) {
       <section className="min-w-0">
         <header className="sticky top-0 z-30 hidden h-16 items-center justify-between border-b border-line bg-white/95 px-6 backdrop-blur lg:flex">
           <div>
-            <p className="font-mono text-xs font-bold uppercase tracking-[0.14em] text-muted">Operations</p>
-            <p className="text-sm font-bold text-ink">Funding, evidence, settlement, and risk queues</p>
+            <p className="font-mono text-xs font-bold uppercase tracking-[0.14em] text-muted">Admin</p>
+            <p className="text-sm font-bold text-ink">Payments, results, players, tournaments, and support work</p>
           </div>
           <AccountMenu user={user} />
         </header>

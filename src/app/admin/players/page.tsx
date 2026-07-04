@@ -38,12 +38,12 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams?
   try {
     const [leaderboardResult, gameAccountResult] = await Promise.all([
       listLeaderboard(),
-      listAdminGameAccounts()
+      listAdminGameAccounts("pending")
     ]);
     leaderboard = leaderboardResult.leaderboard;
     gameAccounts = gameAccountResult.game_accounts;
   } catch {
-    loadError = "Unable to load player trust records.";
+    loadError = "Unable to load player records right now.";
   }
 
   const readyPlayers = leaderboard.filter((row) => row.completed_matches > 0).length;
@@ -55,9 +55,9 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams?
     <AdminShell active="players">
       <section className="grid gap-5">
         <AdminPageHeader
-          description="Review player reputation, match history, dispute losses, and no-show signals before room, evidence, and risk decisions."
-          eyebrow="Player Ops"
-          title="Player Trust Review"
+          description="Check player handles, match history, disputes, and no-shows before making player decisions."
+          eyebrow="Players"
+          title="Player review"
         />
 
         {loadError ? (
@@ -68,22 +68,22 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams?
         ) : null}
         {params?.game_account_reviewed ? (
           <div className="rounded-md border border-success bg-successSoft p-4 text-sm font-bold text-success">
-            Game-account review saved.
+            Player handle review saved.
           </div>
         ) : null}
 
         <div className="grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <StatusPanel detail="Ranked records" label="Players" tone="cyan" value={leaderboard.length.toString()} />
+          <StatusPanel detail="Players with records" label="Players" tone="cyan" value={leaderboard.length.toString()} />
           <StatusPanel detail="Completed matches" label="Active Records" tone="success" value={readyPlayers.toString()} />
           <StatusPanel detail="Lost disputes/no-shows" label="Risk Signals" tone={riskSignals > 0 ? "warning" : "success"} value={riskSignals.toString()} />
-          <StatusPanel detail="Game-account checks" label="Pending Handles" tone={pendingHandles > 0 ? "warning" : "success"} value={pendingHandles.toString()} />
+          <StatusPanel detail="Waiting for review" label="Pending Handles" tone={pendingHandles > 0 ? "warning" : "success"} value={pendingHandles.toString()} />
         </div>
 
         <Panel>
           <PanelHeader
-            description="Verify the player's game handle and external ID when screenshots, lobby proof, or community confirmation make it credible."
-            eyebrow="Game Identity"
-            title="Handle verification queue"
+            description="Approve the handle only when the screenshot, lobby proof, or community confirmation looks believable."
+            eyebrow="Game Handle"
+            title="Handles waiting for review"
           />
           {gameAccounts.length ? (
             <DataTable
@@ -119,7 +119,7 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams?
                       </div>
                     </form>
                     ) : (
-                      <span className="text-xs font-bold leading-5 text-muted">Support can view player context, but handle decisions are for moderators and above.</span>
+                      <span className="text-xs font-bold leading-5 text-muted">Support can view this, but only moderators and above can approve or reject handles.</span>
                     )
                   )
                 }
@@ -129,8 +129,8 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams?
           ) : (
             <div className="p-4">
               <AdminEmptyState
-                description="Game accounts appear here after players add them from their profile."
-                title="No game accounts submitted"
+                description="New handle submissions will appear here after players add them from their profile."
+                title="No handles waiting"
               />
             </div>
           )}
@@ -138,7 +138,7 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams?
 
         <Panel>
           <PanelHeader
-            description="Use this as the operator-facing reputation index. Deep identity controls stay in room, funding, result, and risk lanes."
+            description="Use this to quickly understand player history before making a decision."
             eyebrow="Directory"
             title="Reputation leaderboard"
           />
@@ -158,8 +158,8 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams?
           ) : (
             <div className="p-4">
               <AdminEmptyState
-                description="No reputation records are available yet. Player trust records appear after profiles and match history exist."
-                title="No player trust records"
+                description="Player records appear after profiles and match history exist."
+                title="No player records yet"
               />
             </div>
           )}

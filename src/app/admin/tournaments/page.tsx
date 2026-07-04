@@ -229,7 +229,7 @@ export default async function AdminTournamentsPage({
     tournaments = tournamentResult.tournaments;
     contributions = contributionResult.contributions;
   } catch {
-    loadError = "Unable to load tournament operations data.";
+    loadError = "Unable to load tournament admin data.";
   }
 
   if (tournaments.length) {
@@ -240,7 +240,7 @@ export default async function AdminTournamentsPage({
       commandDetails = detailResults.map((result) => result.tournament);
       commandEvents = Object.fromEntries(detailResults.map((result) => [result.tournament.id, result.events]));
     } catch {
-      loadError = loadError ?? "Unable to load tournament command-center detail data.";
+      loadError = loadError ?? "Unable to load active tournament details.";
     }
   }
 
@@ -284,13 +284,13 @@ export default async function AdminTournamentsPage({
     <AdminShell active="tournaments">
       <section className="grid gap-5">
         <AdminPageHeader
-          description="Create and monitor Skillsroom events across brackets, groups, Swiss, leagues, racing, leaderboard, and cumulative-score formats."
-          eyebrow="Tournament Ops"
-          title="Tournament Creation"
+          description="Create tournaments, review entries, arrange players, record results, and prepare payouts."
+          eyebrow="Tournaments"
+          title="Tournament admin"
           tone="cyan"
         />
 
-        <LiveUpdateStream eventTypePrefixes={["tournament.", "admin.queue.tournament_"]} label="Tournament ops live" />
+        <LiveUpdateStream eventTypePrefixes={["tournament.", "admin.queue.tournament_"]} label="Tournament updates" />
 
         {(error || loadError || createdTournament || seededTournament || structuredTournament || linkedTournament || scoredTournament || resultReviewedTournament || settlementReservedTournament || refundsReservedTournament || hostGrantedTournament || eventUpdatedTournament) && (
           <div
@@ -304,7 +304,7 @@ export default async function AdminTournamentsPage({
               (createdTournament
                 ? `Created ${createdTournament.title}.`
                 : seededTournament
-                  ? `Seeded ${seededTournament.title}.`
+                  ? `Player order saved for ${seededTournament.title}.`
                   : structuredTournament
                     ? `Generated structure for ${structuredTournament.title}.`
                     : linkedTournament
@@ -326,7 +326,7 @@ export default async function AdminTournamentsPage({
         <div className="grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <StatusPanel detail="Registration open" label="Open" tone="cyan" value={openCount.toString()} />
           <StatusPanel detail="Needs publishing" label="Drafts" tone="warning" value={draftCount.toString()} />
-          <StatusPanel detail="Seeding, live, review" label="Active Ops" tone="danger" value={liveCount.toString()} />
+          <StatusPanel detail="Setup, live, review" label="Active" tone="danger" value={liveCount.toString()} />
           <StatusPanel detail="Approved/projected" label="Prize Exposure" tone="success" value={formatMinorMoney("NGN", prizeExposure)} />
         </div>
 
@@ -334,9 +334,9 @@ export default async function AdminTournamentsPage({
 
         <Panel>
           <PanelHeader
-            description="Live oversight across active tournaments: entrants, check-ins, seeding, rounds, linked match rooms, disputes, and result-review pressure."
-            eyebrow="Command Center"
-            title="Tournament operations"
+            description="See active tournaments, checked-in players, rounds, linked match rooms, disputes, and results that need attention."
+            eyebrow="Active Events"
+            title="Tournament dashboard"
           />
           {commandDetails.length ? (
             <div className="grid gap-4 p-4">
@@ -370,7 +370,7 @@ export default async function AdminTournamentsPage({
                         <div className="rounded-md border border-line bg-surfaceWarm p-3">
                           <p className="font-mono text-[0.65rem] font-black uppercase tracking-[0.12em] text-dim">Entrants</p>
                           <p className="mt-2 text-xl font-black text-ink">{detail.entries.length}/{detail.max_entries}</p>
-                          <p className="mt-1 text-xs font-bold text-muted">{summary.seededEntries.length} seeded</p>
+                          <p className="mt-1 text-xs font-bold text-muted">{summary.seededEntries.length} arranged</p>
                         </div>
                         <div className="rounded-md border border-line bg-surfaceWarm p-3">
                           <p className="font-mono text-[0.65rem] font-black uppercase tracking-[0.12em] text-dim">Check-ins</p>
@@ -446,8 +446,8 @@ export default async function AdminTournamentsPage({
                         </div>
                         <div className="grid gap-2">
                           <div>
-                            <p className="font-mono text-[0.65rem] font-black uppercase tracking-[0.12em] text-dim">Audit trail</p>
-                            <p className="mt-1 text-sm font-bold text-muted">Recent state, host, structure, settlement, and result events for operator review.</p>
+                            <p className="font-mono text-[0.65rem] font-black uppercase tracking-[0.12em] text-dim">Recent activity</p>
+                            <p className="mt-1 text-sm font-bold text-muted">Recent changes, result decisions, and payment actions for this tournament.</p>
                           </div>
                           {commandEvents[detail.id]?.length ? (
                             <DataTable
@@ -461,7 +461,7 @@ export default async function AdminTournamentsPage({
                               rows={auditSummary(commandEvents[detail.id] ?? [])}
                             />
                           ) : (
-                            <AdminEmptyState description="State events will appear after operators publish, seed, generate, review, or settle this tournament." title="No audit events loaded" />
+                            <AdminEmptyState description="Updates will appear here after the tournament is opened, arranged, reviewed, or paid out." title="No recent activity" />
                           )}
                         </div>
                       </div>
@@ -472,14 +472,14 @@ export default async function AdminTournamentsPage({
             </div>
           ) : (
             <div className="p-4">
-              <AdminEmptyState description="Open registration, seed, generate, or start a tournament to populate command-center oversight." title="No active tournament ops loaded" />
+              <AdminEmptyState description="Open registration, arrange players, create matches, or start a tournament to see it here." title="No active tournaments loaded" />
             </div>
           )}
         </Panel>
 
         <Panel>
           <PanelHeader
-            description="Grant trusted creator, co-host, or sponsor access, track sponsor money, and update event-facing copy or schedule without turning collaborators into global operators."
+            description="Give trusted hosts access to one tournament, track sponsor money, and update the public event details."
             eyebrow="Hosts"
             title="Sponsor and creator tools"
           />
@@ -632,9 +632,9 @@ export default async function AdminTournamentsPage({
 
         <Panel>
           <PanelHeader
-            description="Assign seeds only after registration is locked and eligible entrants have checked in. Manual mode must include every checked-in or already-seeded entry ID exactly once."
-            eyebrow="Competitive Integrity"
-            title="Seeding engine"
+            description="Arrange checked-in players before creating the bracket, groups, rounds, or match list."
+            eyebrow="Player Setup"
+            title="Arrange tournament players"
           />
           <form action={seedTournamentAction} className="grid gap-4 p-4">
             <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1.2fr)_220px_minmax(0,1fr)]">
@@ -649,31 +649,31 @@ export default async function AdminTournamentsPage({
                 </select>
               </label>
               <label className="grid gap-2 text-sm font-bold text-ink">
-                Seed mode
+                How should players be arranged?
                 <select className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="mode">
-                  <option value="registration_order">Registration order</option>
-                  <option value="random">Random draw</option>
-                  <option value="reputation">Reputation ranking</option>
-                  <option value="manual">Manual order</option>
+                  <option value="registration_order">By registration order</option>
+                  <option value="random">Shuffle randomly</option>
+                  <option value="reputation">By player record</option>
+                  <option value="manual">I will choose the order</option>
                 </select>
               </label>
               <label className="grid gap-2 text-sm font-bold text-ink">
-                Reason
-                <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" defaultValue="tournament_seeded" name="reason" />
+                Note
+                <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" defaultValue="Players arranged for tournament start" name="reason" />
               </label>
             </div>
             <label className="grid gap-2 text-sm font-bold text-ink">
-              Manual seed order
+              Manual player order
               <textarea
                 className="min-h-24 rounded-md border border-line bg-white px-3 py-2 font-mono text-xs outline-none focus:border-action"
                 name="entry_ids"
-                placeholder="Paste checked-in entry IDs in seed order, separated by lines, spaces, or commas."
+                placeholder="Paste checked-in entry IDs in the order you want them, separated by lines, spaces, or commas."
               />
             </label>
             <div className="flex flex-wrap items-center gap-3">
-              <SubmitButton idleLabel="Assign seeds" pendingLabel="Assigning seeds..." />
+              <SubmitButton idleLabel="Save player order" pendingLabel="Saving player order..." />
               <p className="text-xs font-bold text-muted">
-                The API rejects waitlisted, unapproved, unregistered, duplicate, or missing manual seed entries.
+                Manual order must include every checked-in player exactly once.
               </p>
             </div>
           </form>
@@ -681,9 +681,9 @@ export default async function AdminTournamentsPage({
 
         <Panel>
           <PanelHeader
-            description="Generate stages, rounds, matches, match sides, and initial standings from seeded entrants. Use force only before real matches have started."
+            description="Create the bracket, groups, rounds, or match list after players have been arranged."
             eyebrow="Structure"
-            title="Stage generator"
+            title="Create tournament matches"
           />
           <form action={generateTournamentStructureAction} className="grid gap-4 p-4">
             <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
@@ -709,7 +709,7 @@ export default async function AdminTournamentsPage({
             <div className="flex flex-wrap items-center gap-3">
               <SubmitButton idleLabel="Generate stages" pendingLabel="Generating stages..." />
               <p className="text-xs font-bold text-muted">
-                Requires tournament status to be Seeding with seeded entrants meeting the minimum entry count.
+                Use this after the tournament has enough checked-in players.
               </p>
             </div>
           </form>
@@ -767,9 +767,9 @@ export default async function AdminTournamentsPage({
         </Panel>
         <Panel>
           <PanelHeader
-            description="Reserve tournament prize payout queues from approved prize pools and prize allocations, or queue participant-entry refunds when an event should return money."
-            eyebrow="Settlement"
-            title="Tournament settlement"
+            description="Prepare prize payouts after results are approved, or prepare refunds when a tournament needs to return entry money."
+            eyebrow="Payments"
+            title="Tournament payouts and refunds"
           />
           <div className="grid gap-5 p-4 xl:grid-cols-2">
             <form action={reserveTournamentSettlementAction} className="grid gap-3 rounded-md border border-line bg-white p-4">
@@ -811,9 +811,9 @@ export default async function AdminTournamentsPage({
 
         <Panel>
           <PanelHeader
-            description="Apply admin-reviewed heat, race, leaderboard, placement, time, and kill-count results for cumulative formats."
+            description="Add approved scores for formats that use points, placements, kills, time, or leaderboard totals."
             eyebrow="Scoring"
-            title="Cumulative scoring"
+            title="Add tournament scores"
           />
           <form action={applyTournamentCumulativeScoresAction} className="grid gap-4 p-4">
             <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
@@ -850,7 +850,7 @@ export default async function AdminTournamentsPage({
             <div className="flex flex-wrap items-center gap-3">
               <SubmitButton idleLabel="Apply scores" pendingLabel="Applying scores..." />
               <p className="text-xs font-bold text-muted">
-                Include every entrant side in the match. The API rejects duplicates, missing entrants, and already-scored matches.
+                Include every player or team in the match. Duplicate, missing, or already-scored entries will be rejected.
               </p>
             </div>
           </form>
@@ -859,7 +859,7 @@ export default async function AdminTournamentsPage({
         <div className="grid min-w-0 gap-6 2xl:grid-cols-[minmax(0,1fr)_440px]">
           <Panel>
             <PanelHeader
-              description="Every event starts as a draft with full format, scoring, funding, registration, and schedule policy attached."
+              description="Set the game, format, entry fee, prize details, registration window, and rules for a new tournament."
               eyebrow="Create"
               title="New tournament"
             />
@@ -1043,7 +1043,7 @@ export default async function AdminTournamentsPage({
 
         <Panel>
           <PanelHeader
-            description="Drafts can move through the tournament lifecycle from the API once operators publish, open registration, seed, and run the event."
+            description="Tournament drafts and live events appear here as they move from registration to play and payout."
             eyebrow="Events"
             title="Tournament queue"
           />

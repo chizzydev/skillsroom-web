@@ -61,7 +61,7 @@ export async function AppShell({ active, children }: AppShellProps) {
               </Link>
             {showAdmin ? (
               <Link className="hidden min-h-control items-center rounded-md border border-line bg-white px-3 text-sm font-black text-ink shadow-tight hover:bg-surfaceHigh lg:inline-flex" href="/admin">
-                Ops
+                Admin
               </Link>
             ) : null}
             <AccountMenu compact user={user} />
@@ -77,7 +77,7 @@ export async function AppShell({ active, children }: AppShellProps) {
               <strong className="text-sm font-black text-white">Skillsroom</strong>
             </div>
             <p className="mt-2 max-w-2xl text-xs leading-5 text-slate-300">
-              Private competitive rooms with clear rules, manual review, evidence trails, and controlled settlement workflows.
+              Private competitive rooms with clear rules, payment checks, match proof, and support when something goes wrong.
             </p>
           </div>
           <nav className="grid min-w-0 grid-cols-2 gap-x-4 gap-y-2 text-xs font-black text-slate-300 sm:flex sm:flex-wrap">

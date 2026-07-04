@@ -86,8 +86,8 @@ export default async function AdminWalletPage({ searchParams }: { searchParams: 
       <section className="grid gap-5">
         <AdminPageHeader
           description="Approve only after matching the bank alert, sender details, amount, and proof. Approval credits the user's spendable balance."
-          eyebrow="Wallet Ops"
-          title="Wallet Money Queue"
+          eyebrow="Wallet"
+          title="Wallet review"
           tone="cyan"
         />
 
@@ -104,16 +104,16 @@ export default async function AdminWalletPage({ searchParams }: { searchParams: 
 
         <Panel>
           <PanelHeader
-            eyebrow="Investigate"
-            title="Find a user, room, or tournament money trail"
-            description="This is read-only. It helps you see what happened without giving the browser any power to move funds."
+            eyebrow="Search"
+            title="Find a user, room, or tournament payment history"
+            description="This is read-only. It helps you see what happened without changing anyone's money."
           />
           <form className="grid gap-3 p-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto]">
             <input className="min-h-11 rounded-md border border-line bg-white px-3 font-mono text-sm outline-none focus:border-action" defaultValue={userId ?? ""} name="user_id" placeholder="User ID for wallet history" />
-            <input className="min-h-11 rounded-md border border-line bg-white px-3 font-mono text-sm outline-none focus:border-action" defaultValue={matchRoomId ?? ""} name="match_room_id" placeholder="Match room ID for timeline" />
-            <input className="min-h-11 rounded-md border border-line bg-white px-3 font-mono text-sm outline-none focus:border-action" defaultValue={tournamentId ?? ""} name="tournament_id" placeholder="Tournament ID for timeline" />
+            <input className="min-h-11 rounded-md border border-line bg-white px-3 font-mono text-sm outline-none focus:border-action" defaultValue={matchRoomId ?? ""} name="match_room_id" placeholder="Match room ID" />
+            <input className="min-h-11 rounded-md border border-line bg-white px-3 font-mono text-sm outline-none focus:border-action" defaultValue={tournamentId ?? ""} name="tournament_id" placeholder="Tournament ID" />
             <button className="min-h-11 rounded-md bg-navy-900 px-4 text-sm font-black text-white transition hover:bg-ink" type="submit">
-              Load trail
+              Load history
             </button>
           </form>
         </Panel>
@@ -262,7 +262,7 @@ export default async function AdminWalletPage({ searchParams }: { searchParams: 
             </Panel>
 
             <Panel>
-              <PanelHeader eyebrow="Ledger" title="User wallet history" description={userId ? "Showing recent immutable wallet entries for the selected user." : "Add a user ID above to narrow this to one player."} />
+              <PanelHeader eyebrow="History" title="User wallet history" description={userId ? "Showing recent wallet changes for the selected user." : "Add a user ID above to narrow this to one player."} />
               <div className="grid gap-3 p-4">
                 {ledgerEntries.length ? (
                   ledgerEntries.map((entry) => (
@@ -279,13 +279,13 @@ export default async function AdminWalletPage({ searchParams }: { searchParams: 
                     </article>
                   ))
                 ) : (
-                  <AdminEmptyState description="No wallet ledger entries match this view yet." title="No wallet history" />
+                  <AdminEmptyState description="No wallet history matches this view yet." title="No wallet history" />
                 )}
               </div>
             </Panel>
 
             <Panel>
-              <PanelHeader eyebrow="Timeline" title="Room or tournament financial timeline" description="Load a room or tournament ID above to see funding, locks, settlement, and payout events in order." />
+              <PanelHeader eyebrow="History" title="Room or tournament payment history" description="Load a room or tournament ID above to see funding, locked money, refunds, and payouts in order." />
               <div className="grid gap-3 p-4">
                 {financeTimeline.length ? (
                   financeTimeline.map((row) => (
@@ -302,7 +302,7 @@ export default async function AdminWalletPage({ searchParams }: { searchParams: 
                     </article>
                   ))
                 ) : (
-                  <AdminEmptyState description="No room or tournament financial timeline is loaded." title="Load a financial trail" />
+                  <AdminEmptyState description="No room or tournament payment history is loaded." title="Load payment history" />
                 )}
               </div>
             </Panel>
@@ -310,22 +310,6 @@ export default async function AdminWalletPage({ searchParams }: { searchParams: 
 
           <div className="grid h-fit gap-4 xl:sticky xl:top-24">
             <AdminStepUpPanel returnTo="/admin/wallet" />
-            <Panel>
-              <PanelHeader eyebrow="Rules" title="Anti-gaming guardrails" description="These are server and database rules, not client promises." />
-              <div className="grid gap-2 p-4">
-                {(dashboard?.guardrails ?? [
-                  "Client never decides balance.",
-                  "Client never decides entry amount.",
-                  "Client never credits wallet.",
-                  "Client never unlocks funds.",
-                  "Sensitive admin actions require step-up."
-                ]).map((rule) => (
-                  <div className="rounded-md border border-line bg-white p-3 text-sm font-black text-ink" key={rule}>
-                    {rule}
-                  </div>
-                ))}
-              </div>
-            </Panel>
             <Panel>
               <PanelHeader eyebrow="Decision" title="Approve or reject top-up" description="Approval writes wallet ledger entries. Rejection leaves the balance unchanged." />
               <form action={reviewWalletTopupAction} className="grid gap-3 p-4">

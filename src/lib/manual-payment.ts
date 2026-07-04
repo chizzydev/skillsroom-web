@@ -5,12 +5,12 @@ export const manualCollectionAccount = {
 } as const;
 
 export const manualCollectionPolicy = {
-  title: "Closed beta manual collection",
+  title: "Bank transfer",
   summary:
-    "Skillsroom is using a controlled manual collection rail for closed beta while split payments stay paused pending product validation.",
+    "Send the exact amount to the account below. Your payment will be checked before it becomes available.",
   instructions: [
     "Transfer the exact amount to the collection account shown below.",
     "Use your room code or tournament title in the transfer narration if your bank app allows it.",
-    "Upload the transfer screenshot and add the transfer reference so operators can reconcile quickly."
+    "Upload the transfer screenshot and add the transfer reference so we can confirm it quickly."
   ]
 } as const;
