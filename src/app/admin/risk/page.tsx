@@ -149,7 +149,6 @@ export default async function AdminRiskPage({ searchParams }: { searchParams: Pr
   let chatModerationEvents: ChatModerationEvent[] = [];
   let dmAbuseRequests: ChatDmRequest[] = [];
   let dmBlocks: ChatUserBlock[] = [];
-  let dmRetentionPolicy: Record<string, string> = {};
   let evidenceEvents: SecurityEvent[] = [];
   let retentionReport: Awaited<ReturnType<typeof listEvidenceRetentionReport>> | null = null;
   let loadError: string | null = null;
@@ -170,12 +169,12 @@ export default async function AdminRiskPage({ searchParams }: { searchParams: Pr
     chatModerationEvents = chatModerationResult.events;
     dmAbuseRequests = dmAbuseResult.requests;
     dmBlocks = dmAbuseResult.blocks;
-    dmRetentionPolicy = dmAbuseResult.retention_policy;
+    void dmAbuseResult.retention_policy;
     evidenceEvents = evidenceEventResult.events;
     retentionReport = localRetentionReport;
     void dashboard;
   } catch {
-    loadError = "Unable to load risk dashboard.";
+    loadError = "Unable to load the safety workspace.";
   }
   const evidenceReviews = evidenceReviewRows(evidenceEvents);
   const evidenceExceptions = evidenceReviews.filter((row) => row.verdict === "exception");
@@ -186,18 +185,19 @@ export default async function AdminRiskPage({ searchParams }: { searchParams: Pr
   const deletionRequested = retentionReport?.summary.deletionRequested ?? 0;
   const deletionApproved = retentionReport?.summary.deletionApproved ?? 0;
   const deletedEvidence = retentionReport?.summary.deleted ?? 0;
+  const canMakeFinalEvidenceDeletionDecision = user?.role === "admin" || user?.role === "owner";
 
   return (
     <AdminShell active="risk">
       <section className="grid gap-5">
         <AdminPageHeader
-          description="Track suspicious players, hold risky rooms, and apply scoped restrictions with an audit trail."
-          eyebrow="Risk Ops"
-          title="Risk and Moderation"
+          description="Review player reports, unsafe chat messages, blocked rooms, and evidence that needs attention."
+          eyebrow="Safety"
+          title="Player safety and moderation"
           tone="danger"
         />
 
-        <LiveUpdateStream eventTypePrefixes={["admin.queue.risk.", "admin.queue.chat_moderation.", "match.hold.", "chat.message.", "chat.member."]} label="Risk live" />
+        <LiveUpdateStream eventTypePrefixes={["admin.queue.risk.", "admin.queue.chat_moderation.", "match.hold.", "chat.message.", "chat.member."]} label="Safety updates" />
 
         {(error || loadError) && (
           <div className="rounded-md border border-danger bg-red-50 p-4 text-sm font-bold text-danger">
@@ -206,9 +206,9 @@ export default async function AdminRiskPage({ searchParams }: { searchParams: Pr
         )}
 
         <div className="grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <StatusPanel detail="Open queue" label="Risk Flags" tone="danger" value={countRows(flags)} />
+          <StatusPanel detail="Reports waiting" label="Player Reports" tone="danger" value={countRows(flags)} />
           <StatusPanel detail="Active room blocks" label="Room Holds" tone="warning" value={countRows(holds)} />
-          <StatusPanel detail="Recent audit trail" label="Actions" tone="cyan" value={countRows(actions)} />
+          <StatusPanel detail="Recent decisions" label="Actions" tone="cyan" value={countRows(actions)} />
           <StatusPanel detail="Reports and chat safety actions" label="Chat Queue" tone={chatModerationEvents.length ? "warning" : "success"} value={countRows(chatModerationEvents)} />
         </div>
 
@@ -275,7 +275,7 @@ export default async function AdminRiskPage({ searchParams }: { searchParams: Pr
         </Panel>
 
         <Panel>
-          <PanelHeader eyebrow="Private DMs" title="DM abuse investigation" description="DMs require recipient acceptance. Operators review metadata, reports, blocks, and request state, not open private browsing." />
+          <PanelHeader eyebrow="Private DMs" title="DM abuse review" description="DMs are private. The team only reviews reports, blocks, and request history needed for safety decisions." />
           <div className="grid gap-4 p-4 xl:grid-cols-2">
             <div className="grid gap-3">
               <h3 className="text-sm font-black text-ink">Recent DM requests</h3>
@@ -300,26 +300,26 @@ export default async function AdminRiskPage({ searchParams }: { searchParams: Pr
                   {block.reason ? <p className="mt-1 text-sm text-muted">{block.reason}</p> : null}
                 </div>
               ))}
-              {!dmBlocks.length ? <AdminEmptyState title="No user blocks" description="Chat user blocks appear here for abuse review." /> : null}
+              {!dmBlocks.length ? <AdminEmptyState title="No user blocks" description="Blocks between users will appear here when there is something to review." /> : null}
             </div>
           </div>
           <div className="grid gap-2 border-t border-line p-4 text-sm text-muted">
-            {Object.entries(dmRetentionPolicy).map(([key, value]) => (
-              <p key={key}><strong className="text-ink">{displayLabel(key)}:</strong> {value}</p>
-            ))}
+            <p><strong className="text-ink">DM requests:</strong> Players can only start private DMs after the other person accepts.</p>
+            <p><strong className="text-ink">Message access:</strong> The team does not browse private chats. Reports and safety cases show only the details needed for review.</p>
+            <p><strong className="text-ink">Abuse records:</strong> Reports, blocks, and safety actions are kept so repeated abuse can be investigated.</p>
           </div>
         </Panel>
 
         <div className="grid min-w-0 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <StatusPanel detail="Moved out of active serving" label="Quarantined" tone={quarantinedEvidence ? "warning" : "neutral"} value={quarantinedEvidence.toString()} />
-          <StatusPanel detail="Awaiting second operator" label="Delete Requests" tone={deletionRequested ? "warning" : "neutral"} value={deletionRequested.toString()} />
-          <StatusPanel detail="Ready for final operator" label="Delete Approved" tone={deletionApproved ? "danger" : "neutral"} value={deletionApproved.toString()} />
-          <StatusPanel detail="Media deleted, tombstone kept" label="Deleted Media" tone={deletedEvidence ? "danger" : "neutral"} value={deletedEvidence.toString()} />
+          <StatusPanel detail="Temporarily hidden from normal access" label="Held evidence" tone={quarantinedEvidence ? "warning" : "neutral"} value={quarantinedEvidence.toString()} />
+          <StatusPanel detail="Waiting for another team member" label="Delete Requests" tone={deletionRequested ? "warning" : "neutral"} value={deletionRequested.toString()} />
+          <StatusPanel detail="Ready for final deletion" label="Delete Approved" tone={deletionApproved ? "danger" : "neutral"} value={deletionApproved.toString()} />
+          <StatusPanel detail="File removed, record kept" label="Deleted Media" tone={deletedEvidence ? "danger" : "neutral"} value={deletedEvidence.toString()} />
         </div>
 
         <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1fr)_420px]">
           <Panel>
-            <PanelHeader eyebrow="Flags" title="Open risk flags" description="Support can view, moderators can create and update flags." />
+            <PanelHeader eyebrow="Reports" title="Player reports" description="Support can view reports. Community managers can create and update them." />
             {flags.length ? (
               <DataTable
                 columns={[
@@ -333,13 +333,13 @@ export default async function AdminRiskPage({ searchParams }: { searchParams: Pr
               />
             ) : (
               <div className="p-4">
-                <AdminEmptyState description="No open player risk flag is currently waiting for review." title="Risk flag queue is clear" />
+                <AdminEmptyState description="No player report is waiting for review right now." title="Player reports are clear" />
               </div>
             )}
           </Panel>
 
           <Panel>
-            <PanelHeader eyebrow="Create Flag" title="Add player risk flag" />
+            <PanelHeader eyebrow="New Report" title="Add player report" />
             <form action={createRiskFlagAction} className="grid gap-3 p-4">
               <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="user_id" placeholder="User ID" required />
               <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="flag_type" placeholder="duplicate_account" required />
@@ -357,7 +357,7 @@ export default async function AdminRiskPage({ searchParams }: { searchParams: Pr
 
         <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1fr)_420px]">
           <Panel>
-            <PanelHeader eyebrow="Room Holds" title="Active held rooms" description="Held rooms should not be settled until an operator releases the hold." />
+            <PanelHeader eyebrow="Room Holds" title="Active held rooms" description="Held rooms should not be paid out until a team member releases the hold." />
             {holds.length ? (
               <DataTable
                 columns={[
@@ -401,7 +401,7 @@ export default async function AdminRiskPage({ searchParams }: { searchParams: Pr
 
         <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1fr)_420px]">
           <Panel>
-            <PanelHeader eyebrow="Audit" title="Recent moderation actions" />
+          <PanelHeader eyebrow="History" title="Recent moderation actions" />
             {actions.length ? (
               <DataTable
                 columns={[
@@ -439,7 +439,7 @@ export default async function AdminRiskPage({ searchParams }: { searchParams: Pr
                   <option value="critical">Critical</option>
                   <option value="low">Low</option>
                 </select>
-                <textarea className="min-h-24 rounded-md border border-line bg-white px-3 py-2 text-sm outline-none focus:border-action" name="summary" placeholder="Reason and operator note" required />
+                <textarea className="min-h-24 rounded-md border border-line bg-white px-3 py-2 text-sm outline-none focus:border-action" name="summary" placeholder="Reason and team note" required />
                 <FormActionButton idleLabel="Apply moderation" pendingLabel="Applying moderation..." variant="danger" />
               </form>
             </Panel>
@@ -447,7 +447,7 @@ export default async function AdminRiskPage({ searchParams }: { searchParams: Pr
         </div>
 
         <Panel>
-          <PanelHeader eyebrow="Evidence Review" title="Evidence admin review dashboard" description="Grouped view of files, retention state, legal hold, access denials, custody exceptions, and operator package actions." />
+          <PanelHeader eyebrow="Evidence Review" title="Evidence review" description="Files that may need extra attention before they are used, hidden, exported, or removed." />
           {evidenceReviews.length ? (
             <DataTable
               columns={[
@@ -511,7 +511,7 @@ export default async function AdminRiskPage({ searchParams }: { searchParams: Pr
         </Panel>
 
         <Panel>
-          <PanelHeader eyebrow="Evidence Audit" title="Recent evidence access events" />
+          <PanelHeader eyebrow="Evidence History" title="Recent evidence activity" />
           {evidenceEvents.length ? (
             <DataTable
               columns={[
@@ -581,7 +581,7 @@ export default async function AdminRiskPage({ searchParams }: { searchParams: Pr
         </Panel>
 
         <Panel>
-          <PanelHeader eyebrow="Evidence Quarantine" title="Quarantine or restore evidence" description="Quarantine moves media out of active serving while preserving the sidecar, audit trail, and restore path." />
+          <PanelHeader eyebrow="Evidence Hold" title="Hide or restore evidence" description="Use this when a file should be temporarily removed from normal access while review continues." />
           <form action={updateEvidenceQuarantineAction} className="grid gap-3 p-4 lg:grid-cols-[minmax(0,1fr)_180px_180px_minmax(0,1fr)_auto]">
             <input
               className="min-h-11 rounded-md border border-line bg-white px-3 font-mono text-sm outline-none focus:border-action"
@@ -595,7 +595,7 @@ export default async function AdminRiskPage({ searchParams }: { searchParams: Pr
             </select>
             <select className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="quarantine_reason">
               <option value="retention_expired">Expired</option>
-              <option value="operator_quarantine">Operator review</option>
+              <option value="operator_quarantine">Team review</option>
             </select>
             <input
               className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action"
@@ -608,7 +608,15 @@ export default async function AdminRiskPage({ searchParams }: { searchParams: Pr
         </Panel>
 
         <Panel>
-          <PanelHeader eyebrow="Evidence Deletion" title="Request or execute permanent media deletion" description="Permanent deletion requires quarantine, expiry, no legal hold, a second-operator approval, and a final third-operator execution." />
+          <PanelHeader
+            eyebrow="Evidence Deletion"
+            title={canMakeFinalEvidenceDeletionDecision ? "Request or complete permanent deletion" : "Request evidence deletion"}
+            description={
+              canMakeFinalEvidenceDeletionDecision
+                ? "Permanent deletion requires a prior hold, expiry, no legal hold, another team member's approval, and final confirmation."
+                : "Use this to ask for expired or unsafe evidence to be removed. An admin or owner must make the final deletion decision."
+            }
+          />
           <form action={updateEvidenceDeletionAction} className="grid gap-3 p-4 xl:grid-cols-[minmax(0,1fr)_180px_minmax(0,1fr)_180px_auto]">
             <input
               className="min-h-11 rounded-md border border-line bg-white px-3 font-mono text-sm outline-none focus:border-action"
@@ -618,9 +626,9 @@ export default async function AdminRiskPage({ searchParams }: { searchParams: Pr
             />
             <select className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="deletion_action">
               <option value="request">Request</option>
-              <option value="approve">Approve</option>
-              <option value="reject">Reject</option>
-              <option value="delete">Delete</option>
+              {canMakeFinalEvidenceDeletionDecision ? <option value="approve">Approve</option> : null}
+              {canMakeFinalEvidenceDeletionDecision ? <option value="reject">Reject</option> : null}
+              {canMakeFinalEvidenceDeletionDecision ? <option value="delete">Delete</option> : null}
             </select>
             <input
               className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action"
@@ -628,11 +636,13 @@ export default async function AdminRiskPage({ searchParams }: { searchParams: Pr
               placeholder="Retention expiry, reconciliation checked, approval note"
               required
             />
-            <input
-              className="min-h-11 rounded-md border border-line bg-white px-3 font-mono text-sm outline-none focus:border-action"
-              name="deletion_confirmation"
-              placeholder="DELETE EVIDENCE"
-            />
+            {canMakeFinalEvidenceDeletionDecision ? (
+              <input
+                className="min-h-11 rounded-md border border-line bg-white px-3 font-mono text-sm outline-none focus:border-action"
+                name="deletion_confirmation"
+                placeholder="DELETE EVIDENCE"
+              />
+            ) : null}
             <FormActionButton idleLabel="Save deletion" pendingLabel="Saving deletion..." variant="danger" />
           </form>
         </Panel>
@@ -661,7 +671,7 @@ export default async function AdminRiskPage({ searchParams }: { searchParams: Pr
         </Panel>
 
         <Panel>
-          <PanelHeader eyebrow="Evidence Export" title="Download evidence package" description="Creates a JSON manifest with sidecar metadata, retention state, integrity checks, and matching audit events." />
+          <PanelHeader eyebrow="Evidence Export" title="Download evidence package" description="Downloads the file record, review details, retention status, and related history." />
           <form action="/api/evidence-export" className="grid gap-3 p-4 md:grid-cols-[minmax(0,1fr)_auto]" method="get">
             <input
               className="min-h-11 rounded-md border border-line bg-white px-3 font-mono text-sm outline-none focus:border-action"
@@ -674,7 +684,7 @@ export default async function AdminRiskPage({ searchParams }: { searchParams: Pr
         </Panel>
 
         <Panel>
-          <PanelHeader eyebrow="Custody Review" title="Review evidence chain of custody" description="Generates a verdict, integrity findings, retention status, legal-hold history, and audit timeline." />
+          <PanelHeader eyebrow="Evidence Check" title="Review evidence history" description="Checks the file record, retention status, legal hold history, and related activity." />
           <form action="/api/evidence-chain" className="grid gap-3 p-4 md:grid-cols-[minmax(0,1fr)_auto]" method="get">
             <input
               className="min-h-11 rounded-md border border-line bg-white px-3 font-mono text-sm outline-none focus:border-action"
@@ -689,7 +699,7 @@ export default async function AdminRiskPage({ searchParams }: { searchParams: Pr
         <Panel>
           <PanelHeader eyebrow="Flag Status" title="Update flag status" />
           <form action={updateRiskFlagStatusAction} className="grid gap-3 p-4 md:grid-cols-[1fr_220px_auto]">
-            <input className="min-h-11 rounded-md border border-line bg-white px-3 font-mono text-sm outline-none focus:border-action" name="flag_id" placeholder="Risk flag ID" required />
+            <input className="min-h-11 rounded-md border border-line bg-white px-3 font-mono text-sm outline-none focus:border-action" name="flag_id" placeholder="Report ID" required />
             <select className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="status">
               <option value="reviewing">Reviewing</option>
               <option value="resolved">Resolved</option>

@@ -25,9 +25,9 @@ function matchesPrefix(value: string, prefixes: string[]) {
 }
 
 function pillTone(status: "live" | "reconnecting" | "idle") {
-  if (status === "live") return "border-emerald-200 bg-emerald-50 text-emerald-700";
-  if (status === "reconnecting") return "border-amber-200 bg-amber-50 text-amber-700";
-  return "border-line bg-white text-muted";
+  if (status === "live") return "border-emerald-200 bg-gradient-to-r from-emerald-50 to-cyan-50 text-emerald-800 shadow-[0_18px_48px_rgba(16,185,129,0.14)]";
+  if (status === "reconnecting") return "border-amber-200 bg-gradient-to-r from-amber-50 to-orange-50 text-amber-800 shadow-[0_18px_48px_rgba(245,158,11,0.12)]";
+  return "border-line bg-white text-muted shadow-tight";
 }
 
 export function LiveUpdateStream({
@@ -147,22 +147,29 @@ export function LiveUpdateStream({
     };
   }, [matchRoomId, prefixes, router, tournamentId]);
 
+  const statusLabel = status === "live" ? "On" : status === "reconnecting" ? "Reconnecting" : "Starting";
   const updatedLabel = updatedAt
-    ? `Last refresh ${new Date(updatedAt).toLocaleTimeString("en-NG", { hour: "2-digit", minute: "2-digit" })}`
-    : "Auto-refreshes when state changes";
+    ? `Updated ${new Date(updatedAt).toLocaleTimeString("en-NG", { hour: "2-digit", minute: "2-digit" })}`
+    : "Listening for updates";
 
   return (
     <>
       <div
         className={[
-          "inline-flex min-h-10 items-center gap-2 rounded-md border px-3 py-2 text-xs font-bold",
+          "flex min-h-14 items-center gap-3 rounded-2xl border px-4 py-3 text-sm font-bold",
           pillTone(status),
           className ?? ""
         ].join(" ")}
       >
-        <span className="font-mono uppercase tracking-[0.12em]">{label}</span>
-        <span>{status === "live" ? "Connected" : status === "reconnecting" ? "Reconnecting" : "Starting"}</span>
-        <span className="text-[0.7rem] opacity-80">{updatedLabel}</span>
+        <span className="relative grid size-10 shrink-0 place-items-center rounded-full bg-white/80 shadow-tight">
+          <span className={["absolute size-3 rounded-full", status === "live" ? "bg-emerald-500" : status === "reconnecting" ? "bg-amber-500" : "bg-slate-400"].join(" ")} />
+          {status === "live" ? <span className="absolute size-3 animate-ping rounded-full bg-emerald-400/60" /> : null}
+        </span>
+        <span className="min-w-0">
+          <span className="block truncate text-sm font-black text-ink">{label.replace(/\s*live$/i, "") || "Live updates"}</span>
+          <span className="block text-xs font-bold text-muted">{updatedLabel}</span>
+        </span>
+        <span className="ml-auto rounded-full bg-white/70 px-3 py-1 text-xs font-black text-ink shadow-tight">{statusLabel}</span>
       </div>
       {toasts.length ? (
         <div className="pointer-events-none fixed inset-x-3 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-[70] grid gap-2 md:inset-x-auto md:right-6 md:top-20 md:bottom-auto md:w-[22rem]">

@@ -119,7 +119,7 @@ function fromRefund(row: MatchRefund): WorkItem {
 function fromRisk(row: UserRiskFlag): WorkItem {
   return {
     id: row.id,
-    type: "Risk flag",
+    type: "Player safety flag",
     room: "User",
     actor: row.user_id,
     amount: row.summary,
@@ -134,7 +134,7 @@ function fromHold(row: RoomModerationHold): WorkItem {
     id: row.id,
     type: "Room hold",
     room: row.match_room_id,
-    actor: "Operations",
+    actor: "Skillsroom team",
     amount: row.reason,
     priority: row.severity,
     tone: row.severity === "critical" || row.severity === "high" ? "danger" : "warning",
@@ -167,10 +167,38 @@ export default async function AdminPage({
   const canSeeSettlements = canUseAdminSection(user, "settlements");
   const canSeeRisk = canUseAdminSection(user, "risk");
   const canManageCommunity = user?.role === "owner" || user?.role === "admin";
+  const canSeeTeamGuide = user?.role === "owner";
+  const headerCopy =
+    user?.role === "moderator"
+      ? {
+          eyebrow: "Community",
+          title: "Community manager workspace",
+          description: "Review match results, player handles, tournament activity, and safety reports from one place.",
+          actionHref: "/admin/results",
+          actionLabel: "Review results",
+          pendingLabel: "Opening results..."
+        }
+      : user?.role === "support"
+        ? {
+            eyebrow: "Support",
+            title: "Support workspace",
+            description: "Check player records and safety context without seeing money or owner-only controls.",
+            actionHref: "/admin/players",
+            actionLabel: "Review players",
+            pendingLabel: "Opening players..."
+          }
+        : {
+            eyebrow: "Admin",
+            title: "Admin dashboard",
+            description: "Review payments, match results, refunds, player reports, and support items from one place.",
+            actionHref: canSeeFunding ? "/admin/funding" : "/admin/results",
+            actionLabel: canSeeFunding ? "Review funding" : "Review results",
+            pendingLabel: canSeeFunding ? "Opening funding..." : "Opening results..."
+          };
   const roleBoundaryCards = [
     user?.role === "owner" ? ["Owner", "Full", "Full platform control, team roles, money, risk, and public operations."] : null,
     user?.role === "admin" || user?.role === "owner" ? ["Admin", "Money", "Funding, wallet top-ups, payouts, refunds, tournaments, and result support."] : null,
-    user?.role === "moderator" || user?.role === "owner" ? ["Moderator", "Trust", "Result evidence, disputes, room holds, player trust, and tournament moderation."] : null,
+    user?.role === "moderator" || user?.role === "owner" ? ["Community Manager", "Community", "Result evidence, disputes, room holds, player trust, and tournament moderation."] : null,
     user?.role === "support" || user?.role === "owner" ? ["Support", "Assist", "Player context, support notes, and safe risk visibility."] : null
   ].filter((item): item is [string, string, string] => Boolean(item));
 
@@ -203,7 +231,7 @@ export default async function AdminPage({
       payouts = payoutResult.payouts;
       refunds = refundResult.refunds;
     } catch {
-      loadErrors.push("Money operations queue could not be loaded.");
+      loadErrors.push("Payment queue could not be loaded.");
     }
   }
 
@@ -213,7 +241,7 @@ export default async function AdminPage({
       flags = flagResult.flags;
       holds = holdResult.holds;
     } catch {
-      loadErrors.push("Risk and support queue could not be loaded.");
+      loadErrors.push("Safety queue could not be loaded.");
     }
   }
 
@@ -243,18 +271,18 @@ export default async function AdminPage({
           actions={
             <PendingLink
               className="inline-flex min-h-11 items-center justify-center rounded-md border border-line bg-white px-4 text-sm font-black text-ink transition hover:border-cyan"
-              href="/admin/funding"
-              pendingLabel="Opening funding..."
+              href={headerCopy.actionHref}
+              pendingLabel={headerCopy.pendingLabel}
             >
-              Review funding
+              {headerCopy.actionLabel}
             </PendingLink>
           }
-          description="Live operational queues for funding, evidence, settlement, refunds, and risk. Every decision stays tied to a room, player, and audit trail."
-          eyebrow="Operations"
-          title="Admin Command Center"
+          description={headerCopy.description}
+          eyebrow={headerCopy.eyebrow}
+          title={headerCopy.title}
         />
 
-        <LiveUpdateStream eventTypePrefixes={["admin.queue.", "match.", "tournament.", "notification."]} label="Ops live" />
+        <LiveUpdateStream eventTypePrefixes={["admin.queue.", "match.", "tournament.", "notification."]} label="Live updates" />
 
         {error ? <TransientStatusBanner clearKeys={["error"]} durationMs={12000} message={error} /> : null}
         {announcementSaved ? <TransientStatusBanner clearKeys={["announcement_saved"]} durationMs={12000} message="Platform announcement saved." tone="success" /> : null}
@@ -267,9 +295,9 @@ export default async function AdminPage({
 
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {canSeeFunding ? <AdminQueueCard detail="Manual transfers waiting for approval." href="/admin/funding" label="Funding" tone="warning" value={funding.length.toString()} /> : null}
-          {canSeeResults ? <AdminQueueCard detail="Score claims and evidence needing operator review." href="/admin/results" label="Results" tone="cyan" value={results.length.toString()} /> : null}
-          {canSeeSettlements ? <AdminQueueCard detail="Winner payouts and player refunds waiting on bank action." href="/admin/settlements" label="Money Ops" tone="success" value={(payouts.length + refunds.length).toString()} /> : null}
-          {canSeeRisk ? <AdminQueueCard detail="Open player flags and active room holds." href="/admin/risk" label="Risk" tone="danger" value={(flags.length + holds.length).toString()} /> : null}
+          {canSeeResults ? <AdminQueueCard detail="Score claims and match proof waiting for review." href="/admin/results" label="Results" tone="cyan" value={results.length.toString()} /> : null}
+          {canSeeSettlements ? <AdminQueueCard detail="Winner payouts and player refunds waiting for payment." href="/admin/settlements" label="Payments" tone="success" value={(payouts.length + refunds.length).toString()} /> : null}
+          {canSeeRisk ? <AdminQueueCard detail="Player reports and room holds waiting for review." href="/admin/risk" label="Safety" tone="danger" value={(flags.length + holds.length).toString()} /> : null}
         </div>
 
         {canManageCommunity ? (
@@ -399,7 +427,7 @@ export default async function AdminPage({
 
         <Panel>
           <PanelHeader
-            description="Newest actionable items across the platform. Open the lane to make the decision with the right controls."
+            description="Newest items you are allowed to review. Open a section when you are ready to handle it."
             eyebrow="Queue"
             title="Priority work"
           />
@@ -435,18 +463,19 @@ export default async function AdminPage({
           ) : (
             <div className="p-4">
               <AdminEmptyState
-                description="There are no funding, result, settlement, refund, or risk items waiting for review right now."
-                title="No open operator work"
+                description={user?.role === "moderator" ? "There are no result claims, player checks, tournament items, or safety reports waiting right now." : "There are no payments, results, refunds, or player reports waiting for review right now."}
+                title="Nothing waiting right now"
               />
             </div>
           )}
         </Panel>
 
+        {canSeeTeamGuide ? (
         <Panel>
           <PanelHeader
-            description="Each operator sees the lanes they are meant to work on. Owner-only and money lanes stay hidden from support and moderator accounts."
-            eyebrow="Access"
-            title="Role boundaries"
+            description="Owner-only reference for what each team role can access."
+            eyebrow="Team access"
+            title="Role guide"
           />
           <div className="grid min-w-0 gap-3 p-4 sm:grid-cols-2 lg:grid-cols-4">
             {roleBoundaryCards.map(([role, scope, detail]) => (
@@ -458,6 +487,7 @@ export default async function AdminPage({
             ))}
           </div>
         </Panel>
+        ) : null}
       </section>
     </AdminShell>
   );

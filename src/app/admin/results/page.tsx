@@ -126,21 +126,21 @@ const queueStatuses: Array<{
   {
     status: "submitted",
     title: "Submitted result claims",
-    description: "Fresh claims waiting for opponent response or direct operator review.",
+    description: "Fresh claims waiting for opponent response or team review.",
     emptyTitle: "Submitted queue is clear",
     emptyDescription: "No newly submitted result claims are waiting right now."
   },
   {
     status: "opponent_agreed",
     title: "Opponent-agreed claims",
-    description: "Claims where the opponent agreed and ops can move directly toward approval or dispute handling.",
+    description: "Claims where the opponent agreed and the team can move toward approval or dispute handling.",
     emptyTitle: "Agreed queue is clear",
     emptyDescription: "No opponent-agreed result claims are waiting right now."
   },
   {
     status: "opponent_disputed",
     title: "Disputed claims",
-    description: "Claims that need operator review because the opponent disputed the result or evidence.",
+    description: "Claims that need team review because the opponent disputed the result or proof.",
     emptyTitle: "Dispute queue is clear",
     emptyDescription: "No disputed result claims are waiting right now."
   }
@@ -171,11 +171,11 @@ export default async function AdminResultsPage({ searchParams }: { searchParams:
       <section className="grid gap-5">
         <AdminPageHeader
           description="Review score claims, evidence links, opponent responses, and route the room to settlement, dispute, or void."
-          eyebrow="Result Ops"
+          eyebrow="Results"
           title="Evidence and Result Review"
         />
 
-        <LiveUpdateStream eventTypePrefixes={["admin.queue.results.", "admin.queue.tournament_results.", "match.result.", "tournament.match.reviewed."]} label="Results live" />
+        <LiveUpdateStream eventTypePrefixes={["admin.queue.results.", "admin.queue.tournament_results.", "match.result.", "tournament.match.reviewed."]} label="Result updates" />
 
         {error ? <TransientStatusBanner clearKeys={["error"]} durationMs={12000} message={error} /> : null}
         {success ? <TransientStatusBanner clearKeys={["success"]} durationMs={12000} message={success} tone="success" /> : null}

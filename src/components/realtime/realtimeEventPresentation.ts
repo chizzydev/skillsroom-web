@@ -62,9 +62,9 @@ export function describeRealtimeEvent(event: RealtimeEvent): RealtimeToastMessag
     case "chat.message.unpinned":
       return { title: "Message unpinned", description: "A channel pin was removed.", tone: "neutral" };
     case "chat.message.hidden":
-      return { title: "Chat message hidden", description: "A moderator hid a community message.", tone: "warning" };
+      return { title: "Chat message hidden", description: "A community manager hid a community message.", tone: "warning" };
     case "chat.message.deleted":
-      return { title: "Chat message deleted", description: "A moderator deleted a community message.", tone: "danger" };
+      return { title: "Chat message deleted", description: "A community manager deleted a community message.", tone: "danger" };
     case "chat.member.muted":
       return { title: "Chat muted", description: "A channel mute was applied.", tone: "warning" };
     case "chat.presence.changed":
@@ -102,13 +102,13 @@ export function describeRealtimeEvent(event: RealtimeEvent): RealtimeToastMessag
     case "match.result.agree":
       return { title: "Result agreed", description: "The opponent accepted the submitted score.", tone: "success" };
     case "match.result.dispute":
-      return { title: "Result disputed", description: "Operator review is now needed.", tone: "danger" };
+      return { title: "Result disputed", description: "Team review is now needed.", tone: "danger" };
     case "match.result.reviewed.approve_claim":
       return { title: "Result confirmed", description: "The room can move to settlement.", tone: "success" };
     case "match.result.reviewed.reject_claim":
       return { title: "Result rejected", description: "Evidence stays open for further review.", tone: "warning" };
     case "match.result.reviewed.mark_disputed":
-      return { title: "Result marked disputed", description: "The room remains paused for operator handling.", tone: "danger" };
+      return { title: "Result marked disputed", description: "The room remains paused for team review.", tone: "danger" };
     case "match.result.reviewed.void_match":
       return { title: "Match voided", description: "This room result was invalidated by review.", tone: "danger" };
     case "match.settlement.reserved":
@@ -128,7 +128,7 @@ export function describeRealtimeEvent(event: RealtimeEvent): RealtimeToastMessag
     case "tournament.entry.checked_in":
       return { title: "Tournament check-in confirmed", description: "That entry is now ready for seeding or pairing.", tone: "success" };
     case "tournament.contribution.submitted":
-      return { title: "Tournament contribution submitted", description: "Prize or entry funding entered operator review.", tone: "warning" };
+      return { title: "Tournament contribution submitted", description: "Prize or entry funding entered team review.", tone: "warning" };
     case "tournament.contribution.approved":
       return { title: "Tournament contribution approved", description: "That money now counts toward the event pool.", tone: "success" };
     case "tournament.contribution.rejected":
@@ -155,7 +155,7 @@ export function describeRealtimeEvent(event: RealtimeEvent): RealtimeToastMessag
 
   if (event.event_type.startsWith("admin.queue.")) {
     return {
-      title: "Operator queue changed",
+      title: "Review queue updated",
       description: `${phrase(event.event_type.replace("admin.queue.", "").replace(".changed", ""))} updated live.`,
       tone: "neutral"
     };

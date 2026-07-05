@@ -42,12 +42,12 @@ export default async function AdminFundingPage({ searchParams }: { searchParams:
       <section className="grid gap-5">
         <AdminPageHeader
           description="Confirm exact transfer amount, sender identity, room, and reference before approval writes ledger entries."
-          eyebrow="Funding Ops"
+          eyebrow="Funding"
           title="Manual Funding Queue"
           tone="warning"
         />
 
-        <LiveUpdateStream eventTypePrefixes={["admin.queue.funding.", "match.funding."]} label="Funding live" />
+        <LiveUpdateStream eventTypePrefixes={["admin.queue.funding.", "match.funding."]} label="Funding updates" />
 
         {error ? <TransientStatusBanner clearKeys={["error"]} durationMs={12000} message={error} /> : null}
         {success ? <TransientStatusBanner clearKeys={["success"]} durationMs={12000} message={success} tone="success" /> : null}

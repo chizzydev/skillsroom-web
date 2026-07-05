@@ -30,7 +30,7 @@ import {
 function actionErrorMessage(error: unknown) {
   if (error instanceof ApiRequestError) return error.message;
   if (error instanceof Error) return error.message;
-  return "The risk action could not be completed.";
+  return "The safety action could not be completed.";
 }
 
 function withError(error: unknown) {
@@ -218,7 +218,7 @@ export async function updateEvidenceLegalHoldAction(formData: FormData) {
   try {
     const [user, token] = await Promise.all([getCurrentUser(), getAccessToken()]);
     if (!canAccessAdmin(user) || !user || !token || !canChangeLegalHold(user.role)) {
-      throw new Error("Moderator access is required to change evidence legal hold.");
+      throw new Error("Community Manager access is required to change evidence legal hold.");
     }
 
     const enabled = String(formData.get("legal_hold_action") || "apply") === "apply";
@@ -246,7 +246,7 @@ export async function updateEvidenceQuarantineAction(formData: FormData) {
   try {
     const [user, token] = await Promise.all([getCurrentUser(), getAccessToken()]);
     if (!canAccessAdmin(user) || !user || !token || !canChangeLegalHold(user.role)) {
-      throw new Error("Moderator access is required to quarantine evidence.");
+      throw new Error("Community Manager access is required to hide or restore evidence.");
     }
 
     const action = String(formData.get("quarantine_action") || "quarantine");
@@ -278,7 +278,7 @@ export async function updateEvidenceDeletionAction(formData: FormData) {
   try {
     const [user, token] = await Promise.all([getCurrentUser(), getAccessToken()]);
     if (!canAccessAdmin(user) || !user || !token || !canChangeLegalHold(user.role)) {
-      throw new Error("Moderator access is required to request evidence deletion.");
+      throw new Error("Community Manager access is required to request evidence deletion.");
     }
 
     const action = String(formData.get("deletion_action") || "request");

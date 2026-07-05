@@ -17,9 +17,9 @@ export const dynamic = "force-dynamic";
 
 const roleDescriptions: Record<TeamRole, string> = {
   owner: "Full platform control. Kept to the single platform owner account.",
-  admin: "Money movement, funding decisions, settlements, refunds, and high-risk operations.",
-  moderator: "Evidence, result review, disputes, room holds, and player-risk decisions.",
-  support: "Player support context, queue visibility, and low-risk notes.",
+  admin: "Payments, funding approval, payouts, refunds, and important account decisions.",
+  moderator: "Community management, match proof, result review, disputes, room holds, and player safety decisions.",
+  support: "Player support context, queue visibility, and safe notes.",
   player: "Normal player account with no admin workspace access."
 };
 
@@ -29,6 +29,11 @@ function roleTone(role: TeamRole): BadgeTone {
   if (role === "moderator") return "warning";
   if (role === "support") return "neutral";
   return "neutral";
+}
+
+function roleDisplay(role: TeamRole) {
+  if (role === "moderator") return "Community Manager";
+  return role[0].toUpperCase() + role.slice(1);
 }
 
 function statusTone(status: AdminTeamMember["user_status"]): BadgeTone {
@@ -69,9 +74,9 @@ export default async function AdminTeamPage({
     <AdminShell active="team">
       <section className="grid gap-5">
         <AdminPageHeader
-          description="Assign scoped operations roles from inside Skillsroom. Owner stays protected; admins, moderators, and support can be granted without manual database edits."
-          eyebrow="Owner Workspace"
-          title="Team Role Management"
+          description="Give team members the right level of access without exposing owner-only controls."
+          eyebrow="Owner"
+          title="Team roles"
         />
 
         {params?.error ? <TransientStatusBanner clearKeys={["error"]} durationMs={14000} message={params.error} tone="danger" /> : null}
@@ -91,8 +96,8 @@ export default async function AdminTeamPage({
           <>
             <div className="grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <StatusPanel detail="Protected account" label="Owner" tone="success" value={ownerCount.toString()} />
-              <StatusPanel detail="Money operations" label="Admins" tone="cyan" value={adminCount.toString()} />
-              <StatusPanel detail="Evidence and disputes" label="Moderators" tone="warning" value={moderatorCount.toString()} />
+              <StatusPanel detail="Payments and key decisions" label="Admins" tone="cyan" value={adminCount.toString()} />
+              <StatusPanel detail="Community review and disputes" label="Community Managers" tone="warning" value={moderatorCount.toString()} />
               <StatusPanel detail="Player context" label="Support" tone="neutral" value={supportCount.toString()} />
             </div>
 
@@ -104,7 +109,7 @@ export default async function AdminTeamPage({
 
             <Panel>
               <PanelHeader
-                description="Role changes update the user account and team membership together, then write an auth audit event for traceability."
+                description="Change a team member's role here. Each change is saved with the reason you provide."
                 eyebrow="Team"
                 title="Members and roles"
               />
@@ -127,7 +132,7 @@ export default async function AdminTeamPage({
                       label: "Current role",
                       render: (member) => (
                         <div className="grid gap-2">
-                          <Badge tone={roleTone(member.user_role)}>{member.user_role}</Badge>
+                          <Badge tone={roleTone(member.user_role)}>{roleDisplay(member.user_role)}</Badge>
                           <Badge tone={statusTone(member.user_status)}>{member.user_status}</Badge>
                         </div>
                       )
@@ -147,28 +152,28 @@ export default async function AdminTeamPage({
                       render: (member) =>
                         member.is_platform_owner ? (
                           <p className="max-w-xs text-sm font-bold leading-6 text-muted">
-                            Owner is intentionally locked. Use this page for scoped operator roles only.
+                            The owner account is locked on purpose. Use this page for admin, community manager, and support roles.
                           </p>
                         ) : (
-                          <form action={updateTeamRoleAction} className="grid min-w-64 gap-2">
+                          <form action={updateTeamRoleAction} className="grid w-full min-w-0 gap-2 sm:min-w-64">
                             <input name="user_id" type="hidden" value={member.user_id} />
                             <select
-                              className="min-h-10 rounded-md border border-line bg-white px-3 text-sm font-bold outline-none focus:border-action"
+                              className="min-h-10 w-full rounded-md border border-line bg-white px-3 text-sm font-bold outline-none focus:border-action"
                               defaultValue={member.user_role === "owner" ? "player" : member.user_role}
                               name="role"
                             >
                               <option value="player">Player</option>
                               <option value="support">Support</option>
-                              <option value="moderator">Moderator</option>
+                              <option value="moderator">Community Manager</option>
                               <option value="admin">Admin</option>
                             </select>
                             <input
-                              className="min-h-10 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action"
+                              className="min-h-10 w-full rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action"
                               maxLength={500}
                               name="note"
                               placeholder="Reason or approval note"
                             />
-                            <FormActionButton idleLabel="Update role" pendingLabel="Updating role..." size="sm" />
+                            <FormActionButton className="w-full justify-center" idleLabel="Update role" pendingLabel="Updating role..." size="sm" />
                           </form>
                         )
                     }
@@ -177,17 +182,17 @@ export default async function AdminTeamPage({
                 />
               ) : (
                 <div className="p-4">
-                  <AdminEmptyState description="Registered users will appear here once the API returns team records." title="No team members loaded" />
+                  <AdminEmptyState description="Registered users will appear here once team records are available." title="No team members loaded" />
                 </div>
               )}
             </Panel>
 
             <Panel>
-              <PanelHeader eyebrow="Role Guide" title="Operational role boundaries" />
+              <PanelHeader eyebrow="Role Guide" title="What each role can do" />
               <div className="grid gap-3 p-4 md:grid-cols-2 xl:grid-cols-5">
                 {(Object.keys(roleDescriptions) as TeamRole[]).map((role) => (
                   <div className="rounded-md border border-line bg-white p-4" key={role}>
-                    <Badge tone={roleTone(role)}>{role}</Badge>
+                    <Badge tone={roleTone(role)}>{roleDisplay(role)}</Badge>
                     <p className="mt-3 text-sm font-bold leading-6 text-muted">{roleDescriptions[role]}</p>
                   </div>
                 ))}

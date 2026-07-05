@@ -521,8 +521,8 @@ export default async function AdminTournamentsPage({
 
               <form action={updateTournamentHostEventAction} className="grid gap-3 rounded-md border border-line bg-white p-4">
                 <div>
-                  <p className="font-mono text-[0.65rem] font-black uppercase tracking-[0.12em] text-dim">Event controls</p>
-                  <h2 className="mt-1 text-lg font-black text-ink">Creator-managed details</h2>
+                  <p className="font-mono text-[0.65rem] font-black uppercase tracking-[0.12em] text-dim">Event details</p>
+                  <h2 className="mt-1 text-lg font-black text-ink">Update public tournament info</h2>
                 </div>
                 <label className="grid gap-2 text-sm font-bold text-ink">
                   Tournament
@@ -532,19 +532,46 @@ export default async function AdminTournamentsPage({
                     ))}
                   </select>
                 </label>
-                <input className="min-h-11 rounded-md border border-line bg-white px-3 outline-none focus:border-action" name="title" placeholder="Updated title" />
-                <textarea className="min-h-24 rounded-md border border-line bg-white px-3 py-2 text-sm outline-none focus:border-action" name="description" placeholder="Updated tournament description" />
+                <label className="grid gap-2 text-sm font-bold text-ink">
+                  Tournament title
+                  <input className="min-h-11 rounded-md border border-line bg-white px-3 outline-none focus:border-action" name="title" placeholder="Leave empty to keep the current title" />
+                </label>
+                <label className="grid gap-2 text-sm font-bold text-ink">
+                  Tournament description
+                  <textarea className="min-h-24 rounded-md border border-line bg-white px-3 py-2 text-sm outline-none focus:border-action" name="description" placeholder="Leave empty to keep the current description" />
+                </label>
                 <div className="grid gap-3 md:grid-cols-2">
-                  <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="registration_opens_at" type="datetime-local" />
-                  <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="registration_closes_at" type="datetime-local" />
-                  <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="starts_at" type="datetime-local" />
-                  <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="ends_at" type="datetime-local" />
+                  <label className="grid gap-2 text-sm font-bold text-ink">
+                    Registration opens
+                    <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="registration_opens_at" type="datetime-local" />
+                  </label>
+                  <label className="grid gap-2 text-sm font-bold text-ink">
+                    Registration closes
+                    <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="registration_closes_at" type="datetime-local" />
+                  </label>
+                  <label className="grid gap-2 text-sm font-bold text-ink">
+                    Tournament starts
+                    <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="starts_at" type="datetime-local" />
+                  </label>
+                  <label className="grid gap-2 text-sm font-bold text-ink">
+                    Tournament ends
+                    <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="ends_at" type="datetime-local" />
+                  </label>
                 </div>
                 <div className="grid gap-3 md:grid-cols-2">
-                  <input className="min-h-11 rounded-md border border-line bg-white px-3 outline-none focus:border-action" name="sponsor_label" placeholder="Sponsor label" />
-                  <input className="min-h-11 rounded-md border border-line bg-white px-3 outline-none focus:border-action" name="sponsor_url" placeholder="https://sponsor.example" />
+                  <label className="grid gap-2 text-sm font-bold text-ink">
+                    Sponsor name
+                    <input className="min-h-11 rounded-md border border-line bg-white px-3 outline-none focus:border-action" name="sponsor_label" placeholder="Optional" />
+                  </label>
+                  <label className="grid gap-2 text-sm font-bold text-ink">
+                    Sponsor link
+                    <input className="min-h-11 rounded-md border border-line bg-white px-3 outline-none focus:border-action" name="sponsor_url" placeholder="https://sponsor.example" />
+                  </label>
                 </div>
-                <textarea className="min-h-20 rounded-md border border-line bg-white px-3 py-2 text-sm outline-none focus:border-action" name="creator_notes" placeholder="Creator or sponsor note" />
+                <label className="grid gap-2 text-sm font-bold text-ink">
+                  Public note
+                  <textarea className="min-h-20 rounded-md border border-line bg-white px-3 py-2 text-sm outline-none focus:border-action" name="creator_notes" placeholder="Optional note from the host or sponsor" />
+                </label>
                 <label className="flex items-center gap-2 text-sm font-bold text-ink"><input name="featured" type="checkbox" /> Feature this event</label>
                 <SubmitButton idleLabel="Update event" pendingLabel="Updating event..." />
               </form>

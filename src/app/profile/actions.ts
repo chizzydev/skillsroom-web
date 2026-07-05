@@ -103,15 +103,18 @@ export async function upsertPayoutProfileAction(formData: FormData) {
 }
 
 export async function startStreamingOauthAction(formData: FormData) {
+  let authorizationUrl = "";
   try {
     const result = await startStreamingOauth({
       provider: String(formData.get("provider") || "youtube") as "youtube" | "twitch",
       redirect_path: "/profile"
     });
-    redirect(result.authorization_url);
+    authorizationUrl = result.authorization_url;
   } catch (error) {
     redirect(`/profile?error=${encodeURIComponent(actionErrorMessage(error))}#streaming-accounts`);
   }
+
+  redirect(authorizationUrl);
 }
 
 export async function connectManualStreamingAccountAction(formData: FormData) {

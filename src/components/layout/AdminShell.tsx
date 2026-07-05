@@ -12,12 +12,33 @@ const nav: Array<{ key: AdminSection; label: string; href: string }> = [
   { key: "funding", label: "Funding", href: "/admin/funding" },
   { key: "wallet", label: "Wallet", href: "/admin/wallet" },
   { key: "results", label: "Results", href: "/admin/results" },
-  { key: "settlements", label: "Settlements", href: "/admin/settlements" },
+  { key: "settlements", label: "Payments", href: "/admin/settlements" },
   { key: "tournaments", label: "Tournaments", href: "/admin/tournaments" },
   { key: "players", label: "Players", href: "/admin/players" },
   { key: "team", label: "Team roles", href: "/admin/team" },
-  { key: "risk", label: "Risk", href: "/admin/risk" }
+  { key: "risk", label: "Safety", href: "/admin/risk" }
 ] as const;
+
+function roleLabel(role: string | undefined) {
+  if (role === "owner") return "Owner";
+  if (role === "admin") return "Admin";
+  if (role === "moderator") return "Community Manager";
+  if (role === "support") return "Support";
+  return "Player";
+}
+
+function shellTitle(role: string | undefined) {
+  if (role === "moderator") return "Skillsroom Community";
+  if (role === "support") return "Skillsroom Support";
+  return "Skillsroom Admin";
+}
+
+function shellSubtitle(role: string | undefined) {
+  if (role === "moderator") return "Match results, player checks, tournaments, and community safety";
+  if (role === "support") return "Player records, support context, and safety visibility";
+  if (role === "admin") return "Funding, wallet, payouts, tournaments, and result support";
+  return "Payments, results, players, tournaments, and team controls";
+}
 
 export async function AdminShell({ active, children }: AdminShellProps) {
   const user = await getCurrentUser();
@@ -29,7 +50,7 @@ export async function AdminShell({ active, children }: AdminShellProps) {
         <div className="flex items-center justify-between gap-3 border-b border-white/10 p-4 lg:block lg:p-5">
           <Link className="flex min-w-0 items-center gap-3 text-lg font-black" href="/admin">
             <span className="grid h-10 w-10 shrink-0 place-items-center rounded-md bg-action text-sm text-navy-950 shadow-action">SR</span>
-            <span className="truncate">Skillsroom Admin</span>
+            <span className="truncate">{shellTitle(user?.role)}</span>
           </Link>
           <div className="flex items-center gap-2 lg:mt-4">
             <Link className="inline-flex min-h-9 items-center rounded-md border border-white/10 px-3 text-xs font-black text-slate-200 hover:bg-white/10" href="/">
@@ -57,16 +78,16 @@ export async function AdminShell({ active, children }: AdminShellProps) {
         <div className="hidden p-3 lg:block">
           <div className="rounded-lg border border-white/10 bg-white/5 p-3">
             <p className="font-mono text-xs font-bold uppercase tracking-[0.12em] text-slate-300">Signed in</p>
-            <p className="mt-2 truncate text-sm font-black text-white">{user?.email ?? "Operator"}</p>
-            <p className="mt-1 text-xs font-bold uppercase tracking-[0.12em] text-slate-400">{user?.role ?? "support"}</p>
+            <p className="mt-2 truncate text-sm font-black text-white">{user?.email ?? "Team member"}</p>
+            <p className="mt-1 text-xs font-bold uppercase tracking-[0.12em] text-slate-400">{roleLabel(user?.role)}</p>
           </div>
         </div>
       </aside>
       <section className="min-w-0">
         <header className="sticky top-0 z-30 hidden h-16 items-center justify-between border-b border-line bg-white/95 px-6 backdrop-blur lg:flex">
           <div>
-            <p className="font-mono text-xs font-bold uppercase tracking-[0.14em] text-muted">Admin</p>
-            <p className="text-sm font-bold text-ink">Payments, results, players, tournaments, and support work</p>
+            <p className="font-mono text-xs font-bold uppercase tracking-[0.14em] text-muted">{roleLabel(user?.role)}</p>
+            <p className="text-sm font-bold text-ink">{shellSubtitle(user?.role)}</p>
           </div>
           <AccountMenu user={user} />
         </header>

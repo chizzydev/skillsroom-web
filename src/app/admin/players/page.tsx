@@ -47,7 +47,7 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams?
   }
 
   const readyPlayers = leaderboard.filter((row) => row.completed_matches > 0).length;
-  const riskSignals = leaderboard.filter((row) => row.disputes_lost > 0 || row.no_shows > 0).length;
+  const attentionNeeded = leaderboard.filter((row) => row.disputes_lost > 0 || row.no_shows > 0).length;
   const totalWins = leaderboard.reduce((sum, row) => sum + row.wins, 0);
   const pendingHandles = gameAccounts.filter((account) => account.status === "pending").length;
 
@@ -75,7 +75,7 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams?
         <div className="grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <StatusPanel detail="Players with records" label="Players" tone="cyan" value={leaderboard.length.toString()} />
           <StatusPanel detail="Completed matches" label="Active Records" tone="success" value={readyPlayers.toString()} />
-          <StatusPanel detail="Lost disputes/no-shows" label="Risk Signals" tone={riskSignals > 0 ? "warning" : "success"} value={riskSignals.toString()} />
+          <StatusPanel detail="Disputes or no-shows" label="Needs Attention" tone={attentionNeeded > 0 ? "warning" : "success"} value={attentionNeeded.toString()} />
           <StatusPanel detail="Waiting for review" label="Pending Handles" tone={pendingHandles > 0 ? "warning" : "success"} value={pendingHandles.toString()} />
         </div>
 
@@ -119,7 +119,7 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams?
                       </div>
                     </form>
                     ) : (
-                      <span className="text-xs font-bold leading-5 text-muted">Support can view this, but only moderators and above can approve or reject handles.</span>
+                      <span className="text-xs font-bold leading-5 text-muted">Support can view this, but only community managers and above can approve or reject handles.</span>
                     )
                   )
                 }

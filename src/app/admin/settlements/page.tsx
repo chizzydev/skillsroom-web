@@ -212,12 +212,12 @@ export default async function AdminSettlementsPage({ searchParams }: { searchPar
       <section className="grid gap-5">
         <AdminPageHeader
           description="Reserve commissions, queue winner payouts, complete manual bank transfers, and refund voided or disputed rooms."
-          eyebrow="Settlement Ops"
+          eyebrow="Payments"
           title="Payouts and Refunds"
           tone="success"
         />
 
-        <LiveUpdateStream eventTypePrefixes={["admin.queue.settlements.", "admin.queue.refunds.", "admin.queue.tournament_settlements.", "admin.queue.tournament_refunds.", "match.settlement.", "match.payout.", "match.refund.", "tournament.settlement.", "tournament.payout.", "tournament.refund.", "tournament.refunds."]} label="Money ops live" />
+        <LiveUpdateStream eventTypePrefixes={["admin.queue.settlements.", "admin.queue.refunds.", "admin.queue.tournament_settlements.", "admin.queue.tournament_refunds.", "match.settlement.", "match.payout.", "match.refund.", "tournament.settlement.", "tournament.payout.", "tournament.refund.", "tournament.refunds."]} label="Payment updates" />
 
         {error ? <TransientStatusBanner clearKeys={["error"]} durationMs={12000} message={error} /> : null}
         {success ? <TransientStatusBanner clearKeys={["success"]} durationMs={12000} message={success} tone="success" /> : null}
@@ -342,7 +342,7 @@ export default async function AdminSettlementsPage({ searchParams }: { searchPar
                 <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="bank_code" />
               </label>
               <label className="grid gap-2 text-sm font-bold text-ink">
-                Ops note <span className="font-bold text-muted">(optional)</span>
+                Team note <span className="font-bold text-muted">(optional)</span>
                 <textarea className="min-h-24 rounded-md border border-line bg-white px-3 py-2 text-sm outline-none focus:border-action" name="payout_note" />
               </label>
               <div className="grid gap-2 sm:grid-cols-2">
@@ -457,7 +457,7 @@ export default async function AdminSettlementsPage({ searchParams }: { searchPar
                 <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="bank_code" />
               </label>
               <label className="grid gap-2 text-sm font-bold text-ink">
-                Ops note <span className="font-bold text-muted">(optional)</span>
+                Team note <span className="font-bold text-muted">(optional)</span>
                 <textarea className="min-h-24 rounded-md border border-line bg-white px-3 py-2 text-sm outline-none focus:border-action" name="payout_note" />
               </label>
               <div className="grid gap-2 sm:grid-cols-2">
@@ -567,7 +567,7 @@ export default async function AdminSettlementsPage({ searchParams }: { searchPar
                 <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="bank_code" />
               </label>
               <label className="grid gap-2 text-sm font-bold text-ink">
-                Ops note <span className="font-bold text-muted">(optional)</span>
+                Team note <span className="font-bold text-muted">(optional)</span>
                 <textarea className="min-h-24 rounded-md border border-line bg-white px-3 py-2 text-sm outline-none focus:border-action" name="payout_note" />
               </label>
               <div className="grid gap-2 sm:grid-cols-2">
@@ -580,7 +580,7 @@ export default async function AdminSettlementsPage({ searchParams }: { searchPar
 
         <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1fr)_420px]">
           <Panel>
-            <PanelHeader eyebrow="Tournament Refunds" title="Queued tournament refunds" description="Refund tournament contributions through the same explicit proof-backed ops trail." />
+            <PanelHeader eyebrow="Tournament Refunds" title="Queued tournament refunds" description="Refund tournament contributions with clear proof and review history." />
             {queuedTournamentRefunds.length ? (
               <DataTable
                 columns={[
@@ -677,7 +677,7 @@ export default async function AdminSettlementsPage({ searchParams }: { searchPar
                 <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="bank_code" />
               </label>
               <label className="grid gap-2 text-sm font-bold text-ink">
-                Ops note <span className="font-bold text-muted">(optional)</span>
+                Team note <span className="font-bold text-muted">(optional)</span>
                 <textarea className="min-h-24 rounded-md border border-line bg-white px-3 py-2 text-sm outline-none focus:border-action" name="payout_note" />
               </label>
               <div className="grid gap-2 sm:grid-cols-2">
@@ -721,7 +721,7 @@ export default async function AdminSettlementsPage({ searchParams }: { searchPar
 
         <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1fr)_420px]">
           <Panel>
-            <PanelHeader eyebrow="History" title="Recent settlements" description="Completed and pending settlement records stay visible for ops audit trails." />
+            <PanelHeader eyebrow="History" title="Recent settlements" description="Completed and pending payment records stay visible for review." />
             {settlements.length ? (
               <DataTable
                 columns={[
@@ -762,7 +762,7 @@ export default async function AdminSettlementsPage({ searchParams }: { searchPar
                 <p className="mt-2 text-2xl font-black text-ink">{completedRefunds.length + completedTournamentRefunds.length}</p>
               </div>
               <div className="rounded-md border border-line bg-surfaceWarm p-4 text-sm leading-6 text-muted">
-                Match and tournament payout rows now snapshot recipient instructions at queue time, so the ops trail stays readable even if players update their profile later.
+                Match and tournament payout rows keep the recipient details saved at queue time, even if players update their profile later.
               </div>
             </div>
           </Panel>
@@ -770,7 +770,7 @@ export default async function AdminSettlementsPage({ searchParams }: { searchPar
 
         <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1fr)_420px]">
           <Panel>
-            <PanelHeader eyebrow="Tournament History" title="Recent tournament settlements" description="Tournament settlement records stay visible for audit, payout reconciliation, and refund review." />
+            <PanelHeader eyebrow="Tournament History" title="Recent tournament payments" description="Tournament payment records stay visible for payout checks and refund review." />
             {tournamentSettlements.length ? (
               <DataTable
                 columns={[
@@ -810,7 +810,7 @@ export default async function AdminSettlementsPage({ searchParams }: { searchPar
                 <p className="mt-2 text-2xl font-black text-ink">{completedTournamentRefunds.length}</p>
               </div>
               <div className="rounded-md border border-line bg-surfaceWarm p-4 text-sm leading-6 text-muted">
-                Legacy tournament rows can be repaired inline, but new tournament contributions now capture payout instructions up front so we stop re-solving the same ops gap later.
+                Older tournament rows can be repaired here. New tournament entries now save payout details up front.
               </div>
             </div>
           </Panel>
