@@ -132,7 +132,7 @@ function buildAuditTimeline(data: MatchTimeline) {
               : ("current" as const)
             : ("done" as const)
       }))
-    : [{ label: "Room created", detail: "Audit events will appear as the room moves.", status: "current" as const }];
+    : [{ label: "Room created", detail: "Room updates will appear here as the match moves forward.", status: "current" as const }];
 }
 
 function participantName(participant?: MatchParticipant) {
@@ -266,7 +266,7 @@ function payoutCheckpointSummary(room: MatchRoom, latestClaim: MatchResultClaim 
   if (room.status === "completed") {
     return {
       label: "Paid / completed",
-      detail: "Settlement is complete and retained in the audit trail.",
+      detail: "Settlement is complete and saved in this room history.",
       tone: "success" as const
     };
   }
@@ -659,9 +659,9 @@ export default async function MatchDetailPage({
             <p className="mt-2 text-sm font-bold text-muted">Fixed two-player room</p>
           </Panel>
           <Panel className="p-4">
-            <p className="font-mono text-xs font-bold uppercase tracking-[0.12em] text-dim">State</p>
+            <p className="font-mono text-xs font-bold uppercase tracking-[0.12em] text-dim">Status</p>
             <p className="mt-2 text-2xl font-black text-cyan">{matchStatusLabel(room.status)}</p>
-            <p className="mt-2 text-sm font-bold text-muted">Audit trail enabled</p>
+            <p className="mt-2 text-sm font-bold text-muted">Room progress is saved</p>
           </Panel>
         </div>
 
@@ -1115,7 +1115,7 @@ export default async function MatchDetailPage({
             />
             <div className="grid gap-4 p-4 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
               <p className="text-sm leading-6 text-muted">
-                This writes the official play-start event to the room audit trail, so players, admins, and live updates all follow the same state transition.
+                This saves the official play-start update, so players, admins, and live room updates all follow the same match progress.
               </p>
               <form action={startMatchPlayAction}>
                 <input name="match_room_id" type="hidden" value={room.id} />
@@ -1509,7 +1509,7 @@ export default async function MatchDetailPage({
 
         {canViewSensitiveInternals ? (
           <Panel>
-            <PanelHeader eyebrow="Audit Trail" title="State history" description="Every important room movement is recorded for support and dispute review." />
+            <PanelHeader eyebrow="Room History" title="Room progress" description="Important room updates are saved here so support can review what happened if there is a dispute." />
             <div className="p-4">
               <Timeline items={buildAuditTimeline(data)} />
             </div>

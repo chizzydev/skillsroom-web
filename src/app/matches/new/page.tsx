@@ -62,6 +62,36 @@ export default async function NewMatchPage({ searchParams }: { searchParams: Pro
           </div>
         )}
 
+        <Panel>
+          <PanelHeader
+            eyebrow="Ready check"
+            title="Finish your player setup first"
+            description="Before you create or join money rooms, Skillsroom needs your username, age confirmation, and at least one primary game account saved on your profile."
+          />
+          <div className="p-4">
+            <div className="relative overflow-hidden rounded-[1.5rem] border border-cyan/30 bg-navy-950 p-5 text-white shadow-panel md:p-6">
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_15%_20%,rgba(34,211,238,0.24),transparent_32%),radial-gradient(circle_at_90%_15%,rgba(16,185,129,0.18),transparent_28%)]" />
+              <div className="relative grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+                <div className="min-w-0">
+                  <span className="inline-flex rounded-full border border-white/20 bg-white px-4 py-2 font-mono text-xs font-black uppercase tracking-[0.18em] text-navy-950">
+                    Stand by
+                  </span>
+                  <h2 className="mt-4 text-2xl font-black md:text-3xl">Profile setup required</h2>
+                  <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-200 md:text-base">
+                    Add your game handle in Profile and mark it as your primary account. Once that is done, come back here and room creation will go through normally.
+                  </p>
+                </div>
+                <Link
+                  className="inline-flex min-h-11 items-center justify-center rounded-md bg-action px-5 text-sm font-black text-navy-950 shadow-action hover:bg-actionHover"
+                  href="/profile#game-accounts"
+                >
+                  Open profile setup
+                </Link>
+              </div>
+            </div>
+          </div>
+        </Panel>
+
         <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
           <Panel>
             <PanelHeader eyebrow="Room Details" title="Set up your room" />
