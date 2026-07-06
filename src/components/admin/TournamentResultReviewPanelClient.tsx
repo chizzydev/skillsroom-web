@@ -378,7 +378,7 @@ export function TournamentResultReviewPanelClient({ action, tournaments }: Props
       <div className="flex flex-wrap items-center gap-3">
         <SubmitButton idleLabel="Save result decision" pendingLabel="Saving result decision..." />
         <p className="text-xs font-bold text-muted">
-          Review history, winner identity, and linked room context stay visible so ops can confirm the right action before writing bracket state.
+          Review history, winner identity, and linked room context stay visible so the team can confirm the right action before updating the bracket.
         </p>
       </div>
     </form>

@@ -480,11 +480,11 @@ export default async function TournamentDetailPage({
                   {canAccessAdmin(user) ? (
                     <PendingLink
                       className="inline-flex min-h-10 items-center justify-center rounded-md bg-action px-4 text-sm font-black text-navy-950 shadow-action hover:bg-actionHover"
-                      href="/admin/tournaments"
-                      pendingLabel="Opening tournament ops..."
-                    >
-                      Manage
-                    </PendingLink>
+                    href="/admin/tournaments"
+                    pendingLabel="Opening tournament tools..."
+                  >
+                    Manage
+                  </PendingLink>
                   ) : null}
                 </div>
                 <div className="mt-8 grid gap-3 xl:max-w-2xl xl:grid-cols-3">
@@ -528,9 +528,9 @@ export default async function TournamentDetailPage({
         {winnerPage ? (
           <Panel>
             <PanelHeader
-              eyebrow="Completed Activity"
-              title="Public-safe tournament finish"
-              description="This finished-event summary stays visible while contribution proofs, payout instructions, and operator-only review details stay restricted."
+              eyebrow="Finished Event"
+              title="Tournament result"
+              description="The confirmed winner and final result stay visible here, while private payment and review details remain protected."
             />
             <div className="grid gap-4 p-4 xl:grid-cols-[minmax(0,1fr)_22rem]">
               <div className="rounded-[1.25rem] border border-line bg-white p-4">
@@ -556,9 +556,9 @@ export default async function TournamentDetailPage({
                 <div className="rounded-[1.25rem] border border-line bg-surfaceWarm p-4">
                   <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.12em] text-dim">Visibility boundary</p>
                   <ul className="mt-3 grid gap-2 text-sm leading-6 text-muted">
-                    <li>Signed-in users can inspect finished tournament outcomes.</li>
-                    <li>Public sharing belongs on the winner page, not the ops record.</li>
-                    <li>Contribution proofs, payout instructions, and operator-only metadata stay restricted.</li>
+                    <li>Players can view the confirmed result after the tournament ends.</li>
+                    <li>The public winner page is the best place to share the result.</li>
+                    <li>Payment proof, payout instructions, and private review notes stay hidden.</li>
                   </ul>
                 </div>
                 <div className="rounded-md border border-line bg-white p-4">
@@ -993,7 +993,7 @@ export default async function TournamentDetailPage({
               <div className="rounded-md border border-cyan/40 bg-cyan-50 p-4 text-sm leading-6 text-muted">
                 <p className="font-black text-ink">Winner payout details</p>
                 <p className="mt-1">
-                  Save the bank account that should receive any tournament payout or refund for this entry so ops can settle approved winnings without manual repair work later.
+                  Save the bank account that should receive any tournament payout or refund for this entry so the Skillsroom team can pay the right account after review.
                 </p>
               </div>
               <label className="grid gap-2 text-sm font-bold text-ink">
@@ -1034,7 +1034,7 @@ export default async function TournamentDetailPage({
                 <textarea
                   className="min-h-20 rounded-md border border-line bg-white px-3 py-2 text-sm outline-none focus:border-action"
                   name="payout_note"
-                  placeholder="Anything ops should know about this payout account"
+                  placeholder="Anything the team should know about this payout account"
                 />
               </label>
               <label className="grid gap-2 text-sm font-bold text-ink">
@@ -1404,11 +1404,11 @@ export default async function TournamentDetailPage({
           <PanelHeader
             description={
               viewerHasSensitiveAuditAccess
-                ? "Tournament state changes are retained for support, moderation, settlement, and dispute review."
-                : "Finished-state history stays visible here without exposing actor IDs, payout detail, or operator-only metadata."
+                ? "Important tournament changes are kept here so the team can review support, payment, and dispute decisions."
+                : "Major tournament updates stay visible here without showing private payment or review details."
             }
-            eyebrow="Audit"
-            title="Tournament history"
+            eyebrow={viewerHasSensitiveAuditAccess ? "Team History" : "Updates"}
+            title={viewerHasSensitiveAuditAccess ? "Tournament history" : "Tournament updates"}
           />
           <div className="grid gap-4 p-4">
             <Timeline items={buildAuditTimeline(events)} />

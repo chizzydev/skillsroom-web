@@ -2503,6 +2503,7 @@ export function createMatchRoom(input: {
   entry_amount_minor: number;
   commission_bps: number;
   title?: string;
+  open_on_create?: boolean;
 }) {
   return apiRequest<{ room: MatchRoom }>("/match-rooms", {
     method: "POST",

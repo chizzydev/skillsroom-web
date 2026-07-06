@@ -181,7 +181,7 @@ export default async function TournamentsPage({
                     <PendingLink
                       className="inline-flex min-h-10 items-center justify-center rounded-md border border-white/10 bg-white px-4 text-sm font-black text-ink hover:bg-surfaceHigh"
                       href="/admin/tournaments"
-                      pendingLabel="Opening tournament ops..."
+                      pendingLabel="Opening tournament tools..."
                     >
                       Manage events
                     </PendingLink>
@@ -267,9 +267,9 @@ export default async function TournamentsPage({
 
             <Panel>
               <PanelHeader
-                eyebrow="Completed Activity"
-                title="Public-safe finished events"
-                description="Approved tournament outcomes stay visible here without exposing contribution, evidence, or ops-only records."
+                eyebrow="Finished Events"
+                title="Completed tournaments"
+                description="Finished tournaments will stay here so players can look back at winners and final results."
               />
               {highlights.length ? (
                 <div className="grid gap-3 p-4">
@@ -304,8 +304,8 @@ export default async function TournamentsPage({
               ) : (
                 <div className="p-4">
                   <EmptyState
-                    description="Approved tournament finishes will appear here once events reach a public-safe completed state."
-                    title="No finished-event highlights yet"
+                    description="Completed tournaments will appear here once winners and final results are confirmed."
+                    title="No completed tournaments yet"
                   />
                 </div>
               )}

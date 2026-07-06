@@ -58,7 +58,8 @@ export async function createMatchRoomAction(formData: FormData) {
       ruleset_slug: rulesetSlug,
       entry_amount_minor: Math.round(entryAmountNaira * 100),
       commission_bps: Number(formData.get("commission_bps") || 1000),
-      title: title || undefined
+      title: title || undefined,
+      open_on_create: true
     });
 
     roomId = result.room.id;
@@ -68,15 +69,6 @@ export async function createMatchRoomAction(formData: FormData) {
 
   if (!roomId) {
     redirect(withError("/matches/new", new Error("Room could not be created. Please try again.")));
-  }
-
-  try {
-    await openMatchRoom(roomId);
-  } catch (error) {
-    redirect(withError(
-      `/matches/${roomId}`,
-      new Error(`Your room was created, but it did not open automatically. ${actionErrorMessage(error)}`)
-    ));
   }
 
   redirect(`/matches/${roomId}`);
