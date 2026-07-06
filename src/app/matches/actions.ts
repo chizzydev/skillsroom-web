@@ -46,19 +46,37 @@ export async function createMatchRoomAction(formData: FormData) {
   try {
     const entryAmountNaira = Number(formData.get("entry_amount_naira") || 0);
     const title = String(formData.get("title") || "").trim();
+    const gameSlug = String(formData.get("game_slug") || "").trim();
+    const rulesetSlug = String(formData.get("ruleset_slug") || "").trim();
+
+    if (!gameSlug || !rulesetSlug) {
+      throw new Error("Choose a game and ruleset before creating the room.");
+    }
 
     const result = await createMatchRoom({
-      game_slug: String(formData.get("game_slug") || "free-fire"),
-      ruleset_slug: String(formData.get("ruleset_slug") || "free-fire-clash-squad-solo-beta"),
+      game_slug: gameSlug,
+      ruleset_slug: rulesetSlug,
       entry_amount_minor: Math.round(entryAmountNaira * 100),
       commission_bps: Number(formData.get("commission_bps") || 1000),
       title: title || undefined
     });
 
     roomId = result.room.id;
-    await openMatchRoom(roomId);
   } catch (error) {
     redirect(withError("/matches/new", error));
+  }
+
+  if (!roomId) {
+    redirect(withError("/matches/new", new Error("Room could not be created. Please try again.")));
+  }
+
+  try {
+    await openMatchRoom(roomId);
+  } catch (error) {
+    redirect(withError(
+      `/matches/${roomId}`,
+      new Error(`Your room was created, but it did not open automatically. ${actionErrorMessage(error)}`)
+    ));
   }
 
   redirect(`/matches/${roomId}`);

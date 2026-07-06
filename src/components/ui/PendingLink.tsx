@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState, type ComponentProps, type MouseEvent } from "react";
+import { useEffect, useState, type ComponentProps, type MouseEvent } from "react";
 
 type PendingLinkProps = ComponentProps<typeof Link> & {
   pendingLabel?: string;
@@ -27,6 +27,20 @@ export function PendingLink({
       ? href
       : `${href.pathname ?? ""}${href.search ?? ""}${href.hash ?? ""}`;
   const samePageHash = hrefString.startsWith("#") || hrefString === pathname;
+
+  useEffect(() => {
+    if (!pending) return;
+
+    const timeout = window.setTimeout(() => {
+      setPending(false);
+    }, 10_000);
+
+    return () => window.clearTimeout(timeout);
+  }, [pending]);
+
+  useEffect(() => {
+    setPending(false);
+  }, [pathname]);
 
   return (
     <Link

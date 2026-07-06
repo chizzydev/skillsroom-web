@@ -64,7 +64,7 @@ export default async function NewMatchPage({ searchParams }: { searchParams: Pro
 
         <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
           <Panel>
-            <PanelHeader eyebrow="Room Details" title={selectedRuleset?.title ?? "Create match room"} />
+            <PanelHeader eyebrow="Room Details" title="Set up your room" />
             {selectedGame && selectedRuleset ? (
             <form action={createMatchRoomAction} className="grid gap-4 p-4 md:grid-cols-2">
               <input name="commission_bps" type="hidden" value="1000" />

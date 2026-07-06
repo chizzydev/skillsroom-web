@@ -1832,36 +1832,62 @@ export class ApiRequestError extends Error {
 
 type ApiSuccess<T> = { ok: true; data: T };
 type ApiFailure = { ok: false; error?: { code?: string; message?: string; requestId?: string } };
+type ApiRequestInit = RequestInit & { timeoutMs?: number };
 
 function appOrigin() {
   return process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3100";
 }
 
-function requestSignal(init: RequestInit) {
-  return init.signal ?? AbortSignal.timeout(30_000);
+function requestSignal(init: ApiRequestInit) {
+  return init.signal ?? AbortSignal.timeout(init.timeoutMs ?? 15_000);
 }
 
-async function apiRequest<T>(path: string, init: RequestInit = {}): Promise<T> {
+function toFetchInit(init: ApiRequestInit): RequestInit {
+  const fetchInit: ApiRequestInit = { ...init };
+  delete fetchInit.timeoutMs;
+  return fetchInit;
+}
+
+function requestError(error: unknown) {
+  const name = error instanceof Error ? error.name : "";
+  if (name === "AbortError" || name === "TimeoutError") {
+    return new ApiRequestError(
+      "That took too long. Please check your connection and try again.",
+      504,
+      "API_TIMEOUT"
+    );
+  }
+
+  return new ApiRequestError(
+    "Skillsroom API is temporarily unavailable. Please try again.",
+    503,
+    "API_UNAVAILABLE"
+  );
+}
+
+async function apiRequest<T>(path: string, init: ApiRequestInit = {}): Promise<T> {
   const token = await getAccessToken();
   if (!token) {
     throw new ApiRequestError("Please sign in before using match rooms.", 401, "AUTH_REQUIRED");
   }
 
-  const response = await fetch(`${apiBaseUrl()}${path}`, {
-    ...init,
-    signal: requestSignal(init),
-    headers: {
-      accept: "application/json",
-      authorization: `Bearer ${token}`,
-      origin: appOrigin(),
-      ...(init.body ? { "content-type": "application/json" } : {}),
-      ...init.headers
-    },
-    cache: "no-store"
-  }).catch(() => null);
-
-  if (!response) {
-    throw new ApiRequestError("Skillsroom API is temporarily unavailable. Please try again.", 503, "API_UNAVAILABLE");
+  const fetchInit = toFetchInit(init);
+  let response: Response;
+  try {
+    response = await fetch(`${apiBaseUrl()}${path}`, {
+      ...fetchInit,
+      signal: requestSignal(init),
+      headers: {
+        accept: "application/json",
+        authorization: `Bearer ${token}`,
+        origin: appOrigin(),
+        ...(init.body ? { "content-type": "application/json" } : {}),
+        ...init.headers
+      },
+      cache: "no-store"
+    });
+  } catch (error) {
+    throw requestError(error);
   }
 
   const payload = (await response.json().catch(() => null)) as ApiSuccess<T> | ApiFailure | null;
@@ -1878,21 +1904,23 @@ async function apiRequest<T>(path: string, init: RequestInit = {}): Promise<T> {
   return payload.data;
 }
 
-async function publicApiRequest<T>(path: string, init: RequestInit = {}): Promise<T> {
-  const response = await fetch(`${apiBaseUrl()}${path}`, {
-    ...init,
-    signal: requestSignal(init),
-    headers: {
-      accept: "application/json",
-      origin: appOrigin(),
-      ...(init.body ? { "content-type": "application/json" } : {}),
-      ...init.headers
-    },
-    cache: "no-store"
-  }).catch(() => null);
-
-  if (!response) {
-    throw new ApiRequestError("Skillsroom API is temporarily unavailable. Please try again.", 503, "API_UNAVAILABLE");
+async function publicApiRequest<T>(path: string, init: ApiRequestInit = {}): Promise<T> {
+  const fetchInit = toFetchInit(init);
+  let response: Response;
+  try {
+    response = await fetch(`${apiBaseUrl()}${path}`, {
+      ...fetchInit,
+      signal: requestSignal(init),
+      headers: {
+        accept: "application/json",
+        origin: appOrigin(),
+        ...(init.body ? { "content-type": "application/json" } : {}),
+        ...init.headers
+      },
+      cache: "no-store"
+    });
+  } catch (error) {
+    throw requestError(error);
   }
 
   const payload = (await response.json().catch(() => null)) as ApiSuccess<T> | ApiFailure | null;
@@ -1951,11 +1979,11 @@ export function confirmAdminStepUp(input: { password: string }) {
 
 export function listMatchRooms(status?: MatchRoomStatus) {
   const query = status ? `?status=${encodeURIComponent(status)}` : "";
-  return apiRequest<{ rooms: MatchRoom[] }>(`/match-rooms${query}`);
+  return apiRequest<{ rooms: MatchRoom[] }>(`/match-rooms${query}`, { timeoutMs: 8_000 });
 }
 
 export function listGameCatalog() {
-  return apiRequest<{ games: Game[]; rulesets: MatchRuleset[] }>("/games");
+  return apiRequest<{ games: Game[]; rulesets: MatchRuleset[] }>("/games", { timeoutMs: 8_000 });
 }
 
 export function listTournaments(input: { status?: TournamentStatus; format?: TournamentFormat; limit?: number } = {}) {
@@ -2478,14 +2506,16 @@ export function createMatchRoom(input: {
 }) {
   return apiRequest<{ room: MatchRoom }>("/match-rooms", {
     method: "POST",
-    body: JSON.stringify(input)
+    body: JSON.stringify(input),
+    timeoutMs: 15_000
   });
 }
 
 export function openMatchRoom(matchRoomId: string) {
   return apiRequest<{ room: MatchRoom }>(`/match-rooms/${matchRoomId}/open`, {
     method: "POST",
-    body: JSON.stringify({})
+    body: JSON.stringify({}),
+    timeoutMs: 8_000
   });
 }
 
