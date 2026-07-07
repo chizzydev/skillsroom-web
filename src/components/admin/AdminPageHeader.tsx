@@ -11,7 +11,7 @@ type AdminPageHeaderProps = {
 
 export function AdminPageHeader({ eyebrow, tone = "cyan", title, description, actions }: AdminPageHeaderProps) {
   return (
-    <section className="rounded-lg border border-line bg-white p-4 shadow-tight md:p-5">
+    <section className="motion-admin-surface motion-state-card rounded-lg border border-line bg-white p-4 shadow-tight md:p-5">
       <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1fr)_auto] xl:items-end">
         <div className="min-w-0">
           <Badge tone={tone}>{eyebrow}</Badge>

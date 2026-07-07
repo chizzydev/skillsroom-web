@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { AppShell } from "@/components/layout/AppShell";
+import { MotionSection, Reveal } from "@/components/motion";
 import { Badge } from "@/components/ui/Badge";
 import { PendingLink } from "@/components/ui/PendingLink";
 import { Panel, PanelHeader } from "@/components/ui/Panel";
@@ -197,7 +198,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
         </header>
 
         <div className="mx-auto grid max-w-7xl gap-6 px-page py-6 md:py-8">
-          <section className="overflow-hidden rounded-[1.75rem] border border-[#24364a] bg-[#08131f] text-white shadow-[0_40px_120px_rgba(4,10,20,0.35)]">
+          <MotionSection className="overflow-hidden rounded-[1.75rem] border border-[#24364a] bg-[#08131f] text-white shadow-[0_40px_120px_rgba(4,10,20,0.35)]" variant="hero">
             <div className="grid gap-0 lg:grid-cols-[minmax(0,1fr)_minmax(320px,42%)]">
               <div className="relative p-5 md:p-7 lg:p-9">
                 <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(24,197,138,0.16),transparent_34%),radial-gradient(circle_at_bottom_left,rgba(33,170,255,0.18),transparent_36%)]" />
@@ -233,18 +234,18 @@ export default async function HomePage({ searchParams }: HomePageProps) {
                     </PendingLink>
                   </div>
                   <div className="relative mt-8 grid gap-3 xl:max-w-2xl xl:grid-cols-3">
-                    <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
+                    <Reveal className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur" staggerIndex={0}>
                       <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">One clear flow</p>
                       <p className="mt-2 text-sm leading-6 text-slate-200">Room setup, proof, disputes, and final decisions all stay in one place.</p>
-                    </div>
-                    <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
+                    </Reveal>
+                    <Reveal className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur" staggerIndex={1}>
                       <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Built for real matches</p>
                       <p className="mt-2 text-sm leading-6 text-slate-200">It is made for competitive players, hosts, and communities that want things handled properly.</p>
-                    </div>
-                    <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
+                    </Reveal>
+                    <Reveal className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur" staggerIndex={2}>
                       <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Check before joining</p>
                       <p className="mt-2 text-sm leading-6 text-slate-200">Public community pages and policies are open first, so people can look around before signing in.</p>
-                    </div>
+                    </Reveal>
                   </div>
                 </div>
               </div>
@@ -287,9 +288,10 @@ export default async function HomePage({ searchParams }: HomePageProps) {
                 </div>
               </div>
             </div>
-          </section>
+          </MotionSection>
 
           <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_22rem]">
+            <Reveal>
             <Panel>
               <PanelHeader
                 eyebrow="Product"
@@ -297,28 +299,36 @@ export default async function HomePage({ searchParams }: HomePageProps) {
                 description="Skillsroom is built for competitive gaming, not chance-based betting."
               />
               <div className="grid gap-4 bg-[#0b1622] p-4 xl:grid-cols-3">
+                <Reveal staggerIndex={0}>
                 <PremiumFeatureCard
                   description="Create or join private rooms with clear rules, proof checks, payment review, and a proper result flow."
                   eyebrow="Match rooms"
                   image={premiumArtwork.matchRooms}
                   title="Private matches should feel clear from the first click."
                 />
+                </Reveal>
+                <Reveal staggerIndex={1}>
                 <PremiumFeatureCard
                   description="Use global chat, game channels, rankings, and player identity to make the platform feel active."
                   eyebrow="Community"
                   image={premiumArtwork.community}
                   title="A gaming platform should not feel empty when people arrive."
                 />
+                </Reveal>
+                <Reveal staggerIndex={2}>
                 <PremiumFeatureCard
                   description="Run brackets, stages, and winner updates in a way players and organizers can actually follow."
                   eyebrow="Tournaments"
                   image={premiumArtwork.tournaments}
                   title="Tournaments should feel organized, not stressful."
                 />
+                </Reveal>
               </div>
             </Panel>
+            </Reveal>
 
             <div className="grid gap-6">
+              <Reveal staggerIndex={1}>
               <Panel>
                 <PanelHeader eyebrow="Look around first" title="Public pages" />
                 <div className="grid gap-2 p-4">
@@ -336,7 +346,9 @@ export default async function HomePage({ searchParams }: HomePageProps) {
                   </PendingLink>
                 </div>
               </Panel>
+              </Reveal>
 
+              <Reveal staggerIndex={2}>
               <Panel>
                 <PanelHeader eyebrow="Account" title="Ready to continue?" />
                 <div className="grid gap-2 p-4">
@@ -348,6 +360,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
                   </PendingLink>
                 </div>
               </Panel>
+              </Reveal>
             </div>
           </div>
         </div>
@@ -371,8 +384,8 @@ export default async function HomePage({ searchParams }: HomePageProps) {
 
   return (
     <AppShell active="home">
-      <section className="grid min-w-0 gap-5 md:gap-6">
-        <section className="min-w-0 rounded-lg border border-line bg-navy-900 p-5 text-white shadow-panel md:p-7">
+      <MotionSection className="grid min-w-0 gap-5 md:gap-6" variant="page">
+        <MotionSection className="min-w-0 rounded-lg border border-line bg-navy-900 p-5 text-white shadow-panel md:p-7" variant="hero">
           <div className="grid min-w-0 gap-5 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-end">
             <div className="min-w-0">
               <Badge tone="cyan">Multi-game catalog</Badge>
@@ -442,27 +455,30 @@ export default async function HomePage({ searchParams }: HomePageProps) {
               </div>
             </div>
           </div>
-        </section>
+        </MotionSection>
 
         {(params?.error || loadError) ? (
-          <div className="rounded-md border border-danger bg-red-50 p-4 text-sm font-bold text-danger">
+          <Reveal className="rounded-md border border-danger bg-red-50 p-4 text-sm font-bold text-danger" variant="down">
             {params?.error ?? loadError}
-          </div>
+          </Reveal>
         ) : null}
 
         <div className="grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <StatusPanel detail="Can still be joined" label="Open Rooms" tone="cyan" value={openRooms.length.toString()} />
+          <Reveal staggerIndex={0}><StatusPanel detail="Can still be joined" label="Open Rooms" tone="cyan" value={openRooms.length.toString()} /></Reveal>
+          <Reveal staggerIndex={1}>
           <StatusPanel
             detail="Transfer review"
             label="Funding"
             tone="warning"
             value={countWhere(rooms, ["awaiting_funding", "funding_review", "funded"])}
           />
-          <StatusPanel detail="Playing or reporting" label="Live Flow" tone="success" value={countWhere(rooms, ["active", "awaiting_results"])} />
-          <StatusPanel detail="Needs decision" label="Review" tone="danger" value={countWhere(rooms, ["under_review", "disputed"])} />
+          </Reveal>
+          <Reveal staggerIndex={2}><StatusPanel detail="Playing or reporting" label="Live Flow" tone="success" value={countWhere(rooms, ["active", "awaiting_results"])} /></Reveal>
+          <Reveal staggerIndex={3}><StatusPanel detail="Needs decision" label="Review" tone="danger" value={countWhere(rooms, ["under_review", "disputed"])} /></Reveal>
         </div>
 
         <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1fr)_22rem]">
+          <Reveal>
           <Panel>
             <PanelHeader
               action={
@@ -476,8 +492,10 @@ export default async function HomePage({ searchParams }: HomePageProps) {
             />
             {priorityRooms.length ? (
               <div>
-                {priorityRooms.map((room) => (
-                  <RoomCard key={room.id} room={room} />
+                {priorityRooms.map((room, index) => (
+                  <Reveal key={room.id} staggerIndex={index}>
+                    <RoomCard room={room} />
+                  </Reveal>
                 ))}
               </div>
             ) : (
@@ -500,8 +518,10 @@ export default async function HomePage({ searchParams }: HomePageProps) {
               </div>
             )}
           </Panel>
+          </Reveal>
 
           <div className="grid gap-6">
+            <Reveal staggerIndex={1}>
             <Panel>
               <PanelHeader eyebrow="Room Flow" title="How every room moves" />
               <div className="grid gap-3 p-4">
@@ -518,7 +538,9 @@ export default async function HomePage({ searchParams }: HomePageProps) {
                 ))}
               </div>
             </Panel>
+            </Reveal>
 
+            <Reveal staggerIndex={2}>
             <Panel>
               <PanelHeader eyebrow="Trust" title="Before you play" />
               <div className="grid gap-3 p-4 text-sm leading-6 text-muted">
@@ -530,9 +552,10 @@ export default async function HomePage({ searchParams }: HomePageProps) {
                 </p>
               </div>
             </Panel>
+            </Reveal>
           </div>
         </div>
-      </section>
+      </MotionSection>
     </AppShell>
   );
 }

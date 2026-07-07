@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { ManualPaymentPanel } from "@/components/payments/ManualPaymentPanel";
+import { MotionSection, Reveal } from "@/components/motion";
 import { Badge } from "@/components/ui/Badge";
 import { FormActionButton } from "@/components/ui/FormActionButton";
 import { Panel, PanelHeader } from "@/components/ui/Panel";
@@ -52,27 +53,28 @@ export default async function WalletPage({ searchParams }: { searchParams: Promi
 
   return (
     <AppShell active="wallet">
-      <section className="grid gap-5">
-        <div className="overflow-hidden rounded-[1.6rem] border border-line bg-navy-900 p-5 text-white shadow-[0_24px_70px_rgba(3,10,20,0.22)] sm:p-7">
+      <MotionSection className="grid gap-5" variant="page">
+        <MotionSection className="motion-atmosphere motion-state-card overflow-hidden rounded-[1.6rem] border border-line bg-navy-900 p-5 text-white shadow-[0_24px_70px_rgba(3,10,20,0.22)] sm:p-7" variant="hero">
           <p className="inline-flex rounded-full bg-cyanSoft px-3 py-1 font-mono text-xs font-black uppercase tracking-[0.16em] text-cyan">Skillsroom Balance</p>
           <h1 className="mt-4 max-w-3xl text-4xl font-black leading-tight sm:text-5xl">Fund once. Join more rooms faster.</h1>
           <p className="mt-3 max-w-2xl text-base leading-7 text-slate-300">
             Add money to your Skillsroom balance, wait for review, then use approved funds when wallet entry opens for rooms and tournaments.
           </p>
-        </div>
+        </MotionSection>
 
         {error ? <TransientStatusBanner clearKeys={["error"]} durationMs={12000} message={error} /> : null}
         {success ? <TransientStatusBanner clearKeys={["success"]} durationMs={12000} message={success} tone="success" /> : null}
         {loadError ? <div className="rounded-md border border-danger bg-red-50 p-4 text-sm font-bold text-danger">{loadError}</div> : null}
 
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <StatusPanel detail="Ready to use later" label="Available" tone="success" value={formatMinorMoney(currency, account?.available_balance_minor ?? 0)} />
-          <StatusPanel detail="Reserved for active play" label="Locked" tone="warning" value={formatMinorMoney(currency, account?.locked_balance_minor ?? 0)} />
-          <StatusPanel detail="Won but not paid out" label="Winnings" tone="cyan" value={formatMinorMoney(currency, account?.winnings_balance_minor ?? 0)} />
-          <StatusPanel detail="Waiting for admin review" label="Pending top-ups" tone="danger" value={formatMinorMoney(currency, pendingTotal(topups))} />
+          <Reveal staggerIndex={0}><StatusPanel detail="Ready to use later" label="Available" tone="success" value={formatMinorMoney(currency, account?.available_balance_minor ?? 0)} /></Reveal>
+          <Reveal className="motion-wallet-lock" staggerIndex={1}><StatusPanel detail="Reserved for active play" label="Locked" tone="warning" value={formatMinorMoney(currency, account?.locked_balance_minor ?? 0)} /></Reveal>
+          <Reveal staggerIndex={2}><StatusPanel detail="Won but not paid out" label="Winnings" tone="cyan" value={formatMinorMoney(currency, account?.winnings_balance_minor ?? 0)} /></Reveal>
+          <Reveal staggerIndex={3}><StatusPanel detail="Waiting for admin review" label="Pending top-ups" tone="danger" value={formatMinorMoney(currency, pendingTotal(topups))} /></Reveal>
         </div>
 
         <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1fr)_420px]">
+          <Reveal>
           <Panel>
             <PanelHeader
               eyebrow="Fund my balance"
@@ -81,7 +83,7 @@ export default async function WalletPage({ searchParams }: { searchParams: Promi
             />
             <div className="grid gap-4 p-4 sm:p-5">
               <ManualPaymentPanel referenceHint="Use your username, email, or WALLET in the transfer narration if your bank app allows it." />
-              <form action={submitWalletTopupAction} className="grid gap-3 rounded-lg border border-line bg-white p-4">
+              <form action={submitWalletTopupAction} className="motion-flow-card grid gap-3 rounded-lg border border-line bg-white p-4">
                 <div className="grid gap-3 sm:grid-cols-2">
                   <label className="grid gap-2 text-sm font-bold text-ink">
                     Amount sent (NGN)
@@ -112,7 +114,7 @@ export default async function WalletPage({ searchParams }: { searchParams: Promi
                 </label>
                 <FormActionButton idleLabel="Submit top-up" pendingLabel="Submitting top-up..." />
               </form>
-              <form action={requestWalletPayoutAction} className="grid gap-3 rounded-lg border border-line bg-navy-900 p-4 text-white">
+              <form action={requestWalletPayoutAction} className="motion-atmosphere motion-state-card motion-flow-card grid gap-3 rounded-lg border border-line bg-navy-900 p-4 text-white">
                 <div>
                   <p className="font-mono text-xs font-black uppercase tracking-[0.16em] text-cyan">Withdraw winnings</p>
                   <h2 className="mt-2 text-2xl font-black">Request cash-out</h2>
@@ -148,7 +150,9 @@ export default async function WalletPage({ searchParams }: { searchParams: Promi
               </form>
             </div>
           </Panel>
+          </Reveal>
 
+          <Reveal staggerIndex={1}>
           <Panel className="h-fit xl:sticky xl:top-24">
             <PanelHeader eyebrow="History" title="Recent wallet activity" description="Top-ups and payout requests stay visible here." />
             <div className="grid gap-3 p-4">
@@ -197,8 +201,9 @@ export default async function WalletPage({ searchParams }: { searchParams: Promi
               ) : null}
             </div>
           </Panel>
+          </Reveal>
         </div>
-      </section>
+      </MotionSection>
     </AppShell>
   );
 }

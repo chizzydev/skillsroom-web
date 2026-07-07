@@ -1,4 +1,5 @@
 import { Badge } from "./Badge";
+import type { CSSProperties } from "react";
 
 type TimelineItem = {
   label: string;
@@ -17,10 +18,17 @@ export function Timeline({ items }: { items: TimelineItem[] }) {
   return (
     <div className="grid gap-0">
       {items.map((item, index) => (
-        <div className="grid grid-cols-[18px_1fr] gap-3" key={`${item.label}-${index}`}>
+        <div
+          className="motion-flow-card grid grid-cols-[18px_1fr] gap-3"
+          key={`${item.label}-${index}`}
+          style={{ "--motion-delay": `${index * 70}ms` } as CSSProperties}
+        >
           <div className="grid justify-center">
-            <span className={["mt-1 h-3 w-3 rounded-full", markerClass[item.status ?? "pending"]].join(" ")} />
-            {index < items.length - 1 ? <span className="mx-auto min-h-8 w-px bg-line" /> : null}
+            <span
+              className={["motion-checkpoint-marker mt-1 h-3 w-3 rounded-full", markerClass[item.status ?? "pending"]].join(" ")}
+              data-status={item.status ?? "pending"}
+            />
+            {index < items.length - 1 ? <span className="motion-flow-line mx-auto min-h-8 w-px bg-line" /> : null}
           </div>
           <div className="pb-4">
             <div className="flex flex-wrap items-center gap-2">

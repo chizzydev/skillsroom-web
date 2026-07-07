@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import { AppShell } from "@/components/layout/AppShell";
 import { PublicSharePanel } from "@/components/community/PublicSharePanel";
+import { MotionSection, Reveal } from "@/components/motion";
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Panel, PanelHeader } from "@/components/ui/Panel";
@@ -23,38 +24,46 @@ function MetricBand({ metrics }: { metrics: CommunitySocialProofMetrics }) {
   return (
     <>
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <StatusPanel detail="Rooms created on the platform" label="Rooms" tone="cyan" value={metrics.rooms_created.toString()} />
-        <StatusPanel detail="Matches that have been completed" label="Matches" tone="success" value={metrics.matches_completed.toString()} />
-        <StatusPanel detail="Tournaments created or completed" label="Tournaments" tone="warning" value={metrics.tournaments_hosted.toString()} />
-        <StatusPanel detail="Approved winners across rooms and tournaments" label="Winners" tone="success" value={metrics.winners_crowned.toString()} />
+        <Reveal staggerIndex={0}><StatusPanel detail="Rooms created on the platform" label="Rooms" tone="cyan" value={metrics.rooms_created.toString()} /></Reveal>
+        <Reveal staggerIndex={1}><StatusPanel detail="Matches that have been completed" label="Matches" tone="success" value={metrics.matches_completed.toString()} /></Reveal>
+        <Reveal staggerIndex={2}><StatusPanel detail="Tournaments created or completed" label="Tournaments" tone="warning" value={metrics.tournaments_hosted.toString()} /></Reveal>
+        <Reveal staggerIndex={3}><StatusPanel detail="Approved winners across rooms and tournaments" label="Winners" tone="success" value={metrics.winners_crowned.toString()} /></Reveal>
       </div>
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <StatusPanel detail="Cases that have been reviewed and settled" label="Disputes Resolved" tone="warning" value={metrics.disputes_resolved.toString()} />
-        <StatusPanel detail="Registered Skillsroom accounts" label="Players" tone="cyan" value={metrics.players_registered.toString()} />
-        <StatusPanel detail="Public clans created on the platform" label="Clans" tone="success" value={metrics.clans_created.toString()} />
-        <StatusPanel detail="Match and tournament check-ins" label="Check-ins" tone="warning" value={metrics.entries_checked_in.toString()} />
+        <Reveal staggerIndex={0}><StatusPanel detail="Cases that have been reviewed and settled" label="Disputes Resolved" tone="warning" value={metrics.disputes_resolved.toString()} /></Reveal>
+        <Reveal staggerIndex={1}><StatusPanel detail="Registered Skillsroom accounts" label="Players" tone="cyan" value={metrics.players_registered.toString()} /></Reveal>
+        <Reveal staggerIndex={2}><StatusPanel detail="Public clans created on the platform" label="Clans" tone="success" value={metrics.clans_created.toString()} /></Reveal>
+        <Reveal staggerIndex={3}><StatusPanel detail="Match and tournament check-ins" label="Check-ins" tone="warning" value={metrics.entries_checked_in.toString()} /></Reveal>
       </div>
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <StatusPanel detail="Prizes already reserved in the system" label="Prize Reservations" tone="success" value={metrics.prize_reservations_count.toString()} />
-        <StatusPanel detail="Total value of reserved prizes" label="Reserved Value" tone="success" value={formatMinor(metrics.prize_reservations_minor)} />
-        <StatusPanel detail="Payouts still waiting to be processed" label="Payout Queue" tone="warning" value={metrics.payout_queue_count.toString()} />
-        <StatusPanel detail="Refunds still waiting to be processed" label="Refund Queue" tone="danger" value={metrics.refund_queue_count.toString()} />
+        <Reveal staggerIndex={0}><StatusPanel detail="Prizes already reserved in the system" label="Prize Reservations" tone="success" value={metrics.prize_reservations_count.toString()} /></Reveal>
+        <Reveal staggerIndex={1}><StatusPanel detail="Total value of reserved prizes" label="Reserved Value" tone="success" value={formatMinor(metrics.prize_reservations_minor)} /></Reveal>
+        <Reveal staggerIndex={2}><StatusPanel detail="Payouts still waiting to be processed" label="Payout Queue" tone="warning" value={metrics.payout_queue_count.toString()} /></Reveal>
+        <Reveal staggerIndex={3}><StatusPanel detail="Refunds still waiting to be processed" label="Refund Queue" tone="danger" value={metrics.refund_queue_count.toString()} /></Reveal>
       </div>
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <Reveal staggerIndex={0}>
         <StatusPanel detail="Total value still waiting in payout queue" label="Queued Payout Value" tone="warning" value={formatMinor(metrics.payout_queue_minor)} />
+        </Reveal>
+        <Reveal staggerIndex={1}>
         <StatusPanel detail="Total value still waiting in refund queue" label="Queued Refund Value" tone="danger" value={formatMinor(metrics.refund_queue_minor)} />
+        </Reveal>
+        <Reveal staggerIndex={2}>
         <StatusPanel
           detail={metrics.verified_payout_metrics_enabled ? "Verified payout total from the payment provider" : "Hidden until payment verification is fully available"}
           label="Verified Payout Totals"
           tone="cyan"
           value={metrics.verified_payout_metrics_enabled && metrics.verified_payouts_completed_minor !== null ? formatMinor(metrics.verified_payouts_completed_minor) : "Locked"}
         />
+        </Reveal>
+        <Reveal staggerIndex={3}>
         <StatusPanel
           detail={metrics.verified_payout_metrics_enabled ? "Verified count of completed payouts" : "This stays hidden until payment verification is fully available"}
           label="Verified Payout Count"
           tone="cyan"
           value={metrics.verified_payout_metrics_enabled && metrics.verified_payouts_completed_count !== null ? metrics.verified_payouts_completed_count.toString() : "Locked"}
         />
+        </Reveal>
       </div>
     </>
   );
@@ -72,8 +81,8 @@ export default async function CommunityProofPage() {
 
   return (
     <AppShell active="community">
-      <section className="grid gap-6">
-        <section className="overflow-hidden rounded-[1.75rem] border border-[#24364a] bg-[#08131f] text-white shadow-[0_40px_120px_rgba(4,10,20,0.35)]">
+      <MotionSection className="grid gap-6" variant="page">
+        <MotionSection className="overflow-hidden rounded-[1.75rem] border border-[#24364a] bg-[#08131f] text-white shadow-[0_40px_120px_rgba(4,10,20,0.35)]" variant="hero">
           <div className="grid gap-0 xl:grid-cols-[minmax(0,1fr)_minmax(320px,38%)]">
             <div className="relative p-5 md:p-7 lg:p-9">
               <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(24,197,138,0.16),transparent_34%),radial-gradient(circle_at_bottom_left,rgba(33,170,255,0.18),transparent_36%)]" />
@@ -84,18 +93,18 @@ export default async function CommunityProofPage() {
                   These numbers come from real activity on Skillsroom. Some payout totals stay hidden until full payment verification is in place.
                 </p>
                 <div className="mt-8 grid gap-3 xl:max-w-2xl xl:grid-cols-3">
-                  <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
+                  <Reveal className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur" staggerIndex={0}>
                     <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Real activity</p>
                     <p className="mt-2 text-sm leading-6 text-slate-200">Everything here comes from actual rooms, tournaments, and platform records.</p>
-                  </div>
-                  <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
+                  </Reveal>
+                  <Reveal className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur" staggerIndex={1}>
                     <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">What is shown now</p>
                     <p className="mt-2 text-sm leading-6 text-slate-200">Reserved and queued amounts are visible because they can already be checked properly.</p>
-                  </div>
-                  <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
+                  </Reveal>
+                  <Reveal className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur" staggerIndex={2}>
                     <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Why it matters</p>
                     <p className="mt-2 text-sm leading-6 text-slate-200">It helps people see that the platform is active and being used.</p>
-                  </div>
+                  </Reveal>
                 </div>
               </div>
             </div>
@@ -110,11 +119,12 @@ export default async function CommunityProofPage() {
               </div>
             </div>
           </div>
-        </section>
+        </MotionSection>
 
         {metrics ? (
           <>
             <MetricBand metrics={metrics} />
+            <Reveal>
             <Panel>
               <PanelHeader
                 eyebrow="Payouts"
@@ -136,6 +146,8 @@ export default async function CommunityProofPage() {
                 </div>
               </div>
             </Panel>
+            </Reveal>
+            <Reveal>
             <Panel>
               <PublicSharePanel
                 eyebrow="Share"
@@ -146,15 +158,18 @@ export default async function CommunityProofPage() {
                 url={shareUrl("/community/proof")}
               />
             </Panel>
+            </Reveal>
           </>
         ) : (
+          <Reveal>
           <Panel>
             <div className="p-4">
               <EmptyState title="Platform numbers unavailable" description="The latest platform numbers could not be loaded right now." />
             </div>
           </Panel>
+          </Reveal>
         )}
-      </section>
+      </MotionSection>
     </AppShell>
   );
 }

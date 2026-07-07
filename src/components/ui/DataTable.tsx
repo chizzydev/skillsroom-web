@@ -1,3 +1,5 @@
+import type { CSSProperties } from "react";
+
 type Column<T> = {
   key: string;
   label: string;
@@ -11,8 +13,9 @@ export function DataTable<T>({ rows, columns }: { rows: T[]; columns: Column<T>[
       <div className="grid gap-3 bg-surfaceWarm p-3 md:hidden">
         {rows.map((row, rowIndex) => (
           <article
-            className="grid min-w-0 gap-3 rounded-[1.15rem] border border-line bg-white p-3 shadow-[0_12px_30px_rgba(3,10,20,0.06)] min-[380px]:gap-3.5 min-[380px]:p-4"
+            className="motion-admin-row grid min-w-0 gap-3 rounded-[1.15rem] border border-line bg-white p-3 shadow-[0_12px_30px_rgba(3,10,20,0.06)] min-[380px]:gap-3.5 min-[380px]:p-4"
             key={rowIndex}
+            style={{ "--motion-delay": `${Math.min(rowIndex, 8) * 45}ms` } as CSSProperties}
           >
             {columns.map((column) => (
               <div className="grid min-w-0 grid-cols-[minmax(4.5rem,34%)_minmax(0,1fr)] gap-2 min-[380px]:gap-3" key={column.key}>
@@ -44,7 +47,11 @@ export function DataTable<T>({ rows, columns }: { rows: T[]; columns: Column<T>[
           </thead>
           <tbody className="divide-y divide-line">
             {rows.map((row, rowIndex) => (
-              <tr className="bg-white align-top transition hover:bg-surfaceWarm" key={rowIndex}>
+              <tr
+                className="motion-admin-row bg-white align-top transition hover:bg-surfaceWarm"
+                key={rowIndex}
+                style={{ "--motion-delay": `${Math.min(rowIndex, 8) * 35}ms` } as CSSProperties}
+              >
                 {columns.map((column) => (
                   <td className={["px-4 py-4 leading-6 lg:px-5", column.className ?? ""].join(" ")} key={column.key}>
                     {column.render(row)}

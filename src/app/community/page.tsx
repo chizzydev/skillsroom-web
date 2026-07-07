@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { AppShell } from "@/components/layout/AppShell";
 import { PublicSharePanel } from "@/components/community/PublicSharePanel";
+import { MotionSection, Reveal } from "@/components/motion";
 import { Badge } from "@/components/ui/Badge";
 import { DataTable } from "@/components/ui/DataTable";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -105,8 +106,8 @@ export default async function CommunityPage({ searchParams }: CommunityPageProps
 
   return (
     <AppShell active="community">
-      <section className="grid gap-6">
-        <section className="overflow-hidden rounded-[1.6rem] border border-[#203244] bg-[#09131f] shadow-[0_36px_100px_rgba(4,10,20,0.28)]">
+      <MotionSection className="grid gap-6" variant="page">
+        <MotionSection className="overflow-hidden rounded-[1.6rem] border border-[#203244] bg-[#09131f] shadow-[0_36px_100px_rgba(4,10,20,0.28)]" variant="hero">
           <div className="grid gap-0 lg:grid-cols-[minmax(0,1fr)_minmax(320px,40%)]">
             <div className="relative p-5 text-white md:p-7">
               <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(24,197,138,0.15),transparent_30%),radial-gradient(circle_at_bottom_left,rgba(33,170,255,0.18),transparent_32%)]" />
@@ -119,18 +120,18 @@ export default async function CommunityPage({ searchParams }: CommunityPageProps
                   Check player rankings, match records, tournament results, clans, and recent highlights in one place.
                 </p>
                 <div className="mt-6 grid gap-3 md:grid-cols-3">
-                  <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
+                  <Reveal className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur" staggerIndex={0}>
                     <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Player rankings</p>
                     <p className="mt-2 text-sm leading-6 text-slate-200">See public profiles, finished matches, and tournament results without digging around.</p>
-                  </div>
-                  <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
+                  </Reveal>
+                  <Reveal className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur" staggerIndex={1}>
                     <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Local scenes</p>
                     <p className="mt-2 text-sm leading-6 text-slate-200">Browse players and teams by city, campus, region, or game.</p>
-                  </div>
-                  <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
+                  </Reveal>
+                  <Reveal className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur" staggerIndex={2}>
                     <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Recent winners</p>
                     <p className="mt-2 text-sm leading-6 text-slate-200">Catch up on highlights from completed tournaments and standout players.</p>
-                  </div>
+                  </Reveal>
                 </div>
               </div>
             </div>
@@ -139,14 +140,15 @@ export default async function CommunityPage({ searchParams }: CommunityPageProps
               <div className="absolute inset-0 bg-gradient-to-l from-transparent via-transparent to-[#09131f]/72" />
             </div>
           </div>
-        </section>
+        </MotionSection>
 
         {(params.error || loadError) && (
-          <div className="rounded-md border border-danger bg-red-50 p-4 text-sm font-bold text-danger">
+          <Reveal className="rounded-md border border-danger bg-red-50 p-4 text-sm font-bold text-danger" variant="down">
             {params.error ?? loadError}
-          </div>
+          </Reveal>
         )}
 
+        <Reveal>
         <Panel>
           <PanelHeader eyebrow="Filters" title="Find players faster" description="Filter the leaderboard by game, city, campus, or region." />
           <form className="grid gap-3 p-4 md:grid-cols-5" method="GET">
@@ -162,15 +164,16 @@ export default async function CommunityPage({ searchParams }: CommunityPageProps
             </div>
           </form>
         </Panel>
+        </Reveal>
 
         <div className="grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <StatusPanel detail="Public profiles ranked" label="Players" tone="cyan" value={(summary?.ranked_players ?? 0).toString()} />
-          <StatusPanel detail="Settled match history" label="Matches" tone="success" value={(summary?.completed_matches ?? 0).toString()} />
-          <StatusPanel detail="Completed events entered" label="Tournaments" tone="warning" value={(summary?.completed_tournaments ?? 0).toString()} />
-          <StatusPanel detail="Winner/podium signals" label="Podiums" tone="success" value={(summary?.podium_finishes ?? 0).toString()} />
+          <Reveal staggerIndex={0}><StatusPanel detail="Public profiles ranked" label="Players" tone="cyan" value={(summary?.ranked_players ?? 0).toString()} /></Reveal>
+          <Reveal staggerIndex={1}><StatusPanel detail="Settled match history" label="Matches" tone="success" value={(summary?.completed_matches ?? 0).toString()} /></Reveal>
+          <Reveal staggerIndex={2}><StatusPanel detail="Completed events entered" label="Tournaments" tone="warning" value={(summary?.completed_tournaments ?? 0).toString()} /></Reveal>
+          <Reveal staggerIndex={3}><StatusPanel detail="Winner/podium signals" label="Podiums" tone="success" value={(summary?.podium_finishes ?? 0).toString()} /></Reveal>
         </div>
 
-        <section className="grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
+        <Reveal as="section" className="grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
           <div className="overflow-hidden rounded-[1.5rem] border border-[#203244] bg-[#0a1521] shadow-[0_28px_80px_rgba(4,10,20,0.24)]">
             <div className="grid gap-0 lg:grid-cols-[minmax(0,1fr)_minmax(240px,40%)]">
               <div className="p-5 text-white">
@@ -196,8 +199,9 @@ export default async function CommunityPage({ searchParams }: CommunityPageProps
               <p className="mt-3 text-sm leading-6 text-slate-300">Good rankings and highlights are easier for players to send to friends, teams, and group chats.</p>
             </div>
           </div>
-        </section>
+        </Reveal>
 
+        <Reveal>
         <Panel>
           <PanelHeader
             eyebrow="Proof"
@@ -222,7 +226,9 @@ export default async function CommunityPage({ searchParams }: CommunityPageProps
             </div>
           )}
         </Panel>
+        </Reveal>
 
+        <Reveal>
         <Panel>
           <PublicSharePanel
             eyebrow="Share"
@@ -233,7 +239,9 @@ export default async function CommunityPage({ searchParams }: CommunityPageProps
             url={shareUrl("/community")}
           />
         </Panel>
+        </Reveal>
 
+        <Reveal>
         <Panel>
           <PanelHeader
             eyebrow="Announcements"
@@ -273,7 +281,9 @@ export default async function CommunityPage({ searchParams }: CommunityPageProps
             </div>
           )}
         </Panel>
+        </Reveal>
 
+        <Reveal>
         <Panel>
           <PanelHeader
             eyebrow="Highlights"
@@ -320,7 +330,9 @@ export default async function CommunityPage({ searchParams }: CommunityPageProps
             </div>
           )}
         </Panel>
+        </Reveal>
 
+        <Reveal>
         <Panel>
           <PanelHeader
             eyebrow="Clans"
@@ -395,8 +407,10 @@ export default async function CommunityPage({ searchParams }: CommunityPageProps
             </div>
           )}
         </Panel>
+        </Reveal>
 
         <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1fr)_420px]">
+          <Reveal>
           <Panel>
             <PanelHeader eyebrow="Activity" title="Community feed" description={user ? "Recent platform activity and room updates." : "Sign in to see your private invites and account activity."} />
             {feed.length ? (
@@ -415,8 +429,10 @@ export default async function CommunityPage({ searchParams }: CommunityPageProps
               </div>
             )}
           </Panel>
+          </Reveal>
 
           {user ? (
+            <Reveal staggerIndex={1}>
             <Panel>
               <PanelHeader eyebrow="Invite" title="Invite a player to a room" description="Enter your room code and the player's Skillsroom username." />
               <form action={createRoomInviteAction} className="grid gap-3 p-4">
@@ -435,7 +451,9 @@ export default async function CommunityPage({ searchParams }: CommunityPageProps
                 <p className="text-xs font-bold leading-5 text-muted">{invites.length} pending invite{invites.length === 1 ? "" : "s"}.</p>
               </form>
             </Panel>
+            </Reveal>
           ) : (
+            <Reveal staggerIndex={1}>
             <Panel>
               <PanelHeader eyebrow="Join" title="Get on the board" description="Sign in to build your profile and appear in public rankings." />
               <div className="grid gap-3 p-4">
@@ -444,9 +462,10 @@ export default async function CommunityPage({ searchParams }: CommunityPageProps
                 </Link>
               </div>
             </Panel>
+            </Reveal>
           )}
         </div>
-      </section>
+      </MotionSection>
     </AppShell>
   );
 }

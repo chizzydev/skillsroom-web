@@ -46,6 +46,7 @@ export function PendingLink({
     <Link
       aria-busy={pending}
       className={[
+        "motion-tap",
         className,
         pending ? "pointer-events-none cursor-wait opacity-70" : ""
       ].join(" ")}

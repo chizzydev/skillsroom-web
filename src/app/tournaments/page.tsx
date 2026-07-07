@@ -1,6 +1,7 @@
 import Image from "next/image";
 import { redirect } from "next/navigation";
 import { AppShell } from "@/components/layout/AppShell";
+import { MotionSection, Reveal } from "@/components/motion";
 import { Badge, type BadgeTone } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Panel, PanelHeader } from "@/components/ui/Panel";
@@ -163,8 +164,8 @@ export default async function TournamentsPage({
 
   return (
     <AppShell active="tournaments">
-      <section className="grid min-w-0 gap-6">
-        <section className="overflow-hidden rounded-[1.75rem] border border-[#24364a] bg-[#08131f] text-white shadow-[0_40px_120px_rgba(4,10,20,0.35)]">
+      <MotionSection className="grid min-w-0 gap-6" variant="page">
+        <MotionSection className="motion-atmosphere overflow-hidden rounded-[1.75rem] border border-[#24364a] bg-[#08131f] text-white shadow-[0_40px_120px_rgba(4,10,20,0.35)]" variant="hero">
           <div className="grid gap-0 xl:grid-cols-[minmax(0,1fr)_minmax(320px,40%)]">
             <div className="relative p-5 md:p-7 lg:p-9">
               <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(24,197,138,0.16),transparent_34%),radial-gradient(circle_at_bottom_left,rgba(33,170,255,0.18),transparent_36%)]" />
@@ -188,18 +189,18 @@ export default async function TournamentsPage({
                   ) : null}
                 </div>
                 <div className="mt-8 grid gap-3 xl:max-w-2xl xl:grid-cols-3">
-                  <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
+                  <Reveal className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur" staggerIndex={0}>
                     <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Easy to follow</p>
                     <p className="mt-2 text-sm leading-6 text-slate-200">You can quickly see whether an event is open, live, under review, or finished.</p>
-                  </div>
-                  <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
+                  </Reveal>
+                  <Reveal className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur" staggerIndex={1}>
                     <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Different event types</p>
                     <p className="mt-2 text-sm leading-6 text-slate-200">You can run brackets, leagues, Swiss events, and score-based competitions here.</p>
-                  </div>
-                  <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
+                  </Reveal>
+                  <Reveal className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur" staggerIndex={2}>
                     <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Finished events stay visible</p>
                     <p className="mt-2 text-sm leading-6 text-slate-200">Completed events can still be viewed later without showing private review details.</p>
-                  </div>
+                  </Reveal>
                 </div>
               </div>
             </div>
@@ -218,27 +219,30 @@ export default async function TournamentsPage({
               </div>
             </div>
           </div>
-        </section>
+        </MotionSection>
 
         {loadError ? (
-          <div className="rounded-md border border-danger bg-red-50 p-4 text-sm font-bold text-danger">
+          <Reveal className="rounded-md border border-danger bg-red-50 p-4 text-sm font-bold text-danger" variant="down">
             {loadError}
-          </div>
+          </Reveal>
         ) : null}
 
         <div className="grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <StatusPanel detail="Can accept entrants" label="Open" tone="cyan" value={openCount.toString()} />
-          <StatusPanel detail="Seeding, live, review" label="In Motion" tone="warning" value={liveCount.toString()} />
-          <StatusPanel detail="Finished events" label="Completed" tone="success" value={completedCount.toString()} />
-          <StatusPanel detail="Projected/approved" label="Prize Pools" tone="success" value={formatMinorMoney("NGN", totalPrize)} />
+          <Reveal staggerIndex={0}><StatusPanel detail="Can accept entrants" label="Open" tone="cyan" value={openCount.toString()} /></Reveal>
+          <Reveal staggerIndex={1}><StatusPanel detail="Seeding, live, review" label="In Motion" tone="warning" value={liveCount.toString()} /></Reveal>
+          <Reveal staggerIndex={2}><StatusPanel detail="Finished events" label="Completed" tone="success" value={completedCount.toString()} /></Reveal>
+          <Reveal staggerIndex={3}><StatusPanel detail="Projected/approved" label="Prize Pools" tone="success" value={formatMinorMoney("NGN", totalPrize)} /></Reveal>
         </div>
 
         <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
+          <Reveal>
           <Panel>
             <TournamentBoardClient initialFilter={activeFilter} rows={tournamentBoardRows} />
           </Panel>
+          </Reveal>
 
           <div className="grid gap-6">
+            <Reveal staggerIndex={1}>
             <Panel>
               <PanelHeader eyebrow="Formats" title="Competition lanes" />
               <div className="grid gap-2 p-4">
@@ -252,7 +256,9 @@ export default async function TournamentsPage({
                 ))}
               </div>
             </Panel>
+            </Reveal>
 
+            <Reveal staggerIndex={2}>
             <Panel>
               <PanelHeader eyebrow="Money" title="Prize models" />
               <div className="grid gap-3 p-4 text-sm leading-6 text-muted">
@@ -264,7 +270,9 @@ export default async function TournamentsPage({
                 </p>
               </div>
             </Panel>
+            </Reveal>
 
+            <Reveal staggerIndex={3}>
             <Panel>
               <PanelHeader
                 eyebrow="Finished Events"
@@ -273,11 +281,11 @@ export default async function TournamentsPage({
               />
               {highlights.length ? (
                 <div className="grid gap-3 p-4">
-                  {highlights.slice(0, 4).map((item) => (
+                  {highlights.slice(0, 4).map((item, index) => (
+                    <Reveal key={item.tournament_id} staggerIndex={index}>
                     <PendingLink
                       className="rounded-md border border-line bg-white p-4 transition hover:border-action hover:bg-surfaceHigh"
                       href={`/community/winners/tournaments/${encodeURIComponent(item.tournament_id)}`}
-                      key={item.tournament_id}
                       pendingLabel="Opening winner page..."
                     >
                       <div className="flex flex-wrap items-center gap-2">
@@ -292,6 +300,7 @@ export default async function TournamentsPage({
                         {displayEnumLabel(item.format)} / {item.completed_match_count} completed matches
                       </p>
                     </PendingLink>
+                    </Reveal>
                   ))}
                   <PendingLink
                     className="inline-flex min-h-10 items-center justify-center rounded-md border border-line bg-white px-4 text-sm font-black text-ink hover:bg-surfaceHigh"
@@ -310,9 +319,10 @@ export default async function TournamentsPage({
                 </div>
               )}
             </Panel>
+            </Reveal>
           </div>
         </div>
-      </section>
+      </MotionSection>
     </AppShell>
   );
 }

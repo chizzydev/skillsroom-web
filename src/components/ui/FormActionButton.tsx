@@ -57,7 +57,7 @@ export function FormActionButton({
   return (
     <Button
       aria-busy={activePending}
-      className={className}
+      className={[activePending ? "motion-sheen motion-working" : "", className ?? ""].join(" ")}
       disabled={disabled || pending}
       fullWidth={fullWidth}
       onClick={handleClick}
@@ -68,7 +68,8 @@ export function FormActionButton({
       variant={variant}
       {...props}
     >
-      {activePending ? pendingLabel : idleLabel}
+      {activePending ? <span className="motion-busy-dot" aria-hidden="true" /> : null}
+      <span>{activePending ? pendingLabel : idleLabel}</span>
     </Button>
   );
 }

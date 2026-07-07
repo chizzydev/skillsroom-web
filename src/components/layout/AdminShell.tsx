@@ -45,11 +45,11 @@ export async function AdminShell({ active, children }: AdminShellProps) {
   const navItems = nav.filter((item) => canUseAdminSection(user, item.key));
 
   return (
-    <main className="min-h-screen bg-bg lg:grid lg:grid-cols-[18rem_1fr]">
+    <main className="motion-page-enter min-h-screen bg-bg lg:grid lg:grid-cols-[18rem_1fr]">
       <aside className="border-b border-line bg-navy-900 text-white shadow-inset lg:sticky lg:top-0 lg:min-h-screen lg:border-b-0 lg:border-r lg:border-white/10">
         <div className="flex items-center justify-between gap-3 border-b border-white/10 p-4 lg:block lg:p-5">
           <Link className="flex min-w-0 items-center gap-3 text-lg font-black" href="/admin">
-            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-md bg-action text-sm text-navy-950 shadow-action">SR</span>
+            <span className="motion-glow grid h-10 w-10 shrink-0 place-items-center rounded-md bg-action text-sm text-navy-950 shadow-action">SR</span>
             <span className="truncate">{shellTitle(user?.role)}</span>
           </Link>
           <div className="flex items-center gap-2 lg:mt-4">
@@ -65,7 +65,7 @@ export async function AdminShell({ active, children }: AdminShellProps) {
           {navItems.map((item) => (
             <Link
               className={[
-                "whitespace-nowrap rounded-md px-3 py-2 text-sm font-black transition",
+                "motion-tap whitespace-nowrap rounded-md px-3 py-2 text-sm font-black transition",
                 item.key === active ? "bg-white text-navy-900 shadow-tight" : "text-slate-300 hover:bg-white/10"
               ].join(" ")}
               href={item.href}

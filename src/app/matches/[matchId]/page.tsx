@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { AppShell } from "@/components/layout/AppShell";
 import { ManualPaymentPanel } from "@/components/payments/ManualPaymentPanel";
+import { MotionSection, Reveal } from "@/components/motion";
 import { LiveUpdateStream } from "@/components/realtime/LiveUpdateStream";
 import { PlayerTrustCard } from "@/components/trust/PlayerTrustCard";
 import { Badge } from "@/components/ui/Badge";
@@ -380,7 +381,7 @@ function FundingCard({
   const proofDetailsVisible = Boolean(submission?.sender_account_name || submission?.sender_bank_name || submission?.transfer_reference || submission?.proof_url);
 
   return (
-    <div className="rounded-lg border border-line bg-surfaceWarm p-4">
+    <div className="motion-flow-card rounded-lg border border-line bg-surfaceWarm p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="font-mono text-xs font-bold uppercase tracking-[0.12em] text-dim">{participant?.slot.replace("_", " ") ?? "Open slot"}</p>
@@ -392,7 +393,7 @@ function FundingCard({
       </div>
       <p className="mt-3 text-sm font-bold text-muted">{formatEntryAmount(room)} required</p>
       {submission ? (
-        <div className="mt-3 rounded-md border border-line bg-white p-3 text-sm">
+        <div className="motion-state-card mt-3 rounded-md border border-line bg-white p-3 text-sm">
           {proofDetailsVisible ? (
             <>
               {submission.sender_account_name ? <p className="font-bold text-ink">{submission.sender_account_name}</p> : null}
@@ -588,8 +589,8 @@ export default async function MatchDetailPage({
 
   return (
     <AppShell active="matches">
-      <section className="grid gap-5 md:gap-6">
-        <section className="rounded-lg border border-line bg-navy-900 p-5 text-white shadow-panel md:p-7">
+      <MotionSection className="grid gap-5 md:gap-6" variant="page">
+        <MotionSection className="motion-state-card rounded-lg border border-line bg-navy-900 p-5 text-white shadow-panel md:p-7" variant="hero">
           <div className="grid min-w-0 gap-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
             <div className="min-w-0">
               <Badge tone={statusTone(room.status)}>{matchStatusLabel(room.status)}</Badge>
@@ -625,7 +626,7 @@ export default async function MatchDetailPage({
               ) : null}
             </div>
           </div>
-        </section>
+        </MotionSection>
 
         <LiveUpdateStream
           eventTypePrefixes={["match.", "notification.", "room.invite."]}
@@ -790,6 +791,7 @@ export default async function MatchDetailPage({
           </Panel>
         ) : null}
 
+        <Reveal>
         <Panel>
           <PanelHeader
             eyebrow="Watch Live"
@@ -797,7 +799,7 @@ export default async function MatchDetailPage({
             description="Watch the official room feed or either player stream without leaving the match record."
           />
           <div className="grid gap-4 p-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(18rem,0.65fr)]">
-            <div className="overflow-hidden rounded-xl border border-line bg-navy-950 text-white">
+            <div className="motion-atmosphere motion-state-card motion-glow overflow-hidden rounded-xl border border-line bg-navy-950 text-white">
               {primaryLivestream?.embed_url ? (
                 <>
                   <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 bg-white/5 px-4 py-3">
@@ -825,7 +827,7 @@ export default async function MatchDetailPage({
                   />
                 </>
               ) : (
-                <div className="grid min-h-[18rem] place-items-center p-6 text-center">
+                <div className="motion-standby motion-sheen grid min-h-[18rem] place-items-center p-6 text-center">
                   <div className="max-w-md">
                     <Badge tone="neutral">Stand by</Badge>
                     <h2 className="mt-4 text-2xl font-black text-white">No in-room player yet</h2>
@@ -844,7 +846,7 @@ export default async function MatchDetailPage({
                   const bestStream = [...roleStreams].sort((left, right) => livestreamWatchRank(left) - livestreamWatchRank(right))[0] ?? null;
                   const status = bestStream ? livestreamPlaybackStatus(bestStream) : "unavailable";
                   return (
-                    <div className="rounded-lg border border-line bg-white p-4" key={role}>
+                    <div className="motion-flow-card rounded-lg border border-line bg-white p-4" key={role}>
                       <div className="flex flex-wrap items-start justify-between gap-3">
                         <div>
                           <p className="font-mono text-xs font-black uppercase tracking-[0.12em] text-cyan">{livestreamRoleLabel(role)}</p>
@@ -871,7 +873,7 @@ export default async function MatchDetailPage({
                 })}
               </div>
 
-              <div className="rounded-lg border border-cyan bg-cyanSoft p-4">
+              <div className="motion-premium-panel motion-state-card rounded-lg border border-cyan bg-cyanSoft p-4">
                 <p className="font-mono text-xs font-black uppercase tracking-[0.12em] text-cyan">Match controls nearby</p>
                 <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-1">
                   <a className="inline-flex min-h-10 items-center justify-center rounded-md border border-line bg-white px-3 text-sm font-black text-ink hover:bg-surfaceHigh" href="/chat">
@@ -895,16 +897,18 @@ export default async function MatchDetailPage({
             </div>
           </div>
         </Panel>
+        </Reveal>
 
         {canManageLivestreams ? (
-          <Panel>
+        <Reveal>
+        <Panel>
             <PanelHeader
               eyebrow="Broadcast Controls"
               title="Add livestream"
               description="Paste a YouTube, Twitch, or TikTok link. Skillsroom detects the provider and embeds trusted streams inside the room when the platform allows it."
             />
             <div className="grid gap-5 p-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-              <form action={createMatchLivestreamAction} className="grid gap-3 rounded-md border border-line bg-white p-4">
+              <form action={createMatchLivestreamAction} className="motion-premium-panel motion-flow-card grid gap-3 rounded-md border border-line bg-white p-4">
                 <input name="match_room_id" type="hidden" value={room.id} />
                 <div className="grid gap-3 md:grid-cols-3">
                   <label className="grid gap-2 text-sm font-bold text-ink">
@@ -965,7 +969,7 @@ export default async function MatchDetailPage({
               <div className="grid gap-3 rounded-md border border-line bg-white p-4">
                 {manageableLivestreams.length ? (
                   manageableLivestreams.map((item) => (
-                    <div className="rounded-md border border-line bg-surfaceWarm p-4" key={item.id}>
+                    <div className="motion-flow-card rounded-md border border-line bg-surfaceWarm p-4" key={item.id}>
                       <div className="flex flex-wrap items-center gap-2">
                         <Badge tone={item.status === "active" ? "success" : "danger"}>{item.status}</Badge>
                         <Badge tone="cyan">{item.provider}</Badge>
@@ -992,9 +996,11 @@ export default async function MatchDetailPage({
                 )}
               </div>
             </div>
-          </Panel>
+        </Panel>
+        </Reveal>
         ) : null}
 
+        <Reveal>
         <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1fr)_24rem]">
           <Panel>
             <PanelHeader eyebrow="Players" title="Room slots" description="Each player stays tied to funding, evidence, and final review." />
@@ -1003,7 +1009,7 @@ export default async function MatchDetailPage({
                 const participant = participants.find((item) => item.slot === slot);
                 const trust = participant ? trustByUserId.get(participant.user_id) : null;
                 return (
-                  <div className="rounded-lg border border-line bg-surfaceWarm p-4" key={slot}>
+                  <div className="motion-flow-card rounded-lg border border-line bg-surfaceWarm p-4" key={slot}>
                     <div className="flex items-center justify-between gap-3">
                       <p className="font-mono text-xs font-bold uppercase tracking-[0.12em] text-dim">{slot.replace("_", " ")}</p>
                       <Badge tone={participant ? "success" : "neutral"}>{participant ? "Joined" : "Open"}</Badge>
@@ -1043,8 +1049,10 @@ export default async function MatchDetailPage({
             </div>
           </Panel>
         </div>
+        </Reveal>
 
         {canViewSensitiveInternals ? (
+          <Reveal>
           <Panel>
             <PanelHeader
               eyebrow="Money Trail"
@@ -1057,7 +1065,7 @@ export default async function MatchDetailPage({
                 const trust = participant ? trustByUserId.get(participant.user_id) : null;
                 const fundingMethod = fundingMethodSummary(funding, participant);
                 return (
-                  <div className="rounded-lg border border-line bg-surfaceWarm p-4" key={slot}>
+                  <div className="motion-flow-card rounded-lg border border-line bg-surfaceWarm p-4" key={slot}>
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div className="min-w-0">
                         <p className="font-mono text-xs font-bold uppercase tracking-[0.12em] text-dim">{slot.replace("_", " ")}</p>
@@ -1081,21 +1089,21 @@ export default async function MatchDetailPage({
               })}
             </div>
             <div className="grid gap-3 border-t border-line p-4 md:grid-cols-3">
-              <div className="rounded-lg border border-line bg-white p-4">
+              <div className="motion-flow-card rounded-lg border border-line bg-white p-4">
                 <p className="font-mono text-xs font-black uppercase tracking-[0.12em] text-cyan">Funds locked</p>
                 <p className="mt-2 text-2xl font-black text-ink">{formatMinorMoney(room.currency, fundsLockedMinor)}</p>
                 <p className="mt-2 text-sm leading-6 text-muted">
                   {fundedParticipants.length}/{room.max_participants} player entries approved for this room.
                 </p>
               </div>
-              <div className="rounded-lg border border-line bg-white p-4">
+              <div className="motion-flow-card rounded-lg border border-line bg-white p-4">
                 <div className="flex items-center justify-between gap-3">
                   <p className="font-mono text-xs font-black uppercase tracking-[0.12em] text-cyan">Result</p>
                   <Badge tone={resultCheckpoint.tone}>{resultCheckpoint.label}</Badge>
                 </div>
                 <p className="mt-3 text-sm leading-6 text-muted">{resultCheckpoint.detail}</p>
               </div>
-              <div className="rounded-lg border border-line bg-white p-4">
+              <div className="motion-flow-card rounded-lg border border-line bg-white p-4">
                 <div className="flex items-center justify-between gap-3">
                   <p className="font-mono text-xs font-black uppercase tracking-[0.12em] text-cyan">Payout</p>
                   <Badge tone={payoutCheckpoint.tone}>{payoutCheckpoint.label}</Badge>
@@ -1104,9 +1112,11 @@ export default async function MatchDetailPage({
               </div>
             </div>
           </Panel>
+          </Reveal>
         ) : null}
 
         {canStartPlay ? (
+          <Reveal>
           <Panel>
             <PanelHeader
               eyebrow="Play"
@@ -1123,6 +1133,7 @@ export default async function MatchDetailPage({
               </form>
             </div>
           </Panel>
+          </Reveal>
         ) : null}
 
         {!isTournamentRoom && canViewSensitiveInternals ? (
@@ -1134,7 +1145,7 @@ export default async function MatchDetailPage({
               description="Use your approved Skillsroom Balance for instant locking, or use manual transfer proof if you prefer."
             />
             <div className="grid gap-3 border-b border-line p-4">
-              <div className="rounded-lg border border-cyan bg-cyanSoft p-4">
+              <div className="motion-state-card rounded-lg border border-cyan bg-cyanSoft p-4">
                 <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                   <div className="min-w-0">
                     <p className="font-mono text-xs font-black uppercase tracking-[0.14em] text-cyan">Skillsroom Balance</p>
@@ -1176,7 +1187,7 @@ export default async function MatchDetailPage({
 
           <Panel>
             <PanelHeader eyebrow="Submit Funding" title="Transfer proof" description="Amount, sender bank, account name, and screenshot are enough for review." />
-            <form action={submitManualFundingAction} className="grid gap-3 p-4">
+            <form action={submitManualFundingAction} className="motion-flow-card grid gap-3 p-4">
               {currentParticipant ? (
                 currentFundingStatus === "approved" && ["awaiting_funding", "funding_review", "funded"].includes(room.status) ? (
                   <TransientStatusBanner
@@ -1515,7 +1526,7 @@ export default async function MatchDetailPage({
             </div>
           </Panel>
         ) : null}
-      </section>
+      </MotionSection>
     </AppShell>
   );
 }

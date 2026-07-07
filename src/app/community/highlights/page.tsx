@@ -3,6 +3,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { AppShell } from "@/components/layout/AppShell";
 import { PublicSharePanel } from "@/components/community/PublicSharePanel";
+import { MotionSection, Reveal } from "@/components/motion";
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Panel, PanelHeader } from "@/components/ui/Panel";
@@ -29,8 +30,8 @@ export default async function CommunityHighlightsPage() {
 
   return (
     <AppShell active="community">
-      <section className="grid gap-6">
-        <section className="overflow-hidden rounded-[1.75rem] border border-[#24364a] bg-[#08131f] text-white shadow-[0_40px_120px_rgba(4,10,20,0.35)]">
+      <MotionSection className="grid gap-6" variant="page">
+        <MotionSection className="overflow-hidden rounded-[1.75rem] border border-[#24364a] bg-[#08131f] text-white shadow-[0_40px_120px_rgba(4,10,20,0.35)]" variant="hero">
           <div className="grid gap-0 xl:grid-cols-[minmax(0,1fr)_minmax(320px,38%)]">
             <div className="relative p-5 md:p-7 lg:p-9">
               <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(24,197,138,0.16),transparent_34%),radial-gradient(circle_at_bottom_left,rgba(33,170,255,0.18),transparent_36%)]" />
@@ -41,18 +42,18 @@ export default async function CommunityHighlightsPage() {
                   This page shows completed tournament results that are ready for people to view and share.
                 </p>
                 <div className="mt-8 grid gap-3 xl:max-w-2xl xl:grid-cols-3">
-                  <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
+                  <Reveal className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur" staggerIndex={0}>
                     <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Recent results</p>
                     <p className="mt-2 text-sm leading-6 text-slate-200">See who won, what game it was, and how the event ended.</p>
-                  </div>
-                  <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
+                  </Reveal>
+                  <Reveal className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur" staggerIndex={1}>
                     <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Confirmed winners</p>
                     <p className="mt-2 text-sm leading-6 text-slate-200">Only completed events show up here after the results are confirmed.</p>
-                  </div>
-                  <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
+                  </Reveal>
+                  <Reveal className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur" staggerIndex={2}>
                     <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Easy to share</p>
                     <p className="mt-2 text-sm leading-6 text-slate-200">Open a result and send it to your friends, team, or group chat.</p>
-                  </div>
+                  </Reveal>
                 </div>
               </div>
             </div>
@@ -67,26 +68,27 @@ export default async function CommunityHighlightsPage() {
               </div>
             </div>
           </div>
-        </section>
+        </MotionSection>
 
-        {loadError ? <div className="rounded-md border border-danger bg-red-50 p-4 text-sm font-bold text-danger">{loadError}</div> : null}
+        {loadError ? <Reveal className="rounded-md border border-danger bg-red-50 p-4 text-sm font-bold text-danger" variant="down">{loadError}</Reveal> : null}
 
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <StatusPanel detail="Completed events shown here" label="Highlights" tone="cyan" value={highlights.length.toString()} />
-          <StatusPanel detail="Events with a named winner" label="Winners" tone="success" value={highlights.filter((item) => item.champion_entry_name).length.toString()} />
-          <StatusPanel detail="Approved matches across these events" label="Matches" tone="warning" value={highlights.reduce((sum, item) => sum + item.completed_match_count, 0).toString()} />
-          <StatusPanel detail="Games represented on this page" label="Games" tone="success" value={new Set(highlights.map((item) => item.game_slug)).size.toString()} />
+          <Reveal staggerIndex={0}><StatusPanel detail="Completed events shown here" label="Highlights" tone="cyan" value={highlights.length.toString()} /></Reveal>
+          <Reveal staggerIndex={1}><StatusPanel detail="Events with a named winner" label="Winners" tone="success" value={highlights.filter((item) => item.champion_entry_name).length.toString()} /></Reveal>
+          <Reveal staggerIndex={2}><StatusPanel detail="Approved matches across these events" label="Matches" tone="warning" value={highlights.reduce((sum, item) => sum + item.completed_match_count, 0).toString()} /></Reveal>
+          <Reveal staggerIndex={3}><StatusPanel detail="Games represented on this page" label="Games" tone="success" value={new Set(highlights.map((item) => item.game_slug)).size.toString()} /></Reveal>
         </div>
 
+        <Reveal>
         <Panel>
           <PanelHeader eyebrow="Results" title="Tournament highlights" description="Open any card to see the public winner page." />
           {highlights.length ? (
             <div className="grid gap-4 p-4 md:grid-cols-2 xl:grid-cols-3">
-              {highlights.map((item) => (
+              {highlights.map((item, index) => (
+                <Reveal key={item.tournament_id} staggerIndex={index}>
                 <Link
                   className="grid gap-4 rounded-[1.25rem] border border-line bg-white p-4 transition hover:border-action hover:bg-surfaceHigh"
                   href={`/community/winners/tournaments/${encodeURIComponent(item.tournament_id)}`}
-                  key={item.tournament_id}
                 >
                   <div className="flex flex-wrap items-center gap-2">
                     <Badge tone="success">Winner crowned</Badge>
@@ -118,6 +120,7 @@ export default async function CommunityHighlightsPage() {
                     </div>
                   </div>
                 </Link>
+                </Reveal>
               ))}
             </div>
           ) : (
@@ -126,7 +129,9 @@ export default async function CommunityHighlightsPage() {
             </div>
           )}
         </Panel>
+        </Reveal>
 
+        <Reveal>
         <Panel>
           <PublicSharePanel
             eyebrow="Share"
@@ -137,7 +142,8 @@ export default async function CommunityHighlightsPage() {
             url={shareUrl("/community/highlights")}
           />
         </Panel>
-      </section>
+        </Reveal>
+      </MotionSection>
     </AppShell>
   );
 }

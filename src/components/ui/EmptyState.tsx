@@ -34,7 +34,7 @@ export function EmptyState({ title, description, actionLabel, tone = "neutral" }
   const toneStyles = toneClass[tone];
 
   return (
-    <div className={["relative overflow-hidden rounded-[1.35rem] border p-8 text-center shadow-[0_24px_80px_rgba(3,10,20,0.18)]", toneStyles.shell].join(" ")}>
+    <div className={["motion-atmosphere motion-standby motion-glow motion-sheen relative overflow-hidden rounded-[1.35rem] border p-8 text-center shadow-[0_24px_80px_rgba(3,10,20,0.18)]", toneStyles.shell].join(" ")}>
       <div className={`pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,var(--tw-gradient-stops))] ${toneStyles.accent}`} />
       <div className="pointer-events-none absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-white/30 to-transparent" />
       <div className="relative mx-auto grid max-w-md place-items-center">

@@ -22,7 +22,7 @@ export function Button({ className = "", variant = "primary", size = "md", fullW
   return (
     <button
       className={[
-        "inline-flex items-center justify-center gap-2 rounded-md font-black transition disabled:cursor-not-allowed disabled:opacity-55",
+        "motion-tap motion-admin-action inline-flex items-center justify-center gap-2 rounded-md font-black transition disabled:cursor-not-allowed disabled:opacity-55",
         sizeClass,
         variantClass,
         fullWidth ? "w-full" : "",

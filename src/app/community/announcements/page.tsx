@@ -3,6 +3,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { AppShell } from "@/components/layout/AppShell";
 import { PublicSharePanel } from "@/components/community/PublicSharePanel";
+import { MotionSection, Reveal } from "@/components/motion";
 import { Badge, type BadgeTone } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Panel } from "@/components/ui/Panel";
@@ -39,8 +40,8 @@ export default async function CommunityAnnouncementsPage() {
 
   return (
     <AppShell active="community">
-      <section className="grid gap-6">
-        <section className="overflow-hidden rounded-[1.75rem] border border-[#24364a] bg-[#08131f] text-white shadow-[0_40px_120px_rgba(4,10,20,0.35)]">
+      <MotionSection className="grid gap-6" variant="page">
+        <MotionSection className="overflow-hidden rounded-[1.75rem] border border-[#24364a] bg-[#08131f] text-white shadow-[0_40px_120px_rgba(4,10,20,0.35)]" variant="hero">
           <div className="grid gap-0 xl:grid-cols-[minmax(0,1fr)_minmax(320px,38%)]">
             <div className="relative p-5 md:p-7 lg:p-9">
               <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(24,197,138,0.16),transparent_34%),radial-gradient(circle_at_bottom_left,rgba(33,170,255,0.18),transparent_36%)]" />
@@ -51,18 +52,18 @@ export default async function CommunityAnnouncementsPage() {
                   This is where published platform updates and tournament news appear.
                 </p>
                 <div className="mt-8 grid gap-3 xl:max-w-2xl xl:grid-cols-3">
-                  <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
+                  <Reveal className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur" staggerIndex={0}>
                     <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Platform updates</p>
                     <p className="mt-2 text-sm leading-6 text-slate-200">Read the latest important updates from Skillsroom here.</p>
-                  </div>
-                  <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
+                  </Reveal>
+                  <Reveal className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur" staggerIndex={1}>
                     <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Tournament news</p>
                     <p className="mt-2 text-sm leading-6 text-slate-200">Tournament posts stay easy to read without showing private admin notes.</p>
-                  </div>
-                  <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
+                  </Reveal>
+                  <Reveal className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur" staggerIndex={2}>
                     <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Easy to read on phone</p>
                     <p className="mt-2 text-sm leading-6 text-slate-200">It should still read clearly when someone opens it from a shared link.</p>
-                  </div>
+                  </Reveal>
                 </div>
               </div>
             </div>
@@ -77,19 +78,19 @@ export default async function CommunityAnnouncementsPage() {
               </div>
             </div>
           </div>
-        </section>
+        </MotionSection>
 
         {loadError ? (
-          <div className="rounded-md border border-danger bg-red-50 p-4 text-sm font-bold text-danger">{loadError}</div>
+          <Reveal className="rounded-md border border-danger bg-red-50 p-4 text-sm font-bold text-danger" variant="down">{loadError}</Reveal>
         ) : null}
 
         {announcements.length ? (
           <div className="grid gap-4">
-            {announcements.map((item) => (
+            {announcements.map((item, index) => (
+              <Reveal key={item.id} staggerIndex={index}>
               <Link
                 className="grid gap-3 rounded-[1.25rem] border border-line bg-white p-5 shadow-tight transition hover:border-action hover:bg-surfaceHigh"
                 href={`/community/announcements/${encodeURIComponent(item.id)}`}
-                key={item.id}
               >
                 <div className="flex flex-wrap items-center gap-2">
                   <Badge tone={tone(item.priority)}>{item.priority}</Badge>
@@ -105,9 +106,11 @@ export default async function CommunityAnnouncementsPage() {
                   <span>{item.author_display_name || item.author_username || "Skillsroom"}</span>
                 </div>
               </Link>
+              </Reveal>
             ))}
           </div>
         ) : (
+          <Reveal>
           <Panel>
             <div className="p-4">
               <EmptyState
@@ -116,8 +119,10 @@ export default async function CommunityAnnouncementsPage() {
               />
             </div>
           </Panel>
+          </Reveal>
         )}
 
+        <Reveal>
         <Panel>
           <PublicSharePanel
             eyebrow="Share"
@@ -128,7 +133,8 @@ export default async function CommunityAnnouncementsPage() {
             url={shareUrl("/community/announcements")}
           />
         </Panel>
-      </section>
+        </Reveal>
+      </MotionSection>
     </AppShell>
   );
 }

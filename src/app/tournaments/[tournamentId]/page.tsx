@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { AppShell } from "@/components/layout/AppShell";
+import { MotionSection, Reveal } from "@/components/motion";
 import { LiveUpdateStream } from "@/components/realtime/LiveUpdateStream";
 import { Badge, type BadgeTone } from "@/components/ui/Badge";
 import { DataTable } from "@/components/ui/DataTable";
@@ -450,8 +451,8 @@ export default async function TournamentDetailPage({
 
   return (
     <AppShell active="tournaments">
-      <section className="grid min-w-0 gap-6">
-        <section className="overflow-hidden rounded-[1.75rem] border border-[#24364a] bg-[#08131f] text-white shadow-[0_40px_120px_rgba(4,10,20,0.35)]">
+      <MotionSection className="grid min-w-0 gap-6" variant="page">
+        <MotionSection className="motion-state-card overflow-hidden rounded-[1.75rem] border border-[#24364a] bg-[#08131f] text-white shadow-[0_40px_120px_rgba(4,10,20,0.35)]" variant="hero">
           <div className="grid gap-0 xl:grid-cols-[minmax(0,1fr)_minmax(320px,38%)]">
             <div className="relative p-5 md:p-7 lg:p-9">
               <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(24,197,138,0.16),transparent_34%),radial-gradient(circle_at_bottom_left,rgba(33,170,255,0.18),transparent_36%)]" />
@@ -514,15 +515,15 @@ export default async function TournamentDetailPage({
               </div>
             </div>
           </div>
-        </section>
+        </MotionSection>
 
         <LiveUpdateStream eventTypePrefixes={["tournament.", "notification."]} label="Tournament live" tournamentId={detail.id} />
 
         <div className="grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <StatusPanel detail={registrationDetail} label="Registration" tone="cyan" value={registrationTitle} />
-          <StatusPanel detail={`${checkedIn} checked in`} label="Entries" tone="success" value={`${entries}/${detail.max_entries}`} />
-          <StatusPanel detail={displayEnumLabel(detail.prize_distribution_mode)} label="Prize Pool" tone="success" value={formatMinorMoney(detail.currency, prize)} />
-          <StatusPanel detail={detail.game_name ?? detail.game_id} label="Format" tone="warning" value={displayEnumLabel(detail.format)} />
+          <Reveal staggerIndex={0}><StatusPanel detail={registrationDetail} label="Registration" tone="cyan" value={registrationTitle} /></Reveal>
+          <Reveal staggerIndex={1}><StatusPanel detail={`${checkedIn} checked in`} label="Entries" tone="success" value={`${entries}/${detail.max_entries}`} /></Reveal>
+          <Reveal staggerIndex={2}><StatusPanel detail={displayEnumLabel(detail.prize_distribution_mode)} label="Prize Pool" tone="success" value={formatMinorMoney(detail.currency, prize)} /></Reveal>
+          <Reveal staggerIndex={3}><StatusPanel detail={detail.game_name ?? detail.game_id} label="Format" tone="warning" value={displayEnumLabel(detail.format)} /></Reveal>
         </div>
 
         {winnerPage ? (
@@ -572,11 +573,12 @@ export default async function TournamentDetailPage({
         ) : null}
 
         {(error || registered || checkedInSuccess || balanceFunded || contributionSubmitted || announcementSaved || announcementPublished || announcementArchived || livestreamSaved || livestreamArchived) ? (
-          <div
+          <Reveal
             className={[
               "rounded-md border p-4 text-sm font-bold",
               error ? "border-danger bg-red-50 text-danger" : "border-success bg-successSoft text-success"
             ].join(" ")}
+            variant="down"
           >
             {error
               ?? (announcementArchived
@@ -596,7 +598,7 @@ export default async function TournamentDetailPage({
                         : checkedInSuccess
                           ? "Check-in complete. Your entry is ready for seeding."
                           : "Registration received. Your entry is now attached to this tournament.")}
-          </div>
+          </Reveal>
         ) : null}
 
         <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1fr)_24rem]">
@@ -648,7 +650,7 @@ export default async function TournamentDetailPage({
               <div className="grid gap-4 p-4">
                 {hasEmbeddableLivestream(livestreams) ? (
                   <div className="grid gap-4 xl:grid-cols-[minmax(0,1.3fr)_minmax(0,0.7fr)]">
-                    <div className="overflow-hidden rounded-md border border-line bg-black">
+                    <div className="motion-state-card motion-glow overflow-hidden rounded-md border border-line bg-black">
                       <iframe
                         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                         allowFullScreen
@@ -661,7 +663,7 @@ export default async function TournamentDetailPage({
                     <div className="grid gap-3">
                       {livestreams.map((item) => (
                         <a
-                          className="rounded-md border border-line bg-white p-4 transition hover:border-action hover:bg-surfaceHigh"
+                          className="motion-flow-card rounded-md border border-line bg-white p-4 transition hover:border-action hover:bg-surfaceHigh"
                           href={item.stream_url}
                           key={item.id}
                           rel="noreferrer"
@@ -683,7 +685,7 @@ export default async function TournamentDetailPage({
                   <div className="grid gap-3 md:grid-cols-2">
                     {livestreams.map((item) => (
                       <a
-                        className="rounded-md border border-line bg-white p-4 transition hover:border-action hover:bg-surfaceHigh"
+                        className="motion-flow-card rounded-md border border-line bg-white p-4 transition hover:border-action hover:bg-surfaceHigh"
                         href={item.stream_url}
                         key={item.id}
                         rel="noreferrer"
@@ -748,7 +750,7 @@ export default async function TournamentDetailPage({
                 description="Attach official watch links for YouTube, Twitch, Facebook, TikTok, Kick, or another safe HTTPS destination."
               />
               <div className="grid gap-5 p-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-                <form action={createTournamentLivestreamAction} className="grid gap-3 rounded-md border border-line bg-white p-4">
+                <form action={createTournamentLivestreamAction} className="motion-flow-card grid gap-3 rounded-md border border-line bg-white p-4">
                   <input name="tournament_id" type="hidden" value={detail.id} />
                   <div className="grid gap-3 md:grid-cols-2">
                     <label className="grid gap-2 text-sm font-bold text-ink">
@@ -794,7 +796,7 @@ export default async function TournamentDetailPage({
                 <div className="grid gap-3 rounded-md border border-line bg-white p-4">
                   {manageableLivestreams.length ? (
                     manageableLivestreams.map((item) => (
-                      <div className="rounded-md border border-line bg-surfaceWarm p-4" key={item.id}>
+                      <div className="motion-flow-card rounded-md border border-line bg-surfaceWarm p-4" key={item.id}>
                         <div className="flex flex-wrap items-center gap-2">
                           <Badge tone={item.status === "active" ? "success" : "danger"}>{item.status}</Badge>
                           <Badge tone="cyan">{item.provider}</Badge>
@@ -920,7 +922,7 @@ export default async function TournamentDetailPage({
             <PanelHeader eyebrow="Contribution" title="Submit prize or entry funding" />
             {canPayEntryWithBalance ? (
               <div className="grid gap-3 border-b border-line bg-surfaceWarm p-4">
-                <div className="rounded-[1.25rem] border border-cyan/40 bg-white p-4 shadow-sm">
+                <div className="motion-wallet-lock motion-state-card motion-flow-card rounded-[1.25rem] border border-cyan/40 bg-white p-4 shadow-sm">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
                       <p className="font-mono text-xs font-black uppercase tracking-[0.12em] text-cyan">Skillsroom Balance</p>
@@ -965,7 +967,7 @@ export default async function TournamentDetailPage({
                 referenceHint={`Use ${detail.title} in the transfer narration or note so the contribution can be matched quickly.`}
               />
             </div>
-            <form action={submitTournamentContributionAction} className="grid gap-3 p-4">
+            <form action={submitTournamentContributionAction} className="motion-flow-card grid gap-3 p-4">
               <input name="tournament_id" type="hidden" value={detail.id} />
               <label className="grid gap-2 text-sm font-bold text-ink">
                 Source
@@ -1054,12 +1056,12 @@ export default async function TournamentDetailPage({
               title="Prize pool and allocations"
             />
             <div className="grid gap-4 p-4 lg:grid-cols-2">
-              <div className="rounded-md border border-line bg-surfaceWarm p-4">
+              <div className="motion-premium-panel motion-flow-card rounded-md border border-line bg-surfaceWarm p-4">
                 <p className="font-mono text-xs font-black uppercase tracking-[0.12em] text-dim">Projected or approved</p>
                 <strong className="mt-2 block text-3xl font-black text-success">{formatMinorMoney(detail.currency, prize)}</strong>
                 <p className="mt-2 text-sm font-bold text-muted">{displayEnumLabel(detail.prize_distribution_mode)} distribution</p>
               </div>
-              <div className="rounded-md border border-line bg-surfaceWarm p-4">
+              <div className="motion-premium-panel motion-flow-card rounded-md border border-line bg-surfaceWarm p-4">
                 <p className="font-mono text-xs font-black uppercase tracking-[0.12em] text-dim">Contribution records</p>
                 <strong className="mt-2 block text-3xl font-black text-ink">{detail.prize_contributions.length}</strong>
                 <p className="mt-2 text-sm font-bold text-muted">Participant, sponsor, platform, and manual adjustment records</p>
@@ -1085,17 +1087,17 @@ export default async function TournamentDetailPage({
           <Panel>
             <PanelHeader eyebrow="Registration" title="Entry readiness" />
             <div className="grid gap-3 p-4">
-              <div className="rounded-md border border-line bg-white p-4">
+              <div className="motion-flow-card rounded-md border border-line bg-white p-4">
                 <p className="font-mono text-xs font-black uppercase tracking-[0.12em] text-cyan">Slots</p>
                 <p className="mt-2 text-2xl font-black text-ink">{entries}/{detail.max_entries}</p>
                 <p className="mt-1 text-sm font-bold text-muted">Minimum required: {detail.min_entries}</p>
               </div>
-              <div className="rounded-md border border-line bg-white p-4">
+              <div className="motion-flow-card rounded-md border border-line bg-white p-4">
                 <p className="font-mono text-xs font-black uppercase tracking-[0.12em] text-cyan">Check-in</p>
                 <p className="mt-2 text-2xl font-black text-ink">{checkedIn}</p>
                 <p className="mt-1 text-sm font-bold text-muted">{checkInOpen ? "Check-in is available for registered entries." : "Check-in is not open."}</p>
               </div>
-              <div className="rounded-md border border-line bg-white p-4">
+              <div className="motion-flow-card rounded-md border border-line bg-white p-4">
                 <p className="font-mono text-xs font-black uppercase tracking-[0.12em] text-cyan">Your entry</p>
                 <p className="mt-2 text-2xl font-black text-ink">{myEntry ? displayEnumLabel(myEntry.status) : "Not entered"}</p>
                 <p className="mt-1 text-sm font-bold text-muted">
@@ -1103,7 +1105,7 @@ export default async function TournamentDetailPage({
                 </p>
               </div>
             </div>
-            <form action={registerForTournamentAction} className="grid gap-3 border-t border-line p-4">
+            <form action={registerForTournamentAction} className="motion-premium-panel motion-flow-card grid gap-3 border-t border-line p-4">
               <input name="tournament_id" type="hidden" value={detail.id} />
               <label className="grid gap-2 text-sm font-bold text-ink">
                 Display name
@@ -1136,7 +1138,7 @@ export default async function TournamentDetailPage({
                 Registration requires a complete profile, age confirmation, and a primary game account for this tournament game.
               </p>
             </form>
-            <form action={checkInForTournamentAction} className="grid gap-3 border-t border-line p-4">
+            <form action={checkInForTournamentAction} className="motion-flow-card grid gap-3 border-t border-line p-4">
               <input name="tournament_id" type="hidden" value={detail.id} />
               <SubmitButton
                 className="disabled:opacity-50"
@@ -1283,7 +1285,7 @@ export default async function TournamentDetailPage({
                 const stageRounds = roundsForStage(stage, detail);
                 const progress = stageProgress(stage, detail);
                 return (
-                  <section className="min-w-0 rounded-md border border-line bg-white" key={stage.id}>
+                  <section className="motion-bracket-reveal min-w-0 rounded-md border border-line bg-white" key={stage.id}>
                     <div className="flex flex-wrap items-start justify-between gap-3 border-b border-line p-4">
                       <div className="min-w-0">
                         <div className="flex flex-wrap gap-2">
@@ -1309,7 +1311,7 @@ export default async function TournamentDetailPage({
                             {matches.map((match) => {
                               const sides = matchSides(match, detail);
                               return (
-                                <article className="rounded-md border border-line bg-white p-3 shadow-tight" key={match.id}>
+                                <article className="motion-flow-card rounded-md border border-line bg-white p-3 shadow-tight" key={match.id}>
                                   <div className="flex items-start justify-between gap-2">
                                     <div>
                                       <p className="font-mono text-[0.65rem] font-black uppercase tracking-[0.12em] text-dim">Match {match.match_number}</p>
@@ -1434,7 +1436,7 @@ export default async function TournamentDetailPage({
             ) : null}
           </div>
         </Panel>
-      </section>
+      </MotionSection>
     </AppShell>
   );
 }

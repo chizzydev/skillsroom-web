@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { AppShell } from "@/components/layout/AppShell";
+import { MotionSection, Reveal } from "@/components/motion";
 import { Badge } from "@/components/ui/Badge";
 import { SubmitButton } from "@/components/ui/SubmitButton";
 import { PendingLink } from "@/components/ui/PendingLink";
@@ -56,8 +57,8 @@ export default async function MatchesPage({ searchParams }: { searchParams: Prom
     }));
   return (
     <AppShell active="matches">
-      <section className="grid min-w-0 gap-6">
-        <section className="min-w-0 rounded-lg border border-line bg-white p-5 shadow-panel md:p-7">
+      <MotionSection className="grid min-w-0 gap-6" variant="page">
+        <MotionSection className="min-w-0 rounded-lg border border-line bg-white p-5 shadow-panel md:p-7" variant="hero">
           <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <Badge tone="cyan">Match Rooms</Badge>
@@ -75,23 +76,26 @@ export default async function MatchesPage({ searchParams }: { searchParams: Prom
               </a>
             </div>
           </div>
-        </section>
+        </MotionSection>
 
         {(error || loadError) && (
-          <div className="rounded-md border border-danger bg-red-50 p-4 text-sm font-bold text-danger">
+          <Reveal className="rounded-md border border-danger bg-red-50 p-4 text-sm font-bold text-danger" variant="down">
             {error ?? loadError}
-          </div>
+          </Reveal>
         )}
 
         <div className="grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <StatusPanel detail="Visible to lobby" label="Open" tone="cyan" value={countStatus(rooms, "open")} />
-          <StatusPanel detail="Manual transfer next" label="Awaiting Funding" tone="warning" value={countStatus(rooms, "awaiting_funding")} />
-          <StatusPanel detail="Payment proof check" label="Funding Review" tone="danger" value={countStatus(rooms, "funding_review")} />
-          <StatusPanel detail="Visible rooms" label="Tracked" tone="success" value={rooms.length.toString()} />
+          <Reveal staggerIndex={0}><StatusPanel detail="Visible to lobby" label="Open" tone="cyan" value={countStatus(rooms, "open")} /></Reveal>
+          <Reveal staggerIndex={1}><StatusPanel detail="Manual transfer next" label="Awaiting Funding" tone="warning" value={countStatus(rooms, "awaiting_funding")} /></Reveal>
+          <Reveal staggerIndex={2}><StatusPanel detail="Payment proof check" label="Funding Review" tone="danger" value={countStatus(rooms, "funding_review")} /></Reveal>
+          <Reveal staggerIndex={3}><StatusPanel detail="Visible rooms" label="Tracked" tone="success" value={rooms.length.toString()} /></Reveal>
         </div>
 
-        <RoomActivityPanelClient initialQueue={selectedQueue} rooms={roomActivityRows} />
+        <Reveal>
+          <RoomActivityPanelClient initialQueue={selectedQueue} rooms={roomActivityRows} />
+        </Reveal>
 
+        <Reveal>
         <Panel id="join-room">
           <PanelHeader eyebrow="Join Code" title="Join a private room" description="Players can join a room only when their profile is complete and the room is open." />
           <form action={joinMatchRoomAction} className="grid gap-3 p-4 md:grid-cols-[1fr_auto]">
@@ -104,7 +108,8 @@ export default async function MatchesPage({ searchParams }: { searchParams: Prom
             <SubmitButton idleLabel="Join room" pendingLabel="Joining room..." />
           </form>
         </Panel>
-      </section>
+        </Reveal>
+      </MotionSection>
     </AppShell>
   );
 }

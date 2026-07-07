@@ -9,7 +9,7 @@ export function Panel({ children, className = "", ...props }: PanelProps) {
   return (
     <section
       className={[
-        "min-w-0 overflow-hidden rounded-[1.35rem] border border-line bg-surface shadow-[0_18px_50px_rgba(3,10,20,0.08)]",
+        "motion-card motion-premium-panel min-w-0 overflow-hidden rounded-[1.35rem] border border-line bg-surface shadow-[0_18px_50px_rgba(3,10,20,0.08)]",
         className
       ].join(" ")}
       {...props}

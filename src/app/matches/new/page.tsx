@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { AppShell } from "@/components/layout/AppShell";
 import { CatalogRulesetFields } from "@/components/catalog/CatalogRulesetFields";
+import { MotionSection, Reveal } from "@/components/motion";
 import { Badge } from "@/components/ui/Badge";
 import { Panel, PanelHeader } from "@/components/ui/Panel";
 import { SubmitButton } from "@/components/ui/SubmitButton";
@@ -39,17 +40,17 @@ export default async function NewMatchPage({ searchParams }: { searchParams: Pro
 
   return (
     <AppShell active="matches">
-      <section className="grid gap-6">
-        <section className="rounded-lg border border-line bg-white p-5 shadow-panel md:p-7">
+      <MotionSection className="grid gap-6" variant="page">
+        <MotionSection className="rounded-lg border border-line bg-white p-5 shadow-panel md:p-7" variant="hero">
           <Badge tone="cyan">Create Room</Badge>
           <h1 className="mt-3 text-3xl font-black text-ink md:text-5xl">Create a match room.</h1>
           <p className="mt-3 max-w-3xl text-sm leading-6 text-muted md:text-base">
             Choose the game, ruleset, and entry amount. Skillsroom will create a joinable room code for the second player.
           </p>
-        </section>
+        </MotionSection>
 
         {(error || loadError) && (
-          <div className="flex flex-col gap-3 rounded-md border border-danger bg-red-50 p-4 text-sm font-bold text-danger sm:flex-row sm:items-center sm:justify-between">
+          <Reveal className="flex flex-col gap-3 rounded-md border border-danger bg-red-50 p-4 text-sm font-bold text-danger sm:flex-row sm:items-center sm:justify-between" variant="down">
             <span>{error ?? loadError}</span>
             {error?.toLowerCase().includes("primary game account") ? (
               <Link
@@ -59,9 +60,10 @@ export default async function NewMatchPage({ searchParams }: { searchParams: Pro
                 Add primary game account
               </Link>
             ) : null}
-          </div>
+          </Reveal>
         )}
 
+        <Reveal>
         <Panel>
           <PanelHeader
             eyebrow="Ready check"
@@ -91,8 +93,10 @@ export default async function NewMatchPage({ searchParams }: { searchParams: Pro
             </div>
           </div>
         </Panel>
+        </Reveal>
 
         <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
+          <Reveal>
           <Panel>
             <PanelHeader eyebrow="Room Details" title="Set up your room" />
             {selectedGame && selectedRuleset ? (
@@ -129,15 +133,18 @@ export default async function NewMatchPage({ searchParams }: { searchParams: Pro
               </div>
             )}
           </Panel>
+          </Reveal>
 
+          <Reveal staggerIndex={1}>
           <Panel>
             <PanelHeader eyebrow="Lifecycle" title="What happens next" />
             <div className="p-4">
               <Timeline items={steps} />
             </div>
           </Panel>
+          </Reveal>
         </div>
-      </section>
+      </MotionSection>
     </AppShell>
   );
 }
