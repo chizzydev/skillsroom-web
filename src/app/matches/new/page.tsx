@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Panel, PanelHeader } from "@/components/ui/Panel";
 import { SubmitButton } from "@/components/ui/SubmitButton";
 import { Timeline } from "@/components/ui/Timeline";
+import { TransientStatusBanner } from "@/components/ui/TransientStatusBanner";
 import { getCurrentUser } from "@/lib/auth-bridge";
 import { listGameCatalog, type Game, type MatchRuleset } from "@/lib/match-room-api";
 import { createMatchRoomAction } from "../actions";
@@ -49,10 +50,10 @@ export default async function NewMatchPage({ searchParams }: { searchParams: Pro
           </p>
         </MotionSection>
 
-        {(error || loadError) && (
-          <Reveal className="flex flex-col gap-3 rounded-md border border-danger bg-red-50 p-4 text-sm font-bold text-danger sm:flex-row sm:items-center sm:justify-between" variant="down">
-            <span>{error ?? loadError}</span>
-            {error?.toLowerCase().includes("primary game account") ? (
+        {(error || loadError) ? (
+          <Reveal className="grid gap-3" variant="down">
+            <TransientStatusBanner clearKeys={["error"]} durationMs={12000} message={error ?? loadError ?? ""} />
+            {error?.toLowerCase().includes("primary game account") || error?.toLowerCase().includes("complete your player profile") ? (
               <Link
                 className="inline-flex min-h-10 items-center justify-center rounded-md border border-danger bg-white px-4 text-sm font-black text-danger shadow-tight"
                 href="/profile#game-accounts"
@@ -61,7 +62,7 @@ export default async function NewMatchPage({ searchParams }: { searchParams: Pro
               </Link>
             ) : null}
           </Reveal>
-        )}
+        ) : null}
 
         <Reveal>
         <Panel>

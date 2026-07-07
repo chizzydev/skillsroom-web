@@ -6,6 +6,7 @@ import { SubmitButton } from "@/components/ui/SubmitButton";
 import { PendingLink } from "@/components/ui/PendingLink";
 import { Panel, PanelHeader } from "@/components/ui/Panel";
 import { StatusPanel } from "@/components/ui/StatusPanel";
+import { TransientStatusBanner } from "@/components/ui/TransientStatusBanner";
 import { getCurrentUser } from "@/lib/auth-bridge";
 import { formatEntryAmount, listMatchRooms, matchStatusLabel, type MatchRoom, type MatchRoomStatus } from "@/lib/match-room-api";
 import { joinMatchRoomAction } from "./actions";
@@ -40,7 +41,7 @@ export default async function MatchesPage({ searchParams }: { searchParams: Prom
   try {
     rooms = (await listMatchRooms()).rooms;
   } catch {
-    loadError = "Unable to load match rooms right now. Check that the API is running and your session is still valid.";
+    loadError = "Rooms could not load right now. Please refresh the page or sign in again if this continues.";
   }
 
   const roomActivityRows = rooms
@@ -78,11 +79,7 @@ export default async function MatchesPage({ searchParams }: { searchParams: Prom
           </div>
         </MotionSection>
 
-        {(error || loadError) && (
-          <Reveal className="rounded-md border border-danger bg-red-50 p-4 text-sm font-bold text-danger" variant="down">
-            {error ?? loadError}
-          </Reveal>
-        )}
+        {(error || loadError) ? <TransientStatusBanner clearKeys={["error"]} durationMs={12000} message={error ?? loadError ?? ""} /> : null}
 
         <div className="grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <Reveal staggerIndex={0}><StatusPanel detail="Visible to lobby" label="Open" tone="cyan" value={countStatus(rooms, "open")} /></Reveal>

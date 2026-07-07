@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 type TransientStatusBannerProps = {
@@ -19,6 +19,7 @@ export function TransientStatusBanner({
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const bannerRef = useRef<HTMLDivElement | null>(null);
 
   const className = useMemo(
     () => [
@@ -27,6 +28,17 @@ export function TransientStatusBanner({
     ].join(" "),
     [tone]
   );
+
+  useEffect(() => {
+    if (tone === "danger") {
+      const focusTimer = window.setTimeout(() => {
+        bannerRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+        bannerRef.current?.focus({ preventScroll: true });
+      }, 120);
+
+      return () => window.clearTimeout(focusTimer);
+    }
+  }, [tone, message]);
 
   useEffect(() => {
     if (clearKeys.length === 0) return;
@@ -48,5 +60,15 @@ export function TransientStatusBanner({
     return () => clearTimeout(timer);
   }, [clearKeys, durationMs, pathname, router, searchParams]);
 
-  return <div className={className}>{message}</div>;
+  return (
+    <div
+      className={className}
+      data-action-feedback-inline={tone}
+      ref={bannerRef}
+      role={tone === "danger" ? "alert" : "status"}
+      tabIndex={tone === "danger" ? -1 : undefined}
+    >
+      {message}
+    </div>
+  );
 }

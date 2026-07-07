@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { AppShell } from "@/components/layout/AppShell";
+import { RoomActionForm } from "@/components/matches/RoomActionForm";
 import { ManualPaymentPanel } from "@/components/payments/ManualPaymentPanel";
 import { MotionSection, Reveal } from "@/components/motion";
 import { LiveUpdateStream } from "@/components/realtime/LiveUpdateStream";
@@ -23,6 +24,7 @@ import {
   getRoomFunding,
   getRoomResults,
   getWalletOverview,
+  listStreamingAccounts,
   matchStatusLabel,
   type CommunityLivestreamLink,
   type CommunityMatchWinnerPage,
@@ -35,6 +37,7 @@ import {
   type RoomFundingOverview,
   type RoomResultOverview,
   type PlayerTrustSummary,
+  type StreamingConnectedAccount,
   type TournamentDetail,
   type TournamentMatchSide,
   type TournamentEntry
@@ -42,14 +45,14 @@ import {
 import {
   archiveMatchLivestreamAction,
   checkInTournamentMatchRoomAction,
-  createMatchLivestreamAction,
+  createMatchLivestreamIslandAction,
   createRoomInviteAction,
   openMatchRoomAction,
-  payRoomWithBalanceAction,
+  payRoomWithBalanceIslandAction,
   respondToResultClaimAction,
   startMatchPlayAction,
-  submitManualFundingAction,
-  submitResultClaimAction
+  submitManualFundingIslandAction,
+  submitResultClaimIslandAction
 } from "../actions";
 
 function displayLabel(value: string) {
@@ -344,6 +347,41 @@ function livestreamStatusLabel(status: LivestreamPlaybackStatus) {
   return "Link unavailable";
 }
 
+function streamingProviderLabel(provider: StreamingConnectedAccount["provider"]) {
+  return provider === "youtube" ? "YouTube" : "Twitch";
+}
+
+function connectedStreamStatusLabel(status: StreamingConnectedAccount["live_status"]) {
+  if (status === "live") return "Live now";
+  if (status === "offline") return "Not live";
+  if (status === "replay") return "Replay";
+  if (status === "unavailable") return "Needs reconnect";
+  return "Not checked";
+}
+
+function connectedStreamStatusTone(status: StreamingConnectedAccount["live_status"]) {
+  if (status === "live") return "success" as const;
+  if (status === "unavailable") return "danger" as const;
+  if (status === "unknown") return "warning" as const;
+  return "neutral" as const;
+}
+
+function livestreamEmptyRoleDetail(role: LivestreamRole, canManageLivestreams: boolean) {
+  if (role === "official") {
+    return canManageLivestreams
+      ? "Use this slot for the host, community, or tournament broadcast."
+      : "The host or Skillsroom team can add the official broadcast here.";
+  }
+  if (role === "player_a") {
+    return canManageLivestreams
+      ? "Use this slot for Player A's YouTube, Twitch, or TikTok stream."
+      : "Player A's stream can be added by the room host or Skillsroom team.";
+  }
+  return canManageLivestreams
+    ? "Use this slot for Player B's YouTube, Twitch, or TikTok stream."
+    : "Player B's stream can be added by the room host or Skillsroom team.";
+}
+
 function livestreamWatchRank(item: CommunityLivestreamLink) {
   const status = livestreamPlaybackStatus(item);
   const role = livestreamRole(item);
@@ -451,6 +489,7 @@ export default async function MatchDetailPage({
   let publicWinnerPage: CommunityMatchWinnerPage | null = null;
   let livestreams: CommunityLivestreamLink[] = [];
   let manageableLivestreams: CommunityLivestreamLink[] = [];
+  let streamingAccounts: StreamingConnectedAccount[] = [];
   let loadError: string | null = null;
 
   try {
@@ -502,6 +541,13 @@ export default async function MatchDetailPage({
     livestreams = livestreamResult.livestreams;
   } catch {
     loadError = loadError ?? "Match room loaded, but livestream links could not be loaded right now.";
+  }
+
+  try {
+    const streamingResult = await listStreamingAccounts();
+    streamingAccounts = streamingResult.accounts.filter((account) => account.status !== "revoked");
+  } catch {
+    streamingAccounts = [];
   }
 
   if (canViewSensitiveInternals) {
@@ -586,6 +632,22 @@ export default async function MatchDetailPage({
     .filter((item) => Boolean(item.embed_url))
     .sort((left, right) => livestreamWatchRank(left) - livestreamWatchRank(right))[0] ?? null;
   const livestreamRoles: LivestreamRole[] = ["official", "player_a", "player_b"];
+  const fundingSectionVisible = !isTournamentRoom && canViewSensitiveInternals;
+  const roomNavItems = [
+    { href: "#overview", label: "Overview" },
+    { href: "#players", label: "Players" },
+    ...(fundingSectionVisible ? [{ href: "#funding", label: "Funding" }] : []),
+    { href: "#live", label: "Live" },
+    { href: "#result", label: "Result" }
+  ];
+  const primaryAction =
+    canSubmitFunding
+      ? { href: "#funding", label: "Submit funding" }
+      : canSubmitResult
+        ? { href: "#result", label: "Submit result" }
+        : canManageLivestreams
+          ? { href: "#live", label: "Add livestream" }
+          : { href: "#players", label: participants.length < room.max_participants ? "Check players" : "View players" };
 
   return (
     <AppShell active="matches">
@@ -643,28 +705,68 @@ export default async function MatchDetailPage({
         {playStarted ? <TransientStatusBanner clearKeys={["play_started"]} durationMs={10000} message="Match play started. Submit result evidence after the game is complete." tone="success" /> : null}
         {balanceFunded ? <TransientStatusBanner clearKeys={["balance_funded"]} durationMs={10000} message="Entry paid from Skillsroom Balance. Your funds are locked for this room." tone="success" /> : null}
 
-        <div className="grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <Panel className="p-4">
-            <p className="font-mono text-xs font-bold uppercase tracking-[0.12em] text-cyan">Next</p>
-            <h2 className="mt-2 text-xl font-black text-ink">{nextTitle}</h2>
-            <p className="mt-2 text-sm leading-6 text-muted">{nextDetail}</p>
-          </Panel>
-          <Panel className="p-4">
-            <p className="font-mono text-xs font-bold uppercase tracking-[0.12em] text-dim">Entry</p>
-            <p className="mt-2 text-2xl font-black text-warning">{isTournamentRoom ? "Tournament" : formatEntryAmount(room)}</p>
-            <p className="mt-2 text-sm font-bold text-muted">{isTournamentRoom ? "Entry handled by event policy" : "Equal amount for both players"}</p>
-          </Panel>
-          <Panel className="p-4">
-            <p className="font-mono text-xs font-bold uppercase tracking-[0.12em] text-dim">Players</p>
-            <p className="mt-2 text-2xl font-black text-success">{participants.length}/{room.max_participants}</p>
-            <p className="mt-2 text-sm font-bold text-muted">Fixed two-player room</p>
-          </Panel>
-          <Panel className="p-4">
-            <p className="font-mono text-xs font-bold uppercase tracking-[0.12em] text-dim">Status</p>
-            <p className="mt-2 text-2xl font-black text-cyan">{matchStatusLabel(room.status)}</p>
-            <p className="mt-2 text-sm font-bold text-muted">Room progress is saved</p>
-          </Panel>
-        </div>
+        <nav className="sticky top-16 z-30 -mx-page border-y border-line bg-white/95 px-page py-2 shadow-[0_12px_30px_rgba(15,23,42,0.08)] backdrop-blur md:top-16 md:rounded-2xl md:border">
+          <div className="flex gap-2 overflow-x-auto">
+            {roomNavItems.map((item) => (
+              <a
+                className="motion-tap inline-flex min-h-10 shrink-0 items-center justify-center rounded-xl border border-line bg-surfaceHigh px-4 text-sm font-black text-ink hover:border-cyan hover:bg-cyanSoft"
+                href={item.href}
+                key={item.href}
+              >
+                {item.label}
+              </a>
+            ))}
+          </div>
+        </nav>
+
+        <section className="scroll-mt-32" id="overview">
+          <div className="grid min-w-0 gap-3 lg:grid-cols-[minmax(0,1.3fr)_minmax(18rem,0.7fr)]">
+            <Panel className="motion-atmosphere p-4">
+              <p className="font-mono text-xs font-bold uppercase tracking-[0.12em] text-cyan">Do this next</p>
+              <h2 className="mt-2 text-2xl font-black text-ink">{nextTitle}</h2>
+              <p className="mt-2 text-sm leading-6 text-muted">{nextDetail}</p>
+              <div className="mt-4 flex flex-wrap gap-2">
+                {canOpen ? (
+                  <form action={openMatchRoomAction}>
+                    <input name="match_room_id" type="hidden" value={room.id} />
+                    <SubmitButton idleLabel="Open room" pendingLabel="Opening room..." />
+                  </form>
+                ) : null}
+                {canStartPlay ? (
+                  <form action={startMatchPlayAction}>
+                    <input name="match_room_id" type="hidden" value={room.id} />
+                    <SubmitButton idleLabel="Start match" pendingLabel="Starting match..." />
+                  </form>
+                ) : null}
+                {!canOpen && !canStartPlay ? (
+                  <a className="inline-flex min-h-10 items-center justify-center rounded-md bg-action px-4 text-sm font-black text-navy-950 shadow-action hover:bg-actionHover" href={primaryAction.href}>
+                    {primaryAction.label}
+                  </a>
+                ) : null}
+                <a className="inline-flex min-h-10 items-center justify-center rounded-md border border-line bg-white px-4 text-sm font-black text-ink hover:bg-surfaceHigh" href="#room-flow">
+                  See checkpoints
+                </a>
+              </div>
+            </Panel>
+            <div className="grid min-w-0 gap-3 sm:grid-cols-3 lg:grid-cols-1">
+              <Panel className="p-4">
+                <p className="font-mono text-xs font-bold uppercase tracking-[0.12em] text-dim">Entry</p>
+                <p className="mt-2 text-2xl font-black text-warning">{isTournamentRoom ? "Tournament" : formatEntryAmount(room)}</p>
+                <p className="mt-2 text-sm font-bold text-muted">{isTournamentRoom ? "Entry handled by event policy" : "Equal amount for both players"}</p>
+              </Panel>
+              <Panel className="p-4">
+                <p className="font-mono text-xs font-bold uppercase tracking-[0.12em] text-dim">Players</p>
+                <p className="mt-2 text-2xl font-black text-success">{participants.length}/{room.max_participants}</p>
+                <p className="mt-2 text-sm font-bold text-muted">Fixed two-player room</p>
+              </Panel>
+              <Panel className="p-4">
+                <p className="font-mono text-xs font-bold uppercase tracking-[0.12em] text-dim">Status</p>
+                <p className="mt-2 text-2xl font-black text-cyan">{matchStatusLabel(room.status)}</p>
+                <p className="mt-2 text-sm font-bold text-muted">Room progress is saved</p>
+              </Panel>
+            </div>
+          </div>
+        </section>
 
         {!canViewSensitiveInternals ? (
           <Panel>
@@ -792,11 +894,11 @@ export default async function MatchDetailPage({
         ) : null}
 
         <Reveal>
-        <Panel>
+        <Panel className="scroll-mt-32" id="live">
           <PanelHeader
             eyebrow="Watch Live"
             title="Match watch room"
-            description="Watch the official room feed or either player stream without leaving the match record."
+            description="Watch the official room feed or a player stream without leaving the match."
           />
           <div className="grid gap-4 p-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(18rem,0.65fr)]">
             <div className="motion-atmosphere motion-state-card motion-glow overflow-hidden rounded-xl border border-line bg-navy-950 text-white">
@@ -830,16 +932,69 @@ export default async function MatchDetailPage({
                 <div className="motion-standby motion-sheen grid min-h-[18rem] place-items-center p-6 text-center">
                   <div className="max-w-md">
                     <Badge tone="neutral">Stand by</Badge>
-                    <h2 className="mt-4 text-2xl font-black text-white">No in-room player yet</h2>
+                    <h2 className="mt-4 text-2xl font-black text-white">No live stream added yet</h2>
                     <p className="mt-3 text-sm leading-6 text-slate-300">
-                      Add a YouTube, Twitch, or TikTok video link to bring the stream into this room. If a platform blocks embeds, players can still open the source link.
+                      A connected YouTube or Twitch channel is saved on your profile. This room still needs a stream link added before viewers can watch here.
                     </p>
+                    {canManageLivestreams ? (
+                      <a className="mt-4 inline-flex min-h-10 items-center justify-center rounded-md bg-action px-4 text-sm font-black text-navy-950 shadow-action hover:bg-actionHover" href="#add-room-stream">
+                        Add stream link manually
+                      </a>
+                    ) : null}
                   </div>
                 </div>
               )}
             </div>
 
             <div className="grid gap-3">
+              <div className="motion-flow-card rounded-lg border border-cyan bg-cyanSoft p-4">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <p className="font-mono text-xs font-black uppercase tracking-[0.12em] text-cyan">Connected channel</p>
+                    <h3 className="mt-2 text-base font-black text-ink">
+                      {streamingAccounts.length ? "Your saved stream channels" : "No connected channel yet"}
+                    </h3>
+                  </div>
+                  <a className="rounded-full border border-line bg-white px-3 py-2 text-xs font-black text-ink hover:border-action" href="/profile#streaming-accounts">
+                    Manage
+                  </a>
+                </div>
+                <p className="mt-2 text-sm leading-6 text-muted">
+                  This only saves your YouTube or Twitch channel on your profile. To show a specific match stream here, add the live video or channel link to this room.
+                </p>
+                {streamingAccounts.length ? (
+                  <div className="mt-3 grid gap-2">
+                    {streamingAccounts.slice(0, 3).map((account) => (
+                      <div className="rounded-md border border-line bg-white p-3" key={account.id}>
+                        <div className="flex flex-wrap items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-black text-ink">{account.display_name}</p>
+                            <p className="text-xs font-bold text-muted">{streamingProviderLabel(account.provider)}</p>
+                          </div>
+                          <Badge tone={connectedStreamStatusTone(account.live_status)}>
+                            {connectedStreamStatusLabel(account.live_status)}
+                          </Badge>
+                        </div>
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          <a className="rounded-full border border-line px-3 py-2 text-xs font-black text-ink hover:border-action" href={account.live_stream_url || account.channel_url} rel="noreferrer" target="_blank">
+                            Open channel
+                          </a>
+                          {canManageLivestreams ? (
+                            <a className="rounded-full bg-action px-3 py-2 text-xs font-black text-navy-950 hover:bg-actionHover" href="#add-room-stream">
+                              Add to this room
+                            </a>
+                          ) : null}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <a className="mt-3 inline-flex min-h-10 items-center justify-center rounded-md border border-line bg-white px-4 text-sm font-black text-ink hover:bg-surfaceHigh" href="/profile#streaming-accounts">
+                    Connect YouTube or Twitch
+                  </a>
+                )}
+              </div>
+
               <div className="grid gap-3">
                 {livestreamRoles.map((role) => {
                   const roleStreams = livestreams.filter((item) => livestreamRole(item) === role);
@@ -852,9 +1007,18 @@ export default async function MatchDetailPage({
                           <p className="font-mono text-xs font-black uppercase tracking-[0.12em] text-cyan">{livestreamRoleLabel(role)}</p>
                           <h3 className="mt-2 text-base font-black text-ink">{bestStream?.title ?? "No stream added"}</h3>
                         </div>
-                        <Badge tone={livestreamStatusTone(status)}>{livestreamStatusLabel(status)}</Badge>
+                        <Badge tone={bestStream ? livestreamStatusTone(status) : "neutral"}>
+                          {bestStream ? livestreamStatusLabel(status) : "No stream yet"}
+                        </Badge>
                       </div>
                       <p className="mt-2 text-sm leading-6 text-muted">
+                        {bestStream
+                          ? bestStream.embed_url
+                            ? "Available inside this watch room."
+                            : "Saved, but this provider may need to open outside Skillsroom."
+                          : livestreamEmptyRoleDetail(role, canManageLivestreams)}
+                      </p>
+                      <p className="hidden">
                         {bestStream
                           ? bestStream.embed_url
                             ? "Available inside this watch room."
@@ -866,6 +1030,11 @@ export default async function MatchDetailPage({
                       {bestStream ? (
                         <a className="mt-3 inline-flex text-sm font-black text-cyan hover:text-action" href={bestStream.stream_url} rel="noreferrer" target="_blank">
                           Open {bestStream.provider}
+                        </a>
+                      ) : null}
+                      {!bestStream && canManageLivestreams ? (
+                        <a className="mt-3 inline-flex text-sm font-black text-cyan hover:text-action" href="#add-room-stream">
+                          Add stream link manually
                         </a>
                       ) : null}
                     </div>
@@ -901,14 +1070,14 @@ export default async function MatchDetailPage({
 
         {canManageLivestreams ? (
         <Reveal>
-        <Panel>
+        <Panel className="scroll-mt-32" id="add-room-stream">
             <PanelHeader
               eyebrow="Broadcast Controls"
-              title="Add livestream"
-              description="Paste a YouTube, Twitch, or TikTok link. Skillsroom detects the provider and embeds trusted streams inside the room when the platform allows it."
+              title="Add stream link manually"
+              description="Paste the exact YouTube, Twitch, or TikTok stream for this room. Connected profile channels help you find the right link, but the room only shows streams that are attached here."
             />
             <div className="grid gap-5 p-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-              <form action={createMatchLivestreamAction} className="motion-premium-panel motion-flow-card grid gap-3 rounded-md border border-line bg-white p-4">
+              <RoomActionForm action={createMatchLivestreamIslandAction} className="motion-premium-panel motion-flow-card grid gap-3 rounded-md border border-line bg-white p-4">
                 <input name="match_room_id" type="hidden" value={room.id} />
                 <div className="grid gap-3 md:grid-cols-3">
                   <label className="grid gap-2 text-sm font-bold text-ink">
@@ -951,7 +1120,7 @@ export default async function MatchDetailPage({
                   />
                 </label>
                 <p className="text-xs font-bold leading-5 text-muted">
-                  YouTube and Twitch play inside the room. TikTok videos embed when possible; TikTok Live may open on TikTok if their player blocks inline viewing.
+                  YouTube and Twitch links can play inside Skillsroom when the provider allows embeds. TikTok or blocked links will still open from the source button.
                 </p>
                 <div className="grid gap-3 md:grid-cols-2">
                   <label className="grid gap-2 text-sm font-bold text-ink">
@@ -964,7 +1133,7 @@ export default async function MatchDetailPage({
                   </label>
                 </div>
                 <SubmitButton idleLabel="Save livestream" pendingLabel="Saving livestream..." />
-              </form>
+              </RoomActionForm>
 
               <div className="grid gap-3 rounded-md border border-line bg-white p-4">
                 {manageableLivestreams.length ? (
@@ -1002,7 +1171,7 @@ export default async function MatchDetailPage({
 
         <Reveal>
         <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1fr)_24rem]">
-          <Panel>
+          <Panel className="scroll-mt-32" id="players">
             <PanelHeader eyebrow="Players" title="Room slots" description="Each player stays tied to funding, evidence, and final review." />
             <div className="grid gap-3 p-4 md:grid-cols-2">
               {(["player_a", "player_b"] as const).map((slot) => {
@@ -1042,7 +1211,7 @@ export default async function MatchDetailPage({
             </div>
           </Panel>
 
-          <Panel id="room-flow">
+          <Panel className="scroll-mt-32" id="room-flow">
             <PanelHeader eyebrow="Flow" title="Room checkpoints" />
             <div className="p-4">
               <Timeline items={buildProcessTimeline(room)} />
@@ -1137,7 +1306,7 @@ export default async function MatchDetailPage({
         ) : null}
 
         {!isTournamentRoom && canViewSensitiveInternals ? (
-        <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1fr)_24rem]" id="funding">
+        <div className="grid min-w-0 gap-6 scroll-mt-32 xl:grid-cols-[minmax(0,1fr)_24rem]" id="funding">
           <Panel>
             <PanelHeader
               eyebrow="Funding"
@@ -1154,10 +1323,10 @@ export default async function MatchDetailPage({
                       Available: <span className="font-black text-ink">{formatMinorMoney(room.currency, availableBalanceMinor)}</span>. Required: <span className="font-black text-ink">{formatEntryAmount(room)}</span>.
                     </p>
                   </div>
-                  <form action={payRoomWithBalanceAction} className="shrink-0">
+                  <RoomActionForm action={payRoomWithBalanceIslandAction} className="shrink-0">
                     <input name="match_room_id" type="hidden" value={room.id} />
                     <SubmitButton disabled={!canPayWithBalance} idleLabel="Use balance" pendingLabel="Locking funds..." />
-                  </form>
+                  </RoomActionForm>
                 </div>
                 {!canSubmitFunding && currentFundingStatus === "approved" ? (
                   <p className="mt-3 text-sm font-bold text-success">Your room entry is already funded.</p>
@@ -1187,7 +1356,7 @@ export default async function MatchDetailPage({
 
           <Panel>
             <PanelHeader eyebrow="Submit Funding" title="Transfer proof" description="Amount, sender bank, account name, and screenshot are enough for review." />
-            <form action={submitManualFundingAction} className="motion-flow-card grid gap-3 p-4">
+            <RoomActionForm action={submitManualFundingIslandAction} className="motion-flow-card grid gap-3 p-4">
               {currentParticipant ? (
                 currentFundingStatus === "approved" && ["awaiting_funding", "funding_review", "funded"].includes(room.status) ? (
                   <TransientStatusBanner
@@ -1290,84 +1459,94 @@ export default async function MatchDetailPage({
               {!canSubmitFunding && !currentParticipant ? (
                 <p className="text-xs font-bold leading-5 text-muted">Only joined room participants can submit funding for this room.</p>
               ) : null}
-            </form>
+            </RoomActionForm>
           </Panel>
         </div>
         ) : null}
 
-        <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1fr)_24rem]">
-          <Panel>
-            <PanelHeader
-              eyebrow={isTournamentRoom ? "Event Play" : "Game Lobby"}
-              title="How to connect in-game"
-              description={`Skillsroom controls the room record. Players still meet inside ${gameName} to play the match.`}
-            />
-            <div className="grid gap-3 p-4 md:grid-cols-2">
-              {[
-                ["1", "Copy opponent identity", "Use the game handle or UID shown above, not their Skillsroom email."],
-                ["2", "Create or join lobby", "One player creates the private game lobby and shares the in-game room code if needed."],
-                ["3", "Capture pre-match proof", "Screenshot the lobby showing both players before the match starts."],
-                ["4", isTournamentRoom ? "Check in before play" : "Play only after funding", isTournamentRoom ? "Do not start until both assigned players are present and the room state is active." : "Do not start until Skillsroom shows funding approved or active room state."]
-              ].map(([step, title, detail]) => (
-                <div className="rounded-md border border-line bg-surfaceWarm p-4" key={step}>
-                  <span className="grid h-8 w-8 place-items-center rounded-md bg-cyanSoft font-mono text-xs font-black text-cyan">{step}</span>
-                  <h3 className="mt-3 text-base font-black text-ink">{title}</h3>
-                  <p className="mt-2 text-sm leading-6 text-muted">{detail}</p>
-                </div>
-              ))}
-            </div>
-          </Panel>
-
-          {!isTournamentRoom && canViewSensitiveInternals ? (
-          <Panel>
-            <PanelHeader eyebrow="Invite" title="Invite by username" description="Open the room first, then invite a known player by Skillsroom username." />
-            <form action={createRoomInviteAction} className="grid gap-3 p-4">
-              <input name="match_room_id" type="hidden" value={room.id} />
-              <label className="grid gap-2 text-sm font-bold text-ink">
-                Skillsroom username
-                <input
-                  className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action"
-                  maxLength={24}
-                  minLength={3}
-                  name="invitee_username"
-                  pattern="[A-Za-z0-9_]+"
-                  placeholder="player_username"
-                  required
-                />
-              </label>
-              <label className="grid gap-2 text-sm font-bold text-ink">
-                Message
-                <textarea
-                  className="min-h-24 rounded-md border border-line bg-white px-3 py-2 text-sm outline-none focus:border-action"
-                  maxLength={240}
-                  name="message"
-                  placeholder={`Join ${room.room_code} on Skillsroom.`}
-                />
-              </label>
-              <SubmitButton disabled={room.status !== "open" || participants.length >= room.max_participants} idleLabel="Send invite" pendingLabel="Sending invite..." />
-              {room.status !== "open" ? (
-                <p className="text-xs font-bold leading-5 text-muted">This room must be open before the invited player can accept and join.</p>
-              ) : null}
-            </form>
-          </Panel>
-          ) : (
+        <details className="group overflow-hidden rounded-[1.35rem] border border-line bg-white shadow-panel">
+          <summary className="motion-tap flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-4 text-left font-black text-ink marker:hidden">
+            <span>
+              <span className="block font-mono text-xs uppercase tracking-[0.12em] text-cyan">More room tools</span>
+              <span className="mt-1 block text-lg">Game lobby and invite details</span>
+            </span>
+            <span className="rounded-full border border-line bg-surfaceHigh px-3 py-1 text-xs text-muted group-open:hidden">Show</span>
+            <span className="hidden rounded-full border border-line bg-surfaceHigh px-3 py-1 text-xs text-muted group-open:inline-flex">Hide</span>
+          </summary>
+          <div className="grid min-w-0 gap-6 border-t border-line p-4 xl:grid-cols-[minmax(0,1fr)_24rem]">
             <Panel>
-              <PanelHeader eyebrow="Tournament" title="Event controls" description="Tournament opponents are assigned by the bracket, group, Swiss, league, or playoff engine." />
-              <div className="grid gap-3 p-4 text-sm leading-6 text-muted">
-                <p className="font-bold text-ink">Invites are disabled for linked tournament rooms.</p>
-                <p>Use the assigned opponent shown above, check in for the match, then submit result evidence when play ends.</p>
-                {tournamentDetail ? (
-                  <PendingLink className="inline-flex min-h-10 items-center justify-center rounded-md border border-line bg-white px-4 text-sm font-black text-ink hover:bg-surfaceHigh" href={`/tournaments/${tournamentDetail.id}`} pendingLabel="Opening tournament...">
-                    View tournament
-                  </PendingLink>
-                ) : null}
+              <PanelHeader
+                eyebrow={isTournamentRoom ? "Event Play" : "Game Lobby"}
+                title="How to connect in-game"
+                description={`Skillsroom keeps the room record. Players still meet inside ${gameName} to play the match.`}
+              />
+              <div className="grid gap-3 p-4 md:grid-cols-2">
+                {[
+                  ["1", "Copy opponent identity", "Use the game handle or UID shown above, not their Skillsroom email."],
+                  ["2", "Create or join lobby", "One player creates the private game lobby and shares the in-game room code if needed."],
+                  ["3", "Capture pre-match proof", "Screenshot the lobby showing both players before the match starts."],
+                  ["4", isTournamentRoom ? "Check in before play" : "Play only after funding", isTournamentRoom ? "Do not start until both assigned players are present and the room state is active." : "Do not start until Skillsroom shows funding approved or active room state."]
+                ].map(([step, title, detail]) => (
+                  <div className="rounded-md border border-line bg-surfaceWarm p-4" key={step}>
+                    <span className="grid h-8 w-8 place-items-center rounded-md bg-cyanSoft font-mono text-xs font-black text-cyan">{step}</span>
+                    <h3 className="mt-3 text-base font-black text-ink">{title}</h3>
+                    <p className="mt-2 text-sm leading-6 text-muted">{detail}</p>
+                  </div>
+                ))}
               </div>
             </Panel>
-          )}
-        </div>
+
+            {!isTournamentRoom && canViewSensitiveInternals ? (
+            <Panel>
+              <PanelHeader eyebrow="Invite" title="Invite by username" description="Open the room first, then invite a known player by Skillsroom username." />
+              <form action={createRoomInviteAction} className="grid gap-3 p-4">
+                <input name="match_room_id" type="hidden" value={room.id} />
+                <label className="grid gap-2 text-sm font-bold text-ink">
+                  Skillsroom username
+                  <input
+                    className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action"
+                    maxLength={24}
+                    minLength={3}
+                    name="invitee_username"
+                    pattern="[A-Za-z0-9_]+"
+                    placeholder="player_username"
+                    required
+                  />
+                </label>
+                <label className="grid gap-2 text-sm font-bold text-ink">
+                  Message
+                  <textarea
+                    className="min-h-24 rounded-md border border-line bg-white px-3 py-2 text-sm outline-none focus:border-action"
+                    maxLength={240}
+                    name="message"
+                    placeholder={`Join ${room.room_code} on Skillsroom.`}
+                  />
+                </label>
+                <SubmitButton disabled={room.status !== "open" || participants.length >= room.max_participants} idleLabel="Send invite" pendingLabel="Sending invite..." />
+                {room.status !== "open" ? (
+                  <p className="text-xs font-bold leading-5 text-muted">This room must be open before the invited player can accept and join.</p>
+                ) : null}
+              </form>
+            </Panel>
+            ) : (
+              <Panel>
+                <PanelHeader eyebrow="Tournament" title="Tournament room" description="Tournament opponents are assigned by the event setup." />
+                <div className="grid gap-3 p-4 text-sm leading-6 text-muted">
+                  <p className="font-bold text-ink">Invites are disabled for tournament rooms.</p>
+                  <p>Use the assigned opponent shown above, check in for the match, then submit result evidence when play ends.</p>
+                  {tournamentDetail ? (
+                    <PendingLink className="inline-flex min-h-10 items-center justify-center rounded-md border border-line bg-white px-4 text-sm font-black text-ink hover:bg-surfaceHigh" href={`/tournaments/${tournamentDetail.id}`} pendingLabel="Opening tournament...">
+                      View tournament
+                    </PendingLink>
+                  ) : null}
+                </div>
+              </Panel>
+            )}
+          </div>
+        </details>
 
         {canViewSensitiveInternals ? (
-        <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1fr)_24rem]" id="result">
+        <div className="grid min-w-0 gap-6 scroll-mt-32 xl:grid-cols-[minmax(0,1fr)_24rem]" id="result">
           <Panel>
             <PanelHeader
               eyebrow="Result"
@@ -1437,7 +1616,7 @@ export default async function MatchDetailPage({
               </ul>
             </div>
             {canSubmitResult ? (
-              <form action={submitResultClaimAction} className="grid gap-3 p-4">
+              <RoomActionForm action={submitResultClaimIslandAction} className="grid gap-3 p-4">
                 <input name="match_room_id" type="hidden" value={room.id} />
                 <label className="grid gap-2 text-sm font-bold text-ink">
                   Claimed winner
@@ -1484,7 +1663,7 @@ export default async function MatchDetailPage({
                   <textarea className="min-h-24 rounded-md border border-line bg-white px-3 py-2 text-sm outline-none focus:border-action" name="evidence_notes" />
                 </label>
                 <SubmitButton idleLabel="Submit result" pendingLabel="Submitting result..." />
-              </form>
+              </RoomActionForm>
             ) : (
               <div className="grid gap-4 p-4">
                 <div className="rounded-md border border-cyan-200 bg-cyanSoft p-4 text-sm font-bold text-cyan">

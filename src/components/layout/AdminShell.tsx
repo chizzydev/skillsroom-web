@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { AccountMenu } from "./AccountMenu";
+import { GlobalActionFeedback } from "@/components/ui/GlobalActionFeedback";
 import { canUseAdminSection, getCurrentUser, type AdminSection } from "@/lib/auth-bridge";
 
 type AdminShellProps = {
@@ -91,6 +92,7 @@ export async function AdminShell({ active, children }: AdminShellProps) {
           </div>
           <AccountMenu user={user} />
         </header>
+        <GlobalActionFeedback />
         <div className="p-page lg:p-8">{children}</div>
       </section>
     </main>

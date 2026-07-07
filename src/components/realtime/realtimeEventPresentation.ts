@@ -104,7 +104,7 @@ export function describeRealtimeEvent(event: RealtimeEvent): RealtimeToastMessag
     case "match.result.dispute":
       return { title: "Result disputed", description: "Team review is now needed.", tone: "danger" };
     case "match.result.reviewed.approve_claim":
-      return { title: "Result confirmed", description: "The room can move to settlement.", tone: "success" };
+      return { title: "Result confirmed", description: "The winner can now be paid from the room record.", tone: "success" };
     case "match.result.reviewed.reject_claim":
       return { title: "Result rejected", description: "Evidence stays open for further review.", tone: "warning" };
     case "match.result.reviewed.mark_disputed":
@@ -112,11 +112,11 @@ export function describeRealtimeEvent(event: RealtimeEvent): RealtimeToastMessag
     case "match.result.reviewed.void_match":
       return { title: "Match voided", description: "This room result was invalidated by review.", tone: "danger" };
     case "match.settlement.reserved":
-      return { title: "Settlement reserved", description: "Winner payout has entered the money workflow.", tone: "success" };
+      return { title: "Winner payout is being prepared", description: "The room money has moved to the payout step.", tone: "success" };
     case "match.payout.completed":
       return { title: "Payout completed", description: amount ? `${amount} was marked paid.` : "A queued payout was completed.", tone: "success" };
     case "match.refunds.reserved":
-      return { title: "Refunds queued", description: "Approved funding is being returned to players.", tone: "warning" };
+      return { title: "Refunds are being prepared", description: "Approved room money is being returned to players.", tone: "warning" };
     case "match.refund.completed":
       return { title: "Refund completed", description: amount ? `${amount} was marked refunded.` : "A queued refund was completed.", tone: "success" };
     case "match.hold.created":

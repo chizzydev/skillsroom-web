@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { AccountMenu } from "./AccountMenu";
+import { GlobalActionFeedback } from "@/components/ui/GlobalActionFeedback";
 import { canAccessAdmin, getCurrentUser } from "@/lib/auth-bridge";
 
 type AppShellProps = {
@@ -68,6 +69,7 @@ export async function AppShell({ active, children }: AppShellProps) {
           </div>
         </div>
       </header>
+      <GlobalActionFeedback />
       <div className="mx-auto min-w-0 max-w-7xl px-page py-4 sm:py-5 md:py-7">{children}</div>
       <footer className="border-t border-white/10 bg-navy-900">
         <div className="mx-auto grid max-w-7xl gap-4 px-page pt-6 pb-[calc(6.5rem+env(safe-area-inset-bottom))] md:grid-cols-[minmax(0,1fr)_auto] md:items-center md:py-6">
