@@ -651,7 +651,7 @@ export default async function MatchDetailPage({
 
   return (
     <AppShell active="matches">
-      <MotionSection className="grid gap-5 md:gap-6" variant="page">
+      <MotionSection className="grid max-w-full gap-5 overflow-x-hidden md:gap-6" variant="page">
         <MotionSection className="motion-state-card rounded-lg border border-line bg-navy-900 p-5 text-white shadow-panel md:p-7" variant="hero">
           <div className="grid min-w-0 gap-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
             <div className="min-w-0">
@@ -705,8 +705,8 @@ export default async function MatchDetailPage({
         {playStarted ? <TransientStatusBanner clearKeys={["play_started"]} durationMs={10000} message="Match play started. Submit result evidence after the game is complete." tone="success" /> : null}
         {balanceFunded ? <TransientStatusBanner clearKeys={["balance_funded"]} durationMs={10000} message="Entry paid from Skillsroom Balance. Your funds are locked for this room." tone="success" /> : null}
 
-        <nav className="sticky top-16 z-30 -mx-page border-y border-line bg-white/95 px-page py-2 shadow-[0_12px_30px_rgba(15,23,42,0.08)] backdrop-blur md:top-16 md:rounded-2xl md:border">
-          <div className="flex gap-2 overflow-x-auto">
+        <nav className="sticky top-16 z-30 max-w-full overflow-hidden rounded-2xl border border-line bg-white/95 py-2 shadow-[0_12px_30px_rgba(15,23,42,0.08)] backdrop-blur md:top-16">
+          <div className="flex max-w-full gap-2 overflow-x-auto px-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:px-3">
             {roomNavItems.map((item) => (
               <a
                 className="motion-tap inline-flex min-h-10 shrink-0 items-center justify-center rounded-xl border border-line bg-surfaceHigh px-4 text-sm font-black text-ink hover:border-cyan hover:bg-cyanSoft"
@@ -894,17 +894,17 @@ export default async function MatchDetailPage({
         ) : null}
 
         <Reveal>
-        <Panel className="scroll-mt-32" id="live">
+        <Panel className="max-w-full scroll-mt-32" id="live">
           <PanelHeader
             eyebrow="Watch Live"
             title="Match watch room"
             description="Watch the official room feed or a player stream without leaving the match."
           />
-          <div className="grid gap-4 p-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(18rem,0.65fr)]">
-            <div className="motion-atmosphere motion-state-card motion-glow overflow-hidden rounded-xl border border-line bg-navy-950 text-white">
+          <div className="grid max-w-full gap-4 p-3 sm:p-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(18rem,0.65fr)]">
+            <div className="motion-atmosphere motion-state-card motion-glow min-w-0 max-w-full overflow-hidden rounded-xl border border-line bg-navy-950 text-white">
               {primaryLivestream?.embed_url ? (
                 <>
-                  <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 bg-white/5 px-4 py-3">
+                  <div className="grid min-w-0 gap-3 border-b border-white/10 bg-white/5 px-4 py-3 sm:flex sm:items-center sm:justify-between">
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
                         <Badge tone={livestreamStatusTone(livestreamPlaybackStatus(primaryLivestream))}>
@@ -913,9 +913,9 @@ export default async function MatchDetailPage({
                         <Badge tone="cyan">{livestreamRoleLabel(livestreamRole(primaryLivestream))}</Badge>
                         <Badge tone="neutral">{primaryLivestream.provider}</Badge>
                       </div>
-                      <h2 className="mt-2 truncate text-lg font-black text-white">{primaryLivestream.title}</h2>
+                      <h2 className="mt-2 max-w-full text-lg font-black text-white [overflow-wrap:anywhere]">{primaryLivestream.title}</h2>
                     </div>
-                    <a className="text-sm font-black text-cyan hover:text-action" href={primaryLivestream.stream_url} rel="noreferrer" target="_blank">
+                    <a className="inline-flex min-h-9 w-full items-center justify-center rounded-md border border-white/10 px-3 text-sm font-black text-cyan hover:text-action sm:w-auto sm:border-0 sm:px-0" href={primaryLivestream.stream_url} rel="noreferrer" target="_blank">
                       Open source
                     </a>
                   </div>
@@ -929,11 +929,11 @@ export default async function MatchDetailPage({
                   />
                 </>
               ) : (
-                <div className="motion-standby motion-sheen grid min-h-[18rem] place-items-center p-6 text-center">
-                  <div className="max-w-md">
+                <div className="motion-standby motion-sheen grid min-h-[18rem] max-w-full place-items-center overflow-hidden p-5 text-center sm:p-6">
+                  <div className="min-w-0 max-w-md">
                     <Badge tone="neutral">Stand by</Badge>
-                    <h2 className="mt-4 text-2xl font-black text-white">No live stream added yet</h2>
-                    <p className="mt-3 text-sm leading-6 text-slate-300">
+                    <h2 className="mt-4 text-balance text-xl font-black text-white sm:text-2xl">No live stream added yet</h2>
+                    <p className="mt-3 text-sm leading-6 text-slate-300 [overflow-wrap:anywhere]">
                       A connected YouTube or Twitch channel is saved on your profile. This room still needs a stream link added before viewers can watch here.
                     </p>
                     {canManageLivestreams ? (
@@ -946,41 +946,41 @@ export default async function MatchDetailPage({
               )}
             </div>
 
-            <div className="grid gap-3">
-              <div className="motion-flow-card rounded-lg border border-cyan bg-cyanSoft p-4">
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div>
+            <div className="grid min-w-0 max-w-full gap-3">
+              <div className="motion-flow-card min-w-0 max-w-full rounded-lg border border-cyan bg-cyanSoft p-4">
+                <div className="grid min-w-0 gap-3 sm:flex sm:items-start sm:justify-between">
+                  <div className="min-w-0">
                     <p className="font-mono text-xs font-black uppercase tracking-[0.12em] text-cyan">Connected channel</p>
-                    <h3 className="mt-2 text-base font-black text-ink">
+                    <h3 className="mt-2 text-base font-black text-ink [overflow-wrap:anywhere]">
                       {streamingAccounts.length ? "Your saved stream channels" : "No connected channel yet"}
                     </h3>
                   </div>
-                  <a className="rounded-full border border-line bg-white px-3 py-2 text-xs font-black text-ink hover:border-action" href="/profile#streaming-accounts">
+                  <a className="inline-flex min-h-9 w-full items-center justify-center rounded-full border border-line bg-white px-3 py-2 text-xs font-black text-ink hover:border-action sm:w-auto" href="/profile#streaming-accounts">
                     Manage
                   </a>
                 </div>
-                <p className="mt-2 text-sm leading-6 text-muted">
+                <p className="mt-2 text-sm leading-6 text-muted [overflow-wrap:anywhere]">
                   This only saves your YouTube or Twitch channel on your profile. To show a specific match stream here, add the live video or channel link to this room.
                 </p>
                 {streamingAccounts.length ? (
                   <div className="mt-3 grid gap-2">
                     {streamingAccounts.slice(0, 3).map((account) => (
-                      <div className="rounded-md border border-line bg-white p-3" key={account.id}>
-                        <div className="flex flex-wrap items-start justify-between gap-2">
+                      <div className="min-w-0 rounded-md border border-line bg-white p-3" key={account.id}>
+                        <div className="grid min-w-0 gap-2 sm:flex sm:items-start sm:justify-between">
                           <div className="min-w-0">
-                            <p className="truncate text-sm font-black text-ink">{account.display_name}</p>
-                            <p className="text-xs font-bold text-muted">{streamingProviderLabel(account.provider)}</p>
+                            <p className="text-sm font-black text-ink [overflow-wrap:anywhere]">{account.display_name}</p>
+                            <p className="text-xs font-bold text-muted [overflow-wrap:anywhere]">{streamingProviderLabel(account.provider)}</p>
                           </div>
                           <Badge tone={connectedStreamStatusTone(account.live_status)}>
                             {connectedStreamStatusLabel(account.live_status)}
                           </Badge>
                         </div>
                         <div className="mt-3 flex flex-wrap gap-2">
-                          <a className="rounded-full border border-line px-3 py-2 text-xs font-black text-ink hover:border-action" href={account.live_stream_url || account.channel_url} rel="noreferrer" target="_blank">
+                          <a className="inline-flex min-h-9 flex-1 items-center justify-center rounded-full border border-line px-3 py-2 text-xs font-black text-ink hover:border-action sm:flex-none" href={account.live_stream_url || account.channel_url} rel="noreferrer" target="_blank">
                             Open channel
                           </a>
                           {canManageLivestreams ? (
-                            <a className="rounded-full bg-action px-3 py-2 text-xs font-black text-navy-950 hover:bg-actionHover" href="#add-room-stream">
+                            <a className="inline-flex min-h-9 flex-1 items-center justify-center rounded-full bg-action px-3 py-2 text-xs font-black text-navy-950 hover:bg-actionHover sm:flex-none" href="#add-room-stream">
                               Add to this room
                             </a>
                           ) : null}
@@ -989,29 +989,29 @@ export default async function MatchDetailPage({
                     ))}
                   </div>
                 ) : (
-                  <a className="mt-3 inline-flex min-h-10 items-center justify-center rounded-md border border-line bg-white px-4 text-sm font-black text-ink hover:bg-surfaceHigh" href="/profile#streaming-accounts">
+                  <a className="mt-3 inline-flex min-h-10 w-full items-center justify-center rounded-md border border-line bg-white px-4 text-sm font-black text-ink hover:bg-surfaceHigh sm:w-auto" href="/profile#streaming-accounts">
                     Connect YouTube or Twitch
                   </a>
                 )}
               </div>
 
-              <div className="grid gap-3">
+              <div className="grid min-w-0 gap-3">
                 {livestreamRoles.map((role) => {
                   const roleStreams = livestreams.filter((item) => livestreamRole(item) === role);
                   const bestStream = [...roleStreams].sort((left, right) => livestreamWatchRank(left) - livestreamWatchRank(right))[0] ?? null;
                   const status = bestStream ? livestreamPlaybackStatus(bestStream) : "unavailable";
                   return (
-                    <div className="motion-flow-card rounded-lg border border-line bg-white p-4" key={role}>
-                      <div className="flex flex-wrap items-start justify-between gap-3">
-                        <div>
+                    <div className="motion-flow-card min-w-0 max-w-full rounded-lg border border-line bg-white p-4" key={role}>
+                      <div className="grid min-w-0 gap-3 sm:flex sm:items-start sm:justify-between">
+                        <div className="min-w-0">
                           <p className="font-mono text-xs font-black uppercase tracking-[0.12em] text-cyan">{livestreamRoleLabel(role)}</p>
-                          <h3 className="mt-2 text-base font-black text-ink">{bestStream?.title ?? "No stream added"}</h3>
+                          <h3 className="mt-2 text-base font-black text-ink [overflow-wrap:anywhere]">{bestStream?.title ?? "No stream added"}</h3>
                         </div>
                         <Badge tone={bestStream ? livestreamStatusTone(status) : "neutral"}>
                           {bestStream ? livestreamStatusLabel(status) : "No stream yet"}
                         </Badge>
                       </div>
-                      <p className="mt-2 text-sm leading-6 text-muted">
+                      <p className="mt-2 text-sm leading-6 text-muted [overflow-wrap:anywhere]">
                         {bestStream
                           ? bestStream.embed_url
                             ? "Available inside this watch room."
@@ -1042,7 +1042,7 @@ export default async function MatchDetailPage({
                 })}
               </div>
 
-              <div className="motion-premium-panel motion-state-card rounded-lg border border-cyan bg-cyanSoft p-4">
+              <div className="motion-premium-panel motion-state-card min-w-0 rounded-lg border border-cyan bg-cyanSoft p-4">
                 <p className="font-mono text-xs font-black uppercase tracking-[0.12em] text-cyan">Match controls nearby</p>
                 <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-1">
                   <a className="inline-flex min-h-10 items-center justify-center rounded-md border border-line bg-white px-3 text-sm font-black text-ink hover:bg-surfaceHigh" href="/chat">
@@ -1076,13 +1076,13 @@ export default async function MatchDetailPage({
               title="Add stream link manually"
               description="Paste the exact YouTube, Twitch, or TikTok stream for this room. Connected profile channels help you find the right link, but the room only shows streams that are attached here."
             />
-            <div className="grid gap-5 p-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-              <RoomActionForm action={createMatchLivestreamIslandAction} className="motion-premium-panel motion-flow-card grid gap-3 rounded-md border border-line bg-white p-4">
+            <div className="grid min-w-0 max-w-full gap-5 p-3 sm:p-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+              <RoomActionForm action={createMatchLivestreamIslandAction} className="motion-premium-panel motion-flow-card grid min-w-0 max-w-full gap-3 rounded-md border border-line bg-white p-4">
                 <input name="match_room_id" type="hidden" value={room.id} />
-                <div className="grid gap-3 md:grid-cols-3">
+                <div className="grid min-w-0 gap-3 md:grid-cols-3">
                   <label className="grid gap-2 text-sm font-bold text-ink">
                     Stream slot
-                    <select className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="stream_role">
+                    <select className="min-h-11 min-w-0 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="stream_role">
                       <option value="official">Official room stream</option>
                       <option value="player_a">Player A stream</option>
                       <option value="player_b">Player B stream</option>
@@ -1090,14 +1090,14 @@ export default async function MatchDetailPage({
                   </label>
                   <label className="grid gap-2 text-sm font-bold text-ink">
                     Visibility
-                    <select className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="visibility">
+                    <select className="min-h-11 min-w-0 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="visibility">
                       <option value="public">Public</option>
                       <option value="participants">Participants</option>
                     </select>
                   </label>
                   <label className="grid gap-2 text-sm font-bold text-ink">
                     Status
-                    <select className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="playback_status">
+                    <select className="min-h-11 min-w-0 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="playback_status">
                       <option value="live">Live</option>
                       <option value="offline">Offline</option>
                       <option value="replay">Replay</option>
@@ -1107,12 +1107,12 @@ export default async function MatchDetailPage({
                 </div>
                 <label className="grid gap-2 text-sm font-bold text-ink">
                   Title
-                  <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" maxLength={140} name="title" required />
+                  <input className="min-h-11 min-w-0 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" maxLength={140} name="title" required />
                 </label>
                 <label className="grid gap-2 text-sm font-bold text-ink">
                   Stream link
                   <input
-                    className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action"
+                    className="min-h-11 min-w-0 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action"
                     name="stream_url"
                     placeholder="https://youtube.com/watch?v=... or https://twitch.tv/..."
                     required
@@ -1122,10 +1122,10 @@ export default async function MatchDetailPage({
                 <p className="text-xs font-bold leading-5 text-muted">
                   YouTube and Twitch links can play inside Skillsroom when the provider allows embeds. TikTok or blocked links will still open from the source button.
                 </p>
-                <div className="grid gap-3 md:grid-cols-2">
+                <div className="grid min-w-0 gap-3 md:grid-cols-2">
                   <label className="grid gap-2 text-sm font-bold text-ink">
                     Display order
-                    <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" defaultValue={0} name="display_order" type="number" />
+                    <input className="min-h-11 min-w-0 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" defaultValue={0} name="display_order" type="number" />
                   </label>
                   <label className="flex min-h-11 items-center gap-2 rounded-md border border-line bg-white px-3 text-sm font-bold text-ink">
                     <input name="is_featured" type="checkbox" />
@@ -1135,7 +1135,7 @@ export default async function MatchDetailPage({
                 <SubmitButton idleLabel="Save livestream" pendingLabel="Saving livestream..." />
               </RoomActionForm>
 
-              <div className="grid gap-3 rounded-md border border-line bg-white p-4">
+              <div className="grid min-w-0 max-w-full gap-3 rounded-md border border-line bg-white p-4">
                 {manageableLivestreams.length ? (
                   manageableLivestreams.map((item) => (
                     <div className="motion-flow-card rounded-md border border-line bg-surfaceWarm p-4" key={item.id}>
