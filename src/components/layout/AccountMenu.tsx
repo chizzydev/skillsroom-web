@@ -107,7 +107,7 @@ export function AccountMenu({ user, align = "right", compact = false }: AccountM
           Notifications
         </Link>
         <Link className="block px-4 py-3 text-sm font-bold text-muted hover:bg-surfaceHigh hover:text-ink" href="/community" onClick={() => setOpen(false)} role="menuitem">
-          Community pulse
+          Community hub
         </Link>
         {["support", "moderator", "admin", "owner"].includes(user.role) ? (
           <Link className="block px-4 py-3 text-sm font-bold text-muted hover:bg-surfaceHigh hover:text-ink" href="/admin" onClick={() => setOpen(false)} role="menuitem">

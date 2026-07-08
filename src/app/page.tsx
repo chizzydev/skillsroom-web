@@ -542,6 +542,50 @@ export default async function HomePage({ searchParams }: HomePageProps) {
 
             <Reveal staggerIndex={2}>
             <Panel>
+              <PanelHeader
+                eyebrow="Community hub"
+                title="See what is happening around Skillsroom"
+                description="Find platform news, tournament updates, clans, player highlights, and winner posts without digging through menus."
+              />
+              <div className="grid gap-3 p-4">
+                <div className="overflow-hidden rounded-[1.25rem] border border-line bg-navy-900 text-white">
+                  <div className="relative min-h-48">
+                    <Image
+                      alt="Skillsroom community hub"
+                      className="object-cover"
+                      fill
+                      sizes="(min-width: 1280px) 22rem, 100vw"
+                      src={premiumArtwork.community}
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#07111d] via-[#07111d]/48 to-transparent" />
+                    <div className="absolute inset-x-4 bottom-4">
+                      <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Community</p>
+                      <h3 className="mt-2 text-xl font-black leading-tight">News, rankings, and player stories in one place.</h3>
+                    </div>
+                  </div>
+                </div>
+                <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-1">
+                  <PendingLink
+                    className="inline-flex min-h-10 items-center justify-center rounded-md bg-action px-4 text-sm font-black text-navy-950 shadow-action hover:bg-actionHover"
+                    href="/community"
+                    pendingLabel="Opening community..."
+                  >
+                    Open Community hub
+                  </PendingLink>
+                  <PendingLink
+                    className="inline-flex min-h-10 items-center justify-center rounded-md border border-line bg-white px-4 text-sm font-black text-ink hover:bg-surfaceHigh"
+                    href="/community/highlights"
+                    pendingLabel="Opening highlights..."
+                  >
+                    View highlights
+                  </PendingLink>
+                </div>
+              </div>
+            </Panel>
+            </Reveal>
+
+            <Reveal staggerIndex={3}>
+            <Panel>
               <PanelHeader eyebrow="Trust" title="Before you play" />
               <div className="grid gap-3 p-4 text-sm leading-6 text-muted">
                 <p className="rounded-md border border-line bg-surfaceWarm p-3">
