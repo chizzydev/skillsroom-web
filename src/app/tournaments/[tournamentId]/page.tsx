@@ -858,8 +858,8 @@ export default async function TournamentDetailPage({
                     <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" maxLength={140} name="title" required />
                   </label>
                   <label className="grid gap-2 text-sm font-bold text-ink">
-                    Summary
-                    <textarea className="min-h-20 rounded-md border border-line bg-white px-3 py-2 text-sm outline-none focus:border-action" maxLength={280} name="summary" required />
+                    Summary <span className="text-xs font-bold text-muted">(optional)</span>
+                    <textarea className="min-h-20 rounded-md border border-line bg-white px-3 py-2 text-sm outline-none focus:border-action" maxLength={280} name="summary" placeholder="Leave blank to use the start of the body." />
                   </label>
                   <label className="grid gap-2 text-sm font-bold text-ink">
                     Body
@@ -867,12 +867,12 @@ export default async function TournamentDetailPage({
                   </label>
                   <div className="grid gap-3 md:grid-cols-2">
                     <label className="grid gap-2 text-sm font-bold text-ink">
-                      CTA label
-                      <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="cta_label" />
+                      CTA label <span className="text-xs font-bold text-muted">(optional)</span>
+                      <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="cta_label" placeholder="Example: View bracket" />
                     </label>
                     <label className="grid gap-2 text-sm font-bold text-ink">
-                      CTA URL
-                      <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="cta_url" type="url" />
+                      CTA URL <span className="text-xs font-bold text-muted">(optional)</span>
+                      <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="cta_url" placeholder="Add only if this update needs a button." type="url" />
                     </label>
                   </div>
                   <label className="flex min-h-11 items-center gap-2 rounded-md border border-line bg-white px-3 text-sm font-bold text-ink">

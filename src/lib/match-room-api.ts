@@ -3317,7 +3317,7 @@ export function createCommunityAnnouncement(input: {
   category: CommunityAnnouncementCategory;
   priority: CommunityAnnouncementPriority;
   title: string;
-  summary: string;
+  summary?: string;
   body: string;
   cta_label?: string;
   cta_url?: string;
@@ -3336,7 +3336,7 @@ export function updateCommunityAnnouncement(
     category: CommunityAnnouncementCategory;
     priority: CommunityAnnouncementPriority;
     title: string;
-    summary: string;
+    summary?: string;
     body: string;
     cta_label?: string;
     cta_url?: string;

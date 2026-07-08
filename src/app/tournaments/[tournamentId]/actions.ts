@@ -118,7 +118,7 @@ export async function createTournamentAnnouncementAction(formData: FormData) {
       category: String(formData.get("category") || "tournament_update") as CommunityAnnouncementCategory,
       priority: String(formData.get("priority") || "normal") as CommunityAnnouncementPriority,
       title: String(formData.get("title") || "").trim(),
-      summary: String(formData.get("summary") || "").trim(),
+      summary: optionalString(formData, "summary"),
       body: String(formData.get("body") || "").trim(),
       cta_label: optionalString(formData, "cta_label"),
       cta_url: optionalString(formData, "cta_url"),
