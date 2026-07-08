@@ -48,7 +48,7 @@ import {
   createMatchLivestreamIslandAction,
   createRoomInviteAction,
   openMatchRoomAction,
-  payRoomWithBalanceIslandAction,
+  payRoomWithBalanceAction,
   respondToResultClaimAction,
   startMatchPlayAction,
   submitManualFundingIslandAction,
@@ -580,7 +580,8 @@ export default async function MatchDetailPage({
   const fundsLockedMinor = fundedParticipants.length * room.entry_amount_minor;
   const resultCheckpoint = resultCheckpointSummary(room, latestClaim);
   const payoutCheckpoint = payoutCheckpointSummary(room, latestClaim);
-  const [baseNextTitle, baseNextDetail] = nextAction(room, participants.length);
+  const displayedParticipantCount = Math.max(participants.length, room.participant_count ?? 0);
+  const [baseNextTitle, baseNextDetail] = nextAction(room, displayedParticipantCount);
   const [nextTitle, nextDetail] =
     isTournamentRoom && !currentPlayerCheckedIn && currentParticipant
       ? (["Check in for this match", "Confirm you are present before playing or submitting result evidence."] as const)
@@ -633,12 +634,16 @@ export default async function MatchDetailPage({
     .sort((left, right) => livestreamWatchRank(left) - livestreamWatchRank(right))[0] ?? null;
   const livestreamRoles: LivestreamRole[] = ["official", "player_a", "player_b"];
   const fundingSectionVisible = !isTournamentRoom && canViewSensitiveInternals;
+  const resultSectionVisible =
+    canSubmitResult ||
+    Boolean(latestClaim) ||
+    ["active", "awaiting_results", "under_review", "disputed", "settlement_pending", "completed", "cancelled"].includes(room.status);
   const roomNavItems = [
     { href: "#overview", label: "Overview" },
     { href: "#players", label: "Players" },
     ...(fundingSectionVisible ? [{ href: "#funding", label: "Funding" }] : []),
     { href: "#live", label: "Live" },
-    { href: "#result", label: "Result" }
+    ...(resultSectionVisible ? [{ href: "#result", label: "Result" }] : [])
   ];
   const primaryAction =
     canSubmitFunding
@@ -647,7 +652,7 @@ export default async function MatchDetailPage({
         ? { href: "#result", label: "Submit result" }
         : canManageLivestreams
           ? { href: "#live", label: "Add livestream" }
-          : { href: "#players", label: participants.length < room.max_participants ? "Check players" : "View players" };
+          : { href: "#players", label: displayedParticipantCount < room.max_participants ? "Check players" : "View players" };
 
   return (
     <AppShell active="matches">
@@ -662,7 +667,7 @@ export default async function MatchDetailPage({
               <div className="mt-4 flex flex-wrap gap-2 text-sm font-bold text-slate-300">
                 <span className="rounded-md border border-white/10 bg-white/5 px-3 py-2 font-mono text-white">{room.room_code}</span>
                 <span className="rounded-md border border-white/10 bg-white/5 px-3 py-2">{isTournamentRoom ? "Tournament match" : `${formatEntryAmount(room)} entry`}</span>
-                <span className="rounded-md border border-white/10 bg-white/5 px-3 py-2">{participants.length}/{room.max_participants} players</span>
+                <span className="rounded-md border border-white/10 bg-white/5 px-3 py-2">{displayedParticipantCount}/{room.max_participants} players</span>
               </div>
             </div>
             <div className="flex flex-wrap gap-2 lg:justify-end">
@@ -756,7 +761,7 @@ export default async function MatchDetailPage({
               </Panel>
               <Panel className="p-4">
                 <p className="font-mono text-xs font-bold uppercase tracking-[0.12em] text-dim">Players</p>
-                <p className="mt-2 text-2xl font-black text-success">{participants.length}/{room.max_participants}</p>
+                <p className="mt-2 text-2xl font-black text-success">{displayedParticipantCount}/{room.max_participants}</p>
                 <p className="mt-2 text-sm font-bold text-muted">Fixed two-player room</p>
               </Panel>
               <Panel className="p-4">
@@ -1224,9 +1229,9 @@ export default async function MatchDetailPage({
           <Reveal>
           <Panel>
             <PanelHeader
-              eyebrow="Money Trail"
+              eyebrow="Funding summary"
               title="Financial checkpoint"
-              description="This is a read-only summary from server records. The browser never decides balances, entry amounts, locks, credits, or payouts."
+              description="This is a read-only summary from Skillsroom records. Players can view it, but only the server can confirm payments, lock funds, and update payouts."
             />
             <div className="grid gap-3 p-4 lg:grid-cols-2">
               {(["player_a", "player_b"] as const).map((slot) => {
@@ -1323,10 +1328,10 @@ export default async function MatchDetailPage({
                       Available: <span className="font-black text-ink">{formatMinorMoney(room.currency, availableBalanceMinor)}</span>. Required: <span className="font-black text-ink">{formatEntryAmount(room)}</span>.
                     </p>
                   </div>
-                  <RoomActionForm action={payRoomWithBalanceIslandAction} className="shrink-0">
+                  <form action={payRoomWithBalanceAction} className="shrink-0">
                     <input name="match_room_id" type="hidden" value={room.id} />
                     <SubmitButton disabled={!canPayWithBalance} idleLabel="Use balance" pendingLabel="Locking funds..." />
-                  </RoomActionForm>
+                  </form>
                 </div>
                 {!canSubmitFunding && currentFundingStatus === "approved" ? (
                   <p className="mt-3 text-sm font-bold text-success">Your room entry is already funded.</p>
