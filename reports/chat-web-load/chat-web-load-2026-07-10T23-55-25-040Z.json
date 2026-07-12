@@ -1,0 +1,47 @@
+{
+  "run_id": "2026-07-10T23-55-25-040Z",
+  "started_at": "2026-07-10T23:55:26.075Z",
+  "base_url": "http://localhost:3100",
+  "channel": "chat_load_lab",
+  "final_url": "http://localhost:3100/chat?channel=chat_load_lab",
+  "switch_channel_hint": "Global Chat",
+  "viewport": {
+    "width": 1440,
+    "height": 900
+  },
+  "metrics": [
+    {
+      "name": "initial_chat_load",
+      "duration_ms": 400,
+      "ok": false,
+      "note": "Chat did not open an authenticated session. Set CHAT_WEB_LOAD_EMAIL and CHAT_WEB_LOAD_PASSWORD, or provide CHAT_WEB_LOAD_STORAGE_STATE."
+    }
+  ],
+  "frame_sample": {
+    "duration_ms": 0,
+    "frames": 0,
+    "dropped_frames": 0,
+    "max_frame_ms": 0,
+    "average_frame_ms": 0
+  },
+  "heap_before": {
+    "used_js_heap_size": 10000000,
+    "total_js_heap_size": 10000000,
+    "js_heap_size_limit": 3760000000
+  },
+  "heap_after": {
+    "used_js_heap_size": 3419782,
+    "total_js_heap_size": 4416506,
+    "js_heap_size_limit": 4395630592
+  },
+  "heap_growth_bytes": -6580218,
+  "console_errors": [],
+  "request_failures": [],
+  "previous": {
+    "path": "C:\\Users\\HP\\skill-rooms-web\\reports\\chat-web-load\\latest.json",
+    "metric_deltas_ms": {
+      "initial_chat_load": -20001
+    },
+    "heap_growth_delta_bytes": -46394400
+  }
+}

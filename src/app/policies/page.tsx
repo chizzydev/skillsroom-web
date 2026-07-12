@@ -4,7 +4,7 @@ import { policyEntries } from "@/lib/policies";
 
 export const metadata: Metadata = {
   title: "Policies | Skillsroom",
-  description: "Public legal, competition, refund, dispute, eligibility, and compliance policies for Skillsroom."
+  description: "Player rules, competition guidance, refunds, disputes, privacy, trust, and support information for Skillsroom."
 };
 
 export default function PolicyHubPage() {
@@ -15,13 +15,13 @@ export default function PolicyHubPage() {
           Back to Skillsroom
         </Link>
         <section className="mt-6 rounded-lg border border-line bg-white p-5 shadow-panel md:p-7">
-          <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Policy Hub</p>
-          <h1 className="mt-3 text-3xl font-black leading-tight text-ink md:text-4xl">Legal and product policy pack</h1>
+          <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Player Guide</p>
+          <h1 className="mt-3 text-3xl font-black leading-tight text-ink md:text-4xl">Rules, prizes, refunds, and support in plain view</h1>
           <p className="mt-3 max-w-3xl text-sm leading-6 text-muted md:text-base">
-            This is the public policy set for Skillsroom before launch: terms, competition rules, prizes, refunds, disputes, conduct, eligibility, privacy, trust, support, and compliance posture.
+            Everything here explains how Skillsroom rooms and tournaments work: how players enter, how results are reviewed, how prizes and refunds move, and how to get help when something needs attention.
           </p>
-          <div className="mt-4 rounded-md border border-warning/30 bg-warningSoft p-4 text-sm leading-6 text-muted">
-            These policies are written as the product baseline for closed beta and launch preparation. They should receive formal legal review before public launch.
+          <div className="mt-4 rounded-md border border-cyan/30 bg-cyanSoft p-4 text-sm leading-6 text-muted">
+            The goal is simple: players should know what to expect before they create a room, join an event, submit evidence, or ask support for help.
           </div>
         </section>
 

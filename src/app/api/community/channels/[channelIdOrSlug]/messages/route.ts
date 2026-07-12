@@ -1,6 +1,6 @@
 import { getAccessToken } from "@/lib/auth-bridge";
 import { apiBaseUrl } from "@/lib/api";
-import { buildApiProxyHeaders } from "@/lib/api-proxy";
+import { buildApiProxyHeaders, passthroughApiResponse } from "@/lib/api-proxy";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -34,11 +34,7 @@ async function proxy(request: Request, context: RouteContext, method: "GET" | "P
     cache: "no-store"
   });
 
-  const body = await response.text();
-  return new Response(body, {
-    status: response.status,
-    headers: { "content-type": response.headers.get("content-type") ?? "application/json" }
-  });
+  return passthroughApiResponse(response);
 }
 
 export function GET(request: Request, context: RouteContext) {

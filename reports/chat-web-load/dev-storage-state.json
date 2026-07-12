@@ -1,0 +1,15 @@
+{
+  "cookies": [
+    {
+      "name": "skill_rooms_access_token",
+      "value": "skillrooms-dev.eyJzdWIiOiJjaGF0LWxvYWQtdXNlci0wMDEiLCJlbWFpbCI6ImNoYXQtbG9hZC0xQHNraWxsc3Jvb20ubG9jYWwiLCJyb2xlIjoicGxheWVyIiwic3RhdHVzIjoiYWN0aXZlIiwiaWF0IjoxNzgzNzcwMDU0LCJleHAiOjE3ODM3NzM2NTR9.QVN1k2Jx49VaKcni_BLSk95fwLp7e7oKmdZPqyn9P00",
+      "domain": "localhost",
+      "path": "/",
+      "expires": 1783773654,
+      "httpOnly": true,
+      "secure": false,
+      "sameSite": "Lax"
+    }
+  ],
+  "origins": []
+}

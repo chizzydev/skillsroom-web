@@ -1,0 +1,104 @@
+{
+  "run_id": "2026-07-11T00-04-33-202Z",
+  "started_at": "2026-07-11T00:05:09.824Z",
+  "base_url": "http://localhost:3100",
+  "channel": "chat_load_lab",
+  "final_url": "http://localhost:3100/chat?channel=chat_load_lab",
+  "switch_channel_hint": "Global Chat",
+  "viewport": {
+    "width": 1440,
+    "height": 900
+  },
+  "metrics": [
+    {
+      "name": "initial_chat_load",
+      "duration_ms": 7819,
+      "ok": true
+    },
+    {
+      "name": "channel_switch",
+      "duration_ms": 3098,
+      "ok": true
+    },
+    {
+      "name": "input_latency",
+      "duration_ms": 98,
+      "ok": true
+    },
+    {
+      "name": "message_append",
+      "duration_ms": 224,
+      "ok": true
+    },
+    {
+      "name": "reaction",
+      "duration_ms": 211,
+      "ok": true
+    },
+    {
+      "name": "search",
+      "duration_ms": 4496,
+      "ok": true
+    },
+    {
+      "name": "open_media",
+      "duration_ms": 1060,
+      "ok": true
+    },
+    {
+      "name": "open_thread",
+      "duration_ms": 423,
+      "ok": true
+    },
+    {
+      "name": "scroll_older_messages",
+      "duration_ms": 1331,
+      "ok": true
+    }
+  ],
+  "frame_sample": {
+    "duration_ms": 15014,
+    "frames": 832,
+    "dropped_frames": 40,
+    "max_frame_ms": 100,
+    "average_frame_ms": 18
+  },
+  "heap_before": {
+    "used_js_heap_size": 10000000,
+    "total_js_heap_size": 10000000,
+    "js_heap_size_limit": 3760000000
+  },
+  "heap_after": {
+    "used_js_heap_size": 113593518,
+    "total_js_heap_size": 161166030,
+    "js_heap_size_limit": 4395630592
+  },
+  "heap_growth_bytes": 103593518,
+  "console_errors": [
+    "Loading the stylesheet 'https://accounts.google.com/gsi/style' violates the following Content Security Policy directive: \"style-src 'self' 'unsafe-inline'\". Note that 'style-src-elem' was not explicitly set, so 'style-src' is used as a fallback. The action has been blocked."
+  ],
+  "request_failures": [
+    "GET http://localhost:3100/_next/static/chunks/main-app.js?v=1783728274003 net::ERR_ABORTED",
+    "GET https://accounts.google.com/gsi/style csp",
+    "GET https://accounts.google.com/gsi/button?theme=outline&size=large&type=standard&text=continue_with&shape=rectangular&logo_alignment=left&width=398&is_fedcm_supported=true&client_id=260107661499-raoh4a97kkjiu0qco3h0e1s8j5bro6in.apps.googleusercontent.com&iframe_id=gsi_276545_153617&cas=F5TPcz8zAolHtN%2BO8bH%2FHa1E0797o6HyK6WaiqSfPA8 net::ERR_ABORTED",
+    "POST http://localhost:3100/api/community/channels/global_lobby/heartbeat net::ERR_ABORTED",
+    "POST http://localhost:3100/api/community/channels/chat_load_lab/heartbeat net::ERR_ABORTED",
+    "GET http://localhost:3100/api/community/realtime/stream net::ERR_ABORTED",
+    "GET http://localhost:3100/api/community/channels/chat_load_lab/messages/search?limit=25&view=list&q=the net::ERR_ABORTED"
+  ],
+  "previous": {
+    "path": "C:\\Users\\HP\\skill-rooms-web\\reports\\chat-web-load\\latest.json",
+    "metric_deltas_ms": {
+      "initial_chat_load": 25,
+      "channel_switch": -461,
+      "input_latency": 30,
+      "message_append": -92,
+      "reaction": 59,
+      "search": -6152,
+      "open_media": 53,
+      "open_thread": 95,
+      "scroll_older_messages": 13
+    },
+    "heap_growth_delta_bytes": 25761977
+  }
+}

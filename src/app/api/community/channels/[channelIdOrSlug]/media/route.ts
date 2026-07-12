@@ -1,5 +1,6 @@
 import { getAccessToken } from "@/lib/auth-bridge";
 import { apiBaseUrl } from "@/lib/api";
+import { passthroughApiResponse } from "@/lib/api-proxy";
 export const dynamic = "force-dynamic";
 type Context = { params: Promise<{ channelIdOrSlug: string }> };
 export async function GET(request: Request, context: Context) {
@@ -7,5 +8,5 @@ export async function GET(request: Request, context: Context) {
   const { channelIdOrSlug } = await context.params; const target = new URL(`/community/channels/${encodeURIComponent(channelIdOrSlug)}/media`, apiBaseUrl());
   new URL(request.url).searchParams.forEach((value,key)=>target.searchParams.set(key,value));
   const response = await fetch(target,{headers:{accept:"application/json",authorization:`Bearer ${token}`},cache:"no-store"});
-  return new Response(await response.text(),{status:response.status,headers:{"content-type":"application/json"}});
+  return passthroughApiResponse(response);
 }

@@ -26,10 +26,10 @@ export function PolicyPage({ policy, related = [] }: PolicyPageProps) {
                 </div>
               </div>
             </section>
-            <section className="mt-5 rounded-lg border border-warning/30 bg-warningSoft p-4 shadow-tight">
-              <p className="text-sm font-black text-ink">Pre-launch policy pack</p>
+            <section className="mt-5 rounded-lg border border-cyan/30 bg-cyanSoft p-4 shadow-tight">
+              <p className="text-sm font-black text-ink">Player guide</p>
               <p className="mt-1 text-sm leading-6 text-muted">
-                These policies are the product baseline for closed beta and launch preparation. They should receive formal legal review before public launch.
+                Use this page to understand how Skillsroom handles rooms, tournaments, evidence, refunds, support, and account activity.
               </p>
             </section>
             <section className="mt-5 grid gap-4">
@@ -53,16 +53,16 @@ export function PolicyPage({ policy, related = [] }: PolicyPageProps) {
           </div>
           <aside className="grid h-fit gap-4 xl:sticky xl:top-24">
             <section className="rounded-lg border border-line bg-white p-5 shadow-panel">
-              <p className="text-xs font-black uppercase tracking-[0.12em] text-muted">Policy Set</p>
+                <p className="text-xs font-black uppercase tracking-[0.12em] text-muted">Guide Set</p>
               <div className="mt-3 grid gap-2">
                 <Link className="rounded-md border border-line bg-white px-3 py-2 text-sm font-black text-ink hover:bg-surfaceHigh" href="/policies">
-                  Open policy hub
+                  Open guide hub
                 </Link>
                 <Link className="rounded-md border border-line bg-white px-3 py-2 text-sm font-black text-ink hover:bg-surfaceHigh" href="/support">
-                  Support policy
+                  Support guide
                 </Link>
                 <Link className="rounded-md border border-line bg-white px-3 py-2 text-sm font-black text-ink hover:bg-surfaceHigh" href="/compliance">
-                  Compliance notes
+                  Skill-gaming notes
                 </Link>
               </div>
             </section>

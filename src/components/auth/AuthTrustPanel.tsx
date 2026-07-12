@@ -15,7 +15,7 @@ type AuthTrustPanelProps = {
 const trustPoints = [
   "Skillsroom helps players use match rooms and tournaments without confusion.",
   "Proof, disputes, and payouts stay connected to the same match or event.",
-  "You can read the rules, support pages, and community pages before you sign in."
+  "Community pages show active games, winner highlights, and platform updates."
 ] as const;
 
 const quickLinks = [
@@ -66,7 +66,7 @@ export function AuthTrustPanel({
           <div className="mt-6 rounded-[1.25rem] border border-cyan/25 bg-white/5 p-4">
             <p className="text-xs font-black uppercase tracking-[0.14em] text-cyan-200">New here?</p>
             <p className="mt-2 text-sm leading-6 text-slate-200">
-              You can look around first before making an account.
+              See community activity, winners, and game lanes before creating your player profile.
             </p>
             <Link
               className="mt-4 inline-flex min-h-10 items-center justify-center rounded-md bg-action px-4 text-sm font-black text-navy-950 shadow-action hover:bg-actionHover"
@@ -96,7 +96,7 @@ export function AuthTrustPanel({
             <div className="rounded-2xl border border-white/10 bg-[#09131f]/78 p-4 backdrop-blur">
               <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Easy to check</p>
               <p className="mt-2 text-sm leading-6 text-slate-200">
-                Your rules, support pages, and account activity are easy to follow in one place.
+                Your rules, match activity, and account history are easy to follow in one place.
               </p>
             </div>
           </div>

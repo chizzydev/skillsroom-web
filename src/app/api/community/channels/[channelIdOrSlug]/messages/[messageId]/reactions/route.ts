@@ -1,6 +1,6 @@
 import { getAccessToken } from "@/lib/auth-bridge";
 import { apiBaseUrl } from "@/lib/api";
-import { buildApiProxyHeaders } from "@/lib/api-proxy";
+import { buildApiProxyHeaders, passthroughApiResponse } from "@/lib/api-proxy";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -16,7 +16,7 @@ export async function GET(_request: Request, context: RouteContext) {
   const response = await fetch(new URL(`/community/channels/${encodeURIComponent(channelIdOrSlug)}/messages/${encodeURIComponent(messageId)}/reactions`, apiBaseUrl()), {
     headers: { accept: "application/json", authorization: `Bearer ${token}` }, cache: "no-store"
   });
-  return new Response(await response.text(), { status: response.status, headers: { "content-type": response.headers.get("content-type") ?? "application/json" } });
+  return passthroughApiResponse(response);
 }
 
 export async function POST(request: Request, context: RouteContext) {
@@ -42,9 +42,5 @@ export async function POST(request: Request, context: RouteContext) {
     cache: "no-store"
   });
 
-  const body = await response.text();
-  return new Response(body, {
-    status: response.status,
-    headers: { "content-type": response.headers.get("content-type") ?? "application/json" }
-  });
+  return passthroughApiResponse(response);
 }

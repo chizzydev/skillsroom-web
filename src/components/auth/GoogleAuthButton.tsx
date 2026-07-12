@@ -171,7 +171,7 @@ export function GoogleAuthButton({ redirectTo, label, action = "/api/auth/identi
       {failed ? (
         <div className="rounded-md border border-red-200 bg-red-50 p-3 text-xs font-bold text-red-700">
           <p>Google sign-in did not load. Use email and password for now.</p>
-          <p className="mt-1 font-semibold text-red-600">If you expected it to work, confirm this exact origin is allowed in Google Authorized JavaScript origins.</p>
+          <p className="mt-1 font-semibold text-red-600">You can still continue with email and password.</p>
         </div>
       ) : null}
     </div>

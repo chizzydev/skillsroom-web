@@ -1,11 +1,8 @@
 import { GlobalLobbyClient } from "@/components/community/GlobalLobbyClient";
 import { Panel, PanelHeader } from "@/components/ui/Panel";
-import { getCurrentUser } from "@/lib/auth-bridge";
 import { redirect } from "next/navigation";
 import {
-  listChatChannels,
-  listChatMessages,
-  listDmRequests,
+  listChatBootstrap,
   type ChatChannel,
   type ChatDmRequest,
   type ChatMessage,
@@ -21,12 +18,7 @@ type ChatPageProps = {
 };
 
 export default async function ChatPage({ searchParams }: ChatPageProps) {
-  const user = await getCurrentUser();
   const requested = await searchParams;
-
-  if (!user) {
-    redirect("/");
-  }
 
   let channels: ChatChannel[] = [];
   let activeChannel: ChatChannel | null = null;
@@ -36,33 +28,24 @@ export default async function ChatPage({ searchParams }: ChatPageProps) {
   let readBoundary: string | null = null;
   let presence: ChatPresenceSummary = { online_count: 0, active: [], typing: [] };
   let dmRequests: ChatDmRequest[] = [];
-  let loadError: string | null = null;
+  let user: { id: string; role: string } | null = null;
 
   try {
-    const [channelResult, dmRequestResult] = await Promise.all([
-      listChatChannels(),
-      listDmRequests()
-    ]);
-    channels = channelResult.channels;
-    dmRequests = dmRequestResult.requests;
-    activeChannel = channels.find((channel) => channel.slug === requested.channel)
-      ?? channels.find((channel) => channel.slug === "global_lobby")
-      ?? channels[0]
-      ?? null;
-
-    if (activeChannel) {
-      const messageResult = await listChatMessages(activeChannel.slug, { limit: 80 });
-      activeChannel = messageResult.channel;
-      messages = messageResult.messages;
-      pinnedMessages = messageResult.pinned_messages;
-      presence = messageResult.presence;
-      pageInfo = messageResult.page_info;
-      readBoundary = messageResult.read_boundary;
-      channels = channels.map((channel) => channel.id === messageResult.channel.id ? { ...messageResult.channel, unread_count: 0 } : channel);
-    }
+    const bootstrap = await listChatBootstrap({ channel: requested.channel, limit: 60, view: "list" });
+    user = bootstrap.current_user;
+    channels = bootstrap.channels;
+    dmRequests = bootstrap.dm_requests;
+    activeChannel = bootstrap.active_channel;
+    messages = bootstrap.messages;
+    pinnedMessages = bootstrap.pinned_messages;
+    presence = bootstrap.presence;
+    pageInfo = bootstrap.page_info;
+    readBoundary = bootstrap.read_boundary;
   } catch {
-    loadError = "Community chat could not load right now.";
+    redirect("/");
   }
+
+  if (!user) redirect("/");
 
   return (
     <main className="h-[100dvh] overflow-hidden bg-[#0f1b26]">
@@ -83,7 +66,7 @@ export default async function ChatPage({ searchParams }: ChatPageProps) {
       ) : (
         <div className="p-4">
           <Panel>
-            <PanelHeader eyebrow="Community Chat" title="Chat unavailable" description={loadError ?? "No chat channels are available yet."} />
+            <PanelHeader eyebrow="Community Chat" title="Chat unavailable" description="No chat channels are available yet." />
           </Panel>
         </div>
       )}

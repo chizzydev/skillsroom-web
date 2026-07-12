@@ -53,6 +53,14 @@ function countRows<T>(rows: T[]) {
   return rows.length.toString();
 }
 
+function previewRows<T>(rows: T[], limit = 20) {
+  return rows.slice(0, limit);
+}
+
+function previewDescription(total: number, limit = 20) {
+  return total > limit ? `Showing latest ${limit.toLocaleString()} of ${total.toLocaleString()} records to keep mobile review stable.` : null;
+}
+
 function displayLabel(value: string) {
   return value
     .split("_")
@@ -180,6 +188,14 @@ export default async function AdminRiskPage({ searchParams }: { searchParams: Pr
   const evidenceExceptions = evidenceReviews.filter((row) => row.verdict === "exception");
   const evidenceNeedsReview = evidenceReviews.filter((row) => row.verdict === "review");
   const evidenceLegalHolds = evidenceReviews.filter((row) => row.legalHold);
+  const previewLimit = 20;
+  const chatModerationPreview = previewRows(chatModerationEvents, previewLimit);
+  const flagsPreview = previewRows(flags, previewLimit);
+  const holdsPreview = previewRows(holds, previewLimit);
+  const actionsPreview = previewRows(actions, previewLimit);
+  const evidenceReviewsPreview = previewRows(evidenceReviews, previewLimit);
+  const evidenceEventsPreview = previewRows(evidenceEvents, previewLimit);
+  const retentionEntriesPreview = previewRows(retentionReport?.entries ?? [], previewLimit);
   const cleanupEligible = retentionReport?.summary.cleanupEligible ?? 0;
   const quarantinedEvidence = retentionReport?.summary.quarantined ?? 0;
   const deletionRequested = retentionReport?.summary.deletionRequested ?? 0;
@@ -197,7 +213,7 @@ export default async function AdminRiskPage({ searchParams }: { searchParams: Pr
           tone="danger"
         />
 
-        <LiveUpdateStream eventTypePrefixes={["admin.queue.risk.", "admin.queue.chat_moderation.", "match.hold.", "chat.message.", "chat.member."]} label="Safety updates" />
+        <LiveUpdateStream eventTypePrefixes={["admin.queue.risk.", "admin.queue.chat_moderation."]} label="Safety updates" />
 
         {(error || loadError) && (
           <div className="rounded-md border border-danger bg-red-50 p-4 text-sm font-bold text-danger">
@@ -222,6 +238,10 @@ export default async function AdminRiskPage({ searchParams }: { searchParams: Pr
         <Panel>
           <PanelHeader eyebrow="Chat Safety" title="Chat moderation queue" description="Review reported messages, hide or delete unsafe content, and mute users from a channel." />
           {chatModerationEvents.length ? (
+            <>
+            {previewDescription(chatModerationEvents.length, previewLimit) ? (
+              <p className="border-b border-line px-4 py-3 text-xs font-bold text-muted">{previewDescription(chatModerationEvents.length, previewLimit)}</p>
+            ) : null}
             <DataTable
               columns={[
                 { key: "created_at", label: "Created", render: (row) => <span className="font-mono text-xs font-bold text-muted">{new Date(row.created_at).toLocaleString("en-NG")}</span> },
@@ -265,8 +285,9 @@ export default async function AdminRiskPage({ searchParams }: { searchParams: Pr
                   )
                 }
               ]}
-              rows={chatModerationEvents}
+              rows={chatModerationPreview}
             />
+            </>
           ) : (
             <div className="p-4">
               <AdminEmptyState description="Reported chat messages and recent chat safety actions will appear here." title="Chat moderation queue is clear" />
@@ -321,6 +342,10 @@ export default async function AdminRiskPage({ searchParams }: { searchParams: Pr
           <Panel>
             <PanelHeader eyebrow="Reports" title="Player reports" description="Support can view reports. Community managers can create and update them." />
             {flags.length ? (
+              <>
+              {previewDescription(flags.length, previewLimit) ? (
+                <p className="border-b border-line px-4 py-3 text-xs font-bold text-muted">{previewDescription(flags.length, previewLimit)}</p>
+              ) : null}
               <DataTable
                 columns={[
                   { key: "created_at", label: "Created", render: (row) => <span className="font-mono text-xs font-bold text-muted">{new Date(row.created_at).toLocaleString("en-NG")}</span> },
@@ -329,8 +354,9 @@ export default async function AdminRiskPage({ searchParams }: { searchParams: Pr
                   { key: "severity", label: "Severity", render: (row) => <Badge tone={severityTone(row.severity)}>{row.severity}</Badge> },
                   { key: "summary", label: "Summary", render: (row) => <span className="text-muted">{row.summary}</span> }
                 ]}
-                rows={flags}
+                rows={flagsPreview}
               />
+              </>
             ) : (
               <div className="p-4">
                 <AdminEmptyState description="No player report is waiting for review right now." title="Player reports are clear" />
@@ -359,6 +385,10 @@ export default async function AdminRiskPage({ searchParams }: { searchParams: Pr
           <Panel>
             <PanelHeader eyebrow="Room Holds" title="Active held rooms" description="Held rooms should not be paid out until a team member releases the hold." />
             {holds.length ? (
+              <>
+              {previewDescription(holds.length, previewLimit) ? (
+                <p className="border-b border-line px-4 py-3 text-xs font-bold text-muted">{previewDescription(holds.length, previewLimit)}</p>
+              ) : null}
               <DataTable
                 columns={[
                   { key: "created_at", label: "Created", render: (row) => <span className="font-mono text-xs font-bold text-muted">{new Date(row.created_at).toLocaleString("en-NG")}</span> },
@@ -367,8 +397,9 @@ export default async function AdminRiskPage({ searchParams }: { searchParams: Pr
                   { key: "reason", label: "Reason", render: (row) => <span className="text-muted">{row.reason}</span> },
                   { key: "id", label: "Hold ID", render: (row) => <span className="font-mono text-xs text-muted">{row.id}</span> }
                 ]}
-                rows={holds}
+                rows={holdsPreview}
               />
+              </>
             ) : (
               <div className="p-4">
                 <AdminEmptyState description="No room is currently blocked by an active moderation hold." title="No active room holds" />
@@ -403,6 +434,10 @@ export default async function AdminRiskPage({ searchParams }: { searchParams: Pr
           <Panel>
           <PanelHeader eyebrow="History" title="Recent moderation actions" />
             {actions.length ? (
+              <>
+              {previewDescription(actions.length, previewLimit) ? (
+                <p className="border-b border-line px-4 py-3 text-xs font-bold text-muted">{previewDescription(actions.length, previewLimit)}</p>
+              ) : null}
               <DataTable
                 columns={[
                   { key: "created_at", label: "Created", render: (row) => <span className="font-mono text-xs font-bold text-muted">{new Date(row.created_at).toLocaleString("en-NG")}</span> },
@@ -410,8 +445,9 @@ export default async function AdminRiskPage({ searchParams }: { searchParams: Pr
                   { key: "target_user_id", label: "Target", render: (row) => <span className="font-mono text-xs text-muted">{row.target_user_id ?? row.match_room_id}</span> },
                   { key: "summary", label: "Summary", render: (row) => <span className="text-muted">{row.summary}</span> }
                 ]}
-                rows={actions}
+                rows={actionsPreview}
               />
+              </>
             ) : (
               <div className="p-4">
                 <AdminEmptyState description="No moderation action has been recorded for the current queue." title="No recent moderation actions" />
@@ -449,6 +485,10 @@ export default async function AdminRiskPage({ searchParams }: { searchParams: Pr
         <Panel>
           <PanelHeader eyebrow="Evidence Review" title="Evidence review" description="Files that may need extra attention before they are used, hidden, exported, or removed." />
           {evidenceReviews.length ? (
+            <>
+            {previewDescription(evidenceReviews.length, previewLimit) ? (
+              <p className="border-b border-line px-4 py-3 text-xs font-bold text-muted">{previewDescription(evidenceReviews.length, previewLimit)}</p>
+            ) : null}
             <DataTable
               columns={[
                 { key: "lastEventAt", label: "Last Event", render: (row) => <span className="font-mono text-xs font-bold text-muted">{new Date(row.lastEventAt).toLocaleString("en-NG")}</span> },
@@ -501,8 +541,9 @@ export default async function AdminRiskPage({ searchParams }: { searchParams: Pr
                   )
                 }
               ]}
-              rows={evidenceReviews}
+              rows={evidenceReviewsPreview}
             />
+            </>
           ) : (
             <div className="p-4">
               <AdminEmptyState description="Evidence files will appear here after users open, upload, review, export, or place evidence under legal hold." title="No evidence files in review yet" />
@@ -513,6 +554,10 @@ export default async function AdminRiskPage({ searchParams }: { searchParams: Pr
         <Panel>
           <PanelHeader eyebrow="Evidence History" title="Recent evidence activity" />
           {evidenceEvents.length ? (
+            <>
+            {previewDescription(evidenceEvents.length, previewLimit) ? (
+              <p className="border-b border-line px-4 py-3 text-xs font-bold text-muted">{previewDescription(evidenceEvents.length, previewLimit)}</p>
+            ) : null}
             <DataTable
               columns={[
                 { key: "created_at", label: "Created", render: (row) => <span className="font-mono text-xs font-bold text-muted">{new Date(row.created_at).toLocaleString("en-NG")}</span> },
@@ -539,8 +584,9 @@ export default async function AdminRiskPage({ searchParams }: { searchParams: Pr
                   )
                 }
               ]}
-              rows={evidenceEvents}
+              rows={evidenceEventsPreview}
             />
+            </>
           ) : (
             <div className="p-4">
               <AdminEmptyState description="Evidence opens, denials, metadata mismatches, and missing-file attempts will appear here." title="No evidence access events yet" />
@@ -551,6 +597,10 @@ export default async function AdminRiskPage({ searchParams }: { searchParams: Pr
         <Panel>
           <PanelHeader eyebrow="Evidence Cleanup" title="Cleanup and quarantine queue" description="Expired hardened files without legal hold can be moved out of active serving. Metadata-error rows require manual review before action." />
           {retentionReport?.entries.length ? (
+            <>
+            {previewDescription(retentionReport.entries.length, previewLimit) ? (
+              <p className="border-b border-line px-4 py-3 text-xs font-bold text-muted">{previewDescription(retentionReport.entries.length, previewLimit)}</p>
+            ) : null}
             <DataTable
               columns={[
                 { key: "fileName", label: "File", render: (row) => <span className="font-mono text-xs font-bold text-ink [overflow-wrap:anywhere]">{row.fileName}</span> },
@@ -571,8 +621,9 @@ export default async function AdminRiskPage({ searchParams }: { searchParams: Pr
                 },
                 { key: "quarantineObjectKey", label: "Object", render: (row) => <span className="font-mono text-xs text-muted [overflow-wrap:anywhere]">{row.deletedObjectKey ?? row.quarantineObjectKey ?? row.cleanupReason ?? "none"}</span> }
               ]}
-              rows={retentionReport.entries}
+              rows={retentionEntriesPreview}
             />
+            </>
           ) : (
             <div className="p-4">
               <AdminEmptyState description="No hardened evidence sidecars are currently present in local storage." title="Cleanup queue is clear" />

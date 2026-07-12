@@ -60,15 +60,15 @@ export default async function MatchesPage({ searchParams }: { searchParams: Prom
     <AppShell active="matches">
       <MotionSection className="grid min-w-0 gap-6" variant="page">
         <MotionSection className="min-w-0 rounded-lg border border-line bg-white p-5 shadow-panel md:p-7" variant="hero">
-          <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-            <div>
+          <div className="flex min-w-0 flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+            <div className="min-w-0">
               <Badge tone="cyan">Match Rooms</Badge>
               <h1 className="mt-3 text-3xl font-black leading-tight text-ink sm:text-4xl lg:text-5xl">Create, join, and track rooms.</h1>
               <p className="mt-3 max-w-3xl text-sm leading-6 text-muted md:text-base">
                 Track rooms from open entry through funding, play, result review, and settlement.
               </p>
             </div>
-            <div className="grid w-full max-w-sm grid-cols-2 gap-2 lg:w-auto">
+            <div className="grid w-full min-w-0 gap-2 min-[380px]:grid-cols-2 lg:w-auto lg:min-w-[20rem]">
               <PendingLink className="inline-flex min-h-10 items-center justify-center rounded-md bg-action px-3 text-center text-sm font-black text-navy-950 shadow-action hover:bg-actionHover" href="/matches/new" pendingLabel="Opening creator...">
                 Create room
               </PendingLink>

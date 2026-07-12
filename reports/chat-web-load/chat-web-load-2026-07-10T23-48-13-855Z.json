@@ -1,0 +1,88 @@
+{
+  "run_id": "2026-07-10T23-48-13-855Z",
+  "started_at": "2026-07-10T23:50:51.986Z",
+  "base_url": "http://localhost:3100",
+  "channel": "chat_load_lab",
+  "switch_channel_hint": "Global Chat",
+  "viewport": {
+    "width": 1440,
+    "height": 900
+  },
+  "metrics": [
+    {
+      "name": "initial_chat_load",
+      "duration_ms": 20342,
+      "ok": false,
+      "note": "locator.waitFor: Timeout 20000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByTestId('chat-composer-input').first() to be visible\u001b[22m\n\u001b[2m    - waiting for\" http://localhost:3100/\" navigation to finish...\u001b[22m\n\u001b[2m    - navigated to \"http://localhost:3100/\"\u001b[22m\n"
+    },
+    {
+      "name": "channel_switch",
+      "duration_ms": 21583,
+      "ok": false,
+      "note": "locator.waitFor: Timeout 20000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByTestId('chat-composer-input').first() to be visible\u001b[22m\n"
+    },
+    {
+      "name": "input_latency",
+      "duration_ms": 10013,
+      "ok": false,
+      "note": "locator.waitFor: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByTestId('chat-composer-input').first() to be visible\u001b[22m\n"
+    },
+    {
+      "name": "message_append",
+      "duration_ms": 30008,
+      "ok": false,
+      "note": "locator.fill: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByTestId('chat-composer-input').first()\u001b[22m\n"
+    },
+    {
+      "name": "reaction",
+      "duration_ms": 4527,
+      "ok": false,
+      "note": "No visible reaction button found."
+    },
+    {
+      "name": "search",
+      "duration_ms": 30011,
+      "ok": false,
+      "note": "locator.click: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: /search channel messages/i }).first()\u001b[22m\n"
+    },
+    {
+      "name": "open_media",
+      "duration_ms": 30005,
+      "ok": false,
+      "note": "locator.click: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: /open channel details/i }).last()\u001b[22m\n"
+    },
+    {
+      "name": "open_thread",
+      "duration_ms": 3004,
+      "ok": false,
+      "note": "No thread control found."
+    },
+    {
+      "name": "scroll_older_messages",
+      "duration_ms": 8008,
+      "ok": false,
+      "note": "locator.waitFor: Timeout 8000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByTestId('chat-thread-virtual-list').first() to be visible\u001b[22m\n"
+    }
+  ],
+  "frame_sample": {
+    "duration_ms": 15009,
+    "frames": 889,
+    "dropped_frames": 7,
+    "max_frame_ms": 133,
+    "average_frame_ms": 17
+  },
+  "heap_before": {
+    "used_js_heap_size": 10000000,
+    "total_js_heap_size": 10000000,
+    "js_heap_size_limit": 3760000000
+  },
+  "heap_after": {
+    "used_js_heap_size": 50183573,
+    "total_js_heap_size": 51441785,
+    "js_heap_size_limit": 4395630592
+  },
+  "heap_growth_bytes": 40183573,
+  "console_errors": [],
+  "request_failures": [],
+  "previous": null
+}

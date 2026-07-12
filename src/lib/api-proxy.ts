@@ -18,3 +18,17 @@ export function buildApiProxyHeaders(
 
   return forwardedHeaders;
 }
+
+export function passthroughApiResponse(response: Response) {
+  const headers = new Headers();
+  for (const key of ["content-type", "cache-control", "etag", "last-modified"]) {
+    const value = response.headers.get(key);
+    if (value) headers.set(key, value);
+  }
+
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers
+  });
+}

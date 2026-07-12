@@ -17,12 +17,12 @@ type SegmentedControlProps = {
 
 export function SegmentedControl({ segments, onSelect, pendingValue }: SegmentedControlProps) {
   return (
-    <div className="grid w-full auto-cols-max grid-flow-col overflow-x-auto rounded-md border border-line bg-surfaceHigh p-1 sm:inline-grid sm:w-auto">
+    <div className="flex w-full min-w-0 flex-wrap gap-1 overflow-hidden rounded-md border border-line bg-surfaceHigh p-1 sm:inline-flex sm:w-auto sm:flex-nowrap sm:overflow-x-auto">
       {segments.map((segment) => (
         segment.href && !onSelect ? (
           <Link
             className={[
-              "inline-flex min-h-9 items-center justify-center whitespace-nowrap rounded-sm px-3 text-xs font-black transition",
+              "inline-flex min-h-9 min-w-0 flex-1 items-center justify-center rounded-sm px-3 text-center text-xs font-black leading-tight transition sm:flex-none sm:whitespace-nowrap",
               segment.active ? "bg-white text-ink shadow-tight" : "text-muted hover:text-ink"
             ].join(" ")}
             href={segment.href}
@@ -33,7 +33,7 @@ export function SegmentedControl({ segments, onSelect, pendingValue }: Segmented
         ) : (
           <button
             className={[
-              "min-h-9 whitespace-nowrap rounded-sm px-3 text-xs font-black transition",
+              "min-h-9 min-w-0 flex-1 rounded-sm px-3 text-center text-xs font-black leading-tight transition sm:flex-none sm:whitespace-nowrap",
               segment.active ? "bg-white text-ink shadow-tight" : "text-muted hover:text-ink"
             ].join(" ")}
             key={segment.label}

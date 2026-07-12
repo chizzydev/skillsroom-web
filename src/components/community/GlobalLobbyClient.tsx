@@ -1,393 +1,34 @@
 "use client";
-/* eslint-disable @next/next/no-img-element -- private signed URLs and local blob previews bypass the public image optimizer */
 
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import type { ChatAttachment, ChatBookmark, ChatChannel, ChatChannelControls, ChatDmRequest, ChatMessage, ChatMessagePageInfo, ChatNotificationLevel, ChatPinnedMessage, ChatPresenceSummary, ChatReactionMember, ChatSearchPageInfo, ChatUserBlock, ScheduledChatAnnouncement } from "@/lib/match-room-api";
-
-type GlobalLobbyClientProps = {
-  channels: ChatChannel[];
-  currentUserId: string;
-  currentUserRole: string;
-  initialChannel: ChatChannel;
-  initialMessages: ChatMessage[];
-  initialPageInfo: ChatMessagePageInfo;
-  initialPinnedMessages: ChatPinnedMessage[];
-  initialPresence: ChatPresenceSummary;
-  initialReadBoundary: string | null;
-  initialDmRequests: ChatDmRequest[];
-  layout?: "embedded" | "full";
-};
-
-type ApiEnvelope<T> =
-  | { ok: true; data: T }
-  | { ok: false; error?: { code?: string; message?: string; details?: { retry_after_seconds?: number; next_allowed_at?: string } } };
-
-type RealtimeEvent = {
-  id: string;
-  event_type: string;
-  payload: Record<string, unknown>;
-};
-
-type PendingAttachment = {
-  localId: string;
-  file: File;
-  previewUrl?: string;
-  attachment?: ChatAttachment;
-  state: "uploading" | "ready" | "failed";
-  progress: number;
-  error?: string;
-};
-
-type MediaPage = { attachments: ChatAttachment[]; page_info: { has_more: boolean; next_before: string | null } };
-
-type ChatProfileUser = {
-  user_id: string;
-  label: string;
-  username?: string | null;
-  is_online?: boolean;
-};
-
-const chatImageMimeTypes = ["image/jpeg", "image/png", "image/webp"] as const;
-const chatDocumentMimeTypes = [
-  "application/pdf",
-  "application/msword",
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-  "application/vnd.oasis.opendocument.text",
-  "text/plain"
-] as const;
-const chatImageExtensions = [".jpg", ".jpeg", ".png", ".webp"] as const;
-const chatDocumentExtensions = [".pdf", ".doc", ".docx", ".odt", ".txt"] as const;
-const acceptedChatDocuments = ".pdf,.doc,.docx,.odt,.txt,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.oasis.opendocument.text,text/plain";
-const chatMessageMaxLength = 5000;
-const composerMinHeightPx = 44;
-const composerMaxHeightPx = 128;
-const chatLoadedImageStoragePrefix = "skillsroom-chat-image-opened:";
-
-function loadedImageStorageKey(attachmentId: string) {
-  return `${chatLoadedImageStoragePrefix}${attachmentId}`;
-}
-
-function hasLoadedImageBefore(attachmentId: string) {
-  if (typeof window === "undefined") return false;
-  try {
-    return window.localStorage.getItem(loadedImageStorageKey(attachmentId)) === "1";
-  } catch {
-    return false;
-  }
-}
-
-function rememberLoadedImage(attachmentId: string) {
-  if (typeof window === "undefined") return;
-  try {
-    window.localStorage.setItem(loadedImageStorageKey(attachmentId), "1");
-  } catch {
-    // Ignore storage errors; chat still works without persistence.
-  }
-}
-
-function isChatImageMime(mimeType: string | null | undefined) {
-  return chatImageMimeTypes.includes(mimeType as (typeof chatImageMimeTypes)[number]);
-}
-
-function isChatDocumentMime(mimeType: string | null | undefined) {
-  return chatDocumentMimeTypes.includes(mimeType as (typeof chatDocumentMimeTypes)[number]);
-}
-
-function fileExtension(fileName: string | null | undefined) {
-  const normalized = fileName?.trim().toLowerCase() ?? "";
-  const lastDot = normalized.lastIndexOf(".");
-  return lastDot >= 0 ? normalized.slice(lastDot) : "";
-}
-
-function chatAttachmentKind(file: File): "image" | "document" | null {
-  if (isChatImageMime(file.type)) return "image";
-  if (isChatDocumentMime(file.type)) return "document";
-  const extension = fileExtension(file.name);
-  if (chatImageExtensions.includes(extension as (typeof chatImageExtensions)[number])) return "image";
-  if (chatDocumentExtensions.includes(extension as (typeof chatDocumentExtensions)[number])) return "document";
-  return null;
-}
-
-function formatAttachmentSize(bytes: number | null | undefined) {
-  if (!bytes || bytes < 1) return "";
-  if (bytes >= 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(bytes >= 10 * 1024 * 1024 ? 0 : 1)} MB`;
-  return `${Math.max(1, Math.round(bytes / 1024))} KB`;
-}
-
-function documentBadge(mimeType: string | null | undefined) {
-  if (mimeType === "application/pdf") return "PDF";
-  if (mimeType === "text/plain") return "TXT";
-  if (mimeType === "application/vnd.oasis.opendocument.text") return "ODT";
-  if (mimeType === "application/msword" || mimeType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") return "DOC";
-  return "FILE";
-}
-
-function attachmentPreviewLabel(attachment: ChatAttachment) {
-  if (attachment.original_name?.trim()) return attachment.original_name.trim();
-  return attachment.attachment_type === "document" ? "Document" : "Photo";
-}
-
-function ChatImage({ attachment, autoLoad, channelSlug, className, onOpen }: { attachment: ChatAttachment; autoLoad?: boolean; channelSlug: string; className?: string; onOpen?: (url: string) => void }) {
-  const [url, setUrl] = useState(attachment.client_preview_url ?? "");
-  const [failed, setFailed] = useState(false);
-  const [loadRequested, setLoadRequested] = useState(() =>
-    Boolean(autoLoad || attachment.client_preview_url || hasLoadedImageBefore(attachment.id))
-  );
-
-  useEffect(() => {
-    if (autoLoad && !loadRequested) setLoadRequested(true);
-  }, [autoLoad, loadRequested]);
-
-  useEffect(() => {
-    if (hasLoadedImageBefore(attachment.id) && !loadRequested) setLoadRequested(true);
-  }, [attachment.id, loadRequested]);
-
-  useEffect(() => {
-    if (attachment.client_preview_url) setUrl(attachment.client_preview_url);
-  }, [attachment.client_preview_url]);
-
-  useEffect(() => {
-    if (!url || failed) return;
-    rememberLoadedImage(attachment.id);
-  }, [attachment.id, failed, url]);
-
-  useEffect(() => {
-    if (!loadRequested || attachment.client_preview_url || attachment.status !== "attached") return;
-    let active = true;
-    setFailed(false);
-    fetch(`/api/community/channels/${encodeURIComponent(channelSlug)}/attachments/${encodeURIComponent(attachment.id)}/url`, { headers: { accept: "application/json" }, cache: "no-store" })
-      .then(async (response) => {
-        const payload = await response.json() as ApiEnvelope<{ url: string }>;
-        if (!response.ok || payload.ok !== true) throw new Error("Image unavailable.");
-        if (active) {
-          setUrl(payload.data.url);
-          rememberLoadedImage(attachment.id);
-        }
-      })
-      .catch(() => { if (active) setFailed(true); });
-    return () => { active = false; };
-  }, [attachment.client_preview_url, attachment.id, attachment.status, channelSlug, loadRequested]);
-
-  if (attachment.status === "hidden" || attachment.status === "deleted") {
-    return <div className={["grid min-h-28 place-items-center rounded-md border border-dashed border-white/15 bg-black/10 p-4 text-center text-xs font-bold text-slate-400", className].filter(Boolean).join(" ")}>Image removed by moderation.</div>;
-  }
-  if (failed) return <button className={["grid min-h-28 place-items-center rounded-md bg-black/15 p-4 text-xs font-black text-slate-300", className].filter(Boolean).join(" ")} onClick={() => { setFailed(false); setLoadRequested(false); window.requestAnimationFrame(() => setLoadRequested(true)); }} type="button">Image unavailable. Tap to retry.</button>;
-  if (!loadRequested) return <button aria-label={`Load image from ${attachment.uploader_label}`} className={["grid place-items-center rounded-md border border-white/10 bg-black/20 p-4 text-center text-slate-200", className].filter(Boolean).join(" ")} onClick={() => setLoadRequested(true)} type="button"><span className="grid gap-2"><span aria-hidden="true" className="text-2xl">&#8595;</span><span className="text-xs font-black">Load image</span><span className="text-[0.68rem] font-bold text-slate-400">{Math.max(1, Math.round(attachment.byte_size / 1024))} KB</span></span></button>;
-  if (!url) return <div className={["grid animate-pulse place-items-center rounded-md bg-black/15 text-xs font-bold text-slate-400", className].filter(Boolean).join(" ")} aria-label="Loading image">Loading image...</div>;
-  return <button aria-label={`Open image from ${attachment.uploader_label}`} className={["grid h-full min-w-0 place-items-center overflow-hidden rounded-md bg-black/20", className].filter(Boolean).join(" ")} onClick={() => onOpen?.(url)} type="button"><img alt={attachment.alt_text ?? attachment.original_name ?? "Chat image"} className="h-full max-h-full w-full object-contain" loading="lazy" src={url} /></button>;
-}
-
-function ChatAttachmentTile({ attachment, autoLoadImage, channelSlug, className, onOpenImage }: { attachment: ChatAttachment; autoLoadImage?: boolean; channelSlug: string; className?: string; onOpenImage?: (url: string) => void }) {
-  const [isOpening, setIsOpening] = useState(false);
-  const [failed, setFailed] = useState(false);
-
-  if (attachment.attachment_type === "image") {
-    return <ChatImage attachment={attachment} autoLoad={autoLoadImage} channelSlug={channelSlug} className={className} onOpen={onOpenImage} />;
-  }
-
-  const unavailable = attachment.status === "hidden" || attachment.status === "deleted" || attachment.status === "failed";
-
-  async function openDocument() {
-    if (unavailable || isOpening) return;
-    setIsOpening(true);
-    setFailed(false);
-    try {
-      const response = await fetch(`/api/community/channels/${encodeURIComponent(channelSlug)}/attachments/${encodeURIComponent(attachment.id)}/url`, { headers: { accept: "application/json" }, cache: "no-store" });
-      const payload = await response.json() as ApiEnvelope<{ url: string }>;
-      if (!response.ok || payload.ok !== true) throw new Error(payload.ok === false ? payload.error?.message ?? "Document unavailable." : "Document unavailable.");
-      window.open(payload.data.url, "_blank", "noopener,noreferrer");
-    } catch {
-      setFailed(true);
-    } finally {
-      setIsOpening(false);
-    }
-  }
-
-  return (
-    <button
-      aria-label={`Open ${attachmentPreviewLabel(attachment)}`}
-      className={["flex min-h-24 min-w-0 items-center gap-3 rounded-md border border-white/10 bg-black/15 p-3 text-left hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60", className].filter(Boolean).join(" ")}
-      disabled={unavailable || isOpening}
-      onClick={() => void openDocument()}
-      type="button"
-    >
-      <span className="grid h-12 w-12 shrink-0 place-items-center rounded-md bg-sky-400/15 font-mono text-xs font-black text-sky-200">{documentBadge(attachment.mime_type)}</span>
-      <span className="min-w-0">
-        <span className="block truncate text-sm font-black text-white">{attachmentPreviewLabel(attachment)}</span>
-        <span className="mt-1 block text-xs font-bold text-slate-400">
-          {unavailable ? "Attachment unavailable" : failed ? "Could not open. Tap to retry." : isOpening ? "Opening..." : `Open file${formatAttachmentSize(attachment.byte_size) ? ` · ${formatAttachmentSize(attachment.byte_size)}` : ""}`}
-        </span>
-      </span>
-    </button>
-  );
-}
-
-function messageTime(value: string) {
-  return new Date(value).toLocaleTimeString("en-NG", { hour: "2-digit", minute: "2-digit" });
-}
-
-function messageDate(value: string) {
-  return new Date(value).toLocaleDateString("en-NG", { month: "short", day: "numeric" });
-}
-
-function pinExpiryLabel(value: string | null) {
-  if (!value) return "Pinned until removed";
-  return `Until ${new Date(value).toLocaleString("en-NG", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}`;
-}
-
-function initials(value: string) {
-  return value
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part.charAt(0).toUpperCase())
-    .join("") || "SR";
-}
-
-type ChatChannelDisplay = Pick<ChatChannel, "slug" | "title" | "channel_type" | "dm_peer_label" | "dm_peer_display_name" | "dm_peer_username">;
-
-function channelDisplayName(channel: ChatChannelDisplay) {
-  if (channel.slug === "global_lobby") return "Global Chat";
-  if (channel.channel_type === "dm") {
-    return channel.dm_peer_label ?? channel.dm_peer_display_name ?? channel.dm_peer_username ?? "DM";
-  }
-  return channel.title;
-}
-
-function channelInitials(channel: ChatChannelDisplay) {
-  if (channel.slug === "global_lobby") return "GC";
-  const words = channelDisplayName(channel)
-    .replace(/[^A-Za-z0-9 ]+/g, " ")
-    .split(/\s+/)
-    .filter((word) => word && !["of", "the", "and"].includes(word.toLowerCase()));
-  if (words.length === 1) return words[0].slice(0, 3).toUpperCase();
-  return words.slice(0, 4).map((word) => word.charAt(0)).join("").toUpperCase() || "CH";
-}
-
-function channelTypeLabel(channel: ChatChannel) {
-  if (channel.slug === "global_lobby") return "Chat";
-  if (channel.channel_type === "match_room") return "Room";
-  if (channel.channel_type === "tournament") return "Tournament";
-  if (channel.channel_type === "game") return "Game";
-  if (channel.channel_type === "group") return "Community";
-  if (channel.channel_type === "dm") return "DM";
-  return "Channel";
-}
-
-function channelTitle(channel: ChatChannelDisplay) {
-  return channelDisplayName(channel);
-}
-
-function channelPreview(channel: ChatChannel) {
-  if (channel.last_message_body) {
-    return `${channel.last_message_sender_label ?? "Player"}: ${channel.last_message_body}`;
-  }
-  if (channel.channel_type === "dm") {
-    return channel.dm_peer_username ? `@${channel.dm_peer_username}` : "DM";
-  }
-  return channel.description ?? `${channelTypeLabel(channel)} channel`;
-}
-
-function pendingMessage(channelId: string, userId: string, body: string, clientMessageId: string, replyTo: ChatMessage | null, attachments: ChatAttachment[]): ChatMessage {
-  const now = new Date().toISOString();
-  return {
-    id: clientMessageId,
-    channel_id: channelId,
-    sender_user_id: userId,
-    message_kind: "user",
-    status: "visible",
-    body,
-    client_message_id: clientMessageId,
-    reply_to_message_id: replyTo?.id ?? null,
-    reply_to_body: replyTo?.body ?? null,
-    reply_to_sender_user_id: replyTo?.sender_user_id ?? null,
-    reply_to_sender_label: replyTo?.sender_label ?? null,
-    mentions: [],
-    link_preview: {},
-    reactions: [],
-    bookmarked_by_me: false,
-    thread_reply_count: 0,
-    poll: null,
-    attachments,
-    pinned_at: null,
-    pinned_by_user_id: null,
-    hidden_by_user_id: null,
-    hidden_at: null,
-    deleted_by_user_id: null,
-    deleted_at: null,
-    edited_at: null,
-    edit_count: 0,
-    editable_until: new Date(Date.now() + 15 * 60_000).toISOString(),
-    created_at: now,
-    updated_at: now,
-    sender_label: "You",
-    client_delivery_state: "sending"
-  };
-}
-
-function preserveLocalAttachmentPreviews(next: ChatMessage, previous?: ChatMessage) {
-  if (!previous?.attachments?.length || !next.attachments?.length) return next;
-
-  const previewByAttachmentId = new Map(
-    previous.attachments
-      .filter((attachment) => attachment.client_preview_url)
-      .map((attachment) => [attachment.id, attachment.client_preview_url])
-  );
-  if (!previewByAttachmentId.size) return next;
-
-  return {
-    ...next,
-    attachments: next.attachments.map((attachment, index) => {
-      if (attachment.client_preview_url) return attachment;
-
-      const previewById = previewByAttachmentId.get(attachment.id);
-      if (previewById) {
-        return { ...attachment, client_preview_url: previewById };
-      }
-
-      const previousAttachment = previous.attachments?.[index];
-      if (
-        previousAttachment?.client_preview_url &&
-        previousAttachment.attachment_type === attachment.attachment_type
-      ) {
-        return { ...attachment, client_preview_url: previousAttachment.client_preview_url };
-      }
-
-      return attachment;
-    })
-  };
-}
-
-function mergeMessage(current: ChatMessage[], next: ChatMessage) {
-  const previous = current.find((item) => (
-    item.id === next.id ||
-    Boolean(next.client_message_id && item.client_message_id === next.client_message_id)
-  ));
-  const mergedNext = preserveLocalAttachmentPreviews(next, previous);
-  const withoutDuplicate = current.filter((item) => (
-    item.id !== mergedNext.id &&
-    (!mergedNext.client_message_id || item.client_message_id !== mergedNext.client_message_id)
-  ));
-  return [...withoutDuplicate, mergedNext]
-    .sort((left, right) => Date.parse(left.created_at) - Date.parse(right.created_at))
-    .slice(-120);
-}
-
-function isChatMessage(value: unknown): value is ChatMessage {
-  return typeof value === "object" && value !== null && "id" in value && "body" in value && "channel_id" in value;
-}
-
-function renderMessageBody(body: string) {
-  return body.split(/(@[A-Za-z0-9_]{3,24})/g).map((part, index) => (
-    /^@[A-Za-z0-9_]{3,24}$/.test(part)
-      ? <span className="font-black text-cyan" key={`${part}-${index}`}>{part}</span>
-      : <span key={`${part}-${index}`}>{part}</span>
-  ));
-}
-
-function displayHandle(message: Pick<ChatMessage, "sender_username" | "sender_label">) {
-  return message.sender_username ? `@${message.sender_username}` : message.sender_label;
-}
+import { ChannelListPanel } from "./ChannelListPanel";
+import { ChatActionModals } from "./ChatActionModals";
+import { ChatComposer, type EmojiGroupKey } from "./ChatComposer";
+import { ChatImageViewer } from "./ChatImageViewer";
+import { ChatInfoPanel, type ChatInfoTab } from "./ChatInfoPanel";
+import { ChatProfileModal } from "./ChatProfileModal";
+import { ChatSearchPanel } from "./ChatSearchPanel";
+import { ChatSideRail } from "./ChatSideRail";
+import { ChatThreadPanel } from "./ChatThreadPanel";
+import { ChatVirtualThread } from "./ChatVirtualThread";
+import { useStableCallback } from "./chat-hooks";
+import { useChatStore } from "./chat-store";
+import {
+  channelInitials,
+  channelTitle,
+  chatAttachmentKind,
+  chatMessageMaxLength,
+  composerMaxHeightPx,
+  composerMinHeightPx,
+  formatAttachmentSize,
+  isChatMessage,
+  mergeMessage,
+  messageHasDetail,
+  pendingMessage,
+  preserveLocalAttachmentPreviews
+} from "./chat-state";
+import type { ApiEnvelope, ChatProfileUser, GlobalLobbyClientProps, MediaPage, PendingAttachment, RealtimeEvent } from "./chat-types";
 
 function urlBase64ToUint8Array(value: string) {
   const padding = "=".repeat((4 - value.length % 4) % 4);
@@ -399,6 +40,8 @@ function urlBase64ToUint8Array(value: string) {
 const emptyMessages: ChatMessage[] = [];
 const emptyPinnedMessages: ChatPinnedMessage[] = [];
 const emptyPresence: ChatPresenceSummary = { online_count: 0, active: [], typing: [] };
+const readReceiptDebounceMs = 900;
+const typingRefreshMs = 8_000;
 const reactionOptions = [
   { key: "like", label: "👍" },
   { key: "gg", label: "GG" },
@@ -414,27 +57,47 @@ const reactionOptions = [
   { key: "game", label: "🎮" }
 ];
 
-const emojiGroups = [
-  { key: "recent", label: "Recent", emojis: ["😀", "😂", "😍", "😭", "😅", "🤔", "😎", "🥳", "😮", "😡", "🥹", "🤩", "😴", "🙃", "🫡", "🤝"] },
-  { key: "hands", label: "Hands", emojis: ["👍", "👎", "👏", "🙏", "💪", "✌️", "🤞", "👌", "🤟", "🤙", "👊", "🙌", "🫶", "👐", "👋", "☝️"] },
-  { key: "games", label: "Games", emojis: ["🔥", "🏆", "🎮", "💯", "⚽", "🏀", "🎯", "🎲", "♟️", "🥇", "🥈", "🥉", "🚀", "⚡", "💎", "👑"] },
-  { key: "hearts", label: "Hearts", emojis: ["❤️", "🩷", "🧡", "💛", "💚", "💙", "💜", "🖤", "🤍", "🤎", "💔", "💕", "💞", "💓", "💗", "💖"] }
-] as const;
+function documentIsVisible() {
+  return typeof document === "undefined" || document.visibilityState === "visible";
+}
+
+function mergeAttachmentsById(current: ChatAttachment[], next: ChatAttachment[]) {
+  const seen = new Set(current.map((attachment) => attachment.id));
+  return [...current, ...next.filter((attachment) => !seen.has(attachment.id))];
+}
+
+function threadRootId(message: Pick<ChatMessage, "id" | "thread_root_message_id">) {
+  return message.thread_root_message_id ?? message.id;
+}
+
 
 export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, initialChannel, initialMessages, initialPageInfo, initialPinnedMessages, initialPresence, initialReadBoundary, initialDmRequests, layout = "embedded" }: GlobalLobbyClientProps) {
-  const [channelList, setChannelList] = useState<ChatChannel[]>(channels);
+  const chatStore = useChatStore({
+    channels,
+    initialChannelSlug: initialChannel.slug,
+    initialMessages,
+    initialPresence
+  });
+  const {
+    channelList,
+    messagesByChannel,
+    presenceByChannel,
+    patchChannel,
+    patchChannelBySlug,
+    replaceChannelMessages,
+    upsertMessage,
+    updateMessage,
+    patchMessage,
+    filterChannelMessages,
+    setChannelPresence,
+    patchChannelPresence
+  } = chatStore;
   const [dmRequests, setDmRequests] = useState<ChatDmRequest[]>(initialDmRequests);
   const [dmUsername, setDmUsername] = useState("");
   const [dmIntro, setDmIntro] = useState("");
   const [activeChannel, setActiveChannel] = useState<ChatChannel>(initialChannel);
-  const [messagesByChannel, setMessagesByChannel] = useState<Record<string, ChatMessage[]>>({
-    [initialChannel.slug]: initialMessages
-  });
   const [pinnedByChannel, setPinnedByChannel] = useState<Record<string, ChatPinnedMessage[]>>({
     [initialChannel.slug]: initialPinnedMessages
-  });
-  const [presenceByChannel, setPresenceByChannel] = useState<Record<string, ChatPresenceSummary>>({
-    [initialChannel.slug]: initialPresence
   });
   const [pageInfoByChannel, setPageInfoByChannel] = useState<Record<string, ChatMessagePageInfo>>({
     [initialChannel.slug]: initialPageInfo
@@ -457,14 +120,14 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
   const [notice, setNotice] = useState<string | null>(null);
   const [streamStatus, setStreamStatus] = useState<"starting" | "live" | "reconnecting">("starting");
   const [showChannelInfo, setShowChannelInfo] = useState(false);
-  const [infoTab, setInfoTab] = useState<"members" | "messages" | "channels" | "media" | "pins" | "settings">("members");
+  const [infoTab, setInfoTab] = useState<ChatInfoTab>("members");
   const [mediaByChannel, setMediaByChannel] = useState<Record<string, MediaPage>>({});
   const [isLoadingMedia, setIsLoadingMedia] = useState(false);
   const [mediaError, setMediaError] = useState<string | null>(null);
   const [pendingAttachments, setPendingAttachments] = useState<PendingAttachment[]>([]);
   const [showAttachmentMenu, setShowAttachmentMenu] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
-  const [emojiGroup, setEmojiGroup] = useState<(typeof emojiGroups)[number]["key"]>("recent");
+  const [emojiGroup, setEmojiGroup] = useState<EmojiGroupKey>("recent");
   const [viewer, setViewer] = useState<{ attachment: ChatAttachment; url: string } | null>(null);
   const [pinTarget, setPinTarget] = useState<ChatMessage | null>(null);
   const [pinDurationHours, setPinDurationHours] = useState<24 | 168 | 720>(168);
@@ -488,12 +151,15 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
   const [isSearching, setIsSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
   const [pendingJumpMessageId, setPendingJumpMessageId] = useState<string | null>(null);
+  const [jumpLatestToken, setJumpLatestToken] = useState(0);
   const [isContextView, setIsContextView] = useState(false);
   const [remoteMentionUsers, setRemoteMentionUsers] = useState<Array<{ user_id: string; label: string; username?: string | null; is_online?: boolean }>>([]);
   const [threadTarget, setThreadTarget] = useState<ChatMessage | null>(null);
   const [threadMessages, setThreadMessages] = useState<ChatMessage[]>([]);
+  const [threadPageInfo, setThreadPageInfo] = useState<ChatMessagePageInfo>({ has_older: false, older_cursor: null });
   const [threadBody, setThreadBody] = useState("");
   const [isLoadingThread, setIsLoadingThread] = useState(false);
+  const [isLoadingOlderThread, setIsLoadingOlderThread] = useState(false);
   const [isSendingThread, setIsSendingThread] = useState(false);
   const [forwardTarget, setForwardTarget] = useState<ChatMessage | null>(null);
   const [forwardChannelSlug, setForwardChannelSlug] = useState("");
@@ -512,6 +178,7 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
   const [pollClosesAt, setPollClosesAt] = useState("");
   const [isCreatingPoll, setIsCreatingPoll] = useState(false);
   const [votingPollIds, setVotingPollIds] = useState<Set<string>>(new Set());
+  const [hydratingMessageIds, setHydratingMessageIds] = useState<Set<string>>(new Set());
   const [profileUser, setProfileUser] = useState<ChatProfileUser | null>(null);
   const [profileDmIntro, setProfileDmIntro] = useState("");
   const [isRequestingProfileDm, setIsRequestingProfileDm] = useState(false);
@@ -537,7 +204,6 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
   const [unblockingIds, setUnblockingIds] = useState<Set<string>>(new Set());
   const [cooldownUntil, setCooldownUntil] = useState<string | null>(null);
   const [cooldownClock, setCooldownClock] = useState(() => Date.now());
-  const messageViewportRef = useRef<HTMLDivElement | null>(null);
   const composerRef = useRef<HTMLTextAreaElement | null>(null);
   const imageInputRef = useRef<HTMLInputElement | null>(null);
   const documentInputRef = useRef<HTMLInputElement | null>(null);
@@ -547,26 +213,49 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
   const emojiPickerRef = useRef<HTMLDivElement | null>(null);
   const uploadRequestsRef = useRef<Map<string, XMLHttpRequest>>(new Map());
   const longPressTimerRef = useRef<number | null>(null);
+  const activeChannelRef = useRef(activeChannel);
+  const channelListRef = useRef(channelList);
   const seenIdsRef = useRef<Set<string>>(new Set(initialMessages.map((message) => message.id)));
   const messagesByChannelRef = useRef(messagesByChannel);
+  const presenceByChannelRef = useRef(presenceByChannel);
+  const hydratedMessagesRef = useRef<Map<string, ChatMessage>>(new Map(initialMessages.map((message) => [message.id, message])));
   const shouldStickLatestRef = useRef(true);
+  const threadTargetRef = useRef<ChatMessage | null>(null);
   const initialLinkHandledRef = useRef(false);
   const backgroundAuthPauseUntilRef = useRef(0);
+  const backgroundQuietUntilRef = useRef(Date.now() + 3000);
+  const bodyRef = useRef(body);
+  const readReceiptTimerRef = useRef<number | null>(null);
+  const pendingReadReceiptRef = useRef<{ channel: ChatChannel; messageId: string | null; createdAt: string | null } | null>(null);
+  const lastReadReceiptSentRef = useRef<Record<string, string | null>>({});
+  const typingRefreshTimerRef = useRef<number | null>(null);
+  const typingStateRef = useRef<{ channelSlug: string | null; isTyping: boolean }>({ channelSlug: null, isTyping: false });
+  const searchAbortRef = useRef<AbortController | null>(null);
+  const searchCacheRef = useRef<Map<string, { messages: ChatMessage[]; pageInfo: ChatSearchPageInfo }>>(new Map());
+  const threadCacheRef = useRef<Map<string, { rootMessageId: string; messages: ChatMessage[]; pageInfo: ChatMessagePageInfo }>>(new Map());
 
   const messages = messagesByChannel[activeChannel.slug] ?? emptyMessages;
   const pageInfo = pageInfoByChannel[activeChannel.slug] ?? { has_older: false, older_cursor: null };
   const readBoundary = readBoundaryByChannel[activeChannel.slug] ?? null;
-  const unreadMessageId = readBoundary
-    ? messages.find((message) => message.sender_user_id !== currentUserId && Date.parse(message.created_at) > Date.parse(readBoundary))?.id ?? null
-    : (activeChannel.unread_count ?? 0) > 0
+  const unreadMessageId = useMemo(() => {
+    if (readBoundary) {
+      return messages.find((message) => message.sender_user_id !== currentUserId && Date.parse(message.created_at) > Date.parse(readBoundary))?.id ?? null;
+    }
+    return (activeChannel.unread_count ?? 0) > 0
       ? messages.find((message) => message.sender_user_id !== currentUserId)?.id ?? null
       : null;
-  const pinnedMessages = (pinnedByChannel[activeChannel.slug] ?? emptyPinnedMessages)
-    .filter((pin) => !pin.expires_at || Date.parse(pin.expires_at) > pinClock);
+  }, [activeChannel.unread_count, currentUserId, messages, readBoundary]);
+  const rawPinnedMessages = pinnedByChannel[activeChannel.slug] ?? emptyPinnedMessages;
+  const pinnedMessages = useMemo(
+    () => rawPinnedMessages.filter((pin) => !pin.expires_at || Date.parse(pin.expires_at) > pinClock),
+    [pinClock, rawPinnedMessages]
+  );
+  const pinnedMessageIds = useMemo(() => new Set(pinnedMessages.map((pin) => pin.message_id)), [pinnedMessages]);
   const bannerPinnedMessages = pinnedMessages.slice(0, 3);
   const pinBannerIndex = Math.min(pinBannerIndexByChannel[activeChannel.slug] ?? 0, Math.max(0, bannerPinnedMessages.length - 1));
   const currentPinnedMessage = bannerPinnedMessages[pinBannerIndex] ?? null;
   const presence = presenceByChannel[activeChannel.slug] ?? emptyPresence;
+  const activePresenceByUserId = useMemo(() => new Map(presence.active.map((user) => [user.user_id, user])), [presence.active]);
   const charactersLeft = chatMessageMaxLength - body.length;
   const readyAttachments = pendingAttachments.filter((attachment) => attachment.state === "ready" && attachment.attachment);
   const uploadInProgress = pendingAttachments.some((attachment) => attachment.state === "uploading");
@@ -634,7 +323,6 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
     .filter((user) => user.username && user.user_id !== currentUserId && user.username.toLowerCase().startsWith(mentionFragment))
     .map((user) => [user.user_id, user])).values()).slice(0, 8);
   const isChatAdmin = ["admin", "owner"].includes(currentUserRole);
-  const activeEmojiGroup = emojiGroups.find((group) => group.key === emojiGroup) ?? emojiGroups[0];
   const profileIsSelf = profileUser?.user_id === currentUserId;
   const composerPlaceholder = "Message";
 
@@ -648,8 +336,13 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
     setBody((current) => current.replace(/(^|\s)@([A-Za-z0-9_]{0,24})$/, `$1@${username} `));
   }
 
+  const suppressBackgroundChat = useCallback((durationMs = 3500) => {
+    backgroundQuietUntilRef.current = Math.max(backgroundQuietUntilRef.current, Date.now() + durationMs);
+  }, []);
+
   const backgroundChatRequest = useCallback(async (input: string, init: RequestInit) => {
     if (Date.now() < backgroundAuthPauseUntilRef.current) return null;
+    if (Date.now() < backgroundQuietUntilRef.current) return null;
     const response = await fetch(input, {
       ...init,
       credentials: "same-origin"
@@ -669,7 +362,7 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
 
   function openMessageUserProfile(message: ChatMessage) {
     if (!message.sender_user_id || message.message_kind === "system") return;
-    const activeUser = presence.active.find((user) => user.user_id === message.sender_user_id);
+    const activeUser = activePresenceByUserId.get(message.sender_user_id);
     openUserProfile({
       user_id: message.sender_user_id,
       label: activeUser?.label ?? message.sender_label,
@@ -696,11 +389,18 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
     }
   }
 
+  function openMessageActions(message: ChatMessage) {
+    setActionMessage(message);
+    if (!messageHasDetail(message, "all")) {
+      void hydrateMessage(message.id, "all");
+    }
+  }
+
   function beginLongPress(message: ChatMessage, target: EventTarget | null) {
     if (target instanceof Element && target.closest("button, a, input, textarea")) return;
     clearLongPress();
     longPressTimerRef.current = window.setTimeout(() => {
-      setActionMessage(message);
+      openMessageActions(message);
       longPressTimerRef.current = null;
     }, 550);
   }
@@ -730,42 +430,6 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
     setPinBannerIndexByChannel((current) => ({ ...current, [activeChannel.slug]: nextIndex }));
     openPinnedMessage(currentPinnedMessage.message_id);
   }
-
-  useEffect(() => {
-    const viewport = messageViewportRef.current;
-    if (!viewport) return;
-    let retryTimer: number | null = null;
-    let retryCount = 0;
-    const centerLinkedMessage = () => {
-      const linkedMessageId = pendingJumpMessageId;
-      const linkedMessage = linkedMessageId ? document.getElementById(`chat-message-${linkedMessageId}`) : null;
-      if (linkedMessage) {
-        const viewportRect = viewport.getBoundingClientRect();
-        const messageRect = linkedMessage.getBoundingClientRect();
-        const nextTop = viewport.scrollTop + messageRect.top - viewportRect.top - Math.max(0, (viewport.clientHeight - messageRect.height) / 2);
-        viewport.scrollTo({ top: Math.max(0, nextTop), behavior: "smooth" });
-        linkedMessage.animate(
-          [{ outlineColor: "rgba(56, 189, 248, 0.9)" }, { outlineColor: "rgba(56, 189, 248, 0)" }],
-          { duration: 1800, easing: "ease-out" }
-        );
-        if (pendingJumpMessageId) setPendingJumpMessageId(null);
-      } else if (linkedMessageId) {
-        retryCount += 1;
-        if (retryCount <= 8) retryTimer = window.setTimeout(centerLinkedMessage, 120);
-        else {
-          setPendingJumpMessageId(null);
-          setError("That pinned message could not be positioned. Please open it again.");
-        }
-      } else if (shouldStickLatestRef.current) {
-        viewport.scrollTop = viewport.scrollHeight;
-      }
-    };
-    const frame = window.requestAnimationFrame(centerLinkedMessage);
-    return () => {
-      window.cancelAnimationFrame(frame);
-      if (retryTimer !== null) window.clearTimeout(retryTimer);
-    };
-  }, [activeChannel.slug, messages.length, pendingJumpMessageId]);
 
   useEffect(() => {
     const saved = window.localStorage.getItem(`skillsroom:chat-draft:${currentUserId}:${activeChannel.slug}`) ?? "";
@@ -876,8 +540,22 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
   }, [activeChannel.lockdown_until, cooldownUntil]);
 
   useEffect(() => {
+    bodyRef.current = body;
+  }, [body]);
+
+  useEffect(() => {
+    activeChannelRef.current = activeChannel;
+    channelListRef.current = channelList;
     messagesByChannelRef.current = messagesByChannel;
-  }, [messagesByChannel]);
+    presenceByChannelRef.current = presenceByChannel;
+    threadTargetRef.current = threadTarget;
+    for (const channelMessages of Object.values(messagesByChannel)) {
+      for (const message of channelMessages) {
+        const cached = hydratedMessagesRef.current.get(message.id);
+        hydratedMessagesRef.current.set(message.id, cached ? preserveLocalAttachmentPreviews({ ...cached, ...message }, cached) : message);
+      }
+    }
+  }, [activeChannel, channelList, messagesByChannel, presenceByChannel, threadTarget]);
 
   useEffect(() => {
     if (initialLinkHandledRef.current) return;
@@ -893,16 +571,48 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeChannel.slug, backgroundChatRequest]);
 
-  const markRead = useCallback(async (channel: ChatChannel, nextMessages: ChatMessage[]) => {
-    const lastMessage = nextMessages.at(-1);
-    await backgroundChatRequest(`/api/community/channels/${encodeURIComponent(channel.slug)}/read`, {
+  const flushReadReceipt = useCallback(() => {
+    const pending = pendingReadReceiptRef.current;
+    pendingReadReceiptRef.current = null;
+    if (!pending) return;
+    if (!documentIsVisible()) return;
+    if (activeChannelRef.current.slug !== pending.channel.slug) return;
+    if (!shouldStickLatestRef.current) return;
+    if (lastReadReceiptSentRef.current[pending.channel.slug] === pending.messageId) return;
+
+    lastReadReceiptSentRef.current[pending.channel.slug] = pending.messageId;
+    if (pending.createdAt) {
+      setReadBoundaryByChannel((current) => ({ ...current, [pending.channel.slug]: pending.createdAt }));
+    }
+    patchChannelBySlug(pending.channel.slug, { unread_count: 0 });
+    void backgroundChatRequest(`/api/community/channels/${encodeURIComponent(pending.channel.slug)}/read`, {
       method: "POST",
       headers: { "content-type": "application/json", accept: "application/json" },
-      body: JSON.stringify({ message_id: lastMessage?.id })
-    }).catch(() => undefined);
-  }, [backgroundChatRequest]);
+      body: JSON.stringify({ message_id: pending.messageId })
+    }).catch(() => {
+      delete lastReadReceiptSentRef.current[pending.channel.slug];
+    });
+  }, [backgroundChatRequest, patchChannelBySlug]);
+
+  const markRead = useCallback((channel: ChatChannel, nextMessages: ChatMessage[]) => {
+    const lastMessage = nextMessages.at(-1);
+    if (!lastMessage) return;
+    if (!documentIsVisible()) return;
+    if (activeChannelRef.current.slug !== channel.slug) return;
+    if (!shouldStickLatestRef.current) return;
+    if (lastReadReceiptSentRef.current[channel.slug] === lastMessage.id) return;
+    if (pendingReadReceiptRef.current?.channel.slug === channel.slug && pendingReadReceiptRef.current.messageId === lastMessage.id) return;
+
+    pendingReadReceiptRef.current = { channel, messageId: lastMessage.id, createdAt: lastMessage.created_at };
+    if (readReceiptTimerRef.current !== null) window.clearTimeout(readReceiptTimerRef.current);
+    readReceiptTimerRef.current = window.setTimeout(() => {
+      readReceiptTimerRef.current = null;
+      flushReadReceipt();
+    }, readReceiptDebounceMs);
+  }, [flushReadReceipt]);
 
   async function openChannel(channel: ChatChannel) {
+    suppressBackgroundChat(4500);
     shouldStickLatestRef.current = true;
     setIsContextView(false);
     setActiveChannel(channel);
@@ -914,12 +624,12 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
     nextUrl.searchParams.set("channel", channel.slug);
     nextUrl.searchParams.delete("message");
     window.history.replaceState({}, "", nextUrl);
-    setChannelList((current) => current.map((item) => item.id === channel.id ? { ...item, unread_count: 0 } : item));
+    patchChannelBySlug(channel.slug, { unread_count: 0 });
     if (messagesByChannel[channel.slug]) return;
 
     setIsLoadingChannel(true);
     try {
-      const response = await fetch(`/api/community/channels/${encodeURIComponent(channel.slug)}/messages?limit=60`, {
+      const response = await fetch(`/api/community/channels/${encodeURIComponent(channel.slug)}/messages?limit=60&view=list`, {
         headers: { accept: "application/json" },
         cache: "no-store"
       });
@@ -929,13 +639,13 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
       }
       payload.data.messages.forEach((message) => seenIdsRef.current.add(message.id));
       setActiveChannel(payload.data.channel);
-      setMessagesByChannel((current) => ({ ...current, [payload.data.channel.slug]: payload.data.messages }));
+      replaceChannelMessages(payload.data.channel.slug, payload.data.messages);
       setPinnedByChannel((current) => ({ ...current, [payload.data.channel.slug]: payload.data.pinned_messages }));
-      setPresenceByChannel((current) => ({ ...current, [payload.data.channel.slug]: payload.data.presence }));
+      setChannelPresence(payload.data.channel.slug, payload.data.presence);
       setPageInfoByChannel((current) => ({ ...current, [payload.data.channel.slug]: payload.data.page_info }));
       setReadBoundaryByChannel((current) => ({ ...current, [payload.data.channel.slug]: payload.data.read_boundary }));
-      setChannelList((current) => current.map((item) => item.id === payload.data.channel.id ? { ...payload.data.channel, unread_count: 0 } : item));
-      await markRead(payload.data.channel, payload.data.messages);
+      patchChannel({ ...payload.data.channel, unread_count: 0 });
+      markRead(payload.data.channel, payload.data.messages);
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : "Channel could not load.");
     } finally {
@@ -1010,10 +720,74 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
     window.location.assign("/");
   }
 
+  function replaceThreadCache(rootMessageId: string, nextMessages: ChatMessage[], pageInfo: ChatMessagePageInfo = { has_older: false, older_cursor: null }) {
+    threadCacheRef.current.set(rootMessageId, { rootMessageId, messages: nextMessages, pageInfo });
+    const currentThreadRoot = threadTargetRef.current ? threadRootId(threadTargetRef.current) : null;
+    if (currentThreadRoot === rootMessageId) {
+      setThreadMessages(nextMessages);
+      setThreadPageInfo(pageInfo);
+    }
+  }
+
+  function patchThreadCacheMessage(message: ChatMessage) {
+    const messageRootId = threadRootId(message);
+    let updatedCurrentThread = false;
+    for (const [rootMessageId, cached] of threadCacheRef.current.entries()) {
+      const belongsToCachedThread = rootMessageId === messageRootId || cached.messages.some((item) => item.id === message.id);
+      if (!belongsToCachedThread) continue;
+      const nextMessages = mergeMessage(cached.messages, message);
+      threadCacheRef.current.set(rootMessageId, { ...cached, messages: nextMessages });
+      if (threadTargetRef.current && threadRootId(threadTargetRef.current) === rootMessageId) {
+        setThreadMessages(nextMessages);
+        updatedCurrentThread = true;
+      }
+    }
+    if (!updatedCurrentThread && threadTargetRef.current && threadRootId(threadTargetRef.current) === messageRootId) {
+      setThreadMessages((current) => mergeMessage(current, message));
+    }
+  }
+
+  const postTypingState = useCallback((channelSlug: string, isTyping: boolean, allowWhenHidden = false) => {
+    if (!allowWhenHidden && !documentIsVisible()) return;
+    void backgroundChatRequest(`/api/community/channels/${encodeURIComponent(channelSlug)}/typing`, {
+      method: "POST",
+      headers: { "content-type": "application/json", accept: "application/json" },
+      body: JSON.stringify({ is_typing: isTyping })
+    }).catch(() => undefined);
+  }, [backgroundChatRequest]);
+
+  const clearTypingRefresh = useCallback(() => {
+    if (typingRefreshTimerRef.current === null) return;
+    window.clearTimeout(typingRefreshTimerRef.current);
+    typingRefreshTimerRef.current = null;
+  }, []);
+
+  const scheduleTypingRefresh = useCallback((channelSlug: string) => {
+    clearTypingRefresh();
+    typingRefreshTimerRef.current = window.setTimeout(() => {
+      typingRefreshTimerRef.current = null;
+      if (!documentIsVisible()) return;
+      if (!bodyRef.current.trim()) return;
+      if (activeChannelRef.current.slug !== channelSlug) return;
+      if (!typingStateRef.current.isTyping || typingStateRef.current.channelSlug !== channelSlug) return;
+      postTypingState(channelSlug, true);
+      scheduleTypingRefresh(channelSlug);
+    }, typingRefreshMs);
+  }, [clearTypingRefresh, postTypingState]);
+
+  const stopTyping = useCallback((channelSlug = typingStateRef.current.channelSlug, allowWhenHidden = true) => {
+    clearTypingRefresh();
+    if (!channelSlug) return;
+    if (!typingStateRef.current.isTyping || typingStateRef.current.channelSlug !== channelSlug) return;
+    typingStateRef.current = { channelSlug, isTyping: false };
+    postTypingState(channelSlug, false, allowWhenHidden);
+  }, [clearTypingRefresh, postTypingState]);
+
   useEffect(() => {
     let closed = false;
 
     async function beat() {
+      if (!documentIsVisible()) return;
       try {
         const response = await backgroundChatRequest(`/api/community/channels/${encodeURIComponent(activeChannel.slug)}/heartbeat`, {
           method: "POST",
@@ -1022,8 +796,8 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
         if (!response) return;
         const payload = (await response.json()) as ApiEnvelope<{ channel: ChatChannel; presence: ChatPresenceSummary }>;
         if (!closed && response.ok && payload.ok === true) {
-          setPresenceByChannel((current) => ({ ...current, [payload.data.channel.slug]: payload.data.presence }));
-          setChannelList((current) => current.map((item) => item.id === payload.data.channel.id ? { ...item, online_count: payload.data.presence.online_count } : item));
+          patchChannelPresence(payload.data.channel.slug, { online_count: payload.data.presence.online_count });
+          patchChannelBySlug(payload.data.channel.slug, { online_count: payload.data.presence.online_count });
         }
       } catch {
         // Presence is best-effort; messaging stays usable when a heartbeat misses.
@@ -1032,32 +806,74 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
 
     void beat();
     const timer = window.setInterval(beat, 25_000);
+    function handleVisibilityChange() {
+      if (documentIsVisible()) void beat();
+    }
+    document.addEventListener("visibilitychange", handleVisibilityChange);
     return () => {
       closed = true;
       window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, [activeChannel.slug, backgroundChatRequest]);
+  }, [activeChannel.slug, backgroundChatRequest, patchChannelBySlug, patchChannelPresence]);
 
   useEffect(() => {
-    if (!body.trim()) {
-      void backgroundChatRequest(`/api/community/channels/${encodeURIComponent(activeChannel.slug)}/typing`, {
-        method: "POST",
-        headers: { "content-type": "application/json", accept: "application/json" },
-        body: JSON.stringify({ is_typing: false })
-      }).catch(() => undefined);
+    const channelSlug = activeChannel.slug;
+    const hasBody = body.trim().length > 0;
+
+    if (!documentIsVisible()) {
+      if (typingStateRef.current.channelSlug === channelSlug) stopTyping(channelSlug);
       return;
     }
 
-    const timer = window.setTimeout(() => {
-      void backgroundChatRequest(`/api/community/channels/${encodeURIComponent(activeChannel.slug)}/typing`, {
-        method: "POST",
-        headers: { "content-type": "application/json", accept: "application/json" },
-        body: JSON.stringify({ is_typing: true })
-      }).catch(() => undefined);
-    }, 350);
+    if (!hasBody) {
+      stopTyping(channelSlug);
+      return;
+    }
 
-    return () => window.clearTimeout(timer);
-  }, [activeChannel.slug, backgroundChatRequest, body]);
+    if (typingStateRef.current.isTyping && typingStateRef.current.channelSlug === channelSlug) return;
+    if (typingStateRef.current.isTyping && typingStateRef.current.channelSlug !== channelSlug) {
+      stopTyping(typingStateRef.current.channelSlug);
+    }
+    typingStateRef.current = { channelSlug, isTyping: true };
+    postTypingState(channelSlug, true);
+    scheduleTypingRefresh(channelSlug);
+  }, [activeChannel.slug, body, postTypingState, scheduleTypingRefresh, stopTyping]);
+
+  useEffect(() => {
+    function handleVisibilityChange() {
+      if (!documentIsVisible()) {
+        if (readReceiptTimerRef.current !== null) {
+          window.clearTimeout(readReceiptTimerRef.current);
+          readReceiptTimerRef.current = null;
+        }
+        pendingReadReceiptRef.current = null;
+        stopTyping();
+        return;
+      }
+
+      const currentChannel = activeChannelRef.current;
+      if (shouldStickLatestRef.current) {
+        markRead(currentChannel, messagesByChannelRef.current[currentChannel.slug] ?? []);
+      }
+      if (bodyRef.current.trim()) {
+        typingStateRef.current = { channelSlug: currentChannel.slug, isTyping: true };
+        postTypingState(currentChannel.slug, true);
+        scheduleTypingRefresh(currentChannel.slug);
+      }
+    }
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      if (readReceiptTimerRef.current !== null) {
+        window.clearTimeout(readReceiptTimerRef.current);
+        readReceiptTimerRef.current = null;
+      }
+      pendingReadReceiptRef.current = null;
+      stopTyping();
+    };
+  }, [markRead, postTypingState, scheduleTypingRefresh, stopTyping]);
 
   useEffect(() => {
     if (mentionFragment === null || mentionFragment.length < 1) {
@@ -1091,30 +907,18 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
           if (typeof channelSlug !== "string" || !isChatMessage(message)) return;
           if (seenIdsRef.current.has(message.id)) return;
           seenIdsRef.current.add(message.id);
-          setMessagesByChannel((current) => ({
-            ...current,
-            [channelSlug]: mergeMessage(current[channelSlug] ?? [], message)
-          }));
-          setChannelList((current) => current.map((item) => (
-            item.slug === channelSlug
-              ? {
-                  ...item,
-                  last_message_body: message.body,
-                  last_message_sender_label: message.sender_label,
-                  last_message_sender_user_id: message.sender_user_id,
-                  last_message_at: message.created_at,
-                  unread_count: item.slug === activeChannel.slug ? 0 : (item.unread_count ?? 0) + 1
-                }
-              : item
-          )));
-          if (channelSlug === activeChannel.slug) {
-            void markRead(activeChannel, [...(messagesByChannelRef.current[channelSlug] ?? []), message]);
-          }
-          setThreadMessages((current) => {
-            if (!threadTarget || current.some((item) => item.id === message.id)) return current;
-            const rootId = threadTarget.thread_root_message_id ?? threadTarget.id;
-            return message.id === rootId || message.thread_root_message_id === rootId ? mergeMessage(current, message) : current;
+          upsertMessage(channelSlug, message, 120);
+          patchChannelBySlug(channelSlug, {
+            last_message_body: message.body,
+            last_message_sender_label: message.sender_label,
+            last_message_sender_user_id: message.sender_user_id,
+            last_message_at: message.created_at,
+            unread_count: channelSlug === activeChannelRef.current.slug ? 0 : ((channelListRef.current.find((channel) => channel.slug === channelSlug)?.unread_count ?? 0) + 1)
           });
+          if (channelSlug === activeChannelRef.current.slug) {
+            void markRead(activeChannelRef.current, [...(messagesByChannelRef.current[channelSlug] ?? []), message]);
+          }
+          patchThreadCacheMessage(message);
           return;
         }
 
@@ -1122,15 +926,13 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
           const channelSlug = realtimeEvent.payload.channel_slug;
           const message = realtimeEvent.payload.message;
           if (typeof channelSlug !== "string" || !isChatMessage(message)) return;
-          setMessagesByChannel((current) => ({
-            ...current,
-            [channelSlug]: (current[channelSlug] ?? []).map((item) => item.id === message.id ? message : item)
-          }));
-          setThreadMessages((current) => current.map((item) => item.id === message.id ? message : item));
+          updateMessage(channelSlug, message);
+          patchThreadCacheMessage(message);
           if (realtimeEvent.event_type === "chat.message.updated") {
-            setChannelList((current) => current.map((channel) => channel.slug === channelSlug && channel.last_message_id === message.id
-              ? { ...channel, last_message_body: message.body, last_message_sender_label: message.sender_label }
-              : channel));
+            const channel = channelListRef.current.find((item) => item.slug === channelSlug);
+            if (channel?.last_message_id === message.id) {
+              patchChannelBySlug(channelSlug, { last_message_body: message.body, last_message_sender_label: message.sender_label });
+            }
           }
           return;
         }
@@ -1154,8 +956,8 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
             lockdown_until: typeof realtimeEvent.payload.lockdown_until === "string" ? realtimeEvent.payload.lockdown_until : null,
             lockdown_reason: typeof realtimeEvent.payload.lockdown_reason === "string" ? realtimeEvent.payload.lockdown_reason : null
           };
-          setChannelList((current) => current.map((channel) => channel.slug === channelSlug ? { ...channel, ...nextControls } : channel));
-          if (channelSlug === activeChannel.slug) {
+          patchChannelBySlug(channelSlug, nextControls);
+          if (channelSlug === activeChannelRef.current.slug) {
             setActiveChannel((current) => ({ ...current, ...nextControls }));
             setChannelControls((current) => current ? { ...current, ...nextControls } : current);
             setSlowModeSeconds(nextControls.slow_mode_seconds);
@@ -1168,14 +970,10 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
           const typing = realtimeEvent.payload.typing;
           const onlineCount = realtimeEvent.payload.online_count;
           if (typeof channelSlug !== "string" || !Array.isArray(typing)) return;
-          setPresenceByChannel((current) => ({
-            ...current,
-            [channelSlug]: {
-              ...(current[channelSlug] ?? emptyPresence),
-              typing: typing.filter((item): item is ChatPresenceSummary["typing"][number] => typeof item === "object" && item !== null && "user_id" in item),
-              online_count: typeof onlineCount === "number" ? onlineCount : current[channelSlug]?.online_count ?? 0
-            }
-          }));
+          patchChannelPresence(channelSlug, {
+            typing: typing.filter((item): item is ChatPresenceSummary["typing"][number] => typeof item === "object" && item !== null && "user_id" in item),
+            online_count: typeof onlineCount === "number" ? onlineCount : presenceByChannelRef.current[channelSlug]?.online_count ?? 0
+          });
           return;
         }
 
@@ -1183,11 +981,8 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
           const channelSlug = realtimeEvent.payload.channel_slug;
           const onlineCount = realtimeEvent.payload.online_count;
           if (typeof channelSlug !== "string" || typeof onlineCount !== "number") return;
-          setPresenceByChannel((current) => ({
-            ...current,
-            [channelSlug]: { ...(current[channelSlug] ?? emptyPresence), online_count: onlineCount }
-          }));
-          setChannelList((current) => current.map((item) => item.slug === channelSlug ? { ...item, online_count: onlineCount } : item));
+          patchChannelPresence(channelSlug, { online_count: onlineCount });
+          patchChannelBySlug(channelSlug, { online_count: onlineCount });
           return;
         }
 
@@ -1196,13 +991,13 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
           const attachment = realtimeEvent.payload.attachment;
           if (typeof channelSlug !== "string" || typeof attachment !== "object" || attachment === null || !("id" in attachment)) return;
           const updated = attachment as ChatAttachment;
-          setMessagesByChannel((current) => ({
-            ...current,
-            [channelSlug]: (current[channelSlug] ?? []).map((message) => ({
-              ...message,
-              attachments: message.attachments?.map((item) => item.id === updated.id ? updated : item)
-            }))
-          }));
+          for (const message of messagesByChannelRef.current[channelSlug] ?? []) {
+            if (message.attachments?.some((item) => item.id === updated.id)) {
+              patchMessage(channelSlug, message.id, {
+                attachments: message.attachments.map((item) => item.id === updated.id ? updated : item)
+              });
+            }
+          }
           setMediaByChannel((current) => current[channelSlug] ? ({
             ...current,
             [channelSlug]: { ...current[channelSlug], attachments: current[channelSlug].attachments.map((item) => item.id === updated.id ? updated : item) }
@@ -1217,24 +1012,20 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
         if (typeof channelSlug !== "string" || typeof messageId !== "string") return;
         if (realtimeEvent.event_type === "chat.message.deleted" && isChatMessage(realtimeEvent.payload.message)) {
           const deletedMessage = realtimeEvent.payload.message;
-          setMessagesByChannel((current) => ({
-            ...current,
-            [channelSlug]: (current[channelSlug] ?? []).map((message) => message.id === messageId ? deletedMessage : message)
-          }));
-          setChannelList((current) => current.map((channel) => {
-            if (channel.slug !== channelSlug || channel.last_message_id !== messageId) return channel;
+          updateMessage(channelSlug, deletedMessage);
+          const channel = channelListRef.current.find((item) => item.slug === channelSlug);
+          if (channel?.last_message_id === messageId) {
             const latestVisible = (messagesByChannelRef.current[channelSlug] ?? [])
               .filter((item) => item.id !== messageId && item.status === "visible")
               .at(-1);
-            return {
-              ...channel,
+            patchChannelBySlug(channelSlug, {
               last_message_id: latestVisible?.id ?? null,
               last_message_at: latestVisible?.created_at ?? null,
               last_message_body: latestVisible?.body ?? null,
               last_message_sender_label: latestVisible?.sender_label ?? null,
               last_message_sender_user_id: latestVisible?.sender_user_id ?? null
-            };
-          }));
+            });
+          }
           const pinnedMessages = realtimeEvent.payload.pinned_messages;
           if (Array.isArray(pinnedMessages)) {
             setPinnedByChannel((current) => ({
@@ -1245,17 +1036,14 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
           setReplyTo((current) => current?.id === messageId ? null : current);
           return;
         }
-        setMessagesByChannel((current) => ({
-          ...current,
-          [channelSlug]: (current[channelSlug] ?? []).filter((message) => message.id !== messageId)
-        }));
+        filterChannelMessages(channelSlug, (message) => message.id !== messageId);
       } catch {
         // Keep the lobby stream alive when a non-chat event has an unexpected payload.
       }
     });
 
     return () => source.close();
-  }, [activeChannel, markRead, threadTarget]);
+  }, [filterChannelMessages, markRead, patchChannelBySlug, patchChannelPresence, patchMessage, updateMessage, upsertMessage]);
 
   function uploadAttachment(file: File, existingLocalId?: string) {
     const localId = existingLocalId ?? crypto.randomUUID();
@@ -1317,6 +1105,7 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
   }
 
   async function loadMedia(before?: string | null) {
+    suppressBackgroundChat(2500);
     if (isLoadingMedia) return;
     setIsLoadingMedia(true);
     setMediaError(null);
@@ -1328,7 +1117,10 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
       setMediaByChannel((current) => ({
         ...current,
         [activeChannel.slug]: before
-          ? { attachments: [...(current[activeChannel.slug]?.attachments ?? []), ...payload.data.attachments], page_info: payload.data.page_info }
+          ? {
+              attachments: mergeAttachmentsById(current[activeChannel.slug]?.attachments ?? [], payload.data.attachments),
+              page_info: payload.data.page_info
+            }
           : payload.data
       }));
     } catch (loadError) {
@@ -1349,14 +1141,53 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
     } catch (reportError) { setError(reportError instanceof Error ? reportError.message : "Attachment could not be reported."); }
   }
 
+  async function hydrateMessage(messageId: string, include: "attachments" | "poll" | "thread" | "all") {
+    suppressBackgroundChat(2500);
+    const cached = hydratedMessagesRef.current.get(messageId)
+      ?? messagesByChannelRef.current[activeChannel.slug]?.find((message) => message.id === messageId)
+      ?? null;
+    if (cached && messageHasDetail(cached, include)) return cached;
+    if (hydratingMessageIds.has(messageId)) return cached;
+    setHydratingMessageIds((current) => new Set(current).add(messageId));
+    setError(null);
+    try {
+      const response = await fetch(
+        `/api/community/channels/${encodeURIComponent(activeChannel.slug)}/messages/${encodeURIComponent(messageId)}?include=${encodeURIComponent(include)}`,
+        { headers: { accept: "application/json" }, cache: "no-store" }
+      );
+      const payload = await response.json() as ApiEnvelope<{ channel: ChatChannel; message: ChatMessage }>;
+      if (!response.ok || payload.ok !== true) {
+        throw new Error(payload.ok === false ? payload.error?.message ?? "Message details could not load." : "Message details could not load.");
+      }
+      const previous = hydratedMessagesRef.current.get(payload.data.message.id);
+      const hydrated = previous ? preserveLocalAttachmentPreviews({ ...previous, ...payload.data.message }, previous) : payload.data.message;
+      hydratedMessagesRef.current.set(hydrated.id, hydrated);
+      upsertMessage(activeChannel.slug, hydrated, 120);
+      patchThreadCacheMessage(hydrated);
+      setActionMessage((current) => current?.id === hydrated.id ? hydrated : current);
+      setReplyTo((current) => current?.id === hydrated.id ? hydrated : current);
+      setThreadTarget((current) => current?.id === hydrated.id ? hydrated : current);
+      return hydrated;
+    } catch (detailError) {
+      setError(detailError instanceof Error ? detailError.message : "Message details could not load.");
+      return null;
+    } finally {
+      setHydratingMessageIds((current) => {
+        const next = new Set(current);
+        next.delete(messageId);
+        return next;
+      });
+    }
+  }
+
+  async function hydrateMessageDetail(message: ChatMessage, include: "attachments" | "poll" | "thread" | "all") {
+    return hydrateMessage(message.id, include);
+  }
+
   async function deliverMessage(channel: ChatChannel, message: ChatMessage) {
+    suppressBackgroundChat(5000);
     setIsSending(true);
-    setMessagesByChannel((current) => ({
-      ...current,
-      [channel.slug]: (current[channel.slug] ?? []).map((item) => item.client_message_id === message.client_message_id
-        ? { ...item, client_delivery_state: "sending", client_error: undefined }
-        : item)
-    }));
+    patchMessage(channel.slug, message.id, { client_delivery_state: "sending", client_error: undefined });
     try {
       const response = await fetch(`/api/community/channels/${encodeURIComponent(channel.slug)}/messages`, {
         method: "POST",
@@ -1378,38 +1209,24 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
         throw new Error(payload.ok === false ? payload.error?.message ?? "Message could not be sent." : "Message could not be sent.");
       }
       seenIdsRef.current.add(payload.data.message.id);
-      setMessagesByChannel((current) => ({
-        ...current,
-        [channel.slug]: mergeMessage(current[channel.slug] ?? [], payload.data.message)
-      }));
-      setChannelList((current) => current.map((item) => item.id === channel.id ? {
-        ...item,
+      upsertMessage(channel.slug, payload.data.message, 120);
+      patchChannelBySlug(channel.slug, {
         last_message_body: payload.data.message.body,
         last_message_sender_label: "You",
         last_message_sender_user_id: currentUserId,
         last_message_at: payload.data.message.created_at
-      } : item));
+      });
       void markRead(channel, [...(messagesByChannelRef.current[channel.slug] ?? []), payload.data.message]);
-      void backgroundChatRequest(`/api/community/channels/${encodeURIComponent(channel.slug)}/typing`, {
-        method: "POST",
-        headers: { "content-type": "application/json", accept: "application/json" },
-        body: JSON.stringify({ is_typing: false })
-      }).catch(() => undefined);
+      stopTyping(channel.slug);
       if ((channel.slow_mode_seconds ?? 0) > 0 && !canModerateMessages) {
         setCooldownUntil(new Date(Date.now() + (channel.slow_mode_seconds ?? 0) * 1000).toISOString());
         setCooldownClock(Date.now());
       }
     } catch (sendError) {
-      setMessagesByChannel((current) => ({
-        ...current,
-        [channel.slug]: (current[channel.slug] ?? []).map((item) => item.client_message_id === message.client_message_id
-          ? {
-              ...item,
-              client_delivery_state: "failed",
-              client_error: sendError instanceof Error ? sendError.message : "Message could not be sent."
-            }
-          : item)
-      }));
+      patchMessage(channel.slug, message.id, {
+        client_delivery_state: "failed",
+        client_error: sendError instanceof Error ? sendError.message : "Message could not be sent."
+      });
       setError(sendError instanceof Error ? sendError.message : "Message could not be sent.");
     } finally {
       setIsSending(false);
@@ -1428,10 +1245,7 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
     setBody("");
     setPendingAttachments([]);
     setReplyTo(null);
-    setMessagesByChannel((current) => ({
-      ...current,
-      [activeChannel.slug]: mergeMessage(current[activeChannel.slug] ?? [], nextMessage)
-    }));
+    upsertMessage(activeChannel.slug, nextMessage, 120);
     await deliverMessage(activeChannel, nextMessage);
   }
 
@@ -1442,22 +1256,18 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
   }
 
   function dismissFailedMessage(message: ChatMessage) {
-    setMessagesByChannel((current) => ({
-      ...current,
-      [activeChannel.slug]: (current[activeChannel.slug] ?? []).filter((item) => item.client_message_id !== message.client_message_id)
-    }));
+    filterChannelMessages(activeChannel.slug, (item) => item.client_message_id !== message.client_message_id);
   }
 
   async function loadOlderMessages() {
+    suppressBackgroundChat(3000);
     if (!pageInfo.has_older || !pageInfo.older_cursor || isLoadingOlder) return;
-    const viewport = messageViewportRef.current;
-    const previousHeight = viewport?.scrollHeight ?? 0;
     shouldStickLatestRef.current = false;
     setIsLoadingOlder(true);
     setError(null);
     try {
       const response = await fetch(
-        `/api/community/channels/${encodeURIComponent(activeChannel.slug)}/messages?limit=60&cursor=${encodeURIComponent(pageInfo.older_cursor)}`,
+        `/api/community/channels/${encodeURIComponent(activeChannel.slug)}/messages?limit=60&view=list&cursor=${encodeURIComponent(pageInfo.older_cursor)}`,
         { headers: { accept: "application/json" }, cache: "no-store" }
       );
       const payload = (await response.json()) as ApiEnvelope<{
@@ -1467,15 +1277,10 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
       if (!response.ok || payload.ok !== true) {
         throw new Error(payload.ok === false ? payload.error?.message ?? "Older messages could not load." : "Older messages could not load.");
       }
-      setMessagesByChannel((current) => {
-        const existing = current[activeChannel.slug] ?? [];
-        const ids = new Set(existing.map((message) => message.id));
-        return { ...current, [activeChannel.slug]: [...payload.data.messages.filter((message) => !ids.has(message.id)), ...existing] };
-      });
+      const existing = messagesByChannelRef.current[activeChannel.slug] ?? [];
+      const ids = new Set(existing.map((message) => message.id));
+      replaceChannelMessages(activeChannel.slug, [...payload.data.messages.filter((message) => !ids.has(message.id)), ...existing]);
       setPageInfoByChannel((current) => ({ ...current, [activeChannel.slug]: payload.data.page_info }));
-      window.requestAnimationFrame(() => {
-        if (viewport) viewport.scrollTop = viewport.scrollHeight - previousHeight;
-      });
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : "Older messages could not load.");
     } finally {
@@ -1489,7 +1294,7 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
     if (isContextView) {
       setIsLoadingChannel(true);
       try {
-        const response = await fetch(`/api/community/channels/${encodeURIComponent(activeChannel.slug)}/messages?limit=60`, {
+        const response = await fetch(`/api/community/channels/${encodeURIComponent(activeChannel.slug)}/messages?limit=60&view=list`, {
           headers: { accept: "application/json" }, cache: "no-store"
         });
         const payload = (await response.json()) as ApiEnvelope<{
@@ -1500,9 +1305,9 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
           read_boundary: string | null;
         }>;
         if (!response.ok || payload.ok !== true) throw new Error("Latest messages could not load.");
-        setMessagesByChannel((current) => ({ ...current, [activeChannel.slug]: payload.data.messages }));
+        replaceChannelMessages(activeChannel.slug, payload.data.messages);
         setPinnedByChannel((current) => ({ ...current, [activeChannel.slug]: payload.data.pinned_messages }));
-        setPresenceByChannel((current) => ({ ...current, [activeChannel.slug]: payload.data.presence }));
+        setChannelPresence(activeChannel.slug, payload.data.presence);
         setPageInfoByChannel((current) => ({ ...current, [activeChannel.slug]: payload.data.page_info }));
         setReadBoundaryByChannel((current) => ({ ...current, [activeChannel.slug]: payload.data.read_boundary }));
         setIsContextView(false);
@@ -1512,10 +1317,7 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
         setIsLoadingChannel(false);
       }
     }
-    window.requestAnimationFrame(() => {
-      const viewport = messageViewportRef.current;
-      viewport?.scrollTo({ top: viewport.scrollHeight, behavior: "smooth" });
-    });
+    setJumpLatestToken((current) => current + 1);
     const nextUrl = new URL(window.location.href);
     nextUrl.searchParams.delete("message");
     window.history.replaceState({}, "", nextUrl);
@@ -1523,8 +1325,11 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
   }
 
   async function jumpToMessage(messageId: string) {
-    const existing = document.getElementById(`chat-message-${messageId}`);
-    if (existing) {
+    const loaded = messagesByChannelRef.current[activeChannel.slug]?.find((message) => message.id === messageId);
+    if (loaded) {
+      if (loaded && !messageHasDetail(loaded, "all")) {
+        void hydrateMessage(messageId, "all");
+      }
       shouldStickLatestRef.current = false;
       const nextUrl = new URL(window.location.href);
       nextUrl.searchParams.set("channel", activeChannel.slug);
@@ -1544,9 +1349,10 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
       if (!response.ok || payload.ok !== true) {
         throw new Error(payload.ok === false ? payload.error?.message ?? "Message could not be opened." : "Message could not be opened.");
       }
+      payload.data.messages.forEach((message) => hydratedMessagesRef.current.set(message.id, message));
       shouldStickLatestRef.current = false;
       setIsContextView(true);
-      setMessagesByChannel((current) => ({ ...current, [activeChannel.slug]: payload.data.messages }));
+      replaceChannelMessages(activeChannel.slug, payload.data.messages);
       setPendingJumpMessageId(payload.data.target_message_id);
       const nextUrl = new URL(window.location.href);
       nextUrl.searchParams.set("channel", activeChannel.slug);
@@ -1563,16 +1369,56 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
     void jumpToMessage(messageId);
   }
 
+  function mergeSearchResults(current: ChatMessage[], next: ChatMessage[]) {
+    const seen = new Set(current.map((message) => message.id));
+    return [...current, ...next.filter((message) => !seen.has(message.id))];
+  }
+
+  function searchHasFilters() {
+    return Boolean(searchQuery.trim() || searchUser || searchDateFrom || searchDateTo || searchMentions || searchLinks || searchPinned);
+  }
+
+  function searchCacheKey(cursor?: string | null) {
+    return JSON.stringify({
+      channel: activeChannel.slug,
+      q: searchQuery.trim(),
+      user: searchUser,
+      date_from: searchDateFrom,
+      date_to: searchDateTo,
+      mentions: searchMentions,
+      links: searchLinks,
+      pinned: searchPinned,
+      cursor: cursor ?? null
+    });
+  }
+
   async function runSearch(event?: FormEvent<HTMLFormElement>, cursor?: string | null) {
     event?.preventDefault();
-    if (!searchQuery.trim() && !searchUser && !searchDateFrom && !searchDateTo && !searchMentions && !searchLinks && !searchPinned) {
+    suppressBackgroundChat(4500);
+    if (!searchHasFilters()) {
+      searchAbortRef.current?.abort();
       setSearchError("Choose a word or at least one filter.");
+      setSearchResults([]);
+      setSearchPageInfo({ has_more: false, next_cursor: null });
       return;
     }
+
+    const cacheKey = searchCacheKey(cursor);
+    const cached = searchCacheRef.current.get(cacheKey);
+    if (cached) {
+      setSearchResults((current) => cursor ? mergeSearchResults(current, cached.messages) : cached.messages);
+      setSearchPageInfo(cached.pageInfo);
+      setSearchError(null);
+      return;
+    }
+
+    searchAbortRef.current?.abort();
+    const controller = new AbortController();
+    searchAbortRef.current = controller;
     setIsSearching(true);
     setSearchError(null);
     try {
-      const params = new URLSearchParams({ limit: "25" });
+      const params = new URLSearchParams({ limit: "25", view: "list" });
       if (searchQuery.trim()) params.set("q", searchQuery.trim());
       if (searchUser) params.set("user", searchUser);
       if (searchDateFrom) params.set("date_from", searchDateFrom);
@@ -1583,20 +1429,57 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
       if (cursor) params.set("cursor", cursor);
       const response = await fetch(
         `/api/community/channels/${encodeURIComponent(activeChannel.slug)}/messages/search?${params}`,
-        { headers: { accept: "application/json" }, cache: "no-store" }
+        { headers: { accept: "application/json" }, cache: "no-store", signal: controller.signal }
       );
       const payload = (await response.json()) as ApiEnvelope<{ messages: ChatMessage[]; page_info: ChatSearchPageInfo }>;
       if (!response.ok || payload.ok !== true) {
         throw new Error(payload.ok === false ? payload.error?.message ?? "Search could not be completed." : "Search could not be completed.");
       }
-      setSearchResults((current) => cursor ? [...current, ...payload.data.messages] : payload.data.messages);
+      searchCacheRef.current.set(cacheKey, { messages: payload.data.messages, pageInfo: payload.data.page_info });
+      if (searchCacheRef.current.size > 30) {
+        const oldest = searchCacheRef.current.keys().next().value;
+        if (oldest) searchCacheRef.current.delete(oldest);
+      }
+      setSearchResults((current) => cursor ? mergeSearchResults(current, payload.data.messages) : payload.data.messages);
       setSearchPageInfo(payload.data.page_info);
     } catch (nextError) {
+      if (nextError instanceof DOMException && nextError.name === "AbortError") return;
       setSearchError(nextError instanceof Error ? nextError.message : "Search could not be completed.");
     } finally {
-      setIsSearching(false);
+      if (searchAbortRef.current === controller) {
+        searchAbortRef.current = null;
+        setIsSearching(false);
+      }
     }
   }
+
+  useEffect(() => {
+    if (showSearch) suppressBackgroundChat(10_000);
+  }, [showSearch, suppressBackgroundChat]);
+
+  useEffect(() => {
+    if (!showSearch) {
+      searchAbortRef.current?.abort();
+      return;
+    }
+
+    if (!searchHasFilters()) {
+      searchAbortRef.current?.abort();
+      setSearchResults([]);
+      setSearchPageInfo({ has_more: false, next_cursor: null });
+      setSearchError(null);
+      setIsSearching(false);
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      void runSearch(undefined, null);
+    }, 400);
+
+    return () => window.clearTimeout(timer);
+    // Search is intentionally debounced from primitive filter state; runSearch reads the same values.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeChannel.slug, searchDateFrom, searchDateTo, searchLinks, searchMentions, searchPinned, searchQuery, searchUser, showSearch]);
 
   async function reportMessage(message: ChatMessage) {
     const reason = window.prompt("Why are you reporting this message?");
@@ -1657,13 +1540,10 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
       if (!response.ok || payload.ok !== true) {
         throw new Error(payload.ok === false ? payload.error?.message ?? "Message could not be edited." : "Message could not be edited.");
       }
-      setMessagesByChannel((current) => ({
-        ...current,
-        [activeChannel.slug]: (current[activeChannel.slug] ?? []).map((message) => message.id === payload.data.message.id ? payload.data.message : message)
-      }));
-      setChannelList((current) => current.map((channel) => channel.id === activeChannel.id && channel.last_message_id === payload.data.message.id
-        ? { ...channel, last_message_body: payload.data.message.body }
-        : channel));
+      updateMessage(activeChannel.slug, payload.data.message);
+      if (activeChannel.last_message_id === payload.data.message.id) {
+        patchChannelBySlug(activeChannel.slug, { last_message_body: payload.data.message.body });
+      }
       setEditTarget(null);
       setEditBody("");
       setNotice("Message edited.");
@@ -1694,28 +1574,23 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
       if (!response.ok || payload.ok !== true) {
         throw new Error(payload.ok === false ? payload.error?.message ?? "Message could not be deleted." : "Message could not be deleted.");
       }
-      setMessagesByChannel((current) => ({
-        ...current,
-        [activeChannel.slug]: (current[activeChannel.slug] ?? []).map((item) => item.id === message.id ? payload.data.message : item)
-      }));
+      updateMessage(activeChannel.slug, payload.data.message);
       setPinnedByChannel((current) => ({
         ...current,
         [activeChannel.slug]: (current[activeChannel.slug] ?? []).filter((pin) => pin.message_id !== message.id)
       }));
-      setChannelList((current) => current.map((channel) => {
-        if (channel.id !== activeChannel.id || channel.last_message_id !== message.id) return channel;
+      if (activeChannel.last_message_id === message.id) {
         const latestVisible = (messagesByChannelRef.current[activeChannel.slug] ?? [])
           .filter((item) => item.id !== message.id && item.status === "visible")
           .at(-1);
-        return {
-          ...channel,
+        patchChannelBySlug(activeChannel.slug, {
           last_message_id: latestVisible?.id ?? null,
           last_message_at: latestVisible?.created_at ?? null,
           last_message_body: latestVisible?.body ?? null,
           last_message_sender_label: latestVisible?.sender_label ?? null,
           last_message_sender_user_id: latestVisible?.sender_user_id ?? null
-        };
-      }));
+        });
+      }
       setReplyTo((current) => current?.id === message.id ? null : current);
       setDeleteTarget(null);
       setActionMessage(null);
@@ -1747,10 +1622,7 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
       if (!response.ok || payload.ok !== true) {
         throw new Error(payload.ok === false ? payload.error?.message ?? "Reaction could not be updated." : "Reaction could not be updated.");
       }
-      setMessagesByChannel((current) => ({
-        ...current,
-        [activeChannel.slug]: (current[activeChannel.slug] ?? []).map((item) => item.id === payload.data.message.id ? payload.data.message : item)
-      }));
+      updateMessage(activeChannel.slug, payload.data.message);
     } catch (reactionError) {
       setError(reactionError instanceof Error ? reactionError.message : "Reaction could not be updated.");
     }
@@ -1817,22 +1689,67 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
   }
 
   async function openThread(message: ChatMessage) {
-    setThreadTarget(message);
-    setIsLoadingThread(true);
+    suppressBackgroundChat(3500);
+    const hydratedTarget = await hydrateMessage(message.id, "thread");
+    const target = hydratedTarget ?? message;
+    const rootMessageId = threadRootId(target);
+    const cached = threadCacheRef.current.get(rootMessageId);
+    setThreadTarget(target);
     setThreadBody("");
     setError(null);
+    if (cached) {
+      setThreadMessages(cached.messages);
+      setThreadPageInfo(cached.pageInfo);
+      setIsLoadingThread(false);
+      return;
+    }
+
+    setIsLoadingThread(true);
+    setThreadMessages([]);
+    setThreadPageInfo({ has_older: false, older_cursor: null });
     try {
-      const response = await fetch(`/api/community/channels/${encodeURIComponent(activeChannel.slug)}/messages/${encodeURIComponent(message.id)}/thread`, {
+      const response = await fetch(`/api/community/channels/${encodeURIComponent(activeChannel.slug)}/messages/${encodeURIComponent(message.id)}/thread?limit=40&view=list`, {
         headers: { accept: "application/json" },
         cache: "no-store"
       });
-      const payload = (await response.json()) as ApiEnvelope<{ root_message_id: string; messages: ChatMessage[] }>;
+      const payload = (await response.json()) as ApiEnvelope<{ root_message_id: string; messages: ChatMessage[]; page_info?: ChatMessagePageInfo }>;
       if (!response.ok || payload.ok !== true) throw new Error(payload.ok === false ? payload.error?.message ?? "Thread could not load." : "Thread could not load.");
-      setThreadMessages(payload.data.messages);
+      payload.data.messages.forEach((threadMessage) => hydratedMessagesRef.current.set(threadMessage.id, threadMessage));
+      replaceThreadCache(payload.data.root_message_id, payload.data.messages, payload.data.page_info ?? { has_older: false, older_cursor: null });
     } catch (threadError) {
       setError(threadError instanceof Error ? threadError.message : "Thread could not load.");
     } finally {
       setIsLoadingThread(false);
+    }
+  }
+
+  async function loadOlderThreadReplies() {
+    if (!threadTarget || isLoadingOlderThread || !threadPageInfo.has_older || !threadPageInfo.older_cursor) return;
+    const rootMessageId = threadRootId(threadTarget);
+    setIsLoadingOlderThread(true);
+    setError(null);
+    try {
+      const response = await fetch(
+        `/api/community/channels/${encodeURIComponent(activeChannel.slug)}/messages/${encodeURIComponent(rootMessageId)}/thread?limit=40&view=list&cursor=${encodeURIComponent(threadPageInfo.older_cursor)}`,
+        { headers: { accept: "application/json" }, cache: "no-store" }
+      );
+      const payload = (await response.json()) as ApiEnvelope<{ root_message_id: string; messages: ChatMessage[]; page_info?: ChatMessagePageInfo }>;
+      if (!response.ok || payload.ok !== true) throw new Error(payload.ok === false ? payload.error?.message ?? "Older replies could not load." : "Older replies could not load.");
+      payload.data.messages.forEach((threadMessage) => hydratedMessagesRef.current.set(threadMessage.id, threadMessage));
+      const current = threadCacheRef.current.get(payload.data.root_message_id)?.messages ?? threadMessages;
+      const seen = new Set<string>();
+      const merged = [...payload.data.messages, ...current]
+        .filter((message) => {
+          if (seen.has(message.id)) return false;
+          seen.add(message.id);
+          return true;
+        })
+        .sort((left, right) => Date.parse(left.created_at) - Date.parse(right.created_at));
+      replaceThreadCache(payload.data.root_message_id, merged, payload.data.page_info ?? { has_older: false, older_cursor: null });
+    } catch (threadError) {
+      setError(threadError instanceof Error ? threadError.message : "Older replies could not load.");
+    } finally {
+      setIsLoadingOlderThread(false);
     }
   }
 
@@ -1855,8 +1772,8 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
       });
       const payload = (await response.json()) as ApiEnvelope<{ message: ChatMessage }>;
       if (!response.ok || payload.ok !== true) throw new Error(payload.ok === false ? payload.error?.message ?? "Thread reply could not be sent." : "Thread reply could not be sent.");
-      setThreadMessages((current) => mergeMessage(current, payload.data.message));
-      setMessagesByChannel((current) => ({ ...current, [activeChannel.slug]: mergeMessage(current[activeChannel.slug] ?? [], payload.data.message) }));
+      patchThreadCacheMessage(payload.data.message);
+      upsertMessage(activeChannel.slug, payload.data.message, 120);
       setThreadBody("");
     } catch (threadError) {
       setError(threadError instanceof Error ? threadError.message : "Thread reply could not be sent.");
@@ -1878,7 +1795,7 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
       const payload = (await response.json()) as ApiEnvelope<{ message: ChatMessage }>;
       if (!response.ok || payload.ok !== true) throw new Error(payload.ok === false ? payload.error?.message ?? "Message could not be forwarded." : "Message could not be forwarded.");
       if (forwardChannelSlug === activeChannel.slug) {
-        setMessagesByChannel((current) => ({ ...current, [activeChannel.slug]: mergeMessage(current[activeChannel.slug] ?? [], payload.data.message) }));
+        upsertMessage(activeChannel.slug, payload.data.message, 120);
       }
       setForwardTarget(null);
       setForwardChannelSlug("");
@@ -1902,10 +1819,7 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
       });
       const payload = (await response.json()) as ApiEnvelope<{ bookmarked: boolean }>;
       if (!response.ok || payload.ok !== true) throw new Error(payload.ok === false ? payload.error?.message ?? "Saved state could not change." : "Saved state could not change.");
-      setMessagesByChannel((current) => ({
-        ...current,
-        [activeChannel.slug]: (current[activeChannel.slug] ?? []).map((item) => item.id === message.id ? { ...item, bookmarked_by_me: payload.data.bookmarked } : item)
-      }));
+      patchMessage(activeChannel.slug, message.id, { bookmarked_by_me: payload.data.bookmarked });
       setNotice(payload.data.bookmarked ? "Saved privately." : "Removed from saved.");
       window.setTimeout(() => setNotice(null), 2200);
     } catch (bookmarkError) {
@@ -1969,7 +1883,7 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
       });
       const payload = (await response.json()) as ApiEnvelope<{ message: ChatMessage }>;
       if (!response.ok || payload.ok !== true) throw new Error(payload.ok === false ? payload.error?.message ?? "Poll could not be created." : "Poll could not be created.");
-      setMessagesByChannel((current) => ({ ...current, [activeChannel.slug]: mergeMessage(current[activeChannel.slug] ?? [], payload.data.message) }));
+      upsertMessage(activeChannel.slug, payload.data.message, 120);
       setShowPollCreator(false);
       setPollQuestion("");
       setPollOptions(["", ""]);
@@ -1993,10 +1907,7 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
       });
       const payload = (await response.json()) as ApiEnvelope<{ message: ChatMessage }>;
       if (!response.ok || payload.ok !== true) throw new Error(payload.ok === false ? payload.error?.message ?? "Vote could not be saved." : "Vote could not be saved.");
-      setMessagesByChannel((current) => ({
-        ...current,
-        [activeChannel.slug]: (current[activeChannel.slug] ?? []).map((item) => item.id === message.id ? payload.data.message : item)
-      }));
+      updateMessage(activeChannel.slug, payload.data.message);
     } catch (pollError) {
       setError(pollError instanceof Error ? pollError.message : "Vote could not be saved.");
     } finally {
@@ -2122,7 +2033,7 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
       }
       setDmRequests((current) => current.map((item) => item.id === payload.data.request.id ? payload.data.request : item));
       if (payload.data.channel) {
-        setChannelList((current) => [payload.data.channel!, ...current.filter((item) => item.id !== payload.data.channel!.id)]);
+        patchChannel(payload.data.channel);
         void openChannel(payload.data.channel);
       }
     } catch (dmError) {
@@ -2145,10 +2056,7 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
       if (!response.ok || payload.ok !== true) {
         throw new Error(payload.ok === false ? payload.error?.message ?? "User could not be blocked." : "User could not be blocked.");
       }
-      setMessagesByChannel((current) => ({
-        ...current,
-        [activeChannel.slug]: (current[activeChannel.slug] ?? []).filter((item) => item.sender_user_id !== message.sender_user_id)
-      }));
+      filterChannelMessages(activeChannel.slug, (item) => item.sender_user_id !== message.sender_user_id);
     } catch (blockError) {
       setError(blockError instanceof Error ? blockError.message : "User could not be blocked.");
     }
@@ -2167,7 +2075,7 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
       setPushEnabled(payload.data.controls.push_enabled);
       setSlowModeSeconds(payload.data.controls.slow_mode_seconds);
       setActiveChannel(payload.data.channel);
-      setChannelList((current) => current.map((channel) => channel.id === payload.data.channel.id ? { ...channel, ...payload.data.channel } : channel));
+      patchChannel(payload.data.channel);
     } catch (controlError) {
       setError(controlError instanceof Error ? controlError.message : "Chat settings could not load.");
     } finally {
@@ -2250,7 +2158,7 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
       const payload = await response.json() as ApiEnvelope<{ channel: ChatChannel }>;
       if (!response.ok || payload.ok !== true) throw new Error(payload.ok === false ? payload.error?.message ?? "Channel controls could not be saved." : "Channel controls could not be saved.");
       setActiveChannel(payload.data.channel);
-      setChannelList((current) => current.map((channel) => channel.id === payload.data.channel.id ? { ...channel, ...payload.data.channel } : channel));
+      patchChannel(payload.data.channel);
       setChannelControls((current) => current ? {
         ...current,
         slow_mode_seconds: payload.data.channel.slow_mode_seconds ?? 0,
@@ -2366,10 +2274,7 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
       if (!response.ok || payload.ok !== true) {
         throw new Error(payload.ok === false ? payload.error?.message ?? "User could not be blocked." : "User could not be blocked.");
       }
-      setMessagesByChannel((current) => ({
-        ...current,
-        [activeChannel.slug]: (current[activeChannel.slug] ?? []).filter((item) => item.sender_user_id !== target.user_id)
-      }));
+      filterChannelMessages(activeChannel.slug, (item) => item.sender_user_id !== target.user_id);
       setProfileUser(null);
       setNotice("User blocked.");
       window.setTimeout(() => setNotice(null), 2200);
@@ -2379,6 +2284,31 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
       setProfileAction(null);
     }
   }
+
+  const handleBeginLongPress = useStableCallback(beginLongPress);
+  const handleBlockUser = useStableCallback(blockUser);
+  const handleClearLongPress = useStableCallback(clearLongPress);
+  const handleDismissFailedMessage = useStableCallback(dismissFailedMessage);
+  const handleHydrateMessageDetail = useStableCallback(hydrateMessageDetail);
+  const handleJumpToMessage = useStableCallback(jumpToMessage);
+  const handleOpenImage = useStableCallback((attachment: ChatAttachment, url: string) => {
+    setViewer({ attachment, url });
+  });
+  const handleOpenMessageActions = useStableCallback(openMessageActions);
+  const handleOpenMessageUserProfile = useStableCallback(openMessageUserProfile);
+  const handleOpenThread = useStableCallback(openThread);
+  const handleReactToMessage = useStableCallback(reactToMessage);
+  const handleReplyToMessage = useStableCallback((message: ChatMessage) => {
+    setReplyTo(message);
+  });
+  const handleReportMessage = useStableCallback(reportMessage);
+  const handleReportUser = useStableCallback(reportUser);
+  const handleRetryMessage = useStableCallback(retryMessage);
+  const handleStartPin = useStableCallback((message: ChatMessage) => {
+    setPinDurationHours(168);
+    setPinTarget(message);
+  });
+  const handleVotePoll = useStableCallback(votePoll);
 
   const fullLayoutHeight = fullLayout && chatViewport
     ? `min(${chatViewport.height}px, calc(100dvh - ${chatViewport.top}px))`
@@ -2413,364 +2343,110 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
       </header>
 
       {showChannelInfo ? (
-        <div aria-label={`${channelTitle(displayActiveChannel)} details`} aria-modal="true" className="fixed inset-0 z-50 grid max-w-[100vw] overflow-x-hidden bg-black/60 pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] sm:place-items-center sm:p-4" role="dialog">
-          <section className="grid h-full min-h-0 w-full min-w-0 max-w-full grid-rows-[auto_auto_1fr] overflow-hidden bg-[#172331] text-white shadow-panel sm:h-[min(48rem,92vh)] sm:max-w-2xl sm:rounded-lg sm:border sm:border-white/10">
-            <header className="flex min-w-0 items-center gap-2 border-b border-white/10 px-3 py-2.5 sm:gap-3 sm:p-4">
-              <button aria-label="Close channel details" className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-sm font-black text-white hover:bg-white/10" onClick={() => setShowChannelInfo(false)} title="Close details" type="button">X</button>
-              <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-navy-900 text-sm font-black text-action shadow-tight sm:h-14 sm:w-14 sm:text-base">{channelInitials(displayActiveChannel)}</span>
-              <div className="min-w-0 flex-1">
-                <h2 className="truncate text-base font-black text-white sm:text-xl">{channelTitle(displayActiveChannel)}</h2>
-                <p className="mt-0.5 truncate text-xs font-bold text-slate-300 sm:mt-1 sm:text-sm">{activeChannelSubtitle} / {userDirectory.length} active or recent</p>
-              </div>
-              <button aria-label="Go to home" className="min-h-9 shrink-0 rounded-full border border-white/10 bg-white/5 px-3 text-xs font-black text-white hover:bg-white/10" onClick={goHome} title="Go to home" type="button">Home</button>
-            </header>
-
-            <div className="grid grid-cols-6 border-b border-white/10 px-1 sm:px-3">
-              {(["members", "messages", "channels", "media", "pins", "settings"] as const).map((tab) => (
-                <button className={["min-h-11 min-w-0 truncate border-b-2 px-1 text-[0.62rem] font-black capitalize sm:min-h-12 sm:px-2 sm:text-sm", infoTab === tab ? "border-sky-400 text-sky-300" : "border-transparent text-slate-400 hover:text-white"].join(" ")} key={tab} onClick={() => {
-                  setInfoTab(tab);
-                  if (tab === "media" && !mediaByChannel[activeChannel.slug]) void loadMedia();
-                  if (tab === "settings") {
-                    void loadChannelControls();
-                    void loadBlockedUsers();
-                  }
-                }} type="button">
-                  {tab === "messages" ? "DMs" : tab}{tab === "messages" && dmChannels.length ? ` ${dmChannels.length}` : tab === "channels" ? ` ${communityChannels.length}` : tab === "pins" && pinnedMessages.length ? ` ${pinnedMessages.length}` : ""}
-                </button>
-              ))}
-            </div>
-
-            <div className="min-h-0 overflow-y-auto p-3 sm:p-4">
-              {infoTab === "members" ? (
-                <div className="grid gap-2">
-                  <p className="mb-1 text-xs font-black uppercase tracking-[0.14em] text-slate-400">Active and recent members</p>
-                  {userDirectory.length ? userDirectory.map((user) => (
-                    <button className="flex min-w-0 items-center gap-3 rounded-md bg-white/5 p-2.5 text-left hover:bg-white/10 sm:p-3" key={user.user_id} onClick={() => openUserProfile(user)} type="button">
-                      <span className="relative grid h-10 w-10 shrink-0 place-items-center rounded-full bg-navy-900 text-sm font-black text-white sm:h-11 sm:w-11">
-                        {initials(user.label)}
-                        {user.is_online ? <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-[#172331] bg-success" /> : null}
-                      </span>
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-black text-white">{user.label}</p>
-                        <p className="truncate text-xs font-bold text-slate-400">{user.username ? `@${user.username} / ` : ""}{user.is_online ? "online" : "recent"}</p>
-                      </div>
-                    </button>
-                  )) : <p className="rounded-md border border-dashed border-white/10 p-5 text-center text-sm font-bold text-slate-400">Members appear here as they become active in this channel.</p>}
-                </div>
-              ) : null}
-
-              {infoTab === "messages" ? (
-                <div className="grid gap-2">
-                  <p className="mb-1 text-xs font-black uppercase tracking-[0.14em] text-slate-400">Direct messages</p>
-                  {dmChannels.length ? dmChannels.map((item) => (
-                    <button className={["flex min-w-0 items-center gap-3 rounded-md border p-3 text-left", item.id === activeChannel.id ? "border-sky-400 bg-sky-400/10" : "border-white/10 bg-white/5 hover:bg-white/10"].join(" ")} key={item.id} onClick={() => { setShowChannelInfo(false); void openChannel(item); }} type="button">
-                      <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-navy-900 px-1 text-xs font-black text-action">{channelInitials(item)}</span>
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate text-sm font-black text-white">{channelTitle(item)}</span>
-                        <span className="mt-1 block truncate text-xs font-bold text-slate-400">{channelPreview(item)}</span>
-                      </span>
-                      {(item.unread_count ?? 0) > 0 ? <span className="rounded-full bg-sky-500 px-2 py-1 text-xs font-black text-white">{item.unread_count}</span> : null}
-                    </button>
-                  )) : <p className="rounded-md border border-dashed border-white/10 p-5 text-center text-sm font-bold text-slate-400">Accepted DMs will appear here.</p>}
-                </div>
-              ) : null}
-
-              {infoTab === "channels" ? (
-                <div className="grid gap-2">
-                  <p className="mb-1 text-xs font-black uppercase tracking-[0.14em] text-slate-400">Your accessible channels</p>
-                  {communityChannels.map((item) => (
-                    <button className={["flex min-w-0 items-center gap-3 rounded-md border p-3 text-left", item.id === activeChannel.id ? "border-sky-400 bg-sky-400/10" : "border-white/10 bg-white/5 hover:bg-white/10"].join(" ")} key={item.id} onClick={() => { setShowChannelInfo(false); void openChannel(item); }} type="button">
-                      <span className="grid h-11 w-11 shrink-0 place-items-center rounded-md bg-white/10 px-1 text-xs font-black text-sky-300">{channelInitials(item)}</span>
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate text-sm font-black text-white">{channelTitle(item)}</span>
-                        <span className="mt-1 block truncate text-xs font-bold text-slate-400">{channelTypeLabel(item)} / {item.online_count ?? 0} online / {channelPreview(item)}</span>
-                      </span>
-                      {(item.unread_count ?? 0) > 0 ? <span className="rounded-full bg-sky-500 px-2 py-1 text-xs font-black text-white">{item.unread_count}</span> : null}
-                    </button>
-                  ))}
-                </div>
-              ) : null}
-
-              {infoTab === "media" ? (
-                <div className="grid gap-3">
-                  <div className="flex items-center justify-between gap-3">
-                    <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-400">Shared media and files</p>
-                    <span className="text-xs font-bold text-slate-500">{mediaByChannel[activeChannel.slug]?.attachments.length ?? 0}</span>
-                  </div>
-                  {mediaError ? <p className="rounded-md border border-red-400/30 bg-red-950/30 p-3 text-sm font-bold text-red-200">{mediaError}</p> : null}
-                  {mediaByChannel[activeChannel.slug]?.attachments.length ? (
-                    <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-4 sm:gap-2">
-                      {mediaByChannel[activeChannel.slug].attachments.map((attachment) => (
-                        <ChatAttachmentTile attachment={attachment} channelSlug={activeChannel.slug} className={attachment.attachment_type === "image" ? "aspect-square" : "min-h-24"} key={attachment.id} onOpenImage={(url) => setViewer({ attachment, url })} />
-                      ))}
-                    </div>
-                  ) : !isLoadingMedia ? <p className="rounded-md border border-dashed border-white/10 p-6 text-center text-sm font-bold text-slate-400">Images and documents shared here will appear here.</p> : null}
-                  {isLoadingMedia ? <p className="p-4 text-center text-sm font-bold text-slate-400">Loading media...</p> : null}
-                  {mediaByChannel[activeChannel.slug]?.page_info.has_more ? <button className="min-h-10 rounded-md border border-white/10 bg-white/5 text-sm font-black hover:bg-white/10" disabled={isLoadingMedia} onClick={() => void loadMedia(mediaByChannel[activeChannel.slug].page_info.next_before)} type="button">Load older media</button> : null}
-                </div>
-              ) : null}
-
-              {infoTab === "pins" ? (
-                <div className="grid gap-2">
-                  <p className="mb-1 text-xs font-black uppercase tracking-[0.14em] text-slate-400">Pinned messages</p>
-                  {pinnedMessages.length ? pinnedMessages.map((pin) => (
-                    <article className="rounded-md border border-white/10 bg-white/5 p-3" key={pin.id}>
-                      <div className="flex min-w-0 items-start justify-between gap-2">
-                        <button className="min-w-0 flex-1 text-left" onClick={() => openPinnedMessage(pin.message_id)} type="button">
-                          <span className="block truncate text-sm font-black text-sky-300">{pin.sender_label}</span>
-                          <span className="mt-2 block truncate text-sm leading-6 text-white">{pin.body?.trim() || "Photo"}</span>
-                          <span className="mt-2 block text-xs font-bold text-slate-400">{pinExpiryLabel(pin.expires_at)}</span>
-                        </button>
-                        {canManageAnyPin || pin.pinned_by_user_id === currentUserId || pin.sender_user_id === currentUserId ? (
-                          <button className="shrink-0 rounded-sm px-2 py-1 text-[0.68rem] font-black uppercase tracking-[0.12em] text-slate-300 hover:bg-white/10 disabled:cursor-wait disabled:opacity-60" disabled={unpinningIds.has(pin.message_id)} onClick={() => void unpinMessage(pin.message_id)} type="button">{unpinningIds.has(pin.message_id) ? "Unpinning..." : "Unpin"}</button>
-                        ) : null}
-                      </div>
-                    </article>
-                  )) : <p className="rounded-md border border-dashed border-white/10 p-5 text-center text-sm font-bold text-slate-400">No messages are pinned in this channel yet.</p>}
-                </div>
-              ) : null}
-
-              {infoTab === "settings" ? (
-                <div className="grid gap-5">
-                  <section className="grid gap-3">
-                    <div>
-                      <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-400">Notifications</p>
-                      <p className="mt-1 text-sm text-slate-300">Choose what this channel can notify you about.</p>
-                    </div>
-                    {isLoadingControls ? <p className="text-sm font-bold text-slate-400">Loading settings...</p> : (
-                      <>
-                        <div className="grid grid-cols-3 gap-1 rounded-md bg-white/5 p-1">
-                          {(["all", "mentions", "none"] as const).map((level) => (
-                            <button className={["min-h-10 rounded-sm px-2 text-xs font-black capitalize", notificationLevel === level ? "bg-sky-400 text-navy-950" : "text-slate-300 hover:bg-white/10"].join(" ")} key={level} onClick={() => setNotificationLevel(level)} type="button">
-                              {level === "all" ? "Everything" : level === "mentions" ? "Mentions" : "Nothing"}
-                            </button>
-                          ))}
-                        </div>
-                        {activeChannel.channel_type === "dm" ? (
-                          <label className="grid gap-2 text-sm font-bold text-slate-200">
-                            DM notifications
-                            <select className="min-h-11 rounded-md border border-white/10 bg-[#223447] px-3 text-white" onChange={(event) => setDmNotificationLevel(event.target.value as ChatNotificationLevel)} value={dmNotificationLevel}>
-                              <option value="all">Everything</option>
-                              <option value="mentions">Mentions only</option>
-                              <option value="none">Nothing</option>
-                            </select>
-                          </label>
-                        ) : null}
-                        <label className="flex min-h-12 items-center justify-between gap-4 rounded-md border border-white/10 bg-white/5 p-3 text-sm font-black">
-                          Browser/mobile push
-                          <input checked={pushEnabled} className="h-5 w-5 accent-sky-400" onChange={(event) => setPushEnabled(event.target.checked)} type="checkbox" />
-                        </label>
-                        <button className="min-h-11 rounded-md bg-sky-500 px-4 text-sm font-black text-white hover:bg-sky-400 disabled:opacity-60" disabled={isSavingControls} onClick={() => void saveNotificationControls()} type="button">
-                          {controlAction === "notifications" ? "Saving..." : "Save notifications"}
-                        </button>
-                      </>
-                    )}
-                  </section>
-
-                  {channelControls?.can_manage_channel ? (
-                    <section className="grid gap-3 border-t border-white/10 pt-5">
-                      <div>
-                        <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-400">Channel controls</p>
-                        <p className="mt-1 text-sm text-slate-300">Slow mode limits members. Lockdown stops member posting temporarily.</p>
-                      </div>
-                      <label className="grid gap-2 text-sm font-bold text-slate-200">
-                        Slow mode
-                        <select className="min-h-11 rounded-md border border-white/10 bg-[#223447] px-3 text-white" onChange={(event) => setSlowModeSeconds(Number(event.target.value))} value={slowModeSeconds}>
-                          <option value={0}>Off</option>
-                          <option value={5}>5 seconds</option>
-                          <option value={15}>15 seconds</option>
-                          <option value={30}>30 seconds</option>
-                          <option value={60}>1 minute</option>
-                          <option value={300}>5 minutes</option>
-                          <option value={3600}>1 hour</option>
-                        </select>
-                      </label>
-                      <button className="min-h-11 rounded-md border border-sky-300/30 bg-sky-950/30 px-4 text-sm font-black text-sky-200 hover:bg-sky-950/50 disabled:opacity-60" disabled={isSavingControls} onClick={() => void saveModerationControls("slow")} type="button">
-                        {controlAction === "slow" ? "Saving slow mode..." : "Save slow mode"}
-                      </button>
-                      <div className="grid grid-cols-[8rem_minmax(0,1fr)] gap-2">
-                        <label className="grid gap-2 text-xs font-bold text-slate-300">
-                          Lock duration
-                          <select className="min-h-11 rounded-md border border-white/10 bg-[#223447] px-2 text-white" onChange={(event) => setLockdownMinutes(Number(event.target.value))} value={lockdownMinutes}>
-                            <option value={30}>30 min</option>
-                            <option value={60}>1 hour</option>
-                            <option value={360}>6 hours</option>
-                            <option value={1440}>24 hours</option>
-                          </select>
-                        </label>
-                        <label className="grid gap-2 text-xs font-bold text-slate-300">
-                          Reason
-                          <input className="min-h-11 min-w-0 rounded-md border border-white/10 bg-[#223447] px-3 text-base text-white" onChange={(event) => setLockdownReason(event.target.value)} placeholder="Why is posting paused?" value={lockdownReason} />
-                        </label>
-                      </div>
-                      {channelControls.lockdown_until && Date.parse(channelControls.lockdown_until) > Date.now() ? (
-                        <button className="min-h-11 rounded-md border border-red-300/30 bg-red-950/30 px-4 text-sm font-black text-red-200 hover:bg-red-950/50 disabled:opacity-60" disabled={isSavingControls} onClick={() => void saveModerationControls("unlock")} type="button">
-                          {controlAction === "unlock" ? "Unlocking..." : "Remove lockdown"}
-                        </button>
-                      ) : (
-                        <button className="min-h-11 rounded-md bg-amber-400 px-4 text-sm font-black text-navy-950 hover:bg-amber-300 disabled:opacity-60" disabled={isSavingControls || !lockdownReason.trim()} onClick={() => void saveModerationControls("lock")} type="button">
-                          {controlAction === "lock" ? "Locking channel..." : "Start temporary lockdown"}
-                        </button>
-                      )}
-                    </section>
-                  ) : null}
-
-                  <section className="grid gap-3 border-t border-white/10 pt-5">
-                    <div>
-                      <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-400">Blocked users</p>
-                      <p className="mt-1 text-sm text-slate-300">Blocked players cannot start or continue private DMs with you.</p>
-                    </div>
-                    {isLoadingBlockedUsers ? <p className="text-sm font-bold text-slate-400">Loading blocked users...</p> : blockedUsers.length ? blockedUsers.map((block) => (
-                      <div className="flex items-center justify-between gap-3 rounded-md border border-white/10 bg-white/5 p-3" key={block.blocked_user_id}>
-                        <div className="min-w-0">
-                          <p className="truncate text-sm font-black text-white">{block.blocked_label}</p>
-                          {block.reason ? <p className="mt-1 truncate text-xs text-slate-400">{block.reason}</p> : null}
-                        </div>
-                        <button className="shrink-0 rounded-sm px-3 py-2 text-xs font-black text-sky-300 hover:bg-white/10 disabled:opacity-60" disabled={unblockingIds.has(block.blocked_user_id)} onClick={() => void unblockUser(block.blocked_user_id)} type="button">
-                          {unblockingIds.has(block.blocked_user_id) ? "Unblocking..." : "Unblock"}
-                        </button>
-                      </div>
-                    )) : <p className="rounded-md border border-dashed border-white/10 p-4 text-center text-sm font-bold text-slate-400">You have not blocked anyone.</p>}
-                  </section>
-                </div>
-              ) : null}
-            </div>
-          </section>
-        </div>
+        <ChatInfoPanel
+          activeChannel={activeChannel}
+          activeChannelSubtitle={activeChannelSubtitle}
+          blockedUsers={blockedUsers}
+          canManageAnyPin={canManageAnyPin}
+          channelControls={channelControls}
+          communityChannels={communityChannels}
+          controlAction={controlAction}
+          currentUserId={currentUserId}
+          displayActiveChannel={displayActiveChannel}
+          dmChannels={dmChannels}
+          dmNotificationLevel={dmNotificationLevel}
+          infoTab={infoTab}
+          isLoadingBlockedUsers={isLoadingBlockedUsers}
+          isLoadingControls={isLoadingControls}
+          isLoadingMedia={isLoadingMedia}
+          isSavingControls={isSavingControls}
+          lockdownMinutes={lockdownMinutes}
+          lockdownReason={lockdownReason}
+          mediaError={mediaError}
+          mediaPage={mediaByChannel[activeChannel.slug]}
+          notificationLevel={notificationLevel}
+          pinnedMessages={pinnedMessages}
+          pushEnabled={pushEnabled}
+          slowModeSeconds={slowModeSeconds}
+          unblockingIds={unblockingIds}
+          unpinningIds={unpinningIds}
+          userDirectory={userDirectory}
+          onClose={() => setShowChannelInfo(false)}
+          onGoHome={goHome}
+          onInfoTabChange={(tab) => {
+            setInfoTab(tab);
+            if (tab === "media" && !mediaByChannel[activeChannel.slug]) void loadMedia();
+            if (tab === "settings") {
+              void loadChannelControls();
+              void loadBlockedUsers();
+            }
+          }}
+          onLoadMedia={loadMedia}
+          onOpenChannel={async (channel) => {
+            setShowChannelInfo(false);
+            await openChannel(channel);
+          }}
+          onOpenPinnedMessage={openPinnedMessage}
+          onOpenUserProfile={openUserProfile}
+          onSaveModerationControls={saveModerationControls}
+          onSaveNotificationControls={saveNotificationControls}
+          onSetDmNotificationLevel={setDmNotificationLevel}
+          onSetLockdownMinutes={setLockdownMinutes}
+          onSetLockdownReason={setLockdownReason}
+          onSetNotificationLevel={setNotificationLevel}
+          onSetPushEnabled={setPushEnabled}
+          onSetSlowModeSeconds={setSlowModeSeconds}
+          onUnblockUser={unblockUser}
+          onUnpinMessage={unpinMessage}
+          onViewImage={(attachment, url) => setViewer({ attachment, url })}
+        />
       ) : null}
+
 
       {profileUser ? (
-        <div aria-label={`${profileUser.label} profile`} aria-modal="true" className="fixed inset-0 z-[62] flex items-end bg-black/60 p-2 pb-[max(env(safe-area-inset-bottom),0.5rem)] sm:items-center sm:justify-center sm:p-4" onClick={() => setProfileUser(null)} role="dialog">
-          <section className="max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-lg border border-white/10 bg-[#171b25] text-white shadow-panel" onClick={(event) => event.stopPropagation()}>
-            <div className="h-20 rounded-t-lg bg-[linear-gradient(135deg,#22d3ee,#8b5cf6_55%,#111827)]" />
-            <div className="px-5 pb-5">
-              <div className="-mt-10 flex items-end justify-between gap-3">
-                <span className="relative grid h-20 w-20 shrink-0 place-items-center rounded-full border-4 border-[#171b25] bg-navy-900 text-2xl font-black text-action shadow-tight">
-                  {initials(profileUser.label)}
-                  {profileUser.is_online ? <span className="absolute bottom-1 right-1 h-4 w-4 rounded-full border-2 border-[#171b25] bg-success" /> : null}
-                </span>
-                <button aria-label="Close profile" className="mb-2 grid h-10 w-10 shrink-0 place-items-center rounded-full bg-white/10 text-lg font-black text-slate-200 hover:bg-white/20" onClick={() => setProfileUser(null)} type="button">X</button>
-              </div>
-
-              <div className="mt-4 min-w-0">
-                <h2 className="break-words text-3xl font-black leading-tight text-white">{profileIsSelf ? "You" : profileUser.label}</h2>
-                <p className="mt-1 break-words text-base font-bold text-slate-300">{profileUser.username ? `@${profileUser.username}` : profileUser.label}</p>
-                <p className="mt-2 text-sm font-bold text-slate-400">{profileUser.is_online ? "Online now" : "Recent in this channel"} / {channelTitle(displayActiveChannel)}</p>
-              </div>
-
-              <div className="mt-5 grid gap-2 sm:grid-cols-[1fr_auto_auto]">
-                {profileIsSelf ? (
-                  <a className="grid min-h-11 place-items-center rounded-full bg-action px-4 text-sm font-black text-navy-950 shadow-action hover:bg-action/90" href="/profile">Edit profile</a>
-                ) : (
-                  <button className="min-h-11 rounded-full bg-action px-4 text-sm font-black text-navy-950 shadow-action hover:bg-action/90 disabled:cursor-wait disabled:bg-slate-600 disabled:text-slate-300 disabled:shadow-none" disabled={isRequestingProfileDm} onClick={() => void requestProfileDm()} type="button">
-                    {isRequestingProfileDm ? "Requesting..." : "Request DM"}
-                  </button>
-                )}
-                {!profileIsSelf ? <button className="min-h-11 rounded-full bg-white/10 px-4 text-sm font-black text-white hover:bg-white/15 disabled:cursor-wait disabled:opacity-60" disabled={profileAction !== null} onClick={() => void reportProfileUser()} type="button">{profileAction === "report" ? "Reporting..." : "Report"}</button> : null}
-                {!profileIsSelf ? <button className="min-h-11 rounded-full bg-red-500/20 px-4 text-sm font-black text-red-100 hover:bg-red-500/30 disabled:cursor-wait disabled:opacity-60" disabled={profileAction !== null} onClick={() => void blockProfileUser()} type="button">{profileAction === "block" ? "Blocking..." : "Block"}</button> : null}
-              </div>
-
-              {!profileIsSelf ? (
-                <div className="mt-5 rounded-lg border border-white/10 bg-white/5 p-3">
-                  <label className="grid gap-2 text-sm font-bold text-slate-300">
-                    <span className="font-black text-white">DM intro</span>
-                    <textarea className="min-h-20 resize-y rounded-md border border-white/10 bg-[#223447] p-3 text-base leading-6 text-white outline-none placeholder:text-slate-500 focus:border-sky-400" maxLength={240} onChange={(event) => setProfileDmIntro(event.target.value)} placeholder={`Say why you want to message ${profileUser.label}`} value={profileDmIntro} />
-                  </label>
-                  <p className="mt-2 text-xs leading-5 text-slate-400">DMs use request-and-accept first. Be careful with links, payment requests, and off-platform claims.</p>
-                </div>
-              ) : null}
-
-              <div className="mt-5 grid gap-3">
-                <section className="rounded-lg border border-white/10 bg-white/5 p-4">
-                  <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-400">Skillsroom identity</p>
-                  <p className="mt-2 text-sm leading-6 text-slate-200">This public identity follows the player across Global Chat, game channels, room channels, and future DMs when they update their profile.</p>
-                </section>
-                <section className="rounded-lg border border-white/10 bg-white/5 p-4">
-                  <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-400">Channel status</p>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-black text-slate-200">{profileUser.is_online ? "Active now" : "Recent"}</span>
-                    <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-black text-slate-200">{profileIsSelf ? "Your account" : "Member"}</span>
-                    <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-black text-slate-200">{channelTypeLabel(activeChannel)}</span>
-                  </div>
-                </section>
-              </div>
-            </div>
-          </section>
-        </div>
+        <ChatProfileModal
+          activeChannel={activeChannel}
+          channel={displayActiveChannel}
+          dmIntro={profileDmIntro}
+          isRequestingDm={isRequestingProfileDm}
+          isSelf={profileIsSelf}
+          profileAction={profileAction}
+          user={profileUser}
+          onBlock={blockProfileUser}
+          onClose={() => setProfileUser(null)}
+          onDmIntroChange={setProfileDmIntro}
+          onReport={reportProfileUser}
+          onRequestDm={requestProfileDm}
+        />
       ) : null}
+
 
       {showSearch ? (
-        <div aria-label={`Search ${channelTitle(displayActiveChannel)}`} aria-modal="true" className="fixed inset-0 z-[60] flex items-end bg-black/60 p-2 pb-[max(env(safe-area-inset-bottom),0.5rem)] sm:items-center sm:justify-center sm:p-4" role="dialog">
-          <section className="grid max-h-[92svh] w-full max-w-2xl grid-rows-[auto_auto_minmax(0,1fr)] overflow-hidden rounded-lg border border-white/10 bg-[#172331] text-white shadow-panel">
-            <header className="flex items-center justify-between gap-3 border-b border-white/10 px-4 py-3">
-              <div className="min-w-0">
-                <h2 className="truncate text-lg font-black">Search {channelTitle(displayActiveChannel)}</h2>
-                <p className="mt-0.5 text-xs text-slate-400">Find messages without leaving the channel.</p>
-              </div>
-              <button aria-label="Close search" className="grid h-9 w-9 place-items-center rounded-full text-xl hover:bg-white/10" onClick={() => setShowSearch(false)} type="button">X</button>
-            </header>
-            <form className="grid gap-3 border-b border-white/10 p-3 sm:p-4" onSubmit={(event) => void runSearch(event)}>
-              <input className="min-h-11 rounded-md border border-white/10 bg-[#223447] px-3 text-base text-white outline-none placeholder:text-slate-400 focus:border-sky-400" maxLength={120} onChange={(event) => setSearchQuery(event.target.value)} placeholder="Search message text" type="search" value={searchQuery} />
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                <select className="min-h-10 min-w-0 rounded-md border border-white/10 bg-[#223447] px-2 text-base text-white sm:text-sm" onChange={(event) => setSearchUser(event.target.value)} value={searchUser}>
-                  <option value="">Any user</option>
-                  {userDirectory.map((user) => <option key={user.user_id} value={user.user_id}>{user.label}</option>)}
-                </select>
-                <select className="min-h-10 min-w-0 rounded-md border border-white/10 bg-[#223447] px-2 text-base text-white sm:text-sm" onChange={(event) => setSearchMentions(event.target.value as "" | "any" | "me")} value={searchMentions}>
-                  <option value="">Any mention</option>
-                  <option value="any">Has mentions</option>
-                  <option value="me">Mentions me</option>
-                </select>
-                <input aria-label="Messages from date" className="min-h-10 min-w-0 rounded-md border border-white/10 bg-[#223447] px-2 text-base text-white sm:text-sm" onChange={(event) => setSearchDateFrom(event.target.value)} type="date" value={searchDateFrom} />
-                <input aria-label="Messages through date" className="min-h-10 min-w-0 rounded-md border border-white/10 bg-[#223447] px-2 text-base text-white sm:text-sm" onChange={(event) => setSearchDateTo(event.target.value)} type="date" value={searchDateTo} />
-              </div>
-              <div className="flex flex-wrap items-center gap-3">
-                <label className="inline-flex min-h-9 items-center gap-2 text-sm font-bold"><input checked={searchLinks} className="h-4 w-4 accent-sky-400" onChange={(event) => setSearchLinks(event.target.checked)} type="checkbox" /> Has links</label>
-                <label className="inline-flex min-h-9 items-center gap-2 text-sm font-bold"><input checked={searchPinned} className="h-4 w-4 accent-sky-400" onChange={(event) => setSearchPinned(event.target.checked)} type="checkbox" /> Pinned</label>
-                <button className="ml-auto min-h-10 rounded-md bg-sky-500 px-4 text-sm font-black text-white hover:bg-sky-400 disabled:cursor-wait disabled:bg-slate-600" disabled={isSearching} type="submit">{isSearching ? "Searching..." : "Search"}</button>
-              </div>
-              {searchError ? <p className="rounded-md border border-red-400/30 bg-red-950/30 p-2 text-sm font-bold text-red-200">{searchError}</p> : null}
-            </form>
-            <div className="min-h-0 overflow-y-auto p-3 sm:p-4">
-              {searchResults.length ? (
-                <div className="grid gap-2">
-                  {searchResults.map((message) => (
-                    <button className="grid gap-1 rounded-md border border-white/10 bg-white/5 p-3 text-left hover:bg-white/10" key={message.id} onClick={() => void jumpToMessage(message.id)} type="button">
-                      <span className="flex min-w-0 items-center justify-between gap-3"><strong className="truncate text-sm text-sky-300">{message.sender_label}</strong><span className="shrink-0 text-xs text-slate-400">{new Date(message.created_at).toLocaleString("en-NG")}</span></span>
-                      <span className="line-clamp-3 text-sm leading-6 text-slate-200">{message.body}</span>
-                    </button>
-                  ))}
-                  {searchPageInfo.has_more && searchPageInfo.next_cursor ? <button className="min-h-11 rounded-md border border-white/10 bg-white/5 font-black hover:bg-white/10 disabled:cursor-wait" disabled={isSearching} onClick={() => void runSearch(undefined, searchPageInfo.next_cursor)} type="button">{isSearching ? "Loading..." : "More results"}</button> : null}
-                </div>
-              ) : <p className="rounded-md border border-dashed border-white/10 p-6 text-center text-sm font-bold text-slate-400">Search results will appear here.</p>}
-            </div>
-          </section>
-        </div>
-      ) : null}
-
-      {pinTarget ? (
-        <div aria-label="Choose pin duration" aria-modal="true" className="fixed inset-0 z-[60] grid place-items-center bg-black/60 p-4" role="dialog">
-          <section className="w-full max-w-sm rounded-lg border border-white/10 bg-[#172331] p-5 text-white shadow-panel">
-            <h2 className="text-xl font-black">Choose how long this pin lasts</h2>
-            <p className="mt-2 text-sm leading-6 text-slate-300">You or an authorized team member can unpin it sooner.</p>
-            <div className="mt-5 grid gap-2">
-              {([
-                [24, "24 hours"],
-                [168, "7 days"],
-                [720, "30 days"]
-              ] as const).map(([hours, label]) => (
-                <label className={["flex min-h-12 cursor-pointer items-center gap-3 rounded-md border px-3", pinDurationHours === hours ? "border-sky-400 bg-sky-400/10" : "border-white/10 bg-white/5"].join(" ")} key={hours}>
-                  <input checked={pinDurationHours === hours} className="h-5 w-5 accent-sky-400" disabled={isPinning} name="pin-duration" onChange={() => setPinDurationHours(hours)} type="radio" />
-                  <span className="font-black">{label}</span>
-                </label>
-              ))}
-            </div>
-            <div className="mt-6 grid grid-cols-2 gap-2">
-              <button className="min-h-11 rounded-md border border-white/10 bg-white/5 px-4 font-black text-white hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50" disabled={isPinning} onClick={() => setPinTarget(null)} type="button">Cancel</button>
-              <button className="min-h-11 rounded-md bg-sky-500 px-4 font-black text-white hover:bg-sky-400 disabled:cursor-wait disabled:bg-sky-700" disabled={isPinning} onClick={() => void pinMessage(pinTarget, pinDurationHours)} type="button">{isPinning ? "Pinning..." : "Pin"}</button>
-            </div>
-          </section>
-        </div>
+        <ChatSearchPanel
+          channelTitle={channelTitle(displayActiveChannel)}
+          dateFrom={searchDateFrom}
+          dateTo={searchDateTo}
+          error={searchError}
+          isSearching={isSearching}
+          linksOnly={searchLinks}
+          mentions={searchMentions}
+          pageInfo={searchPageInfo}
+          pinnedOnly={searchPinned}
+          query={searchQuery}
+          results={searchResults}
+          userDirectory={userDirectory}
+          userId={searchUser}
+          onClose={() => setShowSearch(false)}
+          onDateFromChange={setSearchDateFrom}
+          onDateToChange={setSearchDateTo}
+          onJumpToMessage={jumpToMessage}
+          onLinksOnlyChange={setSearchLinks}
+          onMentionsChange={setSearchMentions}
+          onPinnedOnlyChange={setSearchPinned}
+          onQueryChange={setSearchQuery}
+          onSearch={runSearch}
+          onUserChange={setSearchUser}
+        />
       ) : null}
 
       {notice ? (
@@ -2779,275 +2455,123 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
         </div>
       ) : null}
 
-      {actionMessage ? (
-        <div aria-label="Message actions" aria-modal="true" className="fixed inset-0 z-[65] flex items-end bg-black/60 p-2 pb-[max(env(safe-area-inset-bottom),0.5rem)] sm:items-center sm:justify-center sm:p-4" onClick={() => setActionMessage(null)} role="dialog">
-          <section className="w-full max-w-md overflow-hidden rounded-lg border border-white/10 bg-[#172331] text-white shadow-panel" onClick={(event) => event.stopPropagation()}>
-            <header className="flex items-center justify-between border-b border-white/10 px-4 py-3">
-              <div className="min-w-0">
-                <p className="truncate text-sm font-black">{actionMessage.sender_user_id === currentUserId ? "Your message" : actionMessage.sender_label}</p>
-                <p className="mt-0.5 truncate text-xs text-slate-400">{actionMessage.status === "deleted" ? "Deleted message" : actionMessage.body}</p>
-              </div>
-              <button aria-label="Close message actions" className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-xl text-slate-300 hover:bg-white/10" onClick={() => setActionMessage(null)} type="button">X</button>
-            </header>
-            <div className="grid grid-cols-2 gap-px bg-white/10 sm:grid-cols-3">
-              {actionMessage.status === "visible" ? (
-                <button className="min-h-14 bg-[#172331] px-3 text-sm font-black hover:bg-[#223447]" onClick={() => { setReplyTo(actionMessage); setActionMessage(null); composerRef.current?.focus(); }} type="button">Reply</button>
-              ) : null}
-              {actionMessage.status === "visible" ? (
-                <button className="min-h-14 bg-[#172331] px-3 text-sm font-black hover:bg-[#223447]" onClick={() => { setActionMessage(null); void openThread(actionMessage); }} type="button">Open thread</button>
-              ) : null}
-              {actionMessage.status === "visible" ? (
-                <button className="min-h-14 bg-[#172331] px-3 text-sm font-black hover:bg-[#223447]" onClick={() => { setForwardTarget(actionMessage); setForwardChannelSlug(activeChannel.slug); setActionMessage(null); }} type="button">Forward</button>
-              ) : null}
-              {actionMessage.status === "visible" ? (
-                <button className="min-h-14 bg-[#172331] px-3 text-sm font-black hover:bg-[#223447]" disabled={bookmarkingIds.has(actionMessage.id)} onClick={() => void toggleBookmark(actionMessage)} type="button">{actionMessage.bookmarked_by_me ? "Unsave" : "Save"}</button>
-              ) : null}
-              {actionMessage.status === "visible" && actionMessage.reactions?.some((reaction) => reaction.count > 0) ? (
-                <button className="min-h-14 bg-[#172331] px-3 text-sm font-black hover:bg-[#223447]" onClick={() => { setActionMessage(null); void openReactionDetails(actionMessage); }} type="button">Reactions</button>
-              ) : null}
-              {actionMessage.status === "visible" ? (
-                <button className="min-h-14 bg-[#172331] px-3 text-sm font-black hover:bg-[#223447]" onClick={() => void copyToClipboard(actionMessage.body, "Message copied.")} type="button">Copy text</button>
-              ) : null}
-              <button className="min-h-14 bg-[#172331] px-3 text-sm font-black hover:bg-[#223447]" onClick={() => void copyToClipboard(messageLink(actionMessage), "Message link copied.")} type="button">Copy link</button>
-              {canEditMessage(actionMessage) ? (
-                <button className="min-h-14 bg-[#172331] px-3 text-sm font-black hover:bg-[#223447]" onClick={() => beginEdit(actionMessage)} type="button">Edit</button>
-              ) : null}
-              {canDeleteMessage(actionMessage) ? (
-                <button className="min-h-14 bg-[#172331] px-3 text-sm font-black text-red-300 hover:bg-red-950/40" onClick={() => { setDeleteTarget(actionMessage); setActionMessage(null); }} type="button">Delete</button>
-              ) : null}
-              {actionMessage.status === "visible" && (actionMessage.sender_user_id === currentUserId || canManageAnyPin) && !pinnedMessages.some((pin) => pin.message_id === actionMessage.id) ? (
-                <button className="min-h-14 bg-[#172331] px-3 text-sm font-black hover:bg-[#223447]" onClick={() => { setPinTarget(actionMessage); setActionMessage(null); }} type="button">Pin</button>
-              ) : null}
-              {actionMessage.status === "visible" && actionMessage.sender_user_id !== currentUserId ? (
-                <button className="min-h-14 bg-[#172331] px-3 text-sm font-black hover:bg-[#223447]" onClick={() => { setActionMessage(null); void reportMessage(actionMessage); }} type="button">Report</button>
-              ) : null}
-            </div>
-          </section>
-        </div>
-      ) : null}
 
-      {editTarget ? (
-        <div aria-label="Edit message" aria-modal="true" className="fixed inset-0 z-[70] flex items-end bg-black/60 p-2 pb-[max(env(safe-area-inset-bottom),0.5rem)] sm:items-center sm:justify-center sm:p-4" role="dialog">
-          <form className="w-full max-w-lg rounded-lg border border-white/10 bg-[#172331] p-4 text-white shadow-panel sm:p-5" onSubmit={saveMessageEdit}>
-            <h2 className="text-lg font-black">Edit message</h2>
-            <p className="mt-1 text-sm text-slate-300">Your edit will be marked, and the previous version remains available to authorized moderators.</p>
-            <textarea autoFocus className="mt-4 min-h-28 w-full resize-y rounded-md border border-white/10 bg-[#223447] p-3 text-base leading-6 text-white outline-none focus:border-sky-400" disabled={isEditing} maxLength={chatMessageMaxLength} onChange={(event) => setEditBody(event.target.value)} value={editBody} />
-            <div className="mt-4 grid grid-cols-2 gap-2">
-              <button className="min-h-11 rounded-md border border-white/10 bg-white/5 px-4 font-black hover:bg-white/10 disabled:opacity-50" disabled={isEditing} onClick={() => { setEditTarget(null); setEditBody(""); }} type="button">Cancel</button>
-              <button className="min-h-11 rounded-md bg-sky-500 px-4 font-black hover:bg-sky-400 disabled:cursor-wait disabled:bg-slate-600" disabled={isEditing || !editBody.trim() || editBody.replace(/\s+/g, " ").trim() === editTarget.body} type="submit">{isEditing ? "Saving..." : "Save edit"}</button>
-            </div>
-          </form>
-        </div>
-      ) : null}
-
-      {deleteTarget ? (
-        <div aria-label="Confirm message deletion" aria-modal="true" className="fixed inset-0 z-[70] grid place-items-center bg-black/60 p-4" role="alertdialog">
-          <section className="w-full max-w-sm rounded-lg border border-white/10 bg-[#172331] p-5 text-white shadow-panel">
-            <h2 className="text-xl font-black">Delete this message?</h2>
-            <p className="mt-2 text-sm leading-6 text-slate-300">Everyone will see &quot;This message was deleted.&quot; Replies will stay connected, and the original is retained only for authorized audit review.</p>
-            <div className="mt-6 grid grid-cols-2 gap-2">
-              <button className="min-h-11 rounded-md border border-white/10 bg-white/5 px-4 font-black hover:bg-white/10 disabled:opacity-50" disabled={deletingIds.has(deleteTarget.id)} onClick={() => setDeleteTarget(null)} type="button">No, keep it</button>
-              <button className="min-h-11 rounded-md bg-red-600 px-4 font-black hover:bg-red-500 disabled:cursor-wait disabled:bg-red-900" disabled={deletingIds.has(deleteTarget.id)} onClick={() => void deleteMessage(deleteTarget)} type="button">{deletingIds.has(deleteTarget.id) ? "Deleting..." : "Yes, delete"}</button>
-            </div>
-          </section>
-        </div>
-      ) : null}
+      <ChatActionModals
+        actionMessage={actionMessage}
+        activeChannel={activeChannel}
+        bookmarks={bookmarks}
+        bookmarkingIds={bookmarkingIds}
+        canDeleteMessage={canDeleteMessage}
+        canEditMessage={canEditMessage}
+        canManageAnyPin={canManageAnyPin}
+        channelList={channelList}
+        currentUserId={currentUserId}
+        deleteTarget={deleteTarget}
+        deletingIds={deletingIds}
+        editBody={editBody}
+        editTarget={editTarget}
+        forwardChannelSlug={forwardChannelSlug}
+        forwardTarget={forwardTarget}
+        isCreatingPoll={isCreatingPoll}
+        isEditing={isEditing}
+        isForwarding={isForwarding}
+        isLoadingBookmarks={isLoadingBookmarks}
+        isLoadingReactions={isLoadingReactions}
+        isLoadingSchedules={isLoadingSchedules}
+        isPinning={isPinning}
+        isScheduling={isScheduling}
+        pinDurationHours={pinDurationHours}
+        pinnedMessages={pinnedMessages}
+        pinTarget={pinTarget}
+        pollClosesAt={pollClosesAt}
+        pollMultiple={pollMultiple}
+        pollOptions={pollOptions}
+        pollQuestion={pollQuestion}
+        reactionMembers={reactionMembers}
+        reactionOptions={reactionOptions}
+        reactionTarget={reactionTarget}
+        scheduledAnnouncements={scheduledAnnouncements}
+        scheduledBody={scheduledBody}
+        scheduledFor={scheduledFor}
+        showBookmarks={showBookmarks}
+        showPollCreator={showPollCreator}
+        showSchedule={showSchedule}
+        onBeginEdit={beginEdit}
+        onCancelEdit={() => { setEditTarget(null); setEditBody(""); }}
+        onCloseActionMessage={() => setActionMessage(null)}
+        onCloseBookmarks={() => setShowBookmarks(false)}
+        onClosePollCreator={() => setShowPollCreator(false)}
+        onCloseReactionDetails={() => setReactionTarget(null)}
+        onCloseSchedule={() => setShowSchedule(false)}
+        onCopyMessageLink={(message) => copyToClipboard(messageLink(message), "Message link copied.")}
+        onCopyText={(text) => copyToClipboard(text, "Message copied.")}
+        onCreatePoll={createPoll}
+        onDeleteMessage={deleteMessage}
+        onEditBodyChange={setEditBody}
+        onForwardChannelSlugChange={setForwardChannelSlug}
+        onForwardMessage={forwardMessage}
+        onJumpToBookmark={async (bookmark) => {
+          const channel = channelList.find((item) => item.slug === bookmark.channel_slug);
+          setShowBookmarks(false);
+          if (channel && channel.slug !== activeChannel.slug) await openChannel(channel).then(() => jumpToMessage(bookmark.message_id));
+          else await jumpToMessage(bookmark.message_id);
+        }}
+        onOpenReactions={openReactionDetails}
+        onOpenThread={openThread}
+        onPinMessage={pinMessage}
+        onPollClosesAtChange={setPollClosesAt}
+        onPollMultipleChange={setPollMultiple}
+        onPollOptionsChange={setPollOptions}
+        onPollQuestionChange={setPollQuestion}
+        onReportMessage={reportMessage}
+        onReply={(message) => { setReplyTo(message); setActionMessage(null); composerRef.current?.focus(); }}
+        onSaveEdit={saveMessageEdit}
+        onScheduleAnnouncement={scheduleAnnouncement}
+        onScheduledBodyChange={setScheduledBody}
+        onScheduledForChange={setScheduledFor}
+        onSetDeleteTarget={setDeleteTarget}
+        onSetForwardTarget={setForwardTarget}
+        onSetPinDurationHours={setPinDurationHours}
+        onSetPinTarget={setPinTarget}
+        onToggleBookmark={toggleBookmark}
+      />
 
       {threadTarget ? (
-        <div aria-label="Thread" aria-modal="true" className="fixed inset-0 z-[70] flex items-end bg-black/60 p-2 pb-[max(env(safe-area-inset-bottom),0.5rem)] sm:items-center sm:justify-center sm:p-4" role="dialog">
-          <section className="grid max-h-[92svh] w-full max-w-lg grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden rounded-lg border border-white/10 bg-[#172331] text-white shadow-panel">
-            <header className="flex items-center justify-between gap-3 border-b border-white/10 px-4 py-3">
-              <div className="min-w-0"><h2 className="text-lg font-black">Thread</h2><p className="truncate text-xs text-slate-400">{threadTarget.sender_label}: {threadTarget.body || "Photo"}</p></div>
-              <button className="grid h-9 w-9 place-items-center rounded-full text-xl hover:bg-white/10" onClick={() => setThreadTarget(null)} type="button">X</button>
-            </header>
-            <div className="min-h-0 overflow-y-auto p-3">
-              {isLoadingThread ? <p className="p-4 text-center text-sm font-bold text-slate-400">Loading thread...</p> : (
-                <div className="grid gap-2">
-                  {threadMessages.map((message) => <article className="rounded-md border border-white/10 bg-white/5 p-3" key={message.id}><p className="text-xs font-black text-sky-300">{message.sender_user_id === currentUserId ? "You" : message.sender_label} <span className="text-slate-500">{messageTime(message.created_at)}</span></p><p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6">{message.status === "deleted" ? "This message was deleted." : message.body}</p></article>)}
-                </div>
-              )}
-            </div>
-            <form className="grid grid-cols-[minmax(0,1fr)_auto] gap-2 border-t border-white/10 p-3" onSubmit={sendThreadReply}>
-              <input className="min-h-11 rounded-full border border-white/10 bg-[#223447] px-4 text-base outline-none focus:border-sky-400" maxLength={chatMessageMaxLength} onChange={(event) => setThreadBody(event.target.value)} placeholder="Reply in thread" value={threadBody} />
-              <button className="min-h-11 rounded-full bg-sky-500 px-4 font-black disabled:bg-slate-600" disabled={isSendingThread || !threadBody.trim()} type="submit">{isSendingThread ? "..." : "Send"}</button>
-            </form>
-          </section>
-        </div>
+        <ChatThreadPanel
+          body={threadBody}
+          currentUserId={currentUserId}
+          isLoading={isLoadingThread}
+          isLoadingOlder={isLoadingOlderThread}
+          isSending={isSendingThread}
+          messages={threadMessages}
+          pageInfo={threadPageInfo}
+          target={threadTarget}
+          onBodyChange={setThreadBody}
+          onClose={() => setThreadTarget(null)}
+          onLoadOlder={loadOlderThreadReplies}
+          onSubmit={sendThreadReply}
+        />
       ) : null}
 
-      {forwardTarget ? (
-        <div aria-label="Forward message" aria-modal="true" className="fixed inset-0 z-[70] grid place-items-center bg-black/60 p-4" role="dialog">
-          <section className="w-full max-w-sm rounded-lg border border-white/10 bg-[#172331] p-5 text-white shadow-panel">
-            <h2 className="text-xl font-black">Forward message</h2>
-            <p className="mt-2 line-clamp-2 text-sm text-slate-300">{forwardTarget.body || "Photo"}</p>
-            <select className="mt-4 min-h-11 w-full rounded-md border border-white/10 bg-[#223447] px-3 text-base" onChange={(event) => setForwardChannelSlug(event.target.value)} value={forwardChannelSlug}>
-              {channelList.map((channel) => <option key={channel.id} value={channel.slug}>{channelTitle(channel)}</option>)}
-            </select>
-            <div className="mt-4 grid grid-cols-2 gap-2">
-              <button className="min-h-11 rounded-md border border-white/10 bg-white/5 font-black" disabled={isForwarding} onClick={() => setForwardTarget(null)} type="button">Cancel</button>
-              <button className="min-h-11 rounded-md bg-sky-500 font-black disabled:bg-slate-600" disabled={isForwarding || !forwardChannelSlug} onClick={() => void forwardMessage()} type="button">{isForwarding ? "Forwarding..." : "Forward"}</button>
-            </div>
-          </section>
-        </div>
-      ) : null}
-
-      {showBookmarks ? (
-        <div aria-label="Saved messages" aria-modal="true" className="fixed inset-0 z-[70] flex items-end bg-black/60 p-2 pb-[max(env(safe-area-inset-bottom),0.5rem)] sm:items-center sm:justify-center sm:p-4" role="dialog">
-          <section className="grid max-h-[90svh] w-full max-w-lg grid-rows-[auto_minmax(0,1fr)] overflow-hidden rounded-lg border border-white/10 bg-[#172331] text-white shadow-panel">
-            <header className="flex items-center justify-between border-b border-white/10 px-4 py-3"><h2 className="text-lg font-black">Saved messages</h2><button className="grid h-9 w-9 place-items-center rounded-full text-xl hover:bg-white/10" onClick={() => setShowBookmarks(false)} type="button">X</button></header>
-            <div className="min-h-0 overflow-y-auto p-3">
-              {isLoadingBookmarks ? <p className="p-4 text-center text-sm font-bold text-slate-400">Loading saved messages...</p> : bookmarks.length ? <div className="grid gap-2">{bookmarks.map((bookmark) => <button className="grid gap-1 rounded-md border border-white/10 bg-white/5 p-3 text-left hover:bg-white/10" key={bookmark.message_id} onClick={() => { const channel = channelList.find((item) => item.slug === bookmark.channel_slug); setShowBookmarks(false); if (channel && channel.slug !== activeChannel.slug) void openChannel(channel).then(() => jumpToMessage(bookmark.message_id)); else void jumpToMessage(bookmark.message_id); }} type="button"><span className="text-xs font-black text-sky-300">{bookmark.channel_title}</span><span className="line-clamp-2 text-sm leading-6">{bookmark.message.body || "Photo"}</span></button>)}</div> : <p className="rounded-md border border-dashed border-white/10 p-6 text-center text-sm font-bold text-slate-400">Messages you save privately will appear here.</p>}
-            </div>
-          </section>
-        </div>
-      ) : null}
-
-      {reactionTarget ? (
-        <div aria-label="Reaction details" aria-modal="true" className="fixed inset-0 z-[70] grid place-items-center bg-black/60 p-4" role="dialog">
-          <section className="w-full max-w-sm rounded-lg border border-white/10 bg-[#172331] p-5 text-white shadow-panel">
-            <div className="flex items-center justify-between"><h2 className="text-xl font-black">Reactions</h2><button className="grid h-9 w-9 place-items-center rounded-full text-xl hover:bg-white/10" onClick={() => setReactionTarget(null)} type="button">X</button></div>
-            <div className="mt-4 grid gap-2">
-              {isLoadingReactions ? <p className="text-sm font-bold text-slate-400">Loading...</p> : reactionMembers.length ? reactionMembers.map((member) => <div className="flex items-center justify-between rounded-md bg-white/5 p-3" key={`${member.user_id}-${member.reaction}`}><span className="font-black">{member.label}</span><span>{reactionOptions.find((item) => item.key === member.reaction)?.label ?? member.reaction}</span></div>) : <p className="text-sm font-bold text-slate-400">No reactions yet.</p>}
-            </div>
-          </section>
-        </div>
-      ) : null}
-
-      {showPollCreator ? (
-        <div aria-label="Create poll" aria-modal="true" className="fixed inset-0 z-[70] flex items-end bg-black/60 p-2 pb-[max(env(safe-area-inset-bottom),0.5rem)] sm:items-center sm:justify-center sm:p-4" role="dialog">
-          <form className="w-full max-w-lg rounded-lg border border-white/10 bg-[#172331] p-4 text-white shadow-panel" onSubmit={createPoll}>
-            <h2 className="text-lg font-black">Create poll</h2>
-            <input className="mt-3 min-h-11 w-full rounded-md border border-white/10 bg-[#223447] px-3 text-base outline-none focus:border-sky-400" maxLength={160} onChange={(event) => setPollQuestion(event.target.value)} placeholder="Question" value={pollQuestion} />
-            <div className="mt-3 grid gap-2">{pollOptions.map((option, index) => <input className="min-h-10 rounded-md border border-white/10 bg-[#223447] px-3 text-base outline-none focus:border-sky-400" key={index} maxLength={80} onChange={(event) => setPollOptions((current) => current.map((item, itemIndex) => itemIndex === index ? event.target.value : item))} placeholder={`Option ${index + 1}`} value={option} />)}</div>
-            <div className="mt-3 flex flex-wrap gap-2"><button className="rounded-full border border-white/10 px-3 py-2 text-xs font-black" disabled={pollOptions.length >= 10} onClick={() => setPollOptions((current) => [...current, ""])} type="button">Add option</button><label className="inline-flex items-center gap-2 text-sm font-bold"><input checked={pollMultiple} className="h-4 w-4 accent-sky-400" onChange={(event) => setPollMultiple(event.target.checked)} type="checkbox" /> Multiple answers</label></div>
-            <input className="mt-3 min-h-10 w-full rounded-md border border-white/10 bg-[#223447] px-3 text-base" onChange={(event) => setPollClosesAt(event.target.value)} type="datetime-local" value={pollClosesAt} />
-            <div className="mt-4 grid grid-cols-2 gap-2"><button className="min-h-11 rounded-md border border-white/10 bg-white/5 font-black" disabled={isCreatingPoll} onClick={() => setShowPollCreator(false)} type="button">Cancel</button><button className="min-h-11 rounded-md bg-sky-500 font-black disabled:bg-slate-600" disabled={isCreatingPoll || !pollQuestion.trim() || pollOptions.filter((option) => option.trim()).length < 2} type="submit">{isCreatingPoll ? "Creating..." : "Create poll"}</button></div>
-          </form>
-        </div>
-      ) : null}
-
-      {showSchedule ? (
-        <div aria-label="Scheduled announcements" aria-modal="true" className="fixed inset-0 z-[70] flex items-end bg-black/60 p-2 pb-[max(env(safe-area-inset-bottom),0.5rem)] sm:items-center sm:justify-center sm:p-4" role="dialog">
-          <section className="grid max-h-[92svh] w-full max-w-lg grid-rows-[auto_auto_minmax(0,1fr)] overflow-hidden rounded-lg border border-white/10 bg-[#172331] text-white shadow-panel">
-            <header className="flex items-center justify-between border-b border-white/10 px-4 py-3"><h2 className="text-lg font-black">Scheduled announcements</h2><button className="grid h-9 w-9 place-items-center rounded-full text-xl hover:bg-white/10" onClick={() => setShowSchedule(false)} type="button">X</button></header>
-            <form className="grid gap-2 border-b border-white/10 p-3" onSubmit={scheduleAnnouncement}><textarea className="min-h-24 rounded-md border border-white/10 bg-[#223447] p-3 text-base" maxLength={1000} onChange={(event) => setScheduledBody(event.target.value)} placeholder="Announcement message" value={scheduledBody} /><input className="min-h-10 rounded-md border border-white/10 bg-[#223447] px-3 text-base" onChange={(event) => setScheduledFor(event.target.value)} type="datetime-local" value={scheduledFor} /><button className="min-h-10 rounded-md bg-sky-500 font-black disabled:bg-slate-600" disabled={isScheduling || !scheduledBody.trim() || !scheduledFor} type="submit">{isScheduling ? "Scheduling..." : "Schedule"}</button></form>
-            <div className="min-h-0 overflow-y-auto p-3">{isLoadingSchedules ? <p className="text-sm font-bold text-slate-400">Loading...</p> : scheduledAnnouncements.length ? <div className="grid gap-2">{scheduledAnnouncements.map((item) => <article className="rounded-md border border-white/10 bg-white/5 p-3" key={item.id}><p className="line-clamp-2 text-sm">{item.body}</p><p className="mt-2 text-xs font-bold text-slate-400">{new Date(item.scheduled_for).toLocaleString("en-NG")} · {item.status}</p></article>)}</div> : <p className="rounded-md border border-dashed border-white/10 p-6 text-center text-sm font-bold text-slate-400">No scheduled announcements.</p>}</div>
-          </section>
-        </div>
-      ) : null}
 
       <div className={[
         "grid",
         fullLayout ? "h-full min-h-0 overflow-hidden bg-[#0f1b29] md:grid-cols-[18rem_minmax(0,1fr)] xl:grid-cols-[18rem_minmax(34rem,58rem)_20rem] 2xl:grid-cols-[20rem_minmax(38rem,64rem)_22rem] xl:justify-center" : "min-h-[34rem] lg:grid-cols-[20rem_minmax(0,1fr)]"
       ].join(" ")}>
-        <aside className={[
-          "border-line",
-          fullLayout ? "hidden min-h-0 overflow-hidden border-r border-white/10 bg-[#162536] md:block" : "border-b bg-white lg:border-b-0 lg:border-r"
-        ].join(" ")}>
-          <div className={[
-            "overflow-y-auto p-3",
-            fullLayout ? "max-h-64 lg:h-full lg:max-h-none" : "max-h-72 lg:max-h-[62vh]"
-          ].join(" ")}>
-            <a
-              className={[
-                "mb-3 flex min-h-11 items-center justify-between rounded-md border px-3 text-sm font-black transition",
-                fullLayout ? "border-sky-400/30 bg-sky-400/10 text-sky-200 hover:bg-sky-400/15" : "border-cyan bg-cyanSoft text-ink hover:border-action"
-              ].join(" ")}
-              href="/notifications"
-            >
-              <span>Message requests</span>
-              <span className={["rounded-full px-2 py-0.5 text-xs", fullLayout ? "bg-white/10 text-white" : "bg-white text-cyan"].join(" ")}>
-                {pendingIncomingDmRequests.length}
-              </span>
-            </a>
-            <form className={["mb-3 grid gap-2 rounded-md border p-3", fullLayout ? "border-white/10 bg-white/5" : "border-line bg-surface"].join(" ")} onSubmit={createDmRequest}>
-              <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">DM Request</p>
-              <input
-                className={["min-h-10 rounded-md border px-3 text-sm outline-none focus:border-action", fullLayout ? "border-white/10 bg-[#223447] text-white placeholder:text-slate-400" : "border-line bg-white"].join(" ")}
-                onChange={(event) => setDmUsername(event.target.value)}
-                placeholder="username"
-                value={dmUsername}
-              />
-              <input
-                className={["min-h-10 rounded-md border px-3 text-sm outline-none focus:border-action", fullLayout ? "border-white/10 bg-[#223447] text-white placeholder:text-slate-400" : "border-line bg-white"].join(" ")}
-                maxLength={500}
-                onChange={(event) => setDmIntro(event.target.value)}
-                placeholder="intro message"
-                value={dmIntro}
-              />
-              <button className="min-h-10 rounded-md bg-action px-3 text-sm font-black text-navy-950 shadow-action" type="submit">Request DM</button>
-            </form>
-            {pendingIncomingDmRequests.length ? (
-              <div className="mb-3 grid gap-2 rounded-md border border-line bg-white p-3">
-                <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-muted">Pending DMs</p>
-                {pendingIncomingDmRequests.slice(0, 3).map((request) => (
-                  <div className="grid gap-2 rounded-md bg-surfaceHigh p-2" key={request.id}>
-                    <p className="text-xs font-bold text-ink">{request.requester_label}</p>
-                    {request.intro_message ? <p className="text-xs text-muted">{request.intro_message}</p> : null}
-                    <div className="grid grid-cols-2 gap-2">
-                      <button className="rounded-md bg-action px-2 py-1 text-xs font-black text-navy-950" onClick={() => respondDmRequest(request.id, "accepted")} type="button">Accept</button>
-                      <button className="rounded-md border border-line bg-white px-2 py-1 text-xs font-black text-ink" onClick={() => respondDmRequest(request.id, "declined")} type="button">Decline</button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : null}
-            <div className="mb-3 grid gap-2">
-              <p className={["font-mono text-[0.68rem] font-black uppercase tracking-[0.14em]", fullLayout ? "text-sky-300" : "text-cyan"].join(" ")}>Messages</p>
-              {dmChannels.length ? dmChannels.map((item) => {
-                const active = item.id === activeChannel.id;
-                return (
-                  <button
-                    className={[
-                      "grid min-h-16 min-w-0 gap-1 rounded-md border px-3 py-2 text-left transition",
-                      fullLayout
-                        ? active ? "border-sky-400/50 bg-sky-400/10" : "border-white/10 bg-white/5 hover:bg-white/10"
-                        : active ? "border-cyan bg-cyanSoft" : "border-line bg-white hover:bg-surfaceHigh"
-                    ].join(" ")}
-                    key={item.id}
-                    onClick={() => openChannel(item)}
-                    type="button"
-                  >
-                    <span className="flex min-w-0 items-center justify-between gap-2">
-                      <strong className={["flex min-w-0 items-center gap-2 truncate text-sm font-black", fullLayout ? "text-white" : "text-ink"].join(" ")}><span className="grid h-8 min-w-8 shrink-0 place-items-center rounded-full bg-navy-900 px-1 text-[0.62rem] text-action">{channelInitials(item)}</span><span className="truncate">{channelTitle(item)}</span></strong>
-                      {(item.unread_count ?? 0) > 0 ? (
-                        <span className="rounded-md bg-danger px-2 py-0.5 text-[0.65rem] font-black text-white">{item.unread_count}</span>
-                      ) : null}
-                    </span>
-                    <span className={["truncate text-xs font-bold", fullLayout ? "text-slate-400" : "text-muted"].join(" ")}>{channelPreview(item)}</span>
-                  </button>
-                );
-              }) : <p className={["rounded-md border border-dashed p-3 text-xs font-bold", fullLayout ? "border-white/10 text-slate-400" : "border-line text-muted"].join(" ")}>Accepted DMs appear here.</p>}
-            </div>
-            <div className="grid gap-2">
-              <p className={["font-mono text-[0.68rem] font-black uppercase tracking-[0.14em]", fullLayout ? "text-sky-300" : "text-cyan"].join(" ")}>Channels</p>
-              {communityChannels.map((item) => {
-                const active = item.id === activeChannel.id;
-                return (
-                  <button
-                    className={[
-                      "grid min-h-16 min-w-0 gap-1 rounded-md border px-3 py-2 text-left transition",
-                      fullLayout
-                        ? active ? "border-sky-400/50 bg-sky-400/10" : "border-white/10 bg-white/5 hover:bg-white/10"
-                        : active ? "border-cyan bg-cyanSoft" : "border-line bg-white hover:bg-surfaceHigh"
-                    ].join(" ")}
-                    key={item.id}
-                    onClick={() => openChannel(item)}
-                    type="button"
-                  >
-                    <span className="flex min-w-0 items-center justify-between gap-2">
-                      <strong className={["flex min-w-0 items-center gap-2 truncate text-sm font-black", fullLayout ? "text-white" : "text-ink"].join(" ")}><span className="grid h-7 min-w-9 shrink-0 place-items-center rounded-sm bg-navy-900 px-1 text-[0.62rem] text-action">{channelInitials(item)}</span><span className="truncate">{channelTitle(item)}</span></strong>
-                      {(item.unread_count ?? 0) > 0 ? (
-                        <span className="rounded-md bg-danger px-2 py-0.5 text-[0.65rem] font-black text-white">{item.unread_count}</span>
-                      ) : null}
-                    </span>
-                    <span className={["truncate text-xs font-bold", fullLayout ? "text-slate-400" : "text-muted"].join(" ")}>{channelTypeLabel(item)} - {item.online_count ?? 0} online - {channelPreview(item)}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        </aside>
+        <ChannelListPanel
+          activeChannel={activeChannel}
+          communityChannels={communityChannels}
+          dmChannels={dmChannels}
+          dmIntro={dmIntro}
+          dmUsername={dmUsername}
+          fullLayout={fullLayout}
+          pendingIncomingDmRequests={pendingIncomingDmRequests}
+          onCreateDmRequest={createDmRequest}
+          onDmIntroChange={setDmIntro}
+          onDmUsernameChange={setDmUsername}
+          onOpenChannel={(channel) => void openChannel(channel)}
+          onRespondDmRequest={(requestId, responseValue) => void respondDmRequest(requestId, responseValue)}
+        />
 
         <div className="flex h-full max-h-full min-h-0 min-w-0 flex-col overflow-hidden border-x border-white/10 bg-[#132333] bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.06)_0,rgba(255,255,255,0)_22rem)] shadow-panel">
           {currentPinnedMessage ? (
@@ -3069,388 +2593,106 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
               ) : null}
             </div>
           ) : null}
-          <div className={[
-            "min-h-0 min-w-0 flex-1 overflow-x-hidden overscroll-contain overflow-y-auto p-3 sm:p-4",
-            fullLayout ? "xl:px-6" : "max-h-[58vh]"
-          ].join(" ")} style={{ WebkitOverflowScrolling: "touch" }} onScroll={(event) => {
-            const viewport = event.currentTarget;
-            const nearLatest = viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight < 120;
-            shouldStickLatestRef.current = nearLatest;
-            setShowJumpLatest(!nearLatest);
-          }} ref={messageViewportRef}>
-            <div className="mx-auto mb-2 flex w-full max-w-4xl min-w-0 flex-wrap items-center gap-2 rounded-md border border-white/10 bg-[#203244]/90 px-3 py-2 text-xs font-bold text-slate-300">
-              <span>{presence.online_count} online</span>
-              {presence.active.slice(0, 5).map((user) => (
-                <span className="rounded-sm bg-surfaceHigh px-2 py-1" key={user.user_id}>{user.label}</span>
-              ))}
-            </div>
-            {pageInfo.has_older ? (
-              <div className="mb-3 flex justify-center">
-                <button className="min-h-9 rounded-full border border-white/10 bg-[#223447] px-4 text-xs font-black text-slate-200 hover:bg-[#2c4358] disabled:cursor-wait disabled:opacity-60" disabled={isLoadingOlder} onClick={() => void loadOlderMessages()} type="button">{isLoadingOlder ? "Loading older..." : "Load older messages"}</button>
-              </div>
-            ) : null}
-            {isLoadingChannel ? (
-              <div className={["mx-auto grid w-full max-w-4xl place-items-center rounded-md border border-dashed p-6 text-center", isDirectMessage ? "min-h-36 border-white/10 bg-[#203244]/80 text-slate-200" : "h-full min-h-[18rem] border-line bg-white"].join(" ")}>
-                <p className={["text-sm font-black", isDirectMessage ? "text-slate-200" : "text-muted"].join(" ")}>{isDirectMessage ? "Opening conversation..." : "Loading channel..."}</p>
-              </div>
-            ) : messages.length ? (
-              <div className="mx-auto grid w-full max-w-4xl gap-2">
-                {messages.map((message, index) => {
-                  const mine = message.sender_user_id === currentUserId;
-                  const system = message.message_kind === "system";
-                  const deleted = message.status === "deleted";
-                  const isPinned = pinnedMessages.some((pin) => pin.message_id === message.id);
-                  const canOpenSenderProfile = Boolean(message.sender_user_id && !system);
-                  const previous = messages[index - 1];
-                  const showDate = !previous || messageDate(previous.created_at) !== messageDate(message.created_at);
-                  return (
-                    <div key={message.id}>
-                      {showDate ? (
-                        <div className="my-3 flex justify-center">
-                          <span className="rounded-full bg-[#223447]/90 px-3 py-1 text-xs font-black text-slate-300 shadow-tight">{messageDate(message.created_at)}</span>
-                        </div>
-                      ) : null}
-                      {message.id === unreadMessageId ? (
-                        <div className="my-3 flex items-center gap-3" role="separator">
-                          <span className="h-px flex-1 bg-sky-400/50" />
-                          <span className="text-[0.68rem] font-black uppercase tracking-[0.14em] text-sky-300">New messages</span>
-                          <span className="h-px flex-1 bg-sky-400/50" />
-                        </div>
-                      ) : null}
-                    <article
-                      id={`chat-message-${message.id}`}
-                      className={[
-                        "group grid max-w-[min(92%,38rem)] select-none gap-1.5 rounded-2xl border px-3 py-2 shadow-tight",
-                        deleted ? (mine ? "ml-auto border-dashed border-white/15 bg-[#1d2b38] text-slate-400" : "mr-auto border-dashed border-white/15 bg-[#1d2b38] text-slate-400") : system ? "mx-auto border-action/30 bg-amber-50" : mine ? "ml-auto rounded-br-md border-emerald-300/20 bg-[#d7f9df]" : "mr-auto rounded-bl-md border-white/10 bg-[#26394b] text-white"
-                      ].join(" ")}
-                      onContextMenu={(event) => { event.preventDefault(); if (!message.client_delivery_state) setActionMessage(message); }}
-                      onPointerCancel={clearLongPress}
-                      onPointerDown={(event) => { if (!message.client_delivery_state) beginLongPress(message, event.target); }}
-                      onPointerLeave={clearLongPress}
-                      onPointerUp={clearLongPress}
-                    >
-                      <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
-                        {!mine && !system ? <button aria-label={`Open ${message.sender_label} profile`} className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-navy-900 text-xs font-black text-white hover:ring-2 hover:ring-sky-300" disabled={!canOpenSenderProfile} onClick={() => openMessageUserProfile(message)} type="button">{initials(message.sender_label)}</button> : null}
-                        {canOpenSenderProfile ? (
-                          <button className={["break-words text-left text-sm font-black [overflow-wrap:anywhere]", mine ? "text-ink hover:text-cyan" : "text-sky-300 hover:text-sky-200"].join(" ")} onClick={() => openMessageUserProfile(message)} type="button">{mine ? "You" : message.sender_label}</button>
-                        ) : (
-                          <strong className={["break-words text-sm font-black [overflow-wrap:anywhere]", mine || system ? "text-ink" : "text-sky-300"].join(" ")}>{system ? "Skillsroom" : mine ? "You" : message.sender_label}</strong>
-                        )}
-                        {!mine && !system ? <button className="text-xs font-bold text-slate-300 hover:text-white" onClick={() => openMessageUserProfile(message)} type="button">{displayHandle(message)}</button> : null}
-                        <span className={["font-mono text-[0.68rem] font-bold uppercase tracking-[0.12em]", mine || system ? "text-muted" : "text-slate-400"].join(" ")}>{messageTime(message.created_at)}</span>
-                        {message.edited_at && !deleted ? <span className={["text-[0.68rem] font-bold", mine || system ? "text-muted" : "text-slate-400"].join(" ")}>edited</span> : null}
-                        {isPinned ? <span className="rounded-sm bg-action/20 px-2 py-1 text-[0.68rem] font-black uppercase tracking-[0.12em] text-ink">Pinned</span> : null}
-                        {message.bookmarked_by_me ? <span className={["text-[0.68rem] font-black uppercase tracking-[0.12em]", mine ? "text-muted" : "text-slate-300"].join(" ")}>Saved</span> : null}
-                        {!message.client_delivery_state ? <button aria-label="Open message actions" className={["grid h-7 w-7 place-items-center rounded-full text-base font-black", mine && !deleted ? "text-muted hover:bg-white" : "text-slate-300 hover:bg-white/10"].join(" ")} onClick={() => setActionMessage(message)} title="Message actions" type="button">...</button> : null}
-                        {!deleted && !message.client_delivery_state ? <span className="flex flex-wrap gap-1 opacity-100 sm:opacity-0 sm:transition sm:group-hover:opacity-100">
-                          <button
-                            className={["rounded-full px-2 py-1 text-[0.68rem] font-black uppercase tracking-[0.12em]", mine ? "text-muted hover:bg-white" : "text-slate-300 hover:bg-white/10"].join(" ")}
-                            onClick={() => setReplyTo(message)}
-                            type="button"
-                          >
-                            ↩
-                          </button>
-                          <button
-                            className={["rounded-full px-2 py-1 text-[0.68rem] font-black uppercase tracking-[0.12em]", mine ? "text-muted hover:bg-white" : "text-slate-300 hover:bg-white/10"].join(" ")}
-                            onClick={() => void openThread(message)}
-                            type="button"
-                          >
-                            {message.thread_reply_count ? `${message.thread_reply_count} replies` : "Thread"}
-                          </button>
-                        {(mine || canManageAnyPin) && !isPinned ? (
-                          <button
-                            className={["rounded-full px-2 py-1 text-[0.68rem] font-black uppercase tracking-[0.12em]", mine ? "text-muted hover:bg-white" : "text-slate-300 hover:bg-white/10"].join(" ")}
-                            onClick={() => {
-                              setPinDurationHours(168);
-                              setPinTarget(message);
-                            }}
-                            type="button"
-                          >
-                            Pin
-                          </button>
-                        ) : null}
-                        </span> : null}
-                        {!mine && !deleted ? (
-                          <>
-                            <button
-                              className="rounded-full px-2 py-1 text-[0.68rem] font-black uppercase tracking-[0.12em] text-slate-300 hover:bg-white/10"
-                              disabled={reportingIds.has(message.id)}
-                              onClick={() => reportMessage(message)}
-                              type="button"
-                            >
-                              {reportingIds.has(message.id) ? "..." : "Report"}
-                            </button>
-                            <button
-                              className="hidden rounded-full px-2 py-1 text-[0.68rem] font-black uppercase tracking-[0.12em] text-slate-300 hover:bg-white/10 sm:inline"
-                              onClick={() => reportUser(message)}
-                              type="button"
-                            >
-                              Report user
-                            </button>
-                            <button
-                              className="hidden rounded-full px-2 py-1 text-[0.68rem] font-black uppercase tracking-[0.12em] text-slate-300 hover:bg-white/10 sm:inline"
-                              onClick={() => blockUser(message)}
-                              type="button"
-                            >
-                              Block
-                            </button>
-                          </>
-                        ) : null}
-                      </div>
-                      {message.reply_to_message_id ? (
-                        <button
-                          className={["mt-1 grid w-full gap-1 rounded-md border-l-4 px-3 py-2 text-left", mine ? "border-emerald-500 bg-white/70" : "border-sky-400 bg-white/10"].join(" ")}
-                          onClick={() => message.reply_to_message_id ? void jumpToMessage(message.reply_to_message_id) : undefined}
-                          type="button"
-                        >
-                          <span className={["text-xs font-black", mine ? "text-cyan" : "text-sky-300"].join(" ")}>{message.reply_to_sender_label ?? "Earlier message"}</span>
-                          <span className={["max-h-10 overflow-hidden text-xs", mine ? "text-muted" : "text-slate-300"].join(" ")}>{message.reply_to_body ?? "Message unavailable"}</span>
-                        </button>
-                      ) : null}
-                      {message.forwarded_from_message_id ? (
-                        <p className={["text-[0.68rem] font-black uppercase tracking-[0.14em]", mine ? "text-muted" : "text-slate-400"].join(" ")}>Forwarded message</p>
-                      ) : null}
-                      {message.attachments?.length ? (
-                        <div className={["mt-1 grid gap-1.5 overflow-hidden", message.attachments.length === 1 ? "grid-cols-1" : "grid-cols-2"].join(" ")}>
-                          {message.attachments.map((attachment) => {
-                            const singleAttachment = message.attachments?.length === 1;
-                            const imageSizeClass = singleAttachment
-                              ? isDirectMessage
-                                ? "h-[20dvh] min-h-24 max-h-44 sm:max-h-56"
-                                : "h-[32dvh] min-h-36 max-h-80 sm:max-h-96"
-                              : "aspect-square max-h-56";
-                            return (
-                              <ChatAttachmentTile attachment={attachment} autoLoadImage={mine || attachment.uploader_user_id === currentUserId} channelSlug={activeChannel.slug} className={attachment.attachment_type === "image" ? imageSizeClass : "min-h-24"} key={attachment.id} onOpenImage={(url) => setViewer({ attachment, url })} />
-                            );
-                          })}
-                        </div>
-                      ) : null}
-                      {!deleted && message.poll ? (
-                        <div className={["mt-2 grid gap-2 rounded-lg border p-3", mine ? "border-emerald-300/40 bg-white/70" : "border-white/10 bg-white/10"].join(" ")}>
-                          <div className="flex items-center justify-between gap-3">
-                            <p className={["text-sm font-black", mine ? "text-ink" : "text-white"].join(" ")}>{message.poll.question}</p>
-                            <span className={["shrink-0 text-[0.68rem] font-black uppercase tracking-[0.12em]", mine ? "text-muted" : "text-slate-400"].join(" ")}>{message.poll.allow_multiple ? "Multi" : "Poll"}</span>
-                          </div>
-                          {message.poll.options.map((option) => {
-                            const percent = message.poll?.total_votes ? Math.round((option.vote_count / message.poll.total_votes) * 100) : 0;
-                            return (
-                              <button className={["relative overflow-hidden rounded-md border px-3 py-2 text-left text-sm font-black", option.voted_by_me ? "border-sky-300 bg-sky-100 text-ink" : mine ? "border-line bg-white/80 text-ink" : "border-white/10 bg-[#223447] text-white"].join(" ")} disabled={votingPollIds.has(message.poll?.id ?? "") || message.poll?.status !== "open"} key={option.id} onClick={() => void votePoll(message, option.id)} type="button">
-                                <span className="absolute inset-y-0 left-0 bg-sky-400/20" style={{ width: `${percent}%` }} />
-                                <span className="relative flex items-center justify-between gap-3"><span>{option.label}</span><span>{percent}% · {option.vote_count}</span></span>
-                              </button>
-                            );
-                          })}
-                          <p className={["text-xs font-bold", mine ? "text-muted" : "text-slate-400"].join(" ")}>{message.poll.total_votes} vote{message.poll.total_votes === 1 ? "" : "s"}{message.poll.status !== "open" ? " · closed" : ""}</p>
-                        </div>
-                      ) : null}
-                      {deleted || message.body ? <p className={["mt-1 whitespace-pre-wrap break-words text-[0.98rem] leading-6 [overflow-wrap:anywhere]", deleted ? "italic text-slate-400" : mine || system ? "text-ink" : "text-white"].join(" ")}>{deleted ? "This message was deleted." : renderMessageBody(message.body)}</p> : null}
-                      {message.client_delivery_state ? (
-                        <div className="mt-2 flex flex-wrap items-center gap-2 border-t border-red-300/40 pt-2 text-xs font-bold text-red-700">
-                          <span>{message.client_delivery_state === "sending" ? "Sending..." : message.client_error ?? "Message failed to send."}</span>
-                          {message.client_delivery_state === "failed" ? <button className="rounded-full bg-red-700 px-3 py-1 font-black text-white disabled:opacity-60" disabled={isSending} onClick={() => void retryMessage(message)} type="button">{isSending ? "Retrying..." : "Retry"}</button> : null}
-                          {message.client_delivery_state === "failed" ? <button className="rounded-full border border-red-300 px-3 py-1 font-black" onClick={() => dismissFailedMessage(message)} type="button">Discard</button> : null}
-                        </div>
-                      ) : null}
-                      {!deleted && message.link_preview?.url && message.link_preview.host ? (
-                        <a className={["mt-2 block rounded-md border p-3 text-sm", mine ? "border-line bg-white hover:bg-surfaceHigh" : "border-white/10 bg-white/10 hover:bg-white/15"].join(" ")} href={message.link_preview.url} rel="noreferrer" target="_blank">
-                          <span className={["block font-black", mine ? "text-ink" : "text-white"].join(" ")}>{message.link_preview.title ?? message.link_preview.host}</span>
-                          <span className={["mt-1 block break-all text-xs font-bold", mine ? "text-muted" : "text-slate-300"].join(" ")}>{message.link_preview.host}</span>
-                        </a>
-                      ) : null}
-                      {!deleted && !message.client_delivery_state ? <div className="mt-1.5 flex flex-wrap gap-1.5">
-                        {reactionOptions.map((reaction) => {
-                          const summary = message.reactions?.find((item) => item.reaction === reaction.key);
-                          return (
-                            <button
-                              className={[
-                                "rounded-full border px-2.5 py-1 text-xs font-black",
-                                summary?.reacted_by_me ? "border-sky-300 bg-sky-100 text-ink" : mine ? "border-white bg-white/80 text-muted hover:bg-white" : "border-white/10 bg-white/10 text-slate-200 hover:bg-white/20"
-                              ].join(" ")}
-                              key={reaction.key}
-                              onClick={() => reactToMessage(message, reaction.key)}
-                              type="button"
-                            >
-                              {reaction.label}{summary?.count ? ` ${summary.count}` : ""}
-                            </button>
-                          );
-                        })}
-                      </div> : null}
-                    </article>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="mx-auto grid w-full max-w-2xl place-items-center rounded-2xl border border-white/10 bg-[#203244]/80 p-6 text-center text-slate-200 shadow-tight">
-                <div>
-                  <h3 className="text-lg font-black text-white">No messages yet</h3>
-                  <p className="mt-2 max-w-sm text-sm leading-6 text-slate-300">{isDirectMessage ? "Say hello and start the conversation." : "Start the conversation in this channel."}</p>
-                </div>
-              </div>
-            )}
-            {showJumpLatest || isContextView ? <button className="sticky bottom-2 ml-auto mt-3 block min-h-10 rounded-full bg-sky-500 px-4 text-xs font-black text-white shadow-panel hover:bg-sky-400" onClick={() => void jumpToLatest()} type="button">Jump to latest</button> : null}
-          </div>
+          <ChatVirtualThread
+            activeChannelSlug={activeChannel.slug}
+            canManageAnyPin={canManageAnyPin}
+            currentUserId={currentUserId}
+            fullLayout={fullLayout}
+            hydratingMessageIds={hydratingMessageIds}
+            isContextView={isContextView}
+            isDirectMessage={isDirectMessage}
+            isLoadingChannel={isLoadingChannel}
+            isLoadingOlder={isLoadingOlder}
+            isSending={isSending}
+            jumpLatestToken={jumpLatestToken}
+            messages={messages}
+            pageInfoHasOlder={pageInfo.has_older}
+            pendingJumpMessageId={pendingJumpMessageId}
+            pinnedMessageIds={pinnedMessageIds}
+            presence={presence}
+            reactionOptions={reactionOptions}
+            reportingIds={reportingIds}
+            showJumpLatest={showJumpLatest}
+            unreadMessageId={unreadMessageId}
+            votingPollIds={votingPollIds}
+            onBeginLongPress={handleBeginLongPress}
+            onBlockUser={handleBlockUser}
+            onClearLongPress={handleClearLongPress}
+            onDismissFailedMessage={handleDismissFailedMessage}
+            onHydrateMessage={handleHydrateMessageDetail}
+            onJumpLatest={jumpToLatest}
+            onJumpResolved={() => setPendingJumpMessageId(null)}
+            onJumpToMessage={handleJumpToMessage}
+            onLoadOlder={loadOlderMessages}
+            onNearLatestChange={(nearLatest) => {
+              shouldStickLatestRef.current = nearLatest;
+              setShowJumpLatest(!nearLatest);
+            }}
+            onOpenImage={handleOpenImage}
+            onOpenMessageActions={handleOpenMessageActions}
+            onOpenMessageUserProfile={handleOpenMessageUserProfile}
+            onOpenThread={handleOpenThread}
+            onReactToMessage={handleReactToMessage}
+            onReplyToMessage={handleReplyToMessage}
+            onReportMessage={handleReportMessage}
+            onReportUser={handleReportUser}
+            onRetryMessage={handleRetryMessage}
+            onStartPin={handleStartPin}
+            onVotePoll={handleVotePoll}
+          />
 
-          <form className="z-20 min-w-0 shrink-0 border-t border-white/10 bg-[#172331] px-2 py-2 sm:px-3 sm:py-2.5 xl:px-6" onSubmit={sendMessage}>
-            <div className={["mx-auto grid w-full max-w-4xl gap-2 pb-[max(env(safe-area-inset-bottom),0.5rem)]", showAttachmentMenu || showEmojiPicker ? "overflow-visible" : "overflow-y-auto overscroll-contain", isDirectMessage ? "max-h-[min(36dvh,18rem)]" : "max-h-[min(38dvh,20rem)]"].join(" ")}>
-            {!canModerateMessages && lockdownSeconds > 0 ? (
-              <p className="mb-2 rounded-md border border-amber-300/20 bg-amber-950/40 px-3 py-2 text-xs font-bold text-amber-100">
-                Posting is paused for {Math.floor(lockdownSeconds / 60)}m {lockdownSeconds % 60}s{activeChannel.lockdown_reason ? `: ${activeChannel.lockdown_reason}` : "."}
-              </p>
-            ) : !canModerateMessages && cooldownSeconds > 0 ? (
-              <p className="mb-2 rounded-md border border-sky-300/20 bg-sky-950/40 px-3 py-2 text-xs font-bold text-sky-100">
-                Slow mode: you can send again in {cooldownSeconds}s.
-              </p>
-            ) : null}
-            {error ? <p className="mb-2 rounded-md border border-danger bg-red-50 p-3 text-sm font-bold text-danger">{error}</p> : null}
-            {typingUsers.length ? (
-              <p className="mb-2 px-2 text-xs font-bold text-sky-300">
-                {typingUsers.map((user) => user.label).slice(0, 3).join(", ")} typing...
-              </p>
-            ) : null}
-            {replyTo ? (
-              <div className="mb-2 flex min-w-0 items-start justify-between gap-3 rounded-xl border border-white/10 bg-[#223447] p-3">
-                <div className="min-w-0">
-                  <p className="text-xs font-black text-sky-300">Replying to {replyTo.sender_user_id === currentUserId ? "you" : replyTo.sender_label}</p>
-                  <p className="mt-1 truncate text-sm text-slate-200">{replyTo.body}</p>
-                </div>
-                <button className="shrink-0 rounded-full bg-white/10 px-3 py-1 text-xs font-black text-slate-200 hover:bg-white/20" onClick={() => setReplyTo(null)} type="button">Cancel</button>
-              </div>
-            ) : null}
-            {mentionSuggestions.length ? (
-              <div className="mb-2 flex max-w-full gap-2 overflow-x-auto rounded-xl border border-white/10 bg-[#223447] p-2">
-                {mentionSuggestions.map((user) => (
-                  <button
-                    className="inline-flex min-h-9 shrink-0 items-center gap-2 rounded-full bg-white/10 px-3 text-xs font-black text-white hover:bg-white/20"
-                    key={user.user_id}
-                    onClick={() => user.username ? insertMention(user.username) : undefined}
-                    type="button"
-                  >
-                    <span className="grid h-6 w-6 place-items-center rounded-full bg-navy-900 text-[0.62rem] text-white">{initials(user.label)}</span>
-                    @{user.username}
-                  </button>
-                ))}
-              </div>
-            ) : null}
-            {pendingAttachments.length ? (
-              <div className="mb-2 flex max-w-full gap-2 overflow-x-auto overflow-y-hidden rounded-xl border border-white/10 bg-[#223447] p-2">
-                {pendingAttachments.map((attachment) => (
-                  <div className="relative h-24 w-32 shrink-0 overflow-hidden rounded-md bg-black/20" key={attachment.localId}>
-                    {attachment.previewUrl ? (
-                      <img alt={attachment.file.name} className="h-full w-full object-cover" src={attachment.previewUrl} />
-                    ) : (
-                      <div className="grid h-full w-full place-items-center p-2 text-center">
-                        <span className="grid gap-1">
-                          <span className="mx-auto grid h-9 w-9 place-items-center rounded-md bg-sky-400/15 font-mono text-[0.62rem] font-black text-sky-200">{documentBadge(attachment.file.type)}</span>
-                          <span className="max-h-8 overflow-hidden text-[0.62rem] font-black leading-4 text-white">{attachment.file.name}</span>
-                        </span>
-                      </div>
-                    )}
-                    <div className="absolute inset-x-0 bottom-0 bg-black/75 p-1.5 text-[0.62rem] font-black text-white">
-                      {attachment.state === "uploading" ? <><span>{attachment.progress}%</span><span className="mt-1 block h-1 overflow-hidden rounded-full bg-white/20"><span className="block h-full bg-sky-400" style={{ width: `${attachment.progress}%` }} /></span></> : attachment.state === "failed" ? <button className="w-full rounded-sm bg-red-600 px-1 py-1" onClick={() => uploadAttachment(attachment.file, attachment.localId)} type="button">Retry</button> : "Ready"}
-                    </div>
-                    <button aria-label={`Remove ${attachment.file.name}`} className="absolute right-1 top-1 grid h-7 w-7 place-items-center rounded-full bg-black/75 text-xs font-black text-white" onClick={() => removePendingAttachment(attachment)} type="button">X</button>
-                  </div>
-                ))}
-              </div>
-            ) : null}
-              {showEmojiPicker ? (
-              <div className="mb-2 grid max-w-full gap-2 rounded-xl border border-white/10 bg-[#223447] p-2" ref={emojiPickerRef} role="dialog" aria-label="Emoji picker">
-                <div className="flex gap-1 overflow-x-auto">
-                  {emojiGroups.map((group) => <button className={["min-h-8 shrink-0 rounded-full px-3 text-[0.68rem] font-black", emojiGroup === group.key ? "bg-sky-400 text-navy-950" : "bg-white/10 text-slate-200"].join(" ")} key={group.key} onClick={() => setEmojiGroup(group.key)} type="button">{group.label}</button>)}
-                </div>
-                <div className="grid grid-cols-8 gap-1 sm:grid-cols-12">
-                  {activeEmojiGroup.emojis.map((emoji) => <button className="grid h-9 w-9 place-items-center rounded-md text-xl hover:bg-white/10" key={emoji} onClick={() => { setBody((current) => `${current}${emoji}`); composerRef.current?.focus(); }} type="button">{emoji}</button>)}
-                </div>
-              </div>
-            ) : null}
-            <div className="relative grid min-w-0 grid-cols-[auto_auto_minmax(0,1fr)_auto] items-end gap-1.5 sm:gap-2">
-              <input accept="image/jpeg,image/png,image/webp" className="sr-only" multiple onChange={(event) => { Array.from(event.target.files ?? []).slice(0, Math.max(0, 4 - pendingAttachments.length)).forEach((file) => uploadAttachment(file)); event.currentTarget.value = ""; }} ref={imageInputRef} type="file" />
-              <input accept={acceptedChatDocuments} className="sr-only" multiple onChange={(event) => { Array.from(event.target.files ?? []).slice(0, Math.max(0, 4 - pendingAttachments.length)).forEach((file) => uploadAttachment(file)); event.currentTarget.value = ""; }} ref={documentInputRef} type="file" />
-              <button aria-expanded={showAttachmentMenu} aria-label="Add an attachment" className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-white/10 bg-[#223447] text-2xl font-light text-slate-200 hover:bg-[#2c4358]" onClick={() => { setShowAttachmentMenu((current) => !current); setShowEmojiPicker(false); }} ref={attachmentTriggerRef} title="Add attachment" type="button">+</button>
-              {showAttachmentMenu ? <div className="absolute bottom-12 left-0 z-20 min-w-52 rounded-md border border-white/10 bg-[#26394b] p-1.5 text-white shadow-panel" ref={attachmentMenuRef}>
-                <button className="flex min-h-11 w-full items-center gap-3 rounded-sm px-3 text-left text-sm font-black hover:bg-white/10" onClick={() => { setShowAttachmentMenu(false); imageInputRef.current?.click(); }} type="button"><span aria-hidden="true">▣</span> Add photo</button>
-                <button className="flex min-h-11 w-full items-center gap-3 rounded-sm px-3 text-left text-sm font-black hover:bg-white/10" onClick={() => { setShowAttachmentMenu(false); documentInputRef.current?.click(); }} type="button"><span aria-hidden="true">▤</span> Add document</button>
-                <button className="flex min-h-11 w-full items-center gap-3 rounded-sm px-3 text-left text-sm font-black hover:bg-white/10" onClick={() => { setShowAttachmentMenu(false); setShowPollCreator(true); }} type="button"><span aria-hidden="true">◉</span> Create poll</button>
-                <button className="flex min-h-11 w-full items-center gap-3 rounded-sm px-3 text-left text-sm font-black hover:bg-white/10" onClick={() => { setShowAttachmentMenu(false); void loadBookmarks(); }} type="button"><span aria-hidden="true">★</span> Saved messages</button>
-                {isChatAdmin ? <button className="flex min-h-11 w-full items-center gap-3 rounded-sm px-3 text-left text-sm font-black hover:bg-white/10" onClick={() => { setShowAttachmentMenu(false); void loadScheduledAnnouncements(); }} type="button"><span aria-hidden="true">⌚</span> Schedule announcement</button> : null}
-                <p className="px-3 pb-2 text-[0.68rem] font-bold text-slate-400">Photos must be smaller than 8MB. Documents must be smaller than 12MB.</p>
-              </div> : null}
-              <button aria-expanded={showEmojiPicker} aria-label="Choose emoji" className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-white/10 bg-[#223447] text-xl text-slate-200 hover:bg-[#2c4358]" onClick={() => { setShowEmojiPicker((current) => !current); setShowAttachmentMenu(false); }} ref={emojiTriggerRef} title="Emoji" type="button">☺</button>
-              <label className="grid min-w-0 gap-1 self-end">
-                <span className="sr-only">Message</span>
-                <textarea
-                  className="h-11 min-h-0 w-full min-w-0 resize-none overflow-y-hidden rounded-2xl border border-white/10 bg-[#223447] px-3 py-[0.65rem] text-[0.95rem] leading-5 text-white outline-none placeholder:text-slate-400 focus:border-sky-400"
-                  onChange={(event) => setBody(event.target.value)}
-                  placeholder={composerPlaceholder}
-                  ref={composerRef}
-                  rows={1}
-                  value={body}
-                />
-              </label>
-              <button
-                className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-sky-500 text-lg font-black text-white shadow-action hover:bg-sky-400 disabled:cursor-not-allowed disabled:bg-slate-600 disabled:text-slate-400 disabled:shadow-none sm:h-12 sm:w-12 sm:text-xl"
-                disabled={!canSend}
-                aria-label="Send message"
-                type="submit"
-              >
-                {isSending ? "…" : "➤"}
-              </button>
-            </div>
-            <div className="mt-1 hidden flex-wrap items-center justify-between gap-2 px-2 text-xs font-bold text-slate-400 sm:flex">
-              <span>{channelTypeLabel(activeChannel)} · {activeChannel.visibility}</span>
-              <span className={charactersLeft < 80 ? "text-warning" : ""}>{charactersLeft}</span>
-            </div>
-            </div>
-          </form>
+          <ChatComposer
+            activeChannel={activeChannel}
+            attachmentMenuRef={attachmentMenuRef}
+            attachmentTriggerRef={attachmentTriggerRef}
+            body={body}
+            canModerateMessages={canModerateMessages}
+            canSend={canSend}
+            charactersLeft={charactersLeft}
+            composerRef={composerRef}
+            cooldownSeconds={cooldownSeconds}
+            currentUserId={currentUserId}
+            documentInputRef={documentInputRef}
+            emojiGroup={emojiGroup}
+            emojiPickerRef={emojiPickerRef}
+            emojiTriggerRef={emojiTriggerRef}
+            error={error}
+            imageInputRef={imageInputRef}
+            isChatAdmin={isChatAdmin}
+            isDirectMessage={isDirectMessage}
+            isSending={isSending}
+            lockdownSeconds={lockdownSeconds}
+            mentionSuggestions={mentionSuggestions}
+            pendingAttachments={pendingAttachments}
+            placeholder={composerPlaceholder}
+            replyTo={replyTo}
+            showAttachmentMenu={showAttachmentMenu}
+            showEmojiPicker={showEmojiPicker}
+            typingUsers={typingUsers}
+            onBodyChange={setBody}
+            onCreatePoll={() => setShowPollCreator(true)}
+            onInsertMention={insertMention}
+            onLoadBookmarks={loadBookmarks}
+            onLoadScheduledAnnouncements={loadScheduledAnnouncements}
+            onRemoveAttachment={removePendingAttachment}
+            onRetryAttachment={(file, localId) => uploadAttachment(file, localId)}
+            onSetEmojiGroup={setEmojiGroup}
+            onSetReplyTo={setReplyTo}
+            onShowAttachmentMenuChange={setShowAttachmentMenu}
+            onShowEmojiPickerChange={setShowEmojiPicker}
+            onSubmit={sendMessage}
+            onUploadAttachment={uploadAttachment}
+          />
         </div>
-        {fullLayout ? (
-          <aside className="hidden min-h-0 overflow-y-auto border-l border-white/10 bg-[#162536] text-white xl:block">
-            <div className="grid gap-4 p-4">
-              <section>
-                <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Active now</p>
-                <div className="mt-3 grid gap-2">
-                  {userDirectory.length ? userDirectory.slice(0, 18).map((user) => (
-                    <button className="flex min-w-0 items-center gap-2 rounded-md border border-white/10 bg-white/5 px-2 py-2 text-left hover:bg-white/10" key={user.user_id} onClick={() => openUserProfile(user)} type="button">
-                      <span className="relative grid h-9 w-9 shrink-0 place-items-center rounded-full bg-navy-900 text-xs font-black text-white">
-                        {initials(user.label)}
-                        {user.is_online ? <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-[#162536] bg-success" /> : null}
-                      </span>
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-black text-white">{user.label}</p>
-                        <p className="truncate text-xs font-bold text-slate-400">{user.username ? `@${user.username}` : user.is_online ? "online" : "recent"}</p>
-                      </div>
-                    </button>
-                  )) : (
-                    <p className="rounded-md border border-dashed border-white/10 p-3 text-sm font-bold text-slate-400">Active players will appear here.</p>
-                  )}
-                </div>
-              </section>
-              <section className="rounded-md border border-white/10 bg-white/5 p-3">
-                <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-400">Mentions</p>
-                <p className="mt-2 text-sm leading-6 text-slate-400">Type @ and choose an active username when available.</p>
-              </section>
-            </div>
-          </aside>
-        ) : null}
+        {fullLayout ? <ChatSideRail users={userDirectory} onOpenUserProfile={openUserProfile} /> : null}
       </div>
       {viewer ? (
-        <div aria-label="Image viewer" aria-modal="true" className="fixed inset-0 z-[80] grid grid-rows-[auto_minmax(0,1fr)_auto] bg-black/95 pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] text-white" role="dialog">
-          <header className="flex min-w-0 items-center justify-between gap-3 border-b border-white/10 px-3 py-2.5 sm:px-5">
-            <div className="min-w-0">
-              <p className="truncate text-sm font-black">{viewer.attachment.uploader_label}</p>
-              <p className="mt-0.5 truncate text-xs text-slate-400">{viewer.attachment.original_name ?? "Shared image"}</p>
-            </div>
-            <button aria-label="Close image viewer" className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-white/10 text-lg font-black hover:bg-white/20" onClick={() => setViewer(null)} type="button">X</button>
-          </header>
-          <div className="grid min-h-0 place-items-center overflow-auto p-2 sm:p-5">
-            <img alt={viewer.attachment.alt_text ?? viewer.attachment.original_name ?? "Chat image"} className="max-h-full max-w-full object-contain" src={viewer.url} />
-          </div>
-          <footer className="flex items-center justify-between gap-3 border-t border-white/10 px-3 py-2.5 sm:px-5">
-            <span className="text-xs font-bold text-slate-400">{Math.max(1, Math.round(viewer.attachment.byte_size / 1024))} KB</span>
-            {viewer.attachment.uploader_user_id !== currentUserId ? <button className="min-h-10 rounded-full border border-red-400/40 px-4 text-xs font-black text-red-200 hover:bg-red-500/10" onClick={() => void reportAttachment(viewer.attachment)} type="button">Report attachment</button> : null}
-          </footer>
-        </div>
+        <ChatImageViewer
+          currentUserId={currentUserId}
+          viewer={viewer}
+          onClose={() => setViewer(null)}
+          onReportAttachment={reportAttachment}
+        />
       ) : null}
     </section>
   );

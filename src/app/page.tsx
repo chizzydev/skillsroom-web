@@ -243,8 +243,8 @@ export default async function HomePage({ searchParams }: HomePageProps) {
                       <p className="mt-2 text-sm leading-6 text-slate-200">It is made for competitive players, hosts, and communities that want things handled properly.</p>
                     </Reveal>
                     <Reveal className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur" staggerIndex={2}>
-                      <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Check before joining</p>
-                      <p className="mt-2 text-sm leading-6 text-slate-200">Public community pages and policies are open first, so people can look around before signing in.</p>
+                      <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Know the vibe</p>
+                      <p className="mt-2 text-sm leading-6 text-slate-200">Explore community updates, winners, and game activity before creating your player profile.</p>
                     </Reveal>
                   </div>
                 </div>
@@ -264,7 +264,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
                           Payment checks, match proof, disputes, and admin decisions stay attached to the room or tournament record.
                         </p>
                         <p className="rounded-xl border border-white/10 bg-white/5 p-3">
-                          Public policies, support pages, and community sections are visible before sign-in so new users can look around first.
+                          Community pages show the kind of matches, events, winners, and updates happening around Skillsroom.
                         </p>
                       </div>
                     </div>
@@ -281,7 +281,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
                         Payment checks, match proof, disputes, and admin decisions stay attached to the room or tournament record.
                       </p>
                       <p className="rounded-xl border border-white/10 bg-white/5 p-3">
-                        Public policies, support pages, and community sections are visible before sign-in so new users can look around first.
+                        Community pages show the kind of matches, events, winners, and updates happening around Skillsroom.
                       </p>
                     </div>
                   </div>
@@ -330,7 +330,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
             <div className="grid gap-6">
               <Reveal staggerIndex={1}>
               <Panel>
-                <PanelHeader eyebrow="Look around first" title="Public pages" />
+                <PanelHeader eyebrow="Explore" title="See Skillsroom in motion" />
                 <div className="grid gap-2 p-4">
                   <PendingLink className="rounded-md border border-line bg-white px-4 py-3 text-sm font-black text-ink hover:bg-surfaceHigh" href="/community" pendingLabel="Opening community...">
                     Community and leaderboards
@@ -339,10 +339,10 @@ export default async function HomePage({ searchParams }: HomePageProps) {
                     Highlights and winner pages
                   </PendingLink>
                   <PendingLink className="rounded-md border border-line bg-white px-4 py-3 text-sm font-black text-ink hover:bg-surfaceHigh" href="/policies" pendingLabel="Opening policies...">
-                    Policies and eligibility
+                    Rules and player guidance
                   </PendingLink>
                   <PendingLink className="rounded-md border border-line bg-white px-4 py-3 text-sm font-black text-ink hover:bg-surfaceHigh" href="/support" pendingLabel="Opening support...">
-                    Support and contact
+                    Help center
                   </PendingLink>
                 </div>
               </Panel>

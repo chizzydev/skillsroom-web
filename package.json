@@ -18,13 +18,15 @@
     "launch:check": "tsx src/workers/launch-check.ts",
     "tournament:operator-qa": "tsx src/workers/tournament-operator-qa-check.ts",
     "tournament:launch-checklist": "tsx src/workers/tournament-launch-checklist.ts",
-    "tournament:dry-run-check": "tsx src/workers/tournament-live-dry-run-check.ts"
+    "tournament:dry-run-check": "tsx src/workers/tournament-live-dry-run-check.ts",
+    "chat:web-load": "tsx scripts/chat-web-load-harness.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1064.0",
     "next": "^15.1.6",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "react-virtuoso": "^4.18.10",
     "zod": "^3.25.76"
   },
   "overrides": {
@@ -32,6 +34,8 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.5",
+    "@playwright/test": "^1.55.1",
+    "@playwright/test": "^1.61.1",
     "@types/node": "^22.10.10",
     "@types/react": "^19.0.8",
     "@types/react-dom": "^19.0.3",

@@ -1,0 +1,246 @@
+{
+  "run_id": "2026-07-11T07-13-36-028Z",
+  "started_at": "2026-07-11T07:14:08.923Z",
+  "base_url": "http://localhost:3100",
+  "channel": "chat_load_lab",
+  "final_url": "http://localhost:3100/chat?channel=chat_load_lab",
+  "switch_channel_hint": "Global Chat",
+  "viewport": {
+    "width": 1440,
+    "height": 900
+  },
+  "metrics": [
+    {
+      "name": "initial_chat_load",
+      "duration_ms": 5305,
+      "ok": true
+    },
+    {
+      "name": "channel_switch",
+      "duration_ms": 5265,
+      "ok": true
+    },
+    {
+      "name": "input_latency",
+      "duration_ms": 114,
+      "ok": true
+    },
+    {
+      "name": "message_append",
+      "duration_ms": 266,
+      "ok": true
+    },
+    {
+      "name": "reaction",
+      "duration_ms": 253,
+      "ok": true
+    },
+    {
+      "name": "search",
+      "duration_ms": 4721,
+      "ok": true
+    },
+    {
+      "name": "open_media",
+      "duration_ms": 1265,
+      "ok": true
+    },
+    {
+      "name": "open_thread",
+      "duration_ms": 536,
+      "ok": true
+    },
+    {
+      "name": "scroll_older_messages",
+      "duration_ms": 1395,
+      "ok": true
+    }
+  ],
+  "frame_sample": {
+    "duration_ms": 15000,
+    "frames": 413,
+    "dropped_frames": 93,
+    "max_frame_ms": 200,
+    "average_frame_ms": 36
+  },
+  "heap_before": {
+    "used_js_heap_size": 56565158,
+    "total_js_heap_size": 59790618,
+    "js_heap_size_limit": 4395630592
+  },
+  "heap_after": {
+    "used_js_heap_size": 97901401,
+    "total_js_heap_size": 160305401,
+    "js_heap_size_limit": 4395630592
+  },
+  "heap_growth_bytes": 41336243,
+  "navigation_timing": {
+    "url": "http://localhost:3100/chat?channel=chat_load_lab",
+    "dom_content_loaded_ms": 3281,
+    "load_event_ms": 3455,
+    "response_start_ms": 1907,
+    "response_end_ms": 3192
+  },
+  "response_timings": [
+    {
+      "method": "GET",
+      "url": "http://localhost:3100/chat?channel=chat_load_lab",
+      "route": "page:/chat",
+      "status": 200,
+      "duration_ms": 320
+    },
+    {
+      "method": "GET",
+      "url": "http://localhost:3100/chat?channel=chat_load_lab",
+      "route": "page:/chat",
+      "status": 200,
+      "duration_ms": 2651
+    },
+    {
+      "method": "GET",
+      "url": "http://localhost:3100/api/community/realtime/stream",
+      "route": "web-api:realtime_stream",
+      "status": 200,
+      "duration_ms": 363
+    },
+    {
+      "method": "GET",
+      "url": "http://localhost:3100/api/community/channels/global_lobby/messages?limit=60&view=list",
+      "route": "web-api:messages",
+      "status": 200,
+      "duration_ms": 4060
+    },
+    {
+      "method": "GET",
+      "url": "http://localhost:3100/chat?channel=chat_load_lab",
+      "route": "page:/chat",
+      "status": 200,
+      "duration_ms": 1909
+    },
+    {
+      "method": "GET",
+      "url": "http://localhost:3100/api/community/realtime/stream",
+      "route": "web-api:realtime_stream",
+      "status": 200,
+      "duration_ms": 428
+    },
+    {
+      "method": "POST",
+      "url": "http://localhost:3100/api/community/channels/chat_load_lab/messages",
+      "route": "web-api:messages",
+      "status": 201,
+      "duration_ms": 675
+    },
+    {
+      "method": "POST",
+      "url": "http://localhost:3100/api/community/channels/chat_load_lab/messages/e5aed4c9-ea9a-4b16-a816-9899df3a5b56/reactions",
+      "route": "web-api:reactions",
+      "status": 200,
+      "duration_ms": 4200
+    },
+    {
+      "method": "GET",
+      "url": "http://localhost:3100/api/community/channels/chat_load_lab/messages/search?limit=25&view=list&q=the",
+      "route": "web-api:messages_search",
+      "status": 200,
+      "duration_ms": 3403
+    },
+    {
+      "method": "GET",
+      "url": "http://localhost:3100/api/community/channels/chat_load_lab/messages?limit=60&view=list&cursor=eyJjcmVhdGVkX2F0IjoiMjAyNi0wNy0xMVQwNjoyNToxMi44NDRaIiwiaWQiOiJhMjgxMmM4ZS02MWJhLTQzZDUtYjNhMS00OWQ0N2ZhOTNlNGMifQ",
+      "route": "web-api:messages",
+      "status": 200,
+      "duration_ms": 1036
+    },
+    {
+      "method": "GET",
+      "url": "http://localhost:3100/api/community/channels/chat_load_lab/media",
+      "route": "web-api:media",
+      "status": 200,
+      "duration_ms": 4334
+    },
+    {
+      "method": "GET",
+      "url": "http://localhost:3100/api/community/channels/chat_load_lab/messages/9414312e-c8d8-4634-8234-f86682b39d8b/thread?limit=40",
+      "route": "web-api:thread",
+      "status": 200,
+      "duration_ms": 4146
+    }
+  ],
+  "slow_response_summary": [
+    {
+      "route": "web-api:media",
+      "count": 1,
+      "p50_ms": 4334,
+      "p95_ms": 4334,
+      "max_ms": 4334
+    },
+    {
+      "route": "web-api:reactions",
+      "count": 1,
+      "p50_ms": 4200,
+      "p95_ms": 4200,
+      "max_ms": 4200
+    },
+    {
+      "route": "web-api:thread",
+      "count": 1,
+      "p50_ms": 4146,
+      "p95_ms": 4146,
+      "max_ms": 4146
+    },
+    {
+      "route": "web-api:messages",
+      "count": 3,
+      "p50_ms": 1036,
+      "p95_ms": 4060,
+      "max_ms": 4060
+    },
+    {
+      "route": "web-api:messages_search",
+      "count": 1,
+      "p50_ms": 3403,
+      "p95_ms": 3403,
+      "max_ms": 3403
+    },
+    {
+      "route": "page:/chat",
+      "count": 3,
+      "p50_ms": 1909,
+      "p95_ms": 2651,
+      "max_ms": 2651
+    },
+    {
+      "route": "web-api:realtime_stream",
+      "count": 2,
+      "p50_ms": 363,
+      "p95_ms": 428,
+      "max_ms": 428
+    }
+  ],
+  "response_errors": [],
+  "console_errors": [],
+  "request_failures": [
+    "GET http://localhost:3100/icon.svg net::ERR_ABORTED",
+    "GET http://localhost:3100/_next/static/webpack/f7a4a1a772811be1.webpack.hot-update.json net::ERR_ABORTED",
+    "GET http://localhost:3100/api/community/realtime/stream net::ERR_ABORTED",
+    "GET http://localhost:3100/api/community/realtime/stream net::ERR_ABORTED",
+    "POST http://localhost:3100/api/community/channels/global_lobby/read net::ERR_ABORTED",
+    "GET http://localhost:3100/api/community/channels/chat_load_lab/messages/search?limit=25&view=list&q=the net::ERR_ABORTED"
+  ],
+  "previous": {
+    "path": "C:\\Users\\HP\\skill-rooms-web\\reports\\chat-web-load\\latest.json",
+    "metric_deltas_ms": {
+      "initial_chat_load": 1745,
+      "channel_switch": 2955,
+      "input_latency": -5,
+      "message_append": 0,
+      "reaction": 45,
+      "search": 2086,
+      "open_media": 163,
+      "open_thread": 228,
+      "scroll_older_messages": 99
+    },
+    "heap_growth_delta_bytes": -11987866
+  }
+}

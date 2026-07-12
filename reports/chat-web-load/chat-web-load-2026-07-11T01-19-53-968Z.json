@@ -1,0 +1,106 @@
+{
+  "run_id": "2026-07-11T01-19-53-968Z",
+  "started_at": "2026-07-11T01:20:25.382Z",
+  "base_url": "http://localhost:3100",
+  "channel": "chat_load_lab",
+  "final_url": "http://localhost:3100/chat?channel=chat_load_lab",
+  "switch_channel_hint": "Global Chat",
+  "viewport": {
+    "width": 1440,
+    "height": 900
+  },
+  "metrics": [
+    {
+      "name": "initial_chat_load",
+      "duration_ms": 7751,
+      "ok": true
+    },
+    {
+      "name": "channel_switch",
+      "duration_ms": 2687,
+      "ok": true
+    },
+    {
+      "name": "input_latency",
+      "duration_ms": 132,
+      "ok": true
+    },
+    {
+      "name": "message_append",
+      "duration_ms": 197,
+      "ok": true
+    },
+    {
+      "name": "reaction",
+      "duration_ms": 325,
+      "ok": true
+    },
+    {
+      "name": "search",
+      "duration_ms": 3436,
+      "ok": true
+    },
+    {
+      "name": "open_media",
+      "duration_ms": 1169,
+      "ok": true
+    },
+    {
+      "name": "open_thread",
+      "duration_ms": 345,
+      "ok": true
+    },
+    {
+      "name": "scroll_older_messages",
+      "duration_ms": 1326,
+      "ok": true
+    }
+  ],
+  "frame_sample": {
+    "duration_ms": 15000,
+    "frames": 804,
+    "dropped_frames": 55,
+    "max_frame_ms": 150,
+    "average_frame_ms": 19
+  },
+  "heap_before": {
+    "used_js_heap_size": 10000000,
+    "total_js_heap_size": 10000000,
+    "js_heap_size_limit": 3760000000
+  },
+  "heap_after": {
+    "used_js_heap_size": 78126570,
+    "total_js_heap_size": 96299190,
+    "js_heap_size_limit": 4395630592
+  },
+  "heap_growth_bytes": 68126570,
+  "console_errors": [
+    "Loading the stylesheet 'https://accounts.google.com/gsi/style' violates the following Content Security Policy directive: \"style-src 'self' 'unsafe-inline'\". Note that 'style-src-elem' was not explicitly set, so 'style-src' is used as a fallback. The action has been blocked.",
+    "Failed to load resource: the server responded with a status of 500 (Internal Server Error)",
+    "Failed to load resource: the server responded with a status of 500 (Internal Server Error)",
+    "Failed to load resource: the server responded with a status of 500 (Internal Server Error)"
+  ],
+  "request_failures": [
+    "GET http://localhost:3100/_next/static/chunks/main-app.js?v=1783732794782 net::ERR_ABORTED",
+    "GET https://accounts.google.com/gsi/style csp",
+    "GET https://accounts.google.com/gsi/button?theme=outline&size=large&type=standard&text=continue_with&shape=rectangular&logo_alignment=left&width=398&is_fedcm_supported=true&client_id=260107661499-raoh4a97kkjiu0qco3h0e1s8j5bro6in.apps.googleusercontent.com&iframe_id=gsi_797335_18043&cas=4dyXRFPCarrKRBRGm7OCuw69FtvZeqkTCgIdkP6TDBo net::ERR_ABORTED",
+    "GET http://localhost:3100/api/community/realtime/stream net::ERR_ABORTED",
+    "POST http://localhost:3100/api/community/channels/global_lobby/read net::ERR_ABORTED",
+    "GET http://localhost:3100/api/community/channels/chat_load_lab/messages/search?limit=25&view=list&q=the net::ERR_ABORTED"
+  ],
+  "previous": {
+    "path": "C:\\Users\\HP\\skill-rooms-web\\reports\\chat-web-load\\latest.json",
+    "metric_deltas_ms": {
+      "initial_chat_load": -2712,
+      "channel_switch": -1447,
+      "input_latency": 38,
+      "message_append": -48,
+      "reaction": 8,
+      "search": -227,
+      "open_media": 15,
+      "open_thread": -3,
+      "scroll_older_messages": 3
+    },
+    "heap_growth_delta_bytes": -37630112
+  }
+}

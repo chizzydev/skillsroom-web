@@ -1,0 +1,101 @@
+{
+  "run_id": "2026-07-11T00-00-21-251Z",
+  "started_at": "2026-07-11T00:01:08.548Z",
+  "base_url": "http://localhost:3100",
+  "channel": "chat_load_lab",
+  "final_url": "http://localhost:3100/chat?channel=global_lobby",
+  "switch_channel_hint": "Global Chat",
+  "viewport": {
+    "width": 1440,
+    "height": 900
+  },
+  "metrics": [
+    {
+      "name": "initial_chat_load",
+      "duration_ms": 12733,
+      "ok": true
+    },
+    {
+      "name": "channel_switch",
+      "duration_ms": 5657,
+      "ok": true
+    },
+    {
+      "name": "input_latency",
+      "duration_ms": 101,
+      "ok": true
+    },
+    {
+      "name": "message_append",
+      "duration_ms": 195,
+      "ok": true
+    },
+    {
+      "name": "reaction",
+      "duration_ms": 229,
+      "ok": true
+    },
+    {
+      "name": "search",
+      "duration_ms": 10505,
+      "ok": true
+    },
+    {
+      "name": "open_media",
+      "duration_ms": 944,
+      "ok": true
+    },
+    {
+      "name": "open_thread",
+      "duration_ms": 15005,
+      "ok": false,
+      "note": "open_thread timed out after 15000ms"
+    },
+    {
+      "name": "scroll_older_messages",
+      "duration_ms": 1261,
+      "ok": true
+    }
+  ],
+  "frame_sample": {
+    "duration_ms": 15016,
+    "frames": 864,
+    "dropped_frames": 21,
+    "max_frame_ms": 83,
+    "average_frame_ms": 17
+  },
+  "heap_before": {
+    "used_js_heap_size": 10000000,
+    "total_js_heap_size": 10000000,
+    "js_heap_size_limit": 3760000000
+  },
+  "heap_after": {
+    "used_js_heap_size": 72494167,
+    "total_js_heap_size": 76793895,
+    "js_heap_size_limit": 4395630592
+  },
+  "heap_growth_bytes": 62494167,
+  "console_errors": [
+    "Loading the stylesheet 'https://accounts.google.com/gsi/style' violates the following Content Security Policy directive: \"style-src 'self' 'unsafe-inline'\". Note that 'style-src-elem' was not explicitly set, so 'style-src' is used as a fallback. The action has been blocked.",
+    "Failed to load resource: the server responded with a status of 403 ()",
+    "[GSI_LOGGER]: The given origin is not allowed for the given client ID.",
+    "Failed to load resource: the server responded with a status of 404 (Not Found)",
+    "Failed to load resource: the server responded with a status of 404 (Not Found)",
+    "Failed to load resource: the server responded with a status of 404 (Not Found)",
+    "Failed to load resource: the server responded with a status of 404 (Not Found)"
+  ],
+  "request_failures": [
+    "GET http://localhost:3100/ net::ERR_ABORTED",
+    "GET http://localhost:3100/icon.svg net::ERR_ABORTED",
+    "GET http://localhost:3100/_next/static/chunks/_app-pages-browser_node_modules_next_dist_client_dev_noop-turbopack-hmr_js.js net::ERR_ABORTED",
+    "GET https://accounts.google.com/gsi/style csp",
+    "GET http://localhost:3100/api/community/channels/global_lobby/messages/search?limit=25&view=list&q=the net::ERR_ABORTED"
+  ],
+  "previous": {
+    "path": "C:\\Users\\HP\\skill-rooms-web\\reports\\chat-web-load\\latest.json",
+    "metric_deltas_ms": {
+      "initial_chat_load": 12333
+    },
+    "heap_growth_delta_bytes": 69074385
+  }
+}

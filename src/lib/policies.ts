@@ -34,8 +34,8 @@ export const policyEntries: PolicyEntry[] = [
         body: "Skillsroom is a competitive gaming platform for skill-based rooms, tournaments, moderation review, and controlled settlement. It is not designed as a chance-based betting, casino, or prediction-market product.",
         bullets: [
           "Every match or tournament must have a defined game, ruleset, format, and result flow.",
-          "Public launch claims about automated payouts remain disabled until payment-provider approval and reconciliation are live.",
-          "Closed beta features may remain manual where trust, evidence, or payment review requires it."
+          "Money movement, payout queues, and refunds follow the visible wallet and review workflow.",
+          "Some reviews may be handled manually where evidence, payment, or player support needs a closer look."
         ]
       },
       {
@@ -67,11 +67,11 @@ export const policyEntries: PolicyEntry[] = [
       },
       {
         title: "Suspension, termination, and limits",
-        body: "Skillsroom may refuse service, freeze activity, remove content, or terminate access where risk, abuse, legal concerns, or operational integrity require it.",
+        body: "Skillsroom may pause activity, remove content, or restrict access where abuse, fraud, rule-breaking, or operational integrity requires it.",
         bullets: [
           "Operator decisions are guided by the evidence trail, ledger state, moderation history, and policy set.",
-          "Access may also be restricted by geography, age, payment-provider requirements, or legal review outcomes.",
-          "These terms are a product-policy baseline and should receive formal legal review before public launch."
+          "Access may also be limited by age, location, payment availability, or platform rules.",
+          "Support can explain account restrictions where the platform is able to share details."
         ]
       }
     ]
@@ -90,7 +90,7 @@ export const policyEntries: PolicyEntry[] = [
         body: "Every room or tournament must name the applicable game, format, map or mode details where relevant, scoring model, and any event-specific restrictions before play starts.",
         bullets: [
           "Tournament pages, room setup, and attached rulesets are the official source of truth for that competition.",
-          "Where event rules conflict with a platform safety rule, the platform rule wins.",
+          "Where event rules conflict with core platform fairness rules, the platform rule wins.",
           "Custom creator or sponsor events cannot override integrity, payment, or evidence policy."
         ]
       },
@@ -147,7 +147,7 @@ export const policyEntries: PolicyEntry[] = [
         bullets: [
           "Reserved means the platform has recorded the obligation but has not completed payout.",
           "Queued means the payout or refund is awaiting manual or provider-side execution.",
-          "Paid or completed language should remain disabled until verified payment-provider reconciliation exists."
+          "Paid or completed language is used only when the platform has confirmed the payout state."
         ]
       },
       {
@@ -258,8 +258,8 @@ export const policyEntries: PolicyEntry[] = [
         body: "Some outcomes may be final once the platform has enough evidence and downstream actions would be unsafe to unwind.",
         bullets: [
           "A reopened case normally requires material new evidence, not just disagreement.",
-          "Emergency holds may still be placed where fraud or safety concerns appear after a decision.",
-          "This policy should be reviewed by counsel before public launch."
+          "Emergency holds may still be placed where fraud or serious trust concerns appear after a decision.",
+          "Support may explain what information is still needed when a case cannot be reopened."
         ]
       }
     ]
@@ -267,9 +267,9 @@ export const policyEntries: PolicyEntry[] = [
   {
     slug: "conduct",
     path: "/conduct",
-    eyebrow: "Safety",
+    eyebrow: "Conduct",
     title: "Prohibited Conduct Policy",
-    description: "The behavior rules that protect fairness, trust, moderation integrity, and payment safety across Skillsroom.",
+    description: "The behavior rules that keep Skillsroom fair, respectful, and useful for players, hosts, and communities.",
     summary: "What users, teams, creators, and sponsors may not do on the platform.",
     updatedAt,
     sections: [
@@ -297,7 +297,7 @@ export const policyEntries: PolicyEntry[] = [
         bullets: [
           "Pressure tactics around payout, dispute review, or public shaming can also trigger enforcement.",
           "Support and review channels must not be spammed with abusive or deceptive submissions.",
-          "Skillsroom may remove public content or restrict community surfaces for safety reasons."
+          "Skillsroom may remove posts, messages, or profile content that hurts the community experience."
         ]
       },
       {
@@ -305,8 +305,8 @@ export const policyEntries: PolicyEntry[] = [
         body: "Violations can lead to warnings, holds, disqualification, loss of prize eligibility, refund denial, suspension, or permanent removal.",
         bullets: [
           "Enforcement may also include ledger holds and evidence retention.",
-          "Severe cases may be escalated to payment, legal, or law-enforcement review where appropriate.",
-          "The platform is allowed to act conservatively where trust or safety is at risk."
+          "Severe cases may be escalated to payment, support, or appropriate external review where necessary.",
+          "The platform may pause activity while a serious issue is being reviewed."
         ]
       }
     ]
@@ -315,26 +315,26 @@ export const policyEntries: PolicyEntry[] = [
     slug: "eligibility",
     path: "/eligibility",
     eyebrow: "Eligibility",
-    title: "Age and Eligibility Policy",
-    description: "The baseline age, location, account, and payout-readiness rules for entering Skillsroom competitions.",
+    title: "Age and Eligibility",
+    description: "The age, location, account, and payout-readiness rules for entering Skillsroom competitions.",
     summary: "Who can participate, who can win prizes, and what checks may be required before a player or host is allowed to compete.",
     updatedAt,
     sections: [
       {
         title: "Age rule",
-        body: "Until a separate youth framework exists, Skillsroom should be treated as an 18+ platform for rooms, tournaments, and prize eligibility.",
+        body: "Skillsroom rooms, tournaments, and prize-bearing activity are intended for players who meet the required age for their location and event type.",
         bullets: [
           "Players may be asked to confirm age before entering paid or prize-bearing events.",
           "Accounts believed to belong to minors may be suspended or restricted pending review.",
-          "Any future under-18 program should require separate rules, consent, and compliance review."
+          "Any youth program would need its own rules, consent flow, and event limits."
         ]
       },
       {
         title: "Location and access",
-        body: "Participation may be limited by country, state, campus, payment availability, or legal review.",
+        body: "Participation may be limited by country, state, campus, community, event rules, or payment availability.",
         bullets: [
           "A competition may be open only to specified regions or communities.",
-          "The platform may block access where local law, provider policy, or fraud risk requires it.",
+          "The platform may block or limit access where rules, provider requirements, or fraud risk requires it.",
           "Creators and sponsors cannot bypass geo or age restrictions through custom event wording."
         ]
       },
@@ -362,7 +362,7 @@ export const policyEntries: PolicyEntry[] = [
         title: "Data we collect",
         body: "Skillsroom may collect account details, profile data, linked auth identity, game handles, room and tournament activity, funding proof, evidence, moderation records, device/session logs, and support submissions.",
         bullets: [
-          "Public community pages should expose only the data intentionally marked public-safe.",
+          "Community pages show only the profile, event, and winner details meant for public viewing.",
           "Evidence, operator notes, legal-hold records, and certain settlement details stay access-controlled.",
           "We may also collect technical logs needed for fraud detection and product security."
         ]
@@ -389,9 +389,9 @@ export const policyEntries: PolicyEntry[] = [
         title: "Retention and rights",
         body: "Some data can be deleted quickly, but evidence, payout, moderation, and audit records may need longer retention or legal hold.",
         bullets: [
-          "Retention schedules should follow the platform evidence policy and legal-hold workflow.",
+          "Retention schedules follow the platform evidence, payout, support, and account-review workflow.",
           "Users can request correction or support review of inaccurate information where appropriate.",
-          "This policy should receive counsel review for Nigeria-specific and future cross-border privacy obligations before public launch."
+          "Privacy practices may be updated as Skillsroom expands to new regions or providers."
         ]
       }
     ]
@@ -399,10 +399,10 @@ export const policyEntries: PolicyEntry[] = [
   {
     slug: "compliance",
     path: "/compliance",
-    eyebrow: "Compliance",
-    title: "Skill Gaming Compliance Notes",
-    description: "The current product position on skill-based competition, payments, moderation, and the boundaries that keep Skillsroom from drifting into chance-based betting.",
-    summary: "The platform’s conservative compliance posture before public launch, especially around skill gaming, payouts, age limits, and provider approval.",
+    eyebrow: "Skill Gaming",
+    title: "Skill Gaming Notes",
+    description: "How Skillsroom keeps competitions focused on skill, clear rules, evidence-backed results, and reviewed settlement.",
+    summary: "The platform position on skill-based rooms and tournaments, payouts, age limits, and provider requirements.",
     updatedAt,
     sections: [
       {
@@ -410,35 +410,35 @@ export const policyEntries: PolicyEntry[] = [
         body: "Skillsroom is being designed as a skill-based competitive gaming platform with defined rules, evidence-backed result review, and controlled settlement. It is not intended to offer chance-based betting, casino games, or speculative outcome markets.",
         bullets: [
           "Every competition should have a skill-based format, clear entrant structure, and moderator review path.",
-          "We should avoid product copy that frames the platform as gambling, easy money, or random-win betting.",
+          "Skillsroom does not frame competition as gambling, easy money, or random-win betting.",
           "No random chance mechanic should determine whether a player wins a room or tournament."
         ]
       },
       {
-        title: "Payments and payout claims",
-        body: "Before payment-provider approval is complete, Skillsroom should remain conservative about payment automation and public money claims.",
+        title: "Payments and payouts",
+        body: "Skillsroom describes money states according to the actual wallet, ledger, review, and payout workflow.",
         bullets: [
-          "Manual or semi-manual controls are acceptable where they preserve auditability.",
+          "Manual or assisted review may be used where it keeps the process clear and auditable.",
           "Reserved and queued payout language may be used only when backed by real ledger states.",
-          "Completed payout totals should stay hidden until provider reconciliation and legal/payment review are approved."
+          "Completed payout totals should reflect confirmed platform records."
         ]
       },
       {
-        title: "Launch dependencies",
-        body: "Public launch should not happen until product policy, legal review, provider review, and operational controls align.",
+        title: "Operating controls",
+        body: "Skillsroom depends on clear rules, provider requirements, account checks, and operational controls staying aligned.",
         bullets: [
-          "Formal counsel should review the terms, privacy policy, refund policy, dispute policy, and jurisdiction-specific risk before launch.",
-          "Payment providers and banking partners should explicitly understand the skill-based competition flow.",
-          "KYC, AML, fraud review, age controls, and geo restrictions should be enforced to the level required by law and provider policy."
+          "Rules, privacy, refunds, disputes, and regional requirements should remain clear as the platform grows.",
+          "Payment providers and banking partners should understand the skill-based competition flow.",
+          "Identity, fraud review, age controls, and region limits should match law and provider requirements."
         ]
       },
       {
-        title: "Important limitation",
-        body: "These notes are product-policy guidance, not final legal advice or a regulatory opinion. They exist to keep the product posture disciplined while external legal and provider review is completed.",
+        title: "Regional limits",
+        body: "Skill-gaming rules can differ by location, provider, and event type, so Skillsroom may limit some formats in some places.",
         bullets: [
-          "If counsel or a regulator requires tighter restrictions, the stricter rule should control.",
-          "If a launch market treats a given format as regulated gaming, Skillsroom should not offer that format there without approval.",
-          "Expansion outside Nigeria should trigger a fresh jurisdiction-by-jurisdiction compliance review."
+          "If a location requires stricter rules, the stricter rule controls.",
+          "If a format needs approval in a market, Skillsroom should not offer that format there without approval.",
+          "Expansion into new countries should include region-specific review."
         ]
       }
     ]
@@ -475,7 +475,7 @@ export const policyEntries: PolicyEntry[] = [
         body: "Public and internal reputation should be based on real outcomes such as completed matches, no-shows, upheld disputes, and verified participation.",
         bullets: [
           "Trust is meant to reduce future abuse, not to produce fake hype metrics.",
-          "Community visibility should not leak private evidence or hidden safety signals.",
+          "Community visibility should not expose private evidence, account checks, or internal review notes.",
           "A player can improve trust through consistent, policy-compliant participation."
         ]
       }

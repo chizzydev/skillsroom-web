@@ -28,17 +28,17 @@ type SignInPageProps = {
 function signInErrorMessage(error?: string) {
   switch (error) {
     case "GOOGLE_AUTH_NOT_CONFIGURED":
-      return "Google sign-in is not configured on the API yet. Check the Railway GOOGLE_CLIENT_ID value and redeploy.";
+      return "Google sign-in is temporarily unavailable. Use email and password for now.";
     case "GOOGLE_ACCOUNT_NOT_VERIFIED":
       return "That Google account could not be verified. Make sure the account email is verified in Google.";
     case "GOOGLE_ALREADY_LINKED":
       return "That Google account is already linked to another Skillsroom account.";
     case "CROSS_ORIGIN_MUTATION_BLOCKED":
-      return "Google sign-in request was blocked by the API origin policy. Check WEB_APP_ORIGIN on Railway.";
+      return "Google sign-in could not be completed from this browser session. Use email and password for now.";
     case "google_api_unreachable":
-      return "Google sign-in could not reach the API. Check NEXT_PUBLIC_API_BASE_URL on Vercel and confirm Railway is online.";
+      return "Google sign-in could not connect right now. Use email and password for now.";
     case "google_failed":
-      return "Google sign-in failed. If your client ID is correct, check that this exact origin is allowed in Google Authorized JavaScript origins.";
+      return "Google sign-in failed. Try again or use email and password.";
     case "EMAIL_NOT_VERIFIED":
       return "Check your email first and confirm this account before signing in.";
     default:
@@ -169,9 +169,9 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
           </div>
           <div className="mt-5 grid gap-3 text-sm font-semibold text-muted">
             <p>
-              Need a closer look first?{" "}
+              Want to understand the platform first?{" "}
               <PendingLink className="text-ink underline decoration-action decoration-2 underline-offset-4" href="/policies" pendingLabel="Opening policies...">
-                Read the public rules and policies
+                Read the player guide
               </PendingLink>
               .
             </p>

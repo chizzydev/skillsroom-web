@@ -781,6 +781,7 @@ export type ChatMessage = {
   forwarded_from_message_id?: string | null;
   forwarded_from_channel_id?: string | null;
   reply_to_body?: string | null;
+  reply_to_status?: "visible" | "hidden" | "deleted" | "flagged" | null;
   reply_to_sender_user_id?: string | null;
   reply_to_sender_label?: string | null;
   mentions?: Array<{ user_id: string; text: string; label?: string }>;
@@ -788,6 +789,12 @@ export type ChatMessage = {
   reactions?: Array<{ reaction: string; count: number; reacted_by_me?: boolean }>;
   bookmarked_by_me?: boolean;
   thread_reply_count?: number;
+  view?: "full" | "list" | string;
+  attachment_count?: number;
+  attachment_preview?: Partial<ChatAttachment> | null;
+  has_attachments?: boolean;
+  has_poll?: boolean;
+  poll_summary?: Partial<ChatPoll> | null;
   poll?: ChatPoll | null;
   attachments?: ChatAttachment[];
   pinned_at?: string | null;
@@ -3022,6 +3029,25 @@ export function listChatChannels() {
   return apiRequest<{ channels: ChatChannel[] }>("/community/channels");
 }
 
+export function listChatBootstrap(filters: { channel?: string; limit?: number; view?: "list" | "full" } = {}) {
+  return apiRequest<{
+    current_user: {
+      id: string;
+      email?: string;
+      role: "player" | "support" | "moderator" | "admin" | "owner";
+      status: "active" | "locked" | "disabled";
+    };
+    channels: ChatChannel[];
+    active_channel: ChatChannel | null;
+    messages: ChatMessage[];
+    pinned_messages: ChatPinnedMessage[];
+    presence: ChatPresenceSummary;
+    page_info: ChatMessagePageInfo;
+    read_boundary: string | null;
+    dm_requests: ChatDmRequest[];
+  }>(`/community/chat/bootstrap${queryString(filters)}`);
+}
+
 export function createChatChannel(input: {
   channel_type: "game" | "tournament" | "match_room" | "group";
   title?: string;
@@ -3039,7 +3065,7 @@ export function createChatChannel(input: {
   });
 }
 
-export function listChatMessages(channelIdOrSlug: string, filters: { before?: string; after?: string; cursor?: string; limit?: number } = {}) {
+export function listChatMessages(channelIdOrSlug: string, filters: { before?: string; after?: string; cursor?: string; limit?: number; view?: "list" | "full" } = {}) {
   return apiRequest<{ channel: ChatChannel; messages: ChatMessage[]; pinned_messages: ChatPinnedMessage[]; presence: ChatPresenceSummary; page_info: ChatMessagePageInfo; read_boundary: string | null }>(
     `/community/channels/${encodeURIComponent(channelIdOrSlug)}/messages${queryString(filters)}`
   );
