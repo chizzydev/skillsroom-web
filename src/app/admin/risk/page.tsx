@@ -95,6 +95,21 @@ type EvidenceReviewRow = {
   verdict: "clean" | "review" | "exception";
 };
 
+type SafetySection = "reports" | "chat" | "dm" | "holds" | "actions" | "evidence";
+
+const safetySections: Array<{ key: SafetySection; label: string; detail: string }> = [
+  { key: "reports", label: "Reports", detail: "Player reports and flag status" },
+  { key: "chat", label: "Chat", detail: "Reported messages and mutes" },
+  { key: "dm", label: "DMs", detail: "Request and block signals" },
+  { key: "holds", label: "Room holds", detail: "Pause and release room settlement" },
+  { key: "actions", label: "Actions", detail: "Warnings, restrictions, and bans" },
+  { key: "evidence", label: "Evidence", detail: "Custody, cleanup, export, and holds" }
+];
+
+function safetySection(value?: string): SafetySection {
+  return safetySections.some((section) => section.key === value) ? (value as SafetySection) : "reports";
+}
+
 function evidenceAction(event: SecurityEvent) {
   return event.event.replace("evidence.access.", "");
 }
@@ -145,11 +160,12 @@ function reviewTone(verdict: EvidenceReviewRow["verdict"]) {
   return "success" as const;
 }
 
-export default async function AdminRiskPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
+export default async function AdminRiskPage({ searchParams }: { searchParams: Promise<{ error?: string; section?: string }> }) {
   const user = await getCurrentUser();
   if (!canAccessAdmin(user)) redirect("/sign-in?redirect=/admin/risk");
   if (!canUseAdminSection(user, "risk")) redirect("/admin");
-  const { error } = await searchParams;
+  const { error, section } = await searchParams;
+  const activeSection = safetySection(section);
 
   let flags: UserRiskFlag[] = [];
   let actions: ModerationAction[] = [];
@@ -235,6 +251,23 @@ export default async function AdminRiskPage({ searchParams }: { searchParams: Pr
           <StatusPanel detail="Expired and eligible for quarantine" label="Cleanup Queue" tone={cleanupEligible ? "warning" : "success"} value={cleanupEligible.toString()} />
         </div>
 
+        <div className="grid gap-2 rounded-md border border-line bg-white p-2 shadow-tight sm:grid-cols-2 xl:grid-cols-6">
+          {safetySections.map((item) => (
+            <a
+              className={[
+                "min-h-16 rounded-md px-3 py-2 transition",
+                activeSection === item.key ? "bg-navy-900 text-white" : "bg-surfaceWarm text-ink hover:bg-cyanSoft"
+              ].join(" ")}
+              href={`/admin/risk?section=${item.key}`}
+              key={item.key}
+            >
+              <span className="block text-sm font-black">{item.label}</span>
+              <span className={["mt-1 block text-xs font-bold leading-4", activeSection === item.key ? "text-slate-200" : "text-muted"].join(" ")}>{item.detail}</span>
+            </a>
+          ))}
+        </div>
+
+        {activeSection === "chat" ? (
         <Panel>
           <PanelHeader eyebrow="Chat Safety" title="Chat moderation queue" description="Review reported messages, hide or delete unsafe content, and mute users from a channel." />
           {chatModerationEvents.length ? (
@@ -294,7 +327,9 @@ export default async function AdminRiskPage({ searchParams }: { searchParams: Pr
             </div>
           )}
         </Panel>
+        ) : null}
 
+        {activeSection === "dm" ? (
         <Panel>
           <PanelHeader eyebrow="Private DMs" title="DM abuse review" description="DMs are private. The team only reviews reports, blocks, and request history needed for safety decisions." />
           <div className="grid gap-4 p-4 xl:grid-cols-2">
@@ -330,14 +365,20 @@ export default async function AdminRiskPage({ searchParams }: { searchParams: Pr
             <p><strong className="text-ink">Abuse records:</strong> Reports, blocks, and safety actions are kept so repeated abuse can be investigated.</p>
           </div>
         </Panel>
+        ) : null}
 
+        {activeSection === "evidence" ? (
+        <>
         <div className="grid min-w-0 gap-3 sm:grid-cols-2 xl:grid-cols-4">
           <StatusPanel detail="Temporarily hidden from normal access" label="Held evidence" tone={quarantinedEvidence ? "warning" : "neutral"} value={quarantinedEvidence.toString()} />
           <StatusPanel detail="Waiting for another team member" label="Delete Requests" tone={deletionRequested ? "warning" : "neutral"} value={deletionRequested.toString()} />
           <StatusPanel detail="Ready for final deletion" label="Delete Approved" tone={deletionApproved ? "danger" : "neutral"} value={deletionApproved.toString()} />
           <StatusPanel detail="File removed, record kept" label="Deleted Media" tone={deletedEvidence ? "danger" : "neutral"} value={deletedEvidence.toString()} />
         </div>
+        </>
+        ) : null}
 
+        {activeSection === "reports" ? (
         <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1fr)_420px]">
           <Panel>
             <PanelHeader eyebrow="Reports" title="Player reports" description="Support can view reports. Community managers can create and update them." />
@@ -379,8 +420,24 @@ export default async function AdminRiskPage({ searchParams }: { searchParams: Pr
               <FormActionButton idleLabel="Create flag" pendingLabel="Creating flag..." />
             </form>
           </Panel>
-        </div>
 
+          <Panel>
+            <PanelHeader eyebrow="Flag Status" title="Update flag status" />
+            <form action={updateRiskFlagStatusAction} className="grid gap-3 p-4">
+              <input className="min-h-11 rounded-md border border-line bg-white px-3 font-mono text-sm outline-none focus:border-action" name="flag_id" placeholder="Report ID" required />
+              <select className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="status">
+                <option value="reviewing">Reviewing</option>
+                <option value="resolved">Resolved</option>
+                <option value="dismissed">Dismissed</option>
+                <option value="open">Open</option>
+              </select>
+              <FormActionButton idleLabel="Update flag" pendingLabel="Updating flag..." variant="secondary" />
+            </form>
+          </Panel>
+        </div>
+        ) : null}
+
+        {activeSection === "holds" ? (
         <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1fr)_420px]">
           <Panel>
             <PanelHeader eyebrow="Room Holds" title="Active held rooms" description="Held rooms should not be paid out until a team member releases the hold." />
@@ -429,7 +486,9 @@ export default async function AdminRiskPage({ searchParams }: { searchParams: Pr
             </div>
           </Panel>
         </div>
+        ) : null}
 
+        {activeSection === "actions" ? (
         <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1fr)_420px]">
           <Panel>
           <PanelHeader eyebrow="History" title="Recent moderation actions" />
@@ -481,7 +540,10 @@ export default async function AdminRiskPage({ searchParams }: { searchParams: Pr
             </Panel>
           </div>
         </div>
+        ) : null}
 
+        {activeSection === "evidence" ? (
+        <>
         <Panel>
           <PanelHeader eyebrow="Evidence Review" title="Evidence review" description="Files that may need extra attention before they are used, hidden, exported, or removed." />
           {evidenceReviews.length ? (
@@ -746,20 +808,8 @@ export default async function AdminRiskPage({ searchParams }: { searchParams: Pr
             <FormActionButton idleLabel="Review custody" pendingLabel="Reviewing custody..." variant="secondary" />
           </form>
         </Panel>
-
-        <Panel>
-          <PanelHeader eyebrow="Flag Status" title="Update flag status" />
-          <form action={updateRiskFlagStatusAction} className="grid gap-3 p-4 md:grid-cols-[1fr_220px_auto]">
-            <input className="min-h-11 rounded-md border border-line bg-white px-3 font-mono text-sm outline-none focus:border-action" name="flag_id" placeholder="Report ID" required />
-            <select className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="status">
-              <option value="reviewing">Reviewing</option>
-              <option value="resolved">Resolved</option>
-              <option value="dismissed">Dismissed</option>
-              <option value="open">Open</option>
-            </select>
-            <FormActionButton idleLabel="Update flag" pendingLabel="Updating flag..." variant="secondary" />
-          </form>
-        </Panel>
+        </>
+        ) : null}
       </section>
     </AdminShell>
   );

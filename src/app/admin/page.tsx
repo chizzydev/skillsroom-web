@@ -196,10 +196,10 @@ export default async function AdminPage({
             pendingLabel: canSeeFunding ? "Opening funding..." : "Opening results..."
           };
   const roleBoundaryCards = [
-    user?.role === "owner" ? ["Owner", "Full", "Full platform control, team roles, money, risk, and public operations."] : null,
+    user?.role === "owner" ? ["Owner", "Full", "Full platform control, team roles, money, safety, and public operations."] : null,
     user?.role === "admin" || user?.role === "owner" ? ["Admin", "Money", "Funding, wallet top-ups, payouts, refunds, tournaments, and result support."] : null,
     user?.role === "moderator" || user?.role === "owner" ? ["Community Manager", "Community", "Result evidence, disputes, room holds, player trust, and tournament moderation."] : null,
-    user?.role === "support" || user?.role === "owner" ? ["Support", "Assist", "Player context, support notes, and safe risk visibility."] : null
+    user?.role === "support" || user?.role === "owner" ? ["Support", "Assist", "Player context, support notes, and safe visibility into reports."] : null
   ].filter((item): item is [string, string, string] => Boolean(item));
 
   if (canSeeFunding) {
@@ -299,6 +299,51 @@ export default async function AdminPage({
           {canSeeSettlements ? <AdminQueueCard detail="Winner payouts and player refunds waiting for payment." href="/admin/settlements" label="Payments" tone="success" value={(payouts.length + refunds.length).toString()} /> : null}
           {canSeeRisk ? <AdminQueueCard detail="Player reports and room holds waiting for review." href="/admin/risk" label="Safety" tone="danger" value={(flags.length + holds.length).toString()} /> : null}
         </div>
+
+        <Panel>
+          <PanelHeader
+            description="Newest items you are allowed to review. Open a section when you are ready to handle it."
+            eyebrow="Queue"
+            title="Priority work"
+          />
+          {workItems.length ? (
+            <DataTable
+              columns={[
+                {
+                  key: "type",
+                  label: "Case",
+                  render: (row) => (
+                    <div className="min-w-52">
+                      <strong className="font-mono text-xs text-dim">{row.id}</strong>
+                      <p className="mt-1 text-sm font-black text-ink">{row.type}</p>
+                    </div>
+                  )
+                },
+                { key: "room", label: "Room", render: (row) => <span className="font-mono text-xs font-bold text-ink">{row.room}</span> },
+                { key: "actor", label: "Player", render: (row) => <span className="font-mono text-xs font-bold text-muted">{row.actor}</span> },
+                { key: "amount", label: "Context", render: (row) => <span className="line-clamp-2 text-sm font-bold text-ink">{row.amount}</span> },
+                { key: "priority", label: "Priority", render: (row) => <Badge tone={row.tone}>{row.priority}</Badge> },
+                {
+                  key: "href",
+                  label: "Action",
+                  render: (row) => (
+                    <PendingLink className="text-sm font-black text-cyan hover:text-action" href={row.href} pendingLabel="Opening area...">
+                      Open area
+                    </PendingLink>
+                  )
+                }
+              ]}
+              rows={workItems}
+            />
+          ) : (
+            <div className="p-4">
+              <AdminEmptyState
+                description={user?.role === "moderator" ? "There are no result claims, player checks, tournament items, or safety reports waiting right now." : "There are no payments, results, refunds, or player reports waiting for review right now."}
+                title="Nothing waiting right now"
+              />
+            </div>
+          )}
+        </Panel>
 
         {canManageCommunity ? (
         <Panel>
@@ -416,59 +461,14 @@ export default async function AdminPage({
               <option value="private">Private</option>
             </select>
             <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="description" placeholder="Description" />
-            <FormActionButton idleLabel="Save channel" pendingLabel="Saving..." />
             <input className="min-h-11 rounded-md border border-line bg-white px-3 font-mono text-sm outline-none focus:border-action xl:col-span-2" name="slug" placeholder="Optional slug" />
             <input className="min-h-11 rounded-md border border-line bg-white px-3 font-mono text-sm outline-none focus:border-action" name="game_slug" placeholder="game slug" />
             <input className="min-h-11 rounded-md border border-line bg-white px-3 font-mono text-sm outline-none focus:border-action" name="tournament_id" placeholder="tournament id" />
             <input className="min-h-11 rounded-md border border-line bg-white px-3 font-mono text-sm outline-none focus:border-action" name="match_room_id" placeholder="room id" />
+            <FormActionButton className="xl:col-start-5" fullWidth idleLabel="Save channel" pendingLabel="Saving..." />
           </form>
         </Panel>
         ) : null}
-
-        <Panel>
-          <PanelHeader
-            description="Newest items you are allowed to review. Open a section when you are ready to handle it."
-            eyebrow="Queue"
-            title="Priority work"
-          />
-          {workItems.length ? (
-            <DataTable
-              columns={[
-                {
-                  key: "type",
-                  label: "Case",
-                  render: (row) => (
-                    <div className="min-w-52">
-                      <strong className="font-mono text-xs text-dim">{row.id}</strong>
-                      <p className="mt-1 text-sm font-black text-ink">{row.type}</p>
-                    </div>
-                  )
-                },
-                { key: "room", label: "Room", render: (row) => <span className="font-mono text-xs font-bold text-ink">{row.room}</span> },
-                { key: "actor", label: "Player", render: (row) => <span className="font-mono text-xs font-bold text-muted">{row.actor}</span> },
-                { key: "amount", label: "Context", render: (row) => <span className="line-clamp-2 text-sm font-bold text-ink">{row.amount}</span> },
-                { key: "priority", label: "Priority", render: (row) => <Badge tone={row.tone}>{row.priority}</Badge> },
-                {
-                  key: "href",
-                  label: "Action",
-                  render: (row) => (
-                    <PendingLink className="text-sm font-black text-cyan hover:text-action" href={row.href} pendingLabel="Opening lane...">
-                      Open lane
-                    </PendingLink>
-                  )
-                }
-              ]}
-              rows={workItems}
-            />
-          ) : (
-            <div className="p-4">
-              <AdminEmptyState
-                description={user?.role === "moderator" ? "There are no result claims, player checks, tournament items, or safety reports waiting right now." : "There are no payments, results, refunds, or player reports waiting for review right now."}
-                title="Nothing waiting right now"
-              />
-            </div>
-          )}
-        </Panel>
 
         {canSeeTeamGuide ? (
         <Panel>

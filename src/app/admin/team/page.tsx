@@ -3,6 +3,7 @@ import { AdminEmptyState } from "@/components/admin/AdminEmptyState";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { AdminStepUpPanel } from "@/components/admin/AdminStepUpPanel";
 import { AdminShell } from "@/components/layout/AdminShell";
+import { LiveUpdateStream } from "@/components/realtime/LiveUpdateStream";
 import { Badge, type BadgeTone } from "@/components/ui/Badge";
 import { DataTable } from "@/components/ui/DataTable";
 import { FormActionButton } from "@/components/ui/FormActionButton";
@@ -78,6 +79,8 @@ export default async function AdminTeamPage({
           eyebrow="Owner"
           title="Team roles"
         />
+
+        <LiveUpdateStream eventTypePrefixes={["admin.team.", "admin.user.", "user.role."]} label="Team updates" />
 
         {params?.error ? <TransientStatusBanner clearKeys={["error"]} durationMs={14000} message={params.error} tone="danger" /> : null}
         {params?.role_updated ? <TransientStatusBanner clearKeys={["role_updated"]} durationMs={12000} message="Team role updated." tone="success" /> : null}

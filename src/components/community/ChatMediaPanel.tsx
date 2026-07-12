@@ -44,23 +44,27 @@ export function ChatMediaPanel({
             }}
             increaseViewportBy={520}
             itemContent={(_, attachment) => (
-              <div className="p-1" data-testid="chat-media-tile">
-                <ChatAttachmentTile
-                  attachment={attachment}
-                  channelSlug={channelSlug}
-                  className={attachment.attachment_type === "image" ? "aspect-square" : "min-h-24"}
-                  loadImageOnVisible
-                  onOpenImage={(url) => onOpenImage(attachment, url)}
-                />
-              </div>
+              <ChatAttachmentTile
+                attachment={attachment}
+                channelSlug={channelSlug}
+                className="aspect-square w-full"
+                compact
+                loadImageOnVisible
+                onOpenImage={(url) => onOpenImage(attachment, url)}
+              />
             )}
             components={{
               List: ({ style, children, ...props }) => (
                 <div
                   {...props}
-                  className="grid grid-cols-3 gap-1.5 sm:grid-cols-4 sm:gap-2"
+                  className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4"
                   style={style}
                 >
+                  {children}
+                </div>
+              ),
+              Item: ({ children, ...props }) => (
+                <div {...props} className="min-w-0 p-1" data-testid="chat-media-tile">
                   {children}
                 </div>
               ),
@@ -73,7 +77,7 @@ export function ChatMediaPanel({
             }}
           />
         </div>
-      ) : !isLoading ? <p className="rounded-md border border-dashed border-white/10 p-6 text-center text-sm font-bold text-slate-400">Images and documents shared here will appear here.</p> : null}
+      ) : !isLoading ? <p className="rounded-md border border-dashed border-white/10 p-6 text-center text-sm font-bold text-slate-400">Photos and files shared in this channel will appear here.</p> : null}
       {isLoading && !attachments.length ? <p className="p-4 text-center text-sm font-bold text-slate-400">Loading media...</p> : null}
     </div>
   );

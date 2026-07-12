@@ -106,7 +106,7 @@ const ChatImage = memo(function ChatImage({ attachment, autoLoad, channelSlug, c
   return <button ref={setRootRef} aria-label={`Open image from ${attachment.uploader_label}`} className={["grid h-full min-w-0 place-items-center overflow-hidden rounded-md bg-black/20", className].filter(Boolean).join(" ")} onClick={() => onOpen?.(url)} type="button"><img alt={attachment.alt_text ?? attachment.original_name ?? "Chat image"} className="h-full max-h-full w-full object-contain" loading="lazy" src={url} /></button>;
 });
 
-export const ChatAttachmentTile = memo(function ChatAttachmentTile({ attachment, autoLoadImage, channelSlug, className, loadImageOnVisible, onOpenImage }: { attachment: ChatAttachment; autoLoadImage?: boolean; channelSlug: string; className?: string; loadImageOnVisible?: boolean; onOpenImage?: (url: string) => void }) {
+export const ChatAttachmentTile = memo(function ChatAttachmentTile({ attachment, autoLoadImage, channelSlug, className, compact, loadImageOnVisible, onOpenImage }: { attachment: ChatAttachment; autoLoadImage?: boolean; channelSlug: string; className?: string; compact?: boolean; loadImageOnVisible?: boolean; onOpenImage?: (url: string) => void }) {
   const [isOpening, setIsOpening] = useState(false);
   const [failed, setFailed] = useState(false);
 
@@ -130,10 +130,30 @@ export const ChatAttachmentTile = memo(function ChatAttachmentTile({ attachment,
     }
   }
 
+  if (compact) {
+    return (
+      <button
+        aria-label={`Open ${attachmentPreviewLabel(attachment)}`}
+        className={["grid min-w-0 content-center gap-2 overflow-hidden rounded-md border border-white/10 bg-black/15 p-3 text-center hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60", className].filter(Boolean).join(" ")}
+        disabled={unavailable || isOpening}
+        onClick={() => void openDocument()}
+        type="button"
+      >
+        <span className="mx-auto grid h-12 w-12 place-items-center rounded-md bg-sky-400/15 font-mono text-xs font-black text-sky-200">{documentBadge(attachment.mime_type)}</span>
+        <span className="min-w-0">
+          <span className="block truncate text-xs font-black text-white">{attachmentPreviewLabel(attachment)}</span>
+          <span className="mt-1 block truncate text-[0.68rem] font-bold text-slate-400">
+            {unavailable ? "Unavailable" : failed ? "Tap to retry" : isOpening ? "Opening..." : formatAttachmentSize(attachment.byte_size) || "Open file"}
+          </span>
+        </span>
+      </button>
+    );
+  }
+
   return (
     <button
       aria-label={`Open ${attachmentPreviewLabel(attachment)}`}
-      className={["flex min-h-24 min-w-0 items-center gap-3 rounded-md border border-white/10 bg-black/15 p-3 text-left hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60", className].filter(Boolean).join(" ")}
+      className={["flex min-h-24 w-full min-w-0 items-center gap-3 overflow-hidden rounded-md border border-white/10 bg-black/15 p-3 text-left hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60", className].filter(Boolean).join(" ")}
       disabled={unavailable || isOpening}
       onClick={() => void openDocument()}
       type="button"

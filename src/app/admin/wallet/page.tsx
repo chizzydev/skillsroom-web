@@ -3,6 +3,7 @@ import { AdminEmptyState } from "@/components/admin/AdminEmptyState";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { AdminStepUpPanel } from "@/components/admin/AdminStepUpPanel";
 import { AdminShell } from "@/components/layout/AdminShell";
+import { LiveUpdateStream } from "@/components/realtime/LiveUpdateStream";
 import { Badge } from "@/components/ui/Badge";
 import { FormActionButton } from "@/components/ui/FormActionButton";
 import { Panel, PanelHeader } from "@/components/ui/Panel";
@@ -90,6 +91,8 @@ export default async function AdminWalletPage({ searchParams }: { searchParams: 
           title="Wallet review"
           tone="cyan"
         />
+
+        <LiveUpdateStream eventTypePrefixes={["admin.queue.wallet.", "wallet.", "admin.wallet."]} label="Wallet updates" />
 
         {error ? <TransientStatusBanner clearKeys={["error"]} durationMs={12000} message={error} /> : null}
         {success ? <TransientStatusBanner clearKeys={["success"]} durationMs={12000} message={success} tone="success" /> : null}

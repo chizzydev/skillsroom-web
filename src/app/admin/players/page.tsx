@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { AdminEmptyState } from "@/components/admin/AdminEmptyState";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { AdminShell } from "@/components/layout/AdminShell";
+import { LiveUpdateStream } from "@/components/realtime/LiveUpdateStream";
 import { Badge } from "@/components/ui/Badge";
 import { DataTable } from "@/components/ui/DataTable";
 import { FormActionButton } from "@/components/ui/FormActionButton";
@@ -59,6 +60,8 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams?
           eyebrow="Players"
           title="Player review"
         />
+
+        <LiveUpdateStream eventTypePrefixes={["admin.queue.players.", "player.", "profile.", "game_account."]} label="Player updates" />
 
         {loadError ? (
           <div className="rounded-md border border-danger bg-red-50 p-4 text-sm font-bold text-danger">{loadError}</div>

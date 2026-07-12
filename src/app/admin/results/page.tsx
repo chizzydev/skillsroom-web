@@ -186,13 +186,13 @@ export default async function AdminResultsPage({ searchParams }: { searchParams:
         <div className="grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <StatusPanel detail="Needs review" label="Submitted" tone="warning" value={countStatus(claims, "submitted")} />
           <StatusPanel detail="Opponent agrees" label="Agreed" tone="success" value={countStatus(claims, "opponent_agreed")} />
-          <StatusPanel detail="Needs dispute lane" label="Disputed" tone="danger" value={countStatus(claims, "opponent_disputed")} />
-          <StatusPanel detail="All active review lanes" label="Queue Total" tone="cyan" value={claims.length.toString()} />
+          <StatusPanel detail="Needs dispute review" label="Disputed" tone="danger" value={countStatus(claims, "opponent_disputed")} />
+          <StatusPanel detail="All active reviews" label="Queue Total" tone="cyan" value={claims.length.toString()} />
         </div>
 
         <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1fr)_420px]">
           <Panel>
-            <PanelHeader eyebrow="Queue" title="Result review lanes" description="Review evidence and copy the claim ID into the decision panel when you are ready to rule." />
+            <PanelHeader eyebrow="Queue" title="Result review queue" description="Review evidence and copy the claim ID into the decision panel when you are ready to rule." />
             <div className="grid gap-3 p-4">
               {claims.length ? (
                 queueStatuses.map(({ status, title, description, emptyTitle, emptyDescription }) => {
@@ -301,7 +301,7 @@ export default async function AdminResultsPage({ searchParams }: { searchParams:
                   );
                 })
               ) : (
-                <AdminEmptyState description="No result claims are waiting in submitted, agreed, or disputed review lanes." title="Result review queue is clear" />
+                <AdminEmptyState description="No result claims are waiting in submitted, agreed, or disputed review." title="Result review queue is clear" />
               )}
             </div>
           </Panel>
