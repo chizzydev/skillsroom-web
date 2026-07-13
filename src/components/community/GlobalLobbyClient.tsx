@@ -136,7 +136,6 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
   const [pinBannerIndexByChannel, setPinBannerIndexByChannel] = useState<Record<string, number>>({});
   const [isPinning, setIsPinning] = useState(false);
   const [unpinningIds, setUnpinningIds] = useState<Set<string>>(new Set());
-  const [chatViewport, setChatViewport] = useState<{ height: number; top: number; keyboardActive: boolean } | null>(null);
   const [isLoadingOlder, setIsLoadingOlder] = useState(false);
   const [showJumpLatest, setShowJumpLatest] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
@@ -449,65 +448,21 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
   useEffect(() => {
     if (!fullLayout) return;
 
-    const visualViewport = window.visualViewport;
     const root = document.documentElement;
     const bodyElement = document.body;
     const previousRootOverflow = root.style.overflow;
     const previousBodyOverflow = bodyElement.style.overflow;
     const previousBodyOverscroll = bodyElement.style.overscrollBehavior;
-    let viewportFrame = 0;
 
     root.style.overflow = "hidden";
     bodyElement.style.overflow = "hidden";
     bodyElement.style.overscrollBehavior = "none";
 
-    const repairFocusScroll = () => {
-      if (document.activeElement !== composerRef.current) return;
-      if (window.scrollY > 0) window.scrollTo(0, 0);
-    };
-
-    const updateViewport = () => {
-      viewportFrame = 0;
-      const viewportHeight = Math.round(visualViewport?.height ?? window.innerHeight);
-      const offsetTop = Math.round(visualViewport?.offsetTop ?? 0);
-      const keyboardActive = Boolean(visualViewport && window.innerHeight - visualViewport.height > 120);
-      const next = {
-        height: viewportHeight,
-        top: keyboardActive ? offsetTop : 0,
-        keyboardActive
-      };
-      setChatViewport((current) => current?.height === next.height && current.top === next.top && current.keyboardActive === next.keyboardActive ? current : next);
-      repairFocusScroll();
-    };
-
-    const scheduleViewportUpdate = () => {
-      if (viewportFrame) window.cancelAnimationFrame(viewportFrame);
-      viewportFrame = window.requestAnimationFrame(updateViewport);
-    };
-
-    updateViewport();
-    window.addEventListener("resize", scheduleViewportUpdate);
-    window.addEventListener("orientationchange", scheduleViewportUpdate);
-    visualViewport?.addEventListener("resize", scheduleViewportUpdate);
-    visualViewport?.addEventListener("scroll", scheduleViewportUpdate);
-
     return () => {
-      if (viewportFrame) window.cancelAnimationFrame(viewportFrame);
-      window.removeEventListener("resize", scheduleViewportUpdate);
-      window.removeEventListener("orientationchange", scheduleViewportUpdate);
-      visualViewport?.removeEventListener("resize", scheduleViewportUpdate);
-      visualViewport?.removeEventListener("scroll", scheduleViewportUpdate);
       root.style.overflow = previousRootOverflow;
       bodyElement.style.overflow = previousBodyOverflow;
       bodyElement.style.overscrollBehavior = previousBodyOverscroll;
     };
-  }, [fullLayout]);
-
-  const repairComposerViewport = useCallback(() => {
-    if (!fullLayout) return;
-    window.requestAnimationFrame(() => {
-      if (window.scrollY > 0) window.scrollTo(0, 0);
-    });
   }, [fullLayout]);
 
   useEffect(() => {
@@ -2347,13 +2302,11 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
   });
   const handleVotePoll = useStableCallback(votePoll);
 
-  const fullLayoutHeight = fullLayout && chatViewport ? `${chatViewport.height}px` : undefined;
-
   return (
     <section className={[
       "min-w-0 overflow-hidden shadow-tight",
-      fullLayout ? "fixed inset-x-0 top-0 grid h-[100svh] max-h-[100svh] grid-rows-[auto_minmax(0,1fr)] border-0 bg-[#0f1b29] overscroll-none" : "rounded-lg border border-line bg-white"
-    ].join(" ")} style={fullLayout && chatViewport ? { height: fullLayoutHeight, maxHeight: fullLayoutHeight, top: `${chatViewport.top}px` } : undefined}>
+      fullLayout ? "fixed inset-0 grid h-[100dvh] max-h-[100dvh] grid-rows-[auto_minmax(0,1fr)] border-0 bg-[#0f1b29] overscroll-none" : "rounded-lg border border-line bg-white"
+    ].join(" ")}>
       <header className={[
         "flex min-w-0 items-center gap-3 border-b p-3 sm:p-4",
         fullLayout ? "border-white/10 bg-[#172331] text-white" : "border-line bg-white"
@@ -2709,7 +2662,6 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
             onInsertMention={insertMention}
             onLoadBookmarks={loadBookmarks}
             onLoadScheduledAnnouncements={loadScheduledAnnouncements}
-            onComposerFocus={repairComposerViewport}
             onRemoveAttachment={removePendingAttachment}
             onRetryAttachment={(file, localId) => uploadAttachment(file, localId)}
             onSetEmojiGroup={setEmojiGroup}

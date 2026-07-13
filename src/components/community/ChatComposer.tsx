@@ -54,7 +54,6 @@ type ChatComposerProps = {
   onInsertMention: (username: string) => void;
   onLoadBookmarks: () => Promise<void>;
   onLoadScheduledAnnouncements: () => Promise<void>;
-  onComposerFocus?: () => void;
   onRemoveAttachment: (attachment: PendingAttachment) => void;
   onRetryAttachment: (file: File, localId: string) => void;
   onSetEmojiGroup: (group: EmojiGroupKey) => void;
@@ -98,7 +97,6 @@ export function ChatComposer({
   onInsertMention,
   onLoadBookmarks,
   onLoadScheduledAnnouncements,
-  onComposerFocus,
   onRemoveAttachment,
   onRetryAttachment,
   onSetEmojiGroup,
@@ -204,7 +202,6 @@ export function ChatComposer({
               data-testid="chat-composer-input"
               maxLength={chatMessageMaxLength}
               onChange={(event) => onBodyChange(event.target.value)}
-              onFocus={onComposerFocus}
               placeholder={placeholder}
               ref={composerRef}
               rows={1}
