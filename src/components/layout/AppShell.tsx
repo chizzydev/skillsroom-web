@@ -1,7 +1,6 @@
 import Link from "next/link";
-import { AccountMenu } from "./AccountMenu";
 import { GlobalActionFeedback } from "@/components/ui/GlobalActionFeedback";
-import { canAccessAdmin, getCurrentUser } from "@/lib/auth-bridge";
+import { getCurrentUser, type CurrentUser } from "@/lib/auth-bridge";
 
 type AppShellProps = {
   active: "home" | "lobby" | "matches" | "tournaments" | "community" | "notifications" | "wallet" | "profile";
@@ -9,15 +8,15 @@ type AppShellProps = {
 };
 
 const nav = [
+  { key: "home", label: "Home", short: "Home", href: "/" },
   { key: "lobby", label: "Chat", short: "Chat", href: "/chat" },
   { key: "matches", label: "Rooms", short: "Rooms", href: "/matches" },
-  { key: "tournaments", label: "Tournaments", short: "Tourneys", href: "/tournaments" },
-  { key: "notifications", label: "Notifications", short: "Inbox", href: "/notifications" },
+  { key: "tournaments", label: "Tournaments", short: "Tour.", href: "/tournaments" },
   { key: "wallet", label: "Wallet", short: "Wallet", href: "/wallet" },
   { key: "profile", label: "Profile", short: "Profile", href: "/profile" }
 ] as const;
 
-const mobileNav = nav.filter((item) => item.key !== "notifications");
+const mobileNav = nav;
 
 const footerLinks = [
   { label: "Policies", href: "/policies" },
@@ -32,7 +31,6 @@ const footerLinks = [
 
 export async function AppShell({ active, children }: AppShellProps) {
   const user = await getCurrentUser();
-  const showAdmin = canAccessAdmin(user);
 
   return (
     <main className="min-h-screen overflow-x-hidden bg-bg">
@@ -60,12 +58,31 @@ export async function AppShell({ active, children }: AppShellProps) {
               <Link className="hidden min-h-control items-center rounded-md bg-action px-4 text-sm font-black text-navy-950 shadow-action hover:bg-actionHover sm:inline-flex" href="/matches/new">
                 Create room
               </Link>
-            {showAdmin ? (
-              <Link className="hidden min-h-control items-center rounded-md border border-line bg-white px-3 text-sm font-black text-ink shadow-tight hover:bg-surfaceHigh lg:inline-flex" href="/admin">
-                Admin
+            {user ? (
+              <>
+                <Link
+                  aria-label="Open notifications"
+                  className="relative grid h-10 w-10 place-items-center rounded-full border border-line bg-white text-ink shadow-tight transition hover:bg-surfaceHigh"
+                  href="/notifications"
+                >
+                  <svg aria-hidden="true" className="h-5 w-5" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.4" viewBox="0 0 24 24">
+                    <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9" />
+                    <path d="M13.7 21a2 2 0 0 1-3.4 0" />
+                  </svg>
+                </Link>
+                <Link
+                  aria-label="Open profile"
+                  className="grid h-10 w-10 place-items-center rounded-full bg-navy-900 text-xs font-black text-action shadow-tight transition hover:bg-ink"
+                  href="/profile"
+                >
+                  {initialsFor(user)}
+                </Link>
+              </>
+            ) : (
+              <Link className="inline-flex min-h-10 items-center justify-center rounded-md border border-line bg-white px-4 text-sm font-black text-ink hover:bg-surfaceHigh" href="/sign-in">
+                Sign in
               </Link>
-            ) : null}
-            <AccountMenu compact user={user} />
+            )}
           </div>
         </div>
       </header>
@@ -92,7 +109,7 @@ export async function AppShell({ active, children }: AppShellProps) {
         </div>
       </footer>
       <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-white/95 px-2 pb-[max(env(safe-area-inset-bottom),0.65rem)] pt-2 shadow-[0_-18px_40px_rgba(15,23,42,0.08)] backdrop-blur md:hidden">
-        <div className="mx-auto grid max-w-md grid-cols-5 gap-1.5">
+        <div className="mx-auto grid max-w-md grid-cols-6 gap-1">
           {mobileNav.map((item) => (
             <Link
               className={[
@@ -109,4 +126,16 @@ export async function AppShell({ active, children }: AppShellProps) {
       </nav>
     </main>
   );
+}
+
+function initialsFor(user: CurrentUser | null) {
+  const source = user?.email ?? "Skillsroom";
+  return source
+    .split("@")[0]
+    .split(/[.\s_-]+/)
+    .filter(Boolean)
+    .map((part) => part[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
 }

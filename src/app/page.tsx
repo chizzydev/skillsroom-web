@@ -11,6 +11,7 @@ import { getCurrentUser } from "@/lib/auth-bridge";
 import {
   formatEntryAmount,
   formatMinorMoney,
+  getProfileMe,
   getPlayerHomeSummary,
   matchStatusLabel,
   type PlayerHomeRoomPreview,
@@ -48,6 +49,33 @@ function statusTone(status: MatchRoomStatus) {
 
 function countStatuses(counts: PlayerHomeSummary["room_status_counts"], statuses: MatchRoomStatus[]) {
   return statuses.reduce((sum, status) => sum + (counts[status] ?? 0), 0).toString();
+}
+
+function firstName(value?: string | null) {
+  const trimmed = value?.trim();
+  if (!trimmed) return "player";
+  return trimmed.split(/\s+/)[0];
+}
+
+function emailName(value?: string | null) {
+  return value?.split("@")[0]?.replace(/[^A-Za-z0-9_]/g, "") || null;
+}
+
+function emptyHomeSummary(): PlayerHomeSummary {
+  return {
+    room_status_counts: {},
+    active_room_previews: [],
+    unread_notification_count: 0,
+    wallet_mini_balance: {
+      currency: "NGN",
+      available_balance_minor: 0,
+      locked_balance_minor: 0,
+      winnings_balance_minor: 0,
+      status: null
+    },
+    active_tournament_preview_count: 0,
+    community_highlights_preview: []
+  };
 }
 
 function RoomCard({ room }: { room: PlayerHomeRoomPreview }) {
@@ -333,22 +361,29 @@ export default async function HomePage({ searchParams }: HomePageProps) {
   }
 
   const params = await searchParams;
-  let summary: PlayerHomeSummary | null = null;
-  let loadError: string | null = null;
+  const [summaryResult, profileResult] = await Promise.allSettled([
+    getPlayerHomeSummary(),
+    getProfileMe("summary")
+  ]);
+  const summary = summaryResult.status === "fulfilled" ? summaryResult.value : emptyHomeSummary();
+  const profileOverview = profileResult.status === "fulfilled" ? profileResult.value : null;
+  const profile = profileOverview?.profile ?? null;
+  const greetingName = firstName(profile?.display_name ?? profile?.username ?? emailName(user.email));
+  const missingProfileItems = profileOverview?.completion?.missing?.length ?? 0;
+  const readinessValue = profileOverview ? (missingProfileItems === 0 ? "Ready" : "Setup") : "Profile";
+  const readinessDetail = profileOverview
+    ? missingProfileItems === 0
+      ? "Ready for rooms, prizes, and tournaments."
+      : `${missingProfileItems} setup item${missingProfileItems === 1 ? "" : "s"} left.`
+    : "Open profile setup";
 
-  try {
-    summary = await getPlayerHomeSummary();
-  } catch {
-    loadError = "Home activity could not load. Check your connection and try again.";
-  }
-
-  const roomStatusCounts = summary?.room_status_counts ?? {};
-  const priorityRooms = summary?.active_room_previews ?? [];
-  const walletMiniBalance = summary?.wallet_mini_balance;
+  const roomStatusCounts = summary.room_status_counts ?? {};
+  const priorityRooms = summary.active_room_previews ?? [];
+  const walletMiniBalance = summary.wallet_mini_balance;
   const walletBalanceLabel = walletMiniBalance
     ? formatMinorMoney(walletMiniBalance.currency, walletMiniBalance.available_balance_minor + walletMiniBalance.winnings_balance_minor)
     : formatMinorMoney("NGN", 0);
-  const communityHighlights = summary?.community_highlights_preview ?? [];
+  const communityHighlights = summary.community_highlights_preview ?? [];
 
   return (
     <AppShell active="home">
@@ -356,23 +391,16 @@ export default async function HomePage({ searchParams }: HomePageProps) {
         <MotionSection className="min-w-0 rounded-lg border border-line bg-navy-900 p-5 text-white shadow-panel md:p-7" variant="hero">
           <div className="grid min-w-0 gap-5 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-end">
             <div className="min-w-0">
-              <Badge tone="cyan">Multi-game catalog</Badge>
+              <Badge tone="cyan">Skillsroom</Badge>
               <h1 className="mt-4 max-w-4xl text-3xl font-black leading-tight sm:text-4xl lg:text-5xl">
-                Find a fair room. Fund once. Play under clear rules.
+                Welcome back, {greetingName}.
               </h1>
               <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-300 md:text-base">
-                Skillsroom keeps private match entries, evidence, and admin decisions in one visible flow.
+                Find a fair room, confirm entry once, play under clear rules, and keep every result easy to prove.
               </p>
-              <div className="mt-5 grid gap-2 sm:flex sm:flex-wrap">
+              <div className="mt-5 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
                 <PendingLink
                   className="inline-flex min-h-10 w-full items-center justify-center rounded-md bg-action px-4 text-sm font-black text-navy-950 shadow-action hover:bg-actionHover sm:w-auto"
-                  href="/matches"
-                  pendingLabel="Opening rooms..."
-                >
-                  Open rooms
-                </PendingLink>
-                <PendingLink
-                  className="inline-flex min-h-10 w-full items-center justify-center rounded-md border border-white/10 bg-white px-4 text-sm font-black text-ink hover:bg-surfaceHigh sm:w-auto"
                   href="/matches/new"
                   pendingLabel="Opening creator..."
                 >
@@ -380,14 +408,13 @@ export default async function HomePage({ searchParams }: HomePageProps) {
                 </PendingLink>
                 <PendingLink
                   className="inline-flex min-h-10 w-full items-center justify-center rounded-md border border-white/10 bg-white px-4 text-sm font-black text-ink hover:bg-surfaceHigh sm:w-auto"
-                  href="/notifications"
-                  pendingLabel="Opening inbox..."
+                  href="#join-room-code"
                 >
-                  Inbox
+                  Join code
                 </PendingLink>
               </div>
             </div>
-            <form action={joinMatchRoomAction} className="min-w-0 rounded-lg border border-white/10 bg-white/5 p-3">
+            <form action={joinMatchRoomAction} className="min-w-0 rounded-lg border border-white/10 bg-white/5 p-3" id="join-room-code">
               <input name="error_path" type="hidden" value="/" />
               <label className="text-xs font-black uppercase tracking-[0.14em] text-slate-300">
                 Join room code
@@ -425,24 +452,29 @@ export default async function HomePage({ searchParams }: HomePageProps) {
           </div>
         </MotionSection>
 
-        {(params?.error || loadError) ? (
+        {params?.error ? (
           <Reveal className="rounded-md border border-danger bg-red-50 p-4 text-sm font-bold text-danger" variant="down">
-            {params?.error ?? loadError}
+            {params.error}
           </Reveal>
         ) : null}
 
         <div className="grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <Reveal staggerIndex={0}><StatusPanel detail="Can still be joined" label="Open Rooms" tone="cyan" value={countStatuses(roomStatusCounts, ["open"])} /></Reveal>
+          <Reveal staggerIndex={0}><StatusPanel detail="Can be joined" label="Open" tone="cyan" value={countStatuses(roomStatusCounts, ["open"])} /></Reveal>
           <Reveal staggerIndex={1}>
           <StatusPanel
-            detail="Unread updates"
-            label="Inbox"
+            detail="Needs confirmation"
+            label="Entries"
             tone="warning"
-            value={(summary?.unread_notification_count ?? 0).toString()}
+            value={countStatuses(roomStatusCounts, ["awaiting_funding", "funding_review"])}
           />
           </Reveal>
-          <Reveal staggerIndex={2}><StatusPanel detail="Available + winnings" label="Wallet" tone="success" value={walletBalanceLabel} /></Reveal>
-          <Reveal staggerIndex={3}><StatusPanel detail="Public events active" label="Tournaments" tone="cyan" value={(summary?.active_tournament_preview_count ?? 0).toString()} /></Reveal>
+          <Reveal staggerIndex={2}><StatusPanel detail="Play or finish" label="Live" tone="success" value={countStatuses(roomStatusCounts, ["funded", "active", "awaiting_results", "under_review", "disputed", "settlement_pending"])} /></Reveal>
+          <Reveal staggerIndex={3}><StatusPanel detail="Chat signals" label="Unread" tone="danger" value={(summary.unread_notification_count ?? 0).toString()} /></Reveal>
+        </div>
+
+        <div className="grid min-w-0 gap-3 sm:grid-cols-2">
+          <Reveal staggerIndex={0}><StatusPanel detail="Available for entry" label="Balance" tone="success" value={walletBalanceLabel} /></Reveal>
+          <Reveal staggerIndex={1}><StatusPanel detail={readinessDetail} label="Readiness" tone={missingProfileItems === 0 ? "cyan" : "warning"} value={readinessValue} /></Reveal>
         </div>
 
         <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1fr)_22rem]">

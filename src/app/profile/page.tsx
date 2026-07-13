@@ -11,7 +11,7 @@ import { Panel, PanelHeader } from "@/components/ui/Panel";
 import { StatusPanel } from "@/components/ui/StatusPanel";
 import { SubmitButton } from "@/components/ui/SubmitButton";
 import { Timeline } from "@/components/ui/Timeline";
-import { getCurrentUser, getGoogleLinkStatus } from "@/lib/auth-bridge";
+import { canAccessAdmin, getCurrentUser, getGoogleLinkStatus } from "@/lib/auth-bridge";
 import {
   formatEntryAmount,
   getMyCommunityClan,
@@ -200,6 +200,7 @@ export default async function ProfilePage({ searchParams }: ProfilePageProps) {
   const gameMap = new Map(games.map((game) => [game.id, game]));
   const betaLeadGame = games.find((game) => game.slug === "free-fire") ?? games[0] ?? null;
   const completion = profileData?.completion;
+  const hasAdminAccess = canAccessAdmin(user);
   const defaultUsername = profile?.username ?? user.email?.split("@")[0]?.replace(/[^A-Za-z0-9_]/g, "").slice(0, 24) ?? "";
   const completionItems = [
     { label: "Account created", detail: "Your login account is active.", status: "done" as const },
@@ -344,6 +345,24 @@ export default async function ProfilePage({ searchParams }: ProfilePageProps) {
             </div>
           </Panel>
         </div>
+
+        {hasAdminAccess ? (
+          <Panel>
+            <PanelHeader
+              eyebrow="Admin Access"
+              title="Skillsroom admin"
+              description="Open the admin tools available to your role from Profile, keeping the main player navigation clean."
+            />
+            <div className="grid gap-3 p-4 sm:grid-cols-[1fr_auto] sm:items-center">
+              <p className="text-sm font-bold leading-6 text-muted">
+                Use this when you need player support, funding, wallet, tournament, risk, or observability tools.
+              </p>
+              <Link className="inline-flex min-h-10 items-center justify-center rounded-md bg-navy-900 px-4 text-sm font-black text-white hover:bg-ink" href="/admin">
+                Open admin dashboard
+              </Link>
+            </div>
+          </Panel>
+        ) : null}
 
         {!fullSections ? (
           <Panel>
