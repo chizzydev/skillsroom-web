@@ -11,7 +11,7 @@ const nav = [
   { key: "home", label: "Home", short: "Home", href: "/" },
   { key: "lobby", label: "Chat", short: "Chat", href: "/chat" },
   { key: "matches", label: "Rooms", short: "Rooms", href: "/matches" },
-  { key: "tournaments", label: "Tournaments", short: "Tour.", href: "/tournaments" },
+  { key: "tournaments", label: "Tournaments", short: "Tourney", href: "/tournaments" },
   { key: "wallet", label: "Wallet", short: "Wallet", href: "/wallet" },
   { key: "profile", label: "Profile", short: "Profile", href: "/profile" }
 ] as const;

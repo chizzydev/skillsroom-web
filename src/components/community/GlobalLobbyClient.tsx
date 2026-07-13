@@ -455,23 +455,19 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
     const previousRootOverflow = root.style.overflow;
     const previousBodyOverflow = bodyElement.style.overflow;
     const previousBodyOverscroll = bodyElement.style.overscrollBehavior;
-    const previousBodyPosition = bodyElement.style.position;
-    const previousBodyInset = bodyElement.style.inset;
-    const previousBodyWidth = bodyElement.style.width;
+    let viewportFrame = 0;
 
     root.style.overflow = "hidden";
     bodyElement.style.overflow = "hidden";
     bodyElement.style.overscrollBehavior = "none";
-    bodyElement.style.position = "fixed";
-    bodyElement.style.inset = "0";
-    bodyElement.style.width = "100%";
 
     const repairFocusScroll = () => {
       if (document.activeElement !== composerRef.current) return;
-      window.scrollTo(0, 0);
+      if (window.scrollY > 0) window.scrollTo(0, 0);
     };
 
     const updateViewport = () => {
+      viewportFrame = 0;
       const viewportHeight = Math.round(visualViewport?.height ?? window.innerHeight);
       const offsetTop = Math.round(visualViewport?.offsetTop ?? 0);
       const keyboardActive = Boolean(visualViewport && window.innerHeight - visualViewport.height > 120);
@@ -484,32 +480,34 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
       repairFocusScroll();
     };
 
+    const scheduleViewportUpdate = () => {
+      if (viewportFrame) window.cancelAnimationFrame(viewportFrame);
+      viewportFrame = window.requestAnimationFrame(updateViewport);
+    };
+
     updateViewport();
-    window.addEventListener("resize", updateViewport);
-    window.addEventListener("orientationchange", updateViewport);
-    visualViewport?.addEventListener("resize", updateViewport);
-    visualViewport?.addEventListener("scroll", updateViewport);
+    window.addEventListener("resize", scheduleViewportUpdate);
+    window.addEventListener("orientationchange", scheduleViewportUpdate);
+    visualViewport?.addEventListener("resize", scheduleViewportUpdate);
+    visualViewport?.addEventListener("scroll", scheduleViewportUpdate);
 
     return () => {
-      window.removeEventListener("resize", updateViewport);
-      window.removeEventListener("orientationchange", updateViewport);
-      visualViewport?.removeEventListener("resize", updateViewport);
-      visualViewport?.removeEventListener("scroll", updateViewport);
+      if (viewportFrame) window.cancelAnimationFrame(viewportFrame);
+      window.removeEventListener("resize", scheduleViewportUpdate);
+      window.removeEventListener("orientationchange", scheduleViewportUpdate);
+      visualViewport?.removeEventListener("resize", scheduleViewportUpdate);
+      visualViewport?.removeEventListener("scroll", scheduleViewportUpdate);
       root.style.overflow = previousRootOverflow;
       bodyElement.style.overflow = previousBodyOverflow;
       bodyElement.style.overscrollBehavior = previousBodyOverscroll;
-      bodyElement.style.position = previousBodyPosition;
-      bodyElement.style.inset = previousBodyInset;
-      bodyElement.style.width = previousBodyWidth;
     };
   }, [fullLayout]);
 
   const repairComposerViewport = useCallback(() => {
     if (!fullLayout) return;
-    window.scrollTo(0, 0);
-    window.requestAnimationFrame(() => window.scrollTo(0, 0));
-    window.setTimeout(() => window.scrollTo(0, 0), 80);
-    window.setTimeout(() => window.scrollTo(0, 0), 220);
+    window.requestAnimationFrame(() => {
+      if (window.scrollY > 0) window.scrollTo(0, 0);
+    });
   }, [fullLayout]);
 
   useEffect(() => {
