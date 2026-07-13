@@ -1,6 +1,7 @@
 import Link from "next/link";
+import { AccountMenu } from "@/components/layout/AccountMenu";
 import { GlobalActionFeedback } from "@/components/ui/GlobalActionFeedback";
-import { getCurrentUser, type CurrentUser } from "@/lib/auth-bridge";
+import { getCurrentUser } from "@/lib/auth-bridge";
 
 type AppShellProps = {
   active: "home" | "lobby" | "matches" | "tournaments" | "community" | "notifications" | "wallet" | "profile";
@@ -70,13 +71,7 @@ export async function AppShell({ active, children }: AppShellProps) {
                     <path d="M13.7 21a2 2 0 0 1-3.4 0" />
                   </svg>
                 </Link>
-                <Link
-                  aria-label="Open profile"
-                  className="grid h-10 w-10 place-items-center rounded-full bg-navy-900 text-xs font-black text-action shadow-tight transition hover:bg-ink"
-                  href="/profile"
-                >
-                  {initialsFor(user)}
-                </Link>
+                <AccountMenu compact user={user} />
               </>
             ) : (
               <Link className="inline-flex min-h-10 items-center justify-center rounded-md border border-line bg-white px-4 text-sm font-black text-ink hover:bg-surfaceHigh" href="/sign-in">
@@ -126,16 +121,4 @@ export async function AppShell({ active, children }: AppShellProps) {
       </nav>
     </main>
   );
-}
-
-function initialsFor(user: CurrentUser | null) {
-  const source = user?.email ?? "Skillsroom";
-  return source
-    .split("@")[0]
-    .split(/[.\s_-]+/)
-    .filter(Boolean)
-    .map((part) => part[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase();
 }

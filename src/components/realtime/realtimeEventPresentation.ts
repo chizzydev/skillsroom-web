@@ -96,7 +96,7 @@ export function describeRealtimeEvent(event: RealtimeEvent): RealtimeToastMessag
     case "match.funding.approved":
       return { title: "Funding approved", description: "That player is now cleared on funding.", tone: "success" };
     case "match.funding.rejected":
-      return { title: "Funding rejected", description: "The player needs to resubmit transfer proof.", tone: "danger" };
+      return { title: "Payment proof rejected", description: "The player needs to upload corrected payment proof.", tone: "danger" };
     case "match.result.submitted":
       return { title: "Result submitted", description: "Score evidence is now under review.", tone: "warning" };
     case "match.result.agree":
@@ -120,9 +120,9 @@ export function describeRealtimeEvent(event: RealtimeEvent): RealtimeToastMessag
     case "match.refund.completed":
       return { title: "Refund completed", description: amount ? `${amount} was marked refunded.` : "A queued refund was completed.", tone: "success" };
     case "match.hold.created":
-      return { title: "Room hold applied", description: "This room is paused for moderation review.", tone: "danger" };
+      return { title: "Room paused", description: "This room is paused while the Skillsroom team reviews it.", tone: "danger" };
     case "match.hold.released":
-      return { title: "Room hold released", description: "This room can continue through the workflow again.", tone: "success" };
+      return { title: "Room reopened", description: "This room can continue again.", tone: "success" };
     case "tournament.entry.registered":
       return { title: "Tournament registration received", description: "The roster updated live.", tone: "success" };
     case "tournament.entry.checked_in":

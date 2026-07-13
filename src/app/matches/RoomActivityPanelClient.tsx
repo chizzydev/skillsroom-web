@@ -244,7 +244,7 @@ export function RoomActivityPanelClient({ rooms, initialQueue, nextCursor }: Roo
             }))}
           />
         }
-        description="Each queue is loaded from the server with summary rows only, so the room list stays fast as history grows."
+        description="Switch between room groups to see the latest activity without losing your place."
         eyebrow="Rooms"
         title="Room activity"
       />

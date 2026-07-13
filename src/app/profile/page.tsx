@@ -9,6 +9,7 @@ import { DataTable } from "@/components/ui/DataTable";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Panel, PanelHeader } from "@/components/ui/Panel";
 import { StatusPanel } from "@/components/ui/StatusPanel";
+import { FormActionButton } from "@/components/ui/FormActionButton";
 import { SubmitButton } from "@/components/ui/SubmitButton";
 import { Timeline } from "@/components/ui/Timeline";
 import { canAccessAdmin, getCurrentUser, getGoogleLinkStatus } from "@/lib/auth-bridge";
@@ -837,6 +838,23 @@ export default async function ProfilePage({ searchParams }: ProfilePageProps) {
               <input name="email" type="hidden" value={user.email ?? ""} />
               <input name="redirect" type="hidden" value="/profile" />
               <SubmitButton fullWidth idleLabel="Email me the password link" pendingLabel="Sending password link..." variant="secondary" />
+            </form>
+          </div>
+        </Panel>
+
+        <Panel>
+          <PanelHeader
+            description="End this session on this device. You can sign in again whenever you need to play or manage your account."
+            eyebrow="Session"
+            title="Sign out"
+          />
+          <div className="grid gap-4 p-4 md:grid-cols-[minmax(0,1fr)_minmax(0,260px)] md:items-center">
+            <div className="rounded-md border border-line bg-white p-4">
+              <p className="text-sm font-black text-ink">{user.email ?? "Skillsroom account"}</p>
+              <p className="mt-2 text-sm leading-6 text-muted">Use this when you are done on this phone or browser.</p>
+            </div>
+            <form action="/api/auth/logout" method="post">
+              <FormActionButton fullWidth idleLabel="Sign out" pendingLabel="Signing out..." variant="danger" />
             </form>
           </div>
         </Panel>

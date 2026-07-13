@@ -97,10 +97,10 @@ function nextAction(room: MatchRoom, participantCount: number) {
   if (room.status === "funded") return ["Start the match", "Funding is approved. Start live play when both players are ready, then submit evidence after the match ends."] as const;
   if (room.status === "active") return ["Match is live", "Play is active. Submit result evidence when the match is done."] as const;
   if (room.status === "awaiting_results") return ["Result evidence needed", "A player should submit the final score and scoreboard proof."] as const;
-  if (room.status === "under_review") return ["Admin review in progress", "Evidence and responses are being checked before settlement."] as const;
-  if (room.status === "disputed") return ["Dispute review", "Settlement is paused until an operator resolves the dispute."] as const;
-  if (room.status === "settlement_pending") return ["Settlement pending", "The winner is approved and payout reservation is next."] as const;
-  if (room.status === "completed") return ["Room completed", "This room is settled and retained for audit history."] as const;
+  if (room.status === "under_review") return ["Review in progress", "Evidence and responses are being checked before payout."] as const;
+  if (room.status === "disputed") return ["Dispute review", "Payout is paused while the Skillsroom team checks the issue."] as const;
+  if (room.status === "settlement_pending") return ["Payout pending", "The winner is approved and payment is the next step."] as const;
+  if (room.status === "completed") return ["Room completed", "This room is finished and saved in your history."] as const;
   return ["Room closed", "This room no longer accepts player actions."] as const;
 }
 
@@ -124,7 +124,7 @@ function buildProcessTimeline(room: MatchRoom) {
     { label: "Fund", detail: "Both player entries must be approved before play.", status: fundingDone ? "done" as const : fundingCurrent ? "current" as const : "pending" as const },
     { label: "Play", detail: "Match starts only after funding is approved.", status: playDone ? "done" as const : playCurrent ? "current" as const : "pending" as const },
     { label: "Evidence", detail: "Winner claim, opponent response, and proof stay attached.", status: evidenceDone ? "done" as const : evidenceCurrent ? "current" as const : "pending" as const },
-    { label: "Settle", detail: "Approved result moves to payout or refund workflow.", status: settlementStatus }
+    { label: "Payout", detail: "After review, the winner is paid or the entry is returned where needed.", status: settlementStatus }
   ];
 }
 
@@ -218,15 +218,15 @@ function fundingMethodSummary(funding: RoomFundingOverview | null, participant: 
   if (participant.funding_status === "approved" && (submission?.status === "approved" || escrowEntry)) {
     return {
       label: "Manual transfer",
-      detail: "Transfer proof is approved and funds are in match escrow.",
+      detail: "Payment proof is approved for this room.",
       tone: "success" as const
     };
   }
 
   if (submission?.status === "submitted" || participant.funding_status === "submitted") {
     return {
-      label: "Manual review",
-      detail: "Transfer proof is waiting for operator approval.",
+      label: "Under review",
+      detail: "Payment proof is waiting for Skillsroom review.",
       tone: "warning" as const
     };
   }
@@ -242,14 +242,14 @@ function fundingMethodSummary(funding: RoomFundingOverview | null, participant: 
   if (participant.funding_status === "refunded") {
     return {
       label: "Refunded",
-      detail: "This entry has been returned through the refund flow.",
+      detail: "This entry has been returned.",
       tone: "neutral" as const
     };
   }
 
   return {
     label: "Not funded",
-    detail: "Player still needs to use balance or submit transfer proof.",
+    detail: "Player still needs to pay the entry or upload payment proof.",
     tone: "neutral" as const
   };
 }
@@ -276,7 +276,7 @@ function payoutCheckpointSummary(room: MatchRoom, latestClaim: MatchResultClaim 
   if (room.status === "completed") {
     return {
       label: "Paid / completed",
-      detail: "Settlement is complete and saved in this room history.",
+      detail: "Payout is complete and saved in this room history.",
       tone: "success" as const
     };
   }
@@ -284,15 +284,15 @@ function payoutCheckpointSummary(room: MatchRoom, latestClaim: MatchResultClaim 
   if (room.status === "settlement_pending") {
     return {
       label: "Payout pending",
-      detail: "Winner is approved. Operator payout or wallet credit is the next step.",
+      detail: "Winner is approved. Payout or wallet credit is the next step.",
       tone: "warning" as const
     };
   }
 
   if (latestClaim && ["admin_approved", "opponent_agreed"].includes(latestClaim.status)) {
     return {
-      label: "Ready for settlement",
-      detail: "The result is accepted and can move to settlement.",
+      label: "Ready for payout",
+      detail: "The result is accepted and can move to payout.",
       tone: "warning" as const
     };
   }
@@ -308,7 +308,7 @@ function resultReadinessMessage(room: MatchRoom, canStartPlay: boolean) {
   if (room.status === "funded") {
     return canStartPlay
       ? "Funding is complete. Start live play first, then submit result evidence when the match ends."
-      : "Funding is complete, but this room still needs an eligible player or operator to start live play before result evidence opens.";
+      : "Funding is complete, but the match still needs to be started before result evidence opens.";
   }
   if (room.status === "open" || room.status === "awaiting_funding" || room.status === "funding_review") {
     return "Result evidence stays locked until funding is fully approved and live play has started.";
@@ -446,7 +446,7 @@ function FundingCard({
             </>
           ) : (
             <p className="font-bold text-ink">
-              {isApproved ? "Funding proof approved and retained for operator review." : "Funding proof submitted for review."}
+              {isApproved ? "Payment proof approved for this room." : "Payment proof submitted for review."}
             </p>
           )}
           {isApproved && !proofDetailsVisible ? (
@@ -518,7 +518,7 @@ async function RoomPlayersIsland({
   return (
     <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1fr)_24rem]">
       <Panel className="scroll-mt-32" id="players">
-        <PanelHeader eyebrow="Players" title="Room slots" description="Player trust and game identity hydrate separately from the room shell." />
+        <PanelHeader eyebrow="Players" title="Room slots" description="Check who has joined, their payment status, and the game handle to use before play." />
         <div className="grid gap-3 p-4 md:grid-cols-2">
           {(["player_a", "player_b"] as const).map((slot) => {
             const participant = participants.find((item) => item.slot === slot);
@@ -571,7 +571,7 @@ function RoomPlayersFallback({ participants, room }: { participants: MatchPartic
   return (
     <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1fr)_24rem]">
       <Panel className="scroll-mt-32" id="players">
-        <PanelHeader eyebrow="Players" title="Room slots" description="Loading player trust summaries." />
+        <PanelHeader eyebrow="Players" title="Room slots" description="Loading player details." />
         <div className="grid gap-3 p-4 md:grid-cols-2">
           {(["player_a", "player_b"] as const).map((slot) => {
             const participant = participants.find((item) => item.slot === slot);
@@ -602,7 +602,7 @@ function RoomPlayersSummary({ participants, room }: { participants: MatchPartici
   return (
     <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1fr)_24rem]">
       <Panel className="scroll-mt-32" id="players">
-        <PanelHeader eyebrow="Players" title="Room slots" description="Trust and game identity are loaded only when opened." />
+        <PanelHeader eyebrow="Players" title="Room slots" description="Open this section to confirm player details before play." />
         <div className="grid gap-3 p-4 md:grid-cols-2">
           {(["player_a", "player_b"] as const).map((slot) => {
             const participant = participants.find((item) => item.slot === slot);
@@ -672,7 +672,7 @@ async function RoomLivestreamIsland({
   return (
     <>
       <Panel className="max-w-full scroll-mt-32" id="live">
-        <PanelHeader eyebrow="Watch Live" title="Match watch room" description="Streams hydrate separately so they do not block the room shell." />
+        <PanelHeader eyebrow="Watch Live" title="Match watch room" description="Watch this match live when a stream link has been added." />
         <div className="grid max-w-full gap-4 p-3 sm:p-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(18rem,0.65fr)]">
           <div className="motion-atmosphere motion-state-card motion-glow min-w-0 max-w-full overflow-hidden rounded-xl border border-line bg-navy-950 text-white">
             {primaryLivestream?.embed_url ? (
@@ -886,10 +886,10 @@ function RoomLivestreamFallback() {
 function RoomLivestreamSummary() {
   return (
     <Panel className="max-w-full scroll-mt-32" id="live">
-      <PanelHeader eyebrow="Watch Live" title="Match watch room" description="Stream links and connected channels load when this section is opened." />
+      <PanelHeader eyebrow="Watch Live" title="Match watch room" description="Open this section to watch the match or add a stream link." />
       <div className="grid gap-4 p-4 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
         <p className="text-sm leading-6 text-muted">
-          The room shell stays quick by keeping broadcast embeds, saved stream channels, and stream management out of the first render.
+          Live links appear here when a player or the Skillsroom team adds a stream for this room.
         </p>
         <PendingLink
           className="inline-flex min-h-10 items-center justify-center rounded-md border border-line bg-white px-4 text-sm font-black text-ink hover:bg-surfaceHigh"
@@ -1192,7 +1192,7 @@ export default async function MatchDetailPage({
             <PanelHeader
               eyebrow="Room Activity"
               title="Public-safe room summary"
-              description="Signed-in users can see that this room happened, who played, and the current outcome. Funding proofs, evidence, moderation notes, and operator actions stay limited to participants and admins."
+              description="Signed-in users can see who played and the current outcome. Payment proof, match evidence, and review notes stay visible only to the players involved and the Skillsroom team."
             />
             <div className="grid gap-4 p-4 xl:grid-cols-[minmax(0,1fr)_20rem]">
               <div className="grid gap-3">
@@ -1230,8 +1230,8 @@ export default async function MatchDetailPage({
                 ) : (
                   <div className="rounded-md border border-line bg-surfaceWarm p-4 text-sm leading-6 text-muted">
                     {room.status === "completed" || room.status === "settlement_pending"
-                      ? "This room has reached a finished state. Public-safe winner details will appear here once the approved result summary is available."
-                      : "This room summary is visible, but detailed funding, evidence, and review records stay limited to participants and admins until the room is fully completed."}
+                      ? "This room is finished. Winner details will appear here once the result summary is ready."
+                      : "This room summary is visible, but payment and evidence details stay private to the players involved and the Skillsroom team."}
                   </div>
                 )}
               </div>
@@ -1239,8 +1239,8 @@ export default async function MatchDetailPage({
                 <p className="font-mono text-xs font-black uppercase tracking-[0.12em] text-cyan">Visibility rules</p>
                 <ul className="mt-3 grid gap-2 text-sm leading-6 text-muted">
                   <li>Signed-in users can see completed room cards and safe outcome context.</li>
-                  <li>Only participants and admins can open funding proofs, result evidence, and moderation data.</li>
-                  <li>Public sharing belongs on the winner page, not inside the operational room record.</li>
+                  <li>Only the players involved and the Skillsroom team can open payment proof, result evidence, and review notes.</li>
+                  <li>Public sharing belongs on the winner page, not inside the room details.</li>
                 </ul>
               </div>
             </div>
@@ -1344,9 +1344,9 @@ export default async function MatchDetailPage({
           <Reveal>
           <Panel>
             <PanelHeader
-              eyebrow="Funding summary"
-              title="Financial checkpoint"
-              description="This is a read-only summary from Skillsroom records. Players can view it, but only the server can confirm payments, lock funds, and update payouts."
+              eyebrow="Payment summary"
+              title="Entry status"
+              description="Check each player's entry status before the match starts. The Skillsroom team confirms payments and handles payouts after review."
             />
             <div className="grid gap-3 p-4 lg:grid-cols-2">
               {(["player_a", "player_b"] as const).map((slot) => {
@@ -1414,7 +1414,7 @@ export default async function MatchDetailPage({
             />
             <div className="grid gap-4 p-4 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
               <p className="text-sm leading-6 text-muted">
-                This saves the official play-start update, so players, admins, and live room updates all follow the same match progress.
+                This lets both players see that the match has started and opens result evidence when the match ends.
               </p>
               <form action={startMatchPlayAction}>
                 <input name="match_room_id" type="hidden" value={room.id} />
@@ -1431,7 +1431,7 @@ export default async function MatchDetailPage({
             <PanelHeader
               eyebrow="Funding"
               title="Choose how to fund this room"
-              description="Use your approved Skillsroom Balance for instant locking, or use manual transfer proof if you prefer."
+              description="Use your approved Skillsroom Balance for instant payment, or upload bank payment proof if you prefer."
             />
             <div className="grid gap-3 border-b border-line p-4">
               <div className="motion-state-card rounded-lg border border-cyan bg-cyanSoft p-4">
@@ -1490,11 +1490,11 @@ export default async function MatchDetailPage({
                   />
                 ) : currentFundingStatus === "submitted" ? (
                   <div className="rounded-md border border-orange-200 bg-warningSoft p-4 text-sm font-bold text-warning">
-                    Your funding proof is already under review. Wait for operator approval before sending anything again.
+                    Your payment proof is already under review. Wait for Skillsroom approval before sending anything again.
                   </div>
                 ) : currentFundingStatus === "rejected" ? (
                   <div className="rounded-md border border-danger bg-red-50 p-4 text-sm font-bold text-danger">
-                    Your last funding proof was rejected. Submit a corrected transfer proof to continue.
+                    Your last payment proof was rejected. Submit a corrected proof to continue.
                   </div>
                 ) : null
               ) : (
@@ -1806,7 +1806,7 @@ export default async function MatchDetailPage({
 
         {canViewSensitiveInternals && latestClaim ? (
           <Panel>
-            <PanelHeader eyebrow="Opponent Response" title="Respond to latest claim" description="Agree when the score is correct. Dispute only when evidence or rules need operator review." />
+            <PanelHeader eyebrow="Opponent Response" title="Respond to latest claim" description="Agree when the score is correct. Dispute only when evidence or rules need Skillsroom review." />
             <form action={respondToResultClaimAction} className="grid gap-3 p-4 md:grid-cols-[1fr_12rem_12rem]">
               <input name="match_room_id" type="hidden" value={room.id} />
               <input name="result_claim_id" type="hidden" value={latestClaim.id} />
