@@ -48,7 +48,7 @@ export default async function ChatPage({ searchParams }: ChatPageProps) {
   if (!user) redirect("/");
 
   return (
-    <main className="h-[100dvh] overflow-hidden bg-[#0f1b26]">
+    <main className="min-h-[100svh] overflow-hidden bg-[#0f1b26]">
       {activeChannel ? (
         <GlobalLobbyClient
           channels={channels}

@@ -224,10 +224,12 @@ export const ChatVirtualThread = memo(function ChatVirtualThread({
   }, [activeChannelSlug, canManageAnyPin, currentUserId, hydratingMessageIds, isDirectMessage, isSending, messageIndexById, messages, onBeginLongPress, onBlockUser, onClearLongPress, onDismissFailedMessage, onHydrateMessage, onJumpToMessage, onOpenImage, onOpenMessageActions, onOpenMessageUserProfile, onOpenThread, onReactToMessage, onReplyToMessage, onReportMessage, onReportUser, onRetryMessage, onStartPin, onVotePoll, pinnedMessageIds, reactionOptions, reportingIds, unreadMessageId, votingPollIds]);
 
   if (isLoadingChannel) {
+    const loadingIsDark = fullLayout || isDirectMessage;
+
     return (
-      <div className={["min-h-0 min-w-0 flex-1 overflow-hidden p-3 sm:p-4", fullLayout ? "xl:px-6" : "h-[58vh] max-h-[58vh]"].join(" ")}>
-        <div className={["mx-auto grid w-full max-w-4xl place-items-center rounded-md border border-dashed p-6 text-center", isDirectMessage ? "min-h-36 border-white/10 bg-[#203244]/80 text-slate-200" : "h-full min-h-[18rem] border-line bg-white"].join(" ")}>
-          <p className={["text-sm font-black", isDirectMessage ? "text-slate-200" : "text-muted"].join(" ")}>{isDirectMessage ? "Opening conversation..." : "Loading channel..."}</p>
+      <div className={["grid min-h-0 min-w-0 flex-1 place-items-center overflow-hidden p-3 sm:p-4", fullLayout ? "xl:px-6" : "h-[58vh] max-h-[58vh]"].join(" ")}>
+        <div className={["mx-auto grid w-full max-w-4xl place-items-center rounded-md border border-dashed p-6 text-center", loadingIsDark ? "min-h-36 border-white/10 bg-[#203244]/80 text-slate-200" : "h-full min-h-[18rem] border-line bg-white"].join(" ")}>
+          <p className={["text-sm font-black", loadingIsDark ? "text-slate-200" : "text-muted"].join(" ")}>{isDirectMessage ? "Opening conversation..." : "Loading channel..."}</p>
         </div>
       </div>
     );
@@ -235,7 +237,7 @@ export const ChatVirtualThread = memo(function ChatVirtualThread({
 
   if (!messages.length) {
     return (
-      <div className={["min-h-0 min-w-0 flex-1 overflow-hidden p-3 sm:p-4", fullLayout ? "xl:px-6" : "h-[58vh] max-h-[58vh]"].join(" ")}>
+      <div className={["grid min-h-0 min-w-0 flex-1 place-items-center overflow-hidden p-3 sm:p-4", fullLayout ? "xl:px-6" : "h-[58vh] max-h-[58vh]"].join(" ")}>
         <div className="mx-auto grid w-full max-w-2xl place-items-center rounded-2xl border border-white/10 bg-[#203244]/80 p-6 text-center text-slate-200 shadow-tight">
           <div>
             <h3 className="text-lg font-black text-white">No messages yet</h3>

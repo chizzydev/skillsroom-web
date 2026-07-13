@@ -2326,14 +2326,12 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
   });
   const handleVotePoll = useStableCallback(votePoll);
 
-  const fullLayoutHeight = fullLayout && chatViewport
-    ? `min(${chatViewport.height}px, calc(100dvh - ${chatViewport.top}px))`
-    : undefined;
+  const fullLayoutHeight = fullLayout && chatViewport ? `${chatViewport.height}px` : undefined;
 
   return (
     <section className={[
       "min-w-0 overflow-hidden shadow-tight",
-      fullLayout ? "fixed inset-x-0 top-0 grid h-[100dvh] grid-rows-[auto_minmax(0,1fr)] border-0 bg-[#0f1b29]" : "rounded-lg border border-line bg-white"
+      fullLayout ? "fixed inset-x-0 top-0 grid h-[100svh] max-h-[100svh] grid-rows-[auto_minmax(0,1fr)] border-0 bg-[#0f1b29] overscroll-none" : "rounded-lg border border-line bg-white"
     ].join(" ")} style={fullLayout && chatViewport ? { height: fullLayoutHeight, maxHeight: fullLayoutHeight, top: `${chatViewport.top}px` } : undefined}>
       <header className={[
         "flex min-w-0 items-center gap-3 border-b p-3 sm:p-4",
