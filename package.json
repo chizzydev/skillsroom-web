@@ -15,11 +15,14 @@
     "evidence:migration:check": "tsx src/workers/evidence-provider-migration-check.ts",
     "evidence:retention:check": "tsx src/workers/evidence-retention-check.ts",
     "evidence:storage:check": "tsx src/workers/evidence-storage-provider-check.ts",
+    "media:thumbnails:backfill": "tsx src/workers/media-thumbnail-backfill.ts",
     "launch:check": "tsx src/workers/launch-check.ts",
     "tournament:operator-qa": "tsx src/workers/tournament-operator-qa-check.ts",
     "tournament:launch-checklist": "tsx src/workers/tournament-launch-checklist.ts",
     "tournament:dry-run-check": "tsx src/workers/tournament-live-dry-run-check.ts",
-    "chat:web-load": "tsx scripts/chat-web-load-harness.ts"
+    "chat:web-load": "tsx scripts/chat-web-load-harness.ts",
+    "chat:web-network-qa": "tsx scripts/chat-web-network-qa.ts",
+    "player:web-load": "tsx scripts/player-web-load-harness.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1064.0",
@@ -27,6 +30,7 @@
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-virtuoso": "^4.18.10",
+    "sharp": "^0.35.3",
     "zod": "^3.25.76"
   },
   "overrides": {
@@ -34,7 +38,6 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.5",
-    "@playwright/test": "^1.55.1",
     "@playwright/test": "^1.61.1",
     "@types/node": "^22.10.10",
     "@types/react": "^19.0.8",

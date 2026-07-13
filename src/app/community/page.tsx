@@ -15,17 +15,18 @@ import {
   getCommunitySocialProof,
   listCommunityAnnouncements,
   listCommunityClans,
-  listActivityFeed,
   listCommunityHighlights,
   listLeaderboard,
-  listRoomInvites,
-  type ActivityFeedItem,
   type CommunityAnnouncement,
   type CommunityClanListItem,
+  type CommunityClanListResponse,
+  type CommunityHighlightsResponse,
+  type CommunityLeaderboardResponse,
+  type CommunityLeaderboardSummary,
   type CommunitySocialProofMetrics,
   type CommunityTournamentHighlightCard,
-  type LeaderboardRow,
-  type RoomInvite
+  type CommunityAnnouncementListResponse,
+  type LeaderboardRow
 } from "@/lib/match-room-api";
 import { shareMetadata, shareUrl } from "@/lib/share-cards";
 import { createRoomInviteAction } from "./actions";
@@ -60,6 +61,53 @@ function displayName(row: LeaderboardRow) {
   return row.display_name || row.username;
 }
 
+function withPageTimeout<T>(promise: Promise<T>, fallback: T, timeoutMs = 3500): Promise<T> {
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => resolve(fallback), timeoutMs);
+    promise
+      .then((value) => {
+        clearTimeout(timer);
+        resolve(value);
+      })
+      .catch(() => {
+        clearTimeout(timer);
+        resolve(fallback);
+      });
+  });
+}
+
+const emptyLeaderboardSummary: CommunityLeaderboardSummary = {
+  ranked_players: 0,
+  completed_matches: 0,
+  completed_tournaments: 0,
+  tournament_wins: 0,
+  podium_finishes: 0,
+  active_games: 0,
+  active_cities: 0,
+  active_campuses: 0
+};
+
+const emptySocialProofMetrics: CommunitySocialProofMetrics = {
+  as_of: new Date(0).toISOString(),
+  rooms_created: 0,
+  matches_completed: 0,
+  tournaments_hosted: 0,
+  winners_crowned: 0,
+  disputes_resolved: 0,
+  players_registered: 0,
+  clans_created: 0,
+  entries_checked_in: 0,
+  prize_reservations_count: 0,
+  prize_reservations_minor: 0,
+  payout_queue_count: 0,
+  payout_queue_minor: 0,
+  refund_queue_count: 0,
+  refund_queue_minor: 0,
+  verified_payout_metrics_enabled: false,
+  verified_payouts_completed_count: null,
+  verified_payouts_completed_minor: null
+};
+
 export default async function CommunityPage({ searchParams }: CommunityPageProps) {
   const user = await getCurrentUser();
   const params = await searchParams;
@@ -68,38 +116,26 @@ export default async function CommunityPage({ searchParams }: CommunityPageProps
     city: cleanFilter(params.city),
     campus: cleanFilter(params.campus),
     region: cleanFilter(params.region),
-    limit: 50
+    limit: 36
   };
 
-  let feed: ActivityFeedItem[] = [];
   let leaderboardResult: Awaited<ReturnType<typeof listLeaderboard>> | null = null;
   let highlights: CommunityTournamentHighlightCard[] = [];
   let announcements: CommunityAnnouncement[] = [];
   let clans: CommunityClanListItem[] = [];
-  let invites: RoomInvite[] = [];
   let socialProof: CommunitySocialProofMetrics | null = null;
-  let loadError: string | null = null;
-
-  try {
-    const [leaderboard, highlightsResult, announcementResult, clanResult, feedResult, inviteResult, socialProofResult] = await Promise.all([
-      listLeaderboard(filters),
-      listCommunityHighlights(6),
-      listCommunityAnnouncements({ limit: 4 }),
-      listCommunityClans({ ...filters, limit: 3 }),
-      user ? listActivityFeed() : Promise.resolve({ feed: [] as ActivityFeedItem[] }),
-      user ? listRoomInvites("pending") : Promise.resolve({ invites: [] as RoomInvite[] }),
-      getCommunitySocialProof()
-    ]);
-    leaderboardResult = leaderboard;
-    highlights = highlightsResult.tournament_highlights;
-    announcements = announcementResult.announcements;
-    clans = clanResult.clans;
-    feed = feedResult.feed;
-    invites = inviteResult.invites;
-    socialProof = socialProofResult.metrics;
-  } catch {
-    loadError = "Unable to load community leaderboard data.";
-  }
+  const [leaderboardResponse, highlightsResult, announcementResult, clanResult, socialProofResult] = await Promise.all([
+    withPageTimeout<CommunityLeaderboardResponse>(listLeaderboard(filters), { filters, leaderboard: [], summary: emptyLeaderboardSummary }),
+    withPageTimeout<CommunityHighlightsResponse>(listCommunityHighlights(6), { tournament_highlights: [] }),
+    withPageTimeout<CommunityAnnouncementListResponse>(listCommunityAnnouncements({ limit: 4 }), { announcements: [] }),
+    withPageTimeout<CommunityClanListResponse>(listCommunityClans({ ...filters, limit: 3 }), { clans: [] }),
+    withPageTimeout<{ metrics: CommunitySocialProofMetrics }>(getCommunitySocialProof(), { metrics: emptySocialProofMetrics })
+  ]);
+  leaderboardResult = leaderboardResponse;
+  highlights = highlightsResult.tournament_highlights;
+  announcements = announcementResult.announcements;
+  clans = clanResult.clans;
+  socialProof = socialProofResult.metrics;
 
   const leaderboard = leaderboardResult?.leaderboard ?? [];
   const summary = leaderboardResult?.summary;
@@ -142,9 +178,9 @@ export default async function CommunityPage({ searchParams }: CommunityPageProps
           </div>
         </MotionSection>
 
-        {(params.error || loadError) && (
+        {params.error && (
           <Reveal className="rounded-md border border-danger bg-red-50 p-4 text-sm font-bold text-danger" variant="down">
-            {params.error ?? loadError}
+            {params.error}
           </Reveal>
         )}
 
@@ -399,6 +435,7 @@ export default async function CommunityPage({ searchParams }: CommunityPageProps
                 { key: "completed_matches", label: "Matches", render: (row) => <span className="font-mono text-muted">{row.completed_matches}</span> },
                 { key: "tournament_wins", label: "Tourneys", render: (row) => <Badge tone={row.tournament_wins > 0 ? "success" : "neutral"}>{row.tournament_wins} wins</Badge> }
               ]}
+              rowKey={(row) => row.user_id}
               rows={leaderboard}
             />
           ) : (
@@ -412,22 +449,10 @@ export default async function CommunityPage({ searchParams }: CommunityPageProps
         <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1fr)_420px]">
           <Reveal>
           <Panel>
-            <PanelHeader eyebrow="Activity" title="Community feed" description={user ? "Recent platform activity and room updates." : "Sign in to see your private invites and account activity."} />
-            {feed.length ? (
-              <DataTable
-                columns={[
-                  { key: "created_at", label: "Time", render: (row) => <span className="font-mono text-xs font-bold text-muted">{new Date(row.created_at).toLocaleString("en-NG")}</span> },
-                  { key: "event_type", label: "Type", render: (row) => <Badge tone="cyan">{row.event_type}</Badge> },
-                  { key: "title", label: "Title", render: (row) => <strong className="text-ink">{row.title}</strong> },
-                  { key: "body", label: "Details", render: (row) => <span className="text-muted">{row.body}</span> }
-                ]}
-                rows={feed}
-              />
-            ) : (
-              <div className="p-4">
-                <EmptyState description={user ? "Room activity, invites, and match updates will appear here." : "Public leaderboards are visible now. Sign in for your private invite feed."} title="No activity shown" />
-              </div>
-            )}
+            <PanelHeader eyebrow="Activity" title="Community feed" description={user ? "Recent account activity loads after the public board." : "Sign in to see your private invites and account activity."} />
+            <div className="p-4">
+              <EmptyState description={user ? "Open notifications for private room activity while the community board stays lightweight." : "Public leaderboards are visible now. Sign in for your private invite feed."} title="Private activity deferred" />
+            </div>
           </Panel>
           </Reveal>
 
@@ -448,7 +473,6 @@ export default async function CommunityPage({ searchParams }: CommunityPageProps
                 />
                 <textarea className="min-h-24 rounded-md border border-line bg-white px-3 py-2 text-sm outline-none focus:border-action" name="message" placeholder="Message" />
                 <SubmitButton idleLabel="Send invite" pendingLabel="Sending invite..." />
-                <p className="text-xs font-bold leading-5 text-muted">{invites.length} pending invite{invites.length === 1 ? "" : "s"}.</p>
               </form>
             </Panel>
             </Reveal>

@@ -15,6 +15,14 @@ export async function GET(_request: Request, context: Context) {
   });
   const payload = await response.json() as { ok: boolean; data?: { storage_key: string; attachment: { mime_type: string } }; error?: unknown };
   if (!response.ok || !payload.data) return Response.json(payload, { status: response.status });
-  const signed = signChatMedia({ attachmentId, channel: channelIdOrSlug, storageKey: payload.data.storage_key, mimeType: payload.data.attachment.mime_type });
-  return Response.json({ ok: true, data: { url: `/api/community/chat-media/content?token=${encodeURIComponent(signed)}`, expires_in: 300 } });
+  const expiresIn = 300;
+  const signed = signChatMedia({ attachmentId, channel: channelIdOrSlug, storageKey: payload.data.storage_key, mimeType: payload.data.attachment.mime_type }, expiresIn);
+  return Response.json({
+    ok: true,
+    data: {
+      url: `/api/community/chat-media/content?token=${encodeURIComponent(signed)}`,
+      expires_in: expiresIn,
+      expires_at: new Date(Date.now() + expiresIn * 1000).toISOString()
+    }
+  });
 }

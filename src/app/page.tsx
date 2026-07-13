@@ -10,9 +10,11 @@ import { SubmitButton } from "@/components/ui/SubmitButton";
 import { getCurrentUser } from "@/lib/auth-bridge";
 import {
   formatEntryAmount,
-  listMatchRooms,
+  formatMinorMoney,
+  getPlayerHomeSummary,
   matchStatusLabel,
-  type MatchRoom,
+  type PlayerHomeRoomPreview,
+  type PlayerHomeSummary,
   type MatchRoomStatus
 } from "@/lib/match-room-api";
 import { joinMatchRoomAction } from "./matches/actions";
@@ -21,19 +23,6 @@ import { RoomCodeInput } from "@/components/matches/RoomCodeInput";
 type HomePageProps = {
   searchParams?: Promise<{ error?: string }>;
 };
-
-const actionStatuses: MatchRoomStatus[] = [
-  "open",
-  "awaiting_funding",
-  "funding_review",
-  "funded",
-  "active",
-  "awaiting_results",
-  "under_review",
-  "disputed",
-  "settlement_pending",
-  "completed"
-];
 
 const roomSteps = [
   ["Open", "Find an opponent or share the room code."],
@@ -57,36 +46,11 @@ function statusTone(status: MatchRoomStatus) {
   return "cyan" as const;
 }
 
-function countWhere(rooms: MatchRoom[], statuses: MatchRoomStatus[]) {
-  return rooms.filter((room) => statuses.includes(room.status)).length.toString();
+function countStatuses(counts: PlayerHomeSummary["room_status_counts"], statuses: MatchRoomStatus[]) {
+  return statuses.reduce((sum, status) => sum + (counts[status] ?? 0), 0).toString();
 }
 
-function sortRooms(rooms: MatchRoom[]) {
-  const rank: Record<MatchRoomStatus, number> = {
-    open: 1,
-    awaiting_funding: 2,
-    funding_review: 3,
-    funded: 4,
-    active: 5,
-    awaiting_results: 6,
-    under_review: 7,
-    disputed: 8,
-    settlement_pending: 9,
-    draft: 10,
-    completed: 11,
-    cancelled: 12,
-    refunded: 13,
-    voided: 14
-  };
-
-  return [...rooms].sort((left, right) => {
-    const statusRank = rank[left.status] - rank[right.status];
-    if (statusRank !== 0) return statusRank;
-    return Date.parse(right.created_at) - Date.parse(left.created_at);
-  });
-}
-
-function RoomCard({ room }: { room: MatchRoom }) {
+function RoomCard({ room }: { room: PlayerHomeRoomPreview }) {
   const playerCount = room.participant_count ?? 0;
   const isJoinable = room.status === "open" && playerCount < room.max_participants;
   const roomActivityLabel =
@@ -369,18 +333,22 @@ export default async function HomePage({ searchParams }: HomePageProps) {
   }
 
   const params = await searchParams;
-  let rooms: MatchRoom[] = [];
+  let summary: PlayerHomeSummary | null = null;
   let loadError: string | null = null;
 
   try {
-    const result = await listMatchRooms();
-    rooms = sortRooms(result.rooms.filter((room) => actionStatuses.includes(room.status)));
+    summary = await getPlayerHomeSummary();
   } catch {
-    loadError = "Room activity could not load. Check your connection and try again.";
+    loadError = "Home activity could not load. Check your connection and try again.";
   }
 
-  const openRooms = rooms.filter((room) => room.status === "open");
-  const priorityRooms = rooms.slice(0, 5);
+  const roomStatusCounts = summary?.room_status_counts ?? {};
+  const priorityRooms = summary?.active_room_previews ?? [];
+  const walletMiniBalance = summary?.wallet_mini_balance;
+  const walletBalanceLabel = walletMiniBalance
+    ? formatMinorMoney(walletMiniBalance.currency, walletMiniBalance.available_balance_minor + walletMiniBalance.winnings_balance_minor)
+    : formatMinorMoney("NGN", 0);
+  const communityHighlights = summary?.community_highlights_preview ?? [];
 
   return (
     <AppShell active="home">
@@ -464,17 +432,17 @@ export default async function HomePage({ searchParams }: HomePageProps) {
         ) : null}
 
         <div className="grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <Reveal staggerIndex={0}><StatusPanel detail="Can still be joined" label="Open Rooms" tone="cyan" value={openRooms.length.toString()} /></Reveal>
+          <Reveal staggerIndex={0}><StatusPanel detail="Can still be joined" label="Open Rooms" tone="cyan" value={countStatuses(roomStatusCounts, ["open"])} /></Reveal>
           <Reveal staggerIndex={1}>
           <StatusPanel
-            detail="Transfer review"
-            label="Funding"
+            detail="Unread updates"
+            label="Inbox"
             tone="warning"
-            value={countWhere(rooms, ["awaiting_funding", "funding_review", "funded"])}
+            value={(summary?.unread_notification_count ?? 0).toString()}
           />
           </Reveal>
-          <Reveal staggerIndex={2}><StatusPanel detail="Playing or reporting" label="Live Flow" tone="success" value={countWhere(rooms, ["active", "awaiting_results"])} /></Reveal>
-          <Reveal staggerIndex={3}><StatusPanel detail="Needs decision" label="Review" tone="danger" value={countWhere(rooms, ["under_review", "disputed"])} /></Reveal>
+          <Reveal staggerIndex={2}><StatusPanel detail="Available + winnings" label="Wallet" tone="success" value={walletBalanceLabel} /></Reveal>
+          <Reveal staggerIndex={3}><StatusPanel detail="Public events active" label="Tournaments" tone="cyan" value={(summary?.active_tournament_preview_count ?? 0).toString()} /></Reveal>
         </div>
 
         <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1fr)_22rem]">
@@ -564,6 +532,23 @@ export default async function HomePage({ searchParams }: HomePageProps) {
                     </div>
                   </div>
                 </div>
+                {communityHighlights.length ? (
+                  <div className="grid gap-2">
+                    {communityHighlights.slice(0, 3).map((highlight) => (
+                      <PendingLink
+                        className="rounded-md border border-line bg-white p-3 text-sm hover:bg-surfaceHigh"
+                        href={`/community/winners/tournaments/${encodeURIComponent(highlight.tournament_id)}`}
+                        key={highlight.tournament_id}
+                        pendingLabel="Opening winner page..."
+                      >
+                        <p className="font-black text-ink">{highlight.title}</p>
+                        <p className="mt-1 text-xs font-bold uppercase tracking-[0.12em] text-muted">
+                          {highlight.game_name} / {highlight.champion_entry_name ?? "Winner confirmed"}
+                        </p>
+                      </PendingLink>
+                    ))}
+                  </div>
+                ) : null}
                 <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-1">
                   <PendingLink
                     className="inline-flex min-h-10 items-center justify-center rounded-md bg-action px-4 text-sm font-black text-navy-950 shadow-action hover:bg-actionHover"

@@ -1,6 +1,9 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { ManualPaymentPanel } from "@/components/payments/ManualPaymentPanel";
 import { MotionSection, Reveal } from "@/components/motion";
+import { LiveUpdateStream } from "@/components/realtime/LiveUpdateStream";
+import { RealtimePatchStatus } from "@/components/realtime/RealtimePatchStatus";
 import { Badge } from "@/components/ui/Badge";
 import { FormActionButton } from "@/components/ui/FormActionButton";
 import { Panel, PanelHeader } from "@/components/ui/Panel";
@@ -8,7 +11,15 @@ import { StatusPanel } from "@/components/ui/StatusPanel";
 import { TransientStatusBanner } from "@/components/ui/TransientStatusBanner";
 import { AppShell } from "@/components/layout/AppShell";
 import { getCurrentUser } from "@/lib/auth-bridge";
-import { formatMinorMoney, getWalletOverview, type WalletPayoutRequest, type WalletTopup } from "@/lib/match-room-api";
+import {
+  formatMinorMoney,
+  getWalletOverview,
+  listWalletLedger,
+  listMyWalletPayoutRequests,
+  listMyWalletTopups,
+  type WalletPayoutRequest,
+  type WalletTopup
+} from "@/lib/match-room-api";
 import { requestWalletPayoutAction, submitWalletTopupAction } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -27,29 +38,101 @@ function payoutStatusTone(status: WalletPayoutRequest["status"]) {
   return "neutral" as const;
 }
 
-function pendingTotal(topups: WalletTopup[]) {
-  return topups
-    .filter((topup) => topup.status === "submitted")
-    .reduce((sum, topup) => sum + topup.amount_minor, 0);
+async function WalletActivityPanel() {
+  const [topupResult, payoutResult, ledgerResult] = await Promise.all([
+    listMyWalletTopups({ limit: 8 }),
+    listMyWalletPayoutRequests({ limit: 8 }),
+    listWalletLedger({ limit: 8 })
+  ]);
+  const topups = topupResult.topups;
+  const payouts = payoutResult.payout_requests;
+  const ledgerEntries = ledgerResult.ledger_entries;
+
+  return (
+    <Panel className="h-fit xl:sticky xl:top-24">
+      <PanelHeader eyebrow="History" title="Recent wallet activity" description="Top-ups, payouts, and ledger rows load separately from your balance." />
+      <div className="grid gap-3 p-4">
+        {payouts.length ? (
+          <div className="grid gap-3">
+            <h2 className="font-mono text-xs font-black uppercase tracking-[0.16em] text-cyan">Payout requests</h2>
+            {payouts.map((payout) => (
+              <article className="rounded-md border border-line bg-white p-4" key={payout.id}>
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <Badge tone={payoutStatusTone(payout.status)}>{payout.status}</Badge>
+                    <h3 className="mt-3 text-lg font-black text-ink">{formatMinorMoney(payout.currency, payout.amount_minor)}</h3>
+                  </div>
+                  <span className="font-mono text-[0.68rem] font-bold text-dim">{new Date(payout.requested_at ?? payout.created_at).toLocaleString("en-NG")}</span>
+                </div>
+                <p className="mt-3 text-sm font-bold text-ink">
+                  {payout.payout_bank_name} {payout.payout_account_number_masked}
+                </p>
+                {payout.payment_reference ? <p className="mt-2 break-all text-xs font-bold text-muted">Paid ref: {payout.payment_reference}</p> : null}
+                {payout.review_note ? <p className="mt-2 rounded-md bg-surfaceWarm p-3 text-sm font-bold leading-6 text-ink">{payout.review_note}</p> : null}
+              </article>
+            ))}
+          </div>
+        ) : null}
+        {topups.length ? (
+          <div className="grid gap-3">
+            <h2 className="font-mono text-xs font-black uppercase tracking-[0.16em] text-cyan">Top-ups</h2>
+            {topups.map((topup) => (
+              <article className="rounded-md border border-line bg-white p-4" key={topup.id}>
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <Badge tone={statusTone(topup.status)}>{topup.status}</Badge>
+                    <h3 className="mt-3 text-lg font-black text-ink">{formatMinorMoney(topup.currency, topup.amount_minor)}</h3>
+                  </div>
+                  <span className="font-mono text-[0.68rem] font-bold text-dim">{new Date(topup.submitted_at).toLocaleString("en-NG")}</span>
+                </div>
+                <p className="mt-3 break-all text-xs font-bold text-muted">Reference: {topup.transfer_reference ?? "Not provided"}</p>
+                {topup.review_note ? <p className="mt-2 rounded-md bg-surfaceWarm p-3 text-sm font-bold leading-6 text-ink">{topup.review_note}</p> : null}
+              </article>
+            ))}
+          </div>
+        ) : null}
+        {ledgerEntries.length ? (
+          <div className="grid gap-3">
+            <h2 className="font-mono text-xs font-black uppercase tracking-[0.16em] text-cyan">Ledger</h2>
+            {ledgerEntries.map((entry) => (
+              <article className="rounded-md border border-line bg-white p-4" key={entry.id}>
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <Badge tone={entry.direction === "credit" ? "success" : "warning"}>{entry.direction}</Badge>
+                    <h3 className="mt-3 text-lg font-black text-ink">{formatMinorMoney(entry.currency, entry.amount_minor)}</h3>
+                  </div>
+                  <span className="font-mono text-[0.68rem] font-bold text-dim">{new Date(entry.created_at).toLocaleString("en-NG")}</span>
+                </div>
+                <p className="mt-3 text-xs font-bold text-muted">{entry.entry_type.replaceAll("_", " ")}</p>
+              </article>
+            ))}
+          </div>
+        ) : !payouts.length && !topups.length ? (
+          <div className="rounded-md border border-dashed border-line bg-white p-5 text-sm font-bold leading-6 text-muted">
+            No wallet activity yet. Your first top-up or payout request will appear here.
+          </div>
+        ) : null}
+      </div>
+    </Panel>
+  );
 }
 
-export default async function WalletPage({ searchParams }: { searchParams: Promise<{ error?: string; success?: string }> }) {
+export default async function WalletPage({ searchParams }: { searchParams: Promise<{ error?: string; success?: string; activity?: string }> }) {
   const user = await getCurrentUser();
   if (!user) redirect("/sign-in?redirect=/wallet");
-  const { error, success } = await searchParams;
+  const { error, success, activity } = await searchParams;
 
   let wallet = null as Awaited<ReturnType<typeof getWalletOverview>> | null;
   let loadError: string | null = null;
   try {
-    wallet = await getWalletOverview();
+    wallet = await getWalletOverview("summary");
   } catch {
     loadError = "Unable to load your wallet right now. Please try again.";
   }
 
   const account = wallet?.account;
-  const topups = wallet?.topups ?? [];
-  const payouts = wallet?.payout_requests ?? [];
   const currency = account?.currency ?? "NGN";
+  const pendingTopups = wallet?.pending_topups?.pending_amount_minor ?? 0;
 
   return (
     <AppShell active="wallet">
@@ -65,12 +148,19 @@ export default async function WalletPage({ searchParams }: { searchParams: Promi
         {error ? <TransientStatusBanner clearKeys={["error"]} durationMs={12000} message={error} /> : null}
         {success ? <TransientStatusBanner clearKeys={["success"]} durationMs={12000} message={success} tone="success" /> : null}
         {loadError ? <div className="rounded-md border border-danger bg-red-50 p-4 text-sm font-bold text-danger">{loadError}</div> : null}
+        <LiveUpdateStream
+          autoConnect={false}
+          eventTypePrefixes={["wallet.", "match.payout.", "match.refund.", "tournament.payout.", "tournament.refund."]}
+          label="Wallet live"
+          refreshTargetLabel="wallet"
+        />
+        <RealtimePatchStatus label="Wallet" targets={["wallet"]} />
 
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <Reveal staggerIndex={0}><StatusPanel detail="Ready to use later" label="Available" tone="success" value={formatMinorMoney(currency, account?.available_balance_minor ?? 0)} /></Reveal>
           <Reveal className="motion-wallet-lock" staggerIndex={1}><StatusPanel detail="Reserved for active play" label="Locked" tone="warning" value={formatMinorMoney(currency, account?.locked_balance_minor ?? 0)} /></Reveal>
           <Reveal staggerIndex={2}><StatusPanel detail="Won but not paid out" label="Winnings" tone="cyan" value={formatMinorMoney(currency, account?.winnings_balance_minor ?? 0)} /></Reveal>
-          <Reveal staggerIndex={3}><StatusPanel detail="Waiting for admin review" label="Pending top-ups" tone="danger" value={formatMinorMoney(currency, pendingTotal(topups))} /></Reveal>
+          <Reveal staggerIndex={3}><StatusPanel detail="Waiting for admin review" label="Pending top-ups" tone="danger" value={formatMinorMoney(currency, pendingTopups)} /></Reveal>
         </div>
 
         <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1fr)_420px]">
@@ -153,54 +243,21 @@ export default async function WalletPage({ searchParams }: { searchParams: Promi
           </Reveal>
 
           <Reveal staggerIndex={1}>
-          <Panel className="h-fit xl:sticky xl:top-24">
-            <PanelHeader eyebrow="History" title="Recent wallet activity" description="Top-ups and payout requests stay visible here." />
-            <div className="grid gap-3 p-4">
-              {payouts.length ? (
-                <div className="grid gap-3">
-                  <h2 className="font-mono text-xs font-black uppercase tracking-[0.16em] text-cyan">Payout requests</h2>
-                  {payouts.map((payout) => (
-                    <article className="rounded-md border border-line bg-white p-4" key={payout.id}>
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <Badge tone={payoutStatusTone(payout.status)}>{payout.status}</Badge>
-                          <h3 className="mt-3 text-lg font-black text-ink">{formatMinorMoney(payout.currency, payout.amount_minor)}</h3>
-                        </div>
-                        <span className="font-mono text-[0.68rem] font-bold text-dim">{new Date(payout.requested_at ?? payout.created_at).toLocaleString("en-NG")}</span>
-                      </div>
-                      <p className="mt-3 text-sm font-bold text-ink">
-                        {payout.payout_bank_name} {payout.payout_account_number_masked}
-                      </p>
-                      {payout.payment_reference ? <p className="mt-2 break-all text-xs font-bold text-muted">Paid ref: {payout.payment_reference}</p> : null}
-                      {payout.review_note ? <p className="mt-2 rounded-md bg-surfaceWarm p-3 text-sm font-bold leading-6 text-ink">{payout.review_note}</p> : null}
-                    </article>
-                  ))}
+          {activity === "full" ? (
+            <WalletActivityPanel />
+          ) : (
+            <Panel className="h-fit xl:sticky xl:top-24">
+              <PanelHeader eyebrow="History" title="Wallet activity" description="Ledger rows, top-ups, and payout requests load separately from the balance cards." />
+              <div className="grid gap-3 p-4">
+                <div className="rounded-md border border-line bg-white p-4">
+                  <p className="text-sm font-bold leading-6 text-muted">Open history when you need receipts, payout status, or ledger rows.</p>
+                  <Link className="mt-3 inline-flex min-h-10 items-center justify-center rounded-md border border-line bg-white px-4 text-sm font-black text-ink hover:bg-surfaceHigh" href="/wallet?activity=full">
+                    Show wallet activity
+                  </Link>
                 </div>
-              ) : null}
-              {topups.length ? (
-                <div className="grid gap-3">
-                  <h2 className="font-mono text-xs font-black uppercase tracking-[0.16em] text-cyan">Top-ups</h2>
-                  {topups.map((topup) => (
-                    <article className="rounded-md border border-line bg-white p-4" key={topup.id}>
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <Badge tone={statusTone(topup.status)}>{topup.status}</Badge>
-                          <h3 className="mt-3 text-lg font-black text-ink">{formatMinorMoney(topup.currency, topup.amount_minor)}</h3>
-                        </div>
-                        <span className="font-mono text-[0.68rem] font-bold text-dim">{new Date(topup.submitted_at).toLocaleString("en-NG")}</span>
-                      </div>
-                      <p className="mt-3 break-all text-xs font-bold text-muted">Reference: {topup.transfer_reference ?? "Not provided"}</p>
-                      {topup.review_note ? <p className="mt-2 rounded-md bg-surfaceWarm p-3 text-sm font-bold leading-6 text-ink">{topup.review_note}</p> : null}
-                    </article>
-                  ))}
-                </div>
-              ) : !payouts.length ? (
-                <div className="rounded-md border border-dashed border-line bg-white p-5 text-sm font-bold leading-6 text-muted">
-                  No wallet activity yet. Your first top-up or payout request will appear here.
-                </div>
-              ) : null}
-            </div>
-          </Panel>
+              </div>
+            </Panel>
+          )}
           </Reveal>
         </div>
       </MotionSection>

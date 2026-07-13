@@ -11,6 +11,8 @@ import { StatusPanel } from "@/components/ui/StatusPanel";
 import { getCommunityClan } from "@/lib/match-room-api";
 import { shareMetadata } from "@/lib/share-cards";
 
+export const revalidate = 300;
+
 type ClanDetailPageProps = {
   params: Promise<{ slug: string }>;
 };

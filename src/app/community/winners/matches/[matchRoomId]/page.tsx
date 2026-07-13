@@ -9,6 +9,8 @@ import { StatusPanel } from "@/components/ui/StatusPanel";
 import { ApiRequestError, formatMinorMoney, getMatchWinnerPage } from "@/lib/match-room-api";
 import { shareMetadata, shareUrl } from "@/lib/share-cards";
 
+export const revalidate = 300;
+
 type MatchWinnerPageProps = {
   params: Promise<{ matchRoomId: string }>;
 };

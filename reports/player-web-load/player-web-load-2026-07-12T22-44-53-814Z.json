@@ -1,0 +1,2326 @@
+{
+  "run_id": "2026-07-12T22-44-53-814Z",
+  "started_at": "2026-07-12T22:46:36.675Z",
+  "base_url": "http://localhost:3100",
+  "viewport": {
+    "width": 1440,
+    "height": 900
+  },
+  "flows": [
+    {
+      "name": "unauthenticated_landing",
+      "path": "/",
+      "final_url": "http://localhost:3100/",
+      "ok": true,
+      "server_response_ms": 0,
+      "browser_navigation_ms": 3389,
+      "hydration_render_ms": 147,
+      "heap_before": {
+        "used_js_heap_size": 10000000,
+        "total_js_heap_size": 10000000,
+        "js_heap_size_limit": 3760000000
+      },
+      "heap_after": {
+        "used_js_heap_size": 51625069,
+        "total_js_heap_size": 55110885,
+        "js_heap_size_limit": 4395630592
+      },
+      "heap_growth_bytes": 41625069,
+      "api_request_count": 0,
+      "duplicate_requests": [],
+      "failed_requests": [],
+      "navigation_timing": {
+        "url": "http://localhost:3100/",
+        "dom_content_loaded_ms": 1902,
+        "load_event_ms": 2692,
+        "response_start_ms": 1667,
+        "response_end_ms": 1897
+      },
+      "response_timings": [
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/",
+          "route": "page:/",
+          "status": 200,
+          "duration_ms": 1664,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/_next/static/css/app/layout.css?v=1783896295932",
+          "route": "page:/_next/static/css/app/layout.css",
+          "status": 200,
+          "duration_ms": 118,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/_next/static/chunks/app/error.js",
+          "route": "page:/_next/static/chunks/app/error.js",
+          "status": 200,
+          "duration_ms": 125,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/_next/static/chunks/webpack.js?v=1783896295932",
+          "route": "page:/_next/static/chunks/webpack.js",
+          "status": 200,
+          "duration_ms": 127,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/_next/static/chunks/app-pages-internals.js",
+          "route": "page:/_next/static/chunks/app-pages-internals.js",
+          "status": 200,
+          "duration_ms": 133,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/_next/image?url=%2Fmarketing%2Fskillsroom-premium%2Fhero-premium.jpg&w=640&q=75",
+          "route": "page:/_next/image",
+          "status": 200,
+          "duration_ms": 21,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/_next/static/chunks/app/page.js",
+          "route": "page:/_next/static/chunks/app/page.js",
+          "status": 200,
+          "duration_ms": 69,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/_next/static/chunks/main-app.js?v=1783896295932",
+          "route": "page:/_next/static/chunks/main-app.js",
+          "status": 200,
+          "duration_ms": 495,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/_next/image?url=%2Fmarketing%2Fskillsroom-premium%2Ftournaments-premium.png&w=640&q=75",
+          "route": "page:/_next/image",
+          "status": 200,
+          "duration_ms": 455,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/_next/image?url=%2Fmarketing%2Fskillsroom-premium%2Fmatch-rooms-premium.png&w=640&q=75",
+          "route": "page:/_next/image",
+          "status": 200,
+          "duration_ms": 456,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/_next/image?url=%2Fmarketing%2Fskillsroom-premium%2Fcommunity-premium.png&w=640&q=75",
+          "route": "page:/_next/image",
+          "status": 200,
+          "duration_ms": 457,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/_next/static/chunks/_app-pages-browser_node_modules_next_dist_client_dev_noop-turbopack-hmr_js.js",
+          "route": "page:/_next/static/chunks/_app-pages-browser_node_modules_next_dist_client_dev_noop-turbopack-hmr_js.js",
+          "status": 200,
+          "duration_ms": 42,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/icon.svg",
+          "route": "page:/icon.svg",
+          "status": 200,
+          "duration_ms": 133,
+          "source": "browser"
+        }
+      ]
+    },
+    {
+      "name": "sign_in_session_reuse",
+      "path": "/",
+      "final_url": "http://localhost:3100/",
+      "ok": true,
+      "server_response_ms": 0,
+      "browser_navigation_ms": 4372,
+      "hydration_render_ms": 328,
+      "heap_before": {
+        "used_js_heap_size": 10000000,
+        "total_js_heap_size": 10000000,
+        "js_heap_size_limit": 3760000000
+      },
+      "heap_after": {
+        "used_js_heap_size": 52066530,
+        "total_js_heap_size": 58538794,
+        "js_heap_size_limit": 4395630592
+      },
+      "heap_growth_bytes": 42066530,
+      "api_request_count": 1,
+      "duplicate_requests": [],
+      "failed_requests": [],
+      "navigation_timing": {
+        "url": "http://localhost:3100/",
+        "dom_content_loaded_ms": 3479,
+        "load_event_ms": 3651,
+        "response_start_ms": 212,
+        "response_end_ms": 3469
+      },
+      "response_timings": [
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/",
+          "route": "page:/",
+          "status": 200,
+          "duration_ms": 217,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/_next/static/css/app/layout.css?v=1783896301427",
+          "route": "page:/_next/static/css/app/layout.css",
+          "status": 200,
+          "duration_ms": 23,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/_next/static/chunks/app/error.js",
+          "route": "page:/_next/static/chunks/app/error.js",
+          "status": 200,
+          "duration_ms": 50,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/_next/static/chunks/webpack.js?v=1783896301427",
+          "route": "page:/_next/static/chunks/webpack.js",
+          "status": 200,
+          "duration_ms": 51,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/_next/static/chunks/app-pages-internals.js",
+          "route": "page:/_next/static/chunks/app-pages-internals.js",
+          "status": 200,
+          "duration_ms": 59,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/_next/static/chunks/main-app.js?v=1783896301427",
+          "route": "page:/_next/static/chunks/main-app.js",
+          "status": 200,
+          "duration_ms": 447,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/_next/static/chunks/_app-pages-browser_node_modules_next_dist_client_dev_noop-turbopack-hmr_js.js",
+          "route": "page:/_next/static/chunks/_app-pages-browser_node_modules_next_dist_client_dev_noop-turbopack-hmr_js.js",
+          "status": 200,
+          "duration_ms": 32,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/_next/static/chunks/app/page.js",
+          "route": "page:/_next/static/chunks/app/page.js",
+          "status": 200,
+          "duration_ms": 205,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/_next/image?url=%2Fmarketing%2Fskillsroom-premium%2Fhero-premium.jpg&w=828&q=75",
+          "route": "page:/_next/image",
+          "status": 200,
+          "duration_ms": 28,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/_next/image?url=%2Fmarketing%2Fskillsroom-premium%2Fcommunity-premium.png&w=640&q=75",
+          "route": "page:/_next/image",
+          "status": 200,
+          "duration_ms": 29,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/icon.svg",
+          "route": "page:/icon.svg",
+          "status": 200,
+          "duration_ms": 173,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/player/home-summary",
+          "route": "api:/player/home-summary",
+          "status": 200,
+          "duration_ms": 1731,
+          "source": "server"
+        }
+      ]
+    },
+    {
+      "name": "home",
+      "path": "/",
+      "final_url": "http://localhost:3100/",
+      "ok": true,
+      "server_response_ms": 0,
+      "browser_navigation_ms": 3176,
+      "hydration_render_ms": 181,
+      "heap_before": {
+        "used_js_heap_size": 52784370,
+        "total_js_heap_size": 59063082,
+        "js_heap_size_limit": 4395630592
+      },
+      "heap_after": {
+        "used_js_heap_size": 71651911,
+        "total_js_heap_size": 77397855,
+        "js_heap_size_limit": 4395630592
+      },
+      "heap_growth_bytes": 18867541,
+      "api_request_count": 1,
+      "duplicate_requests": [],
+      "failed_requests": [],
+      "navigation_timing": {
+        "url": "http://localhost:3100/",
+        "dom_content_loaded_ms": 2426,
+        "load_event_ms": 2501,
+        "response_start_ms": 178,
+        "response_end_ms": 2413
+      },
+      "response_timings": [
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/",
+          "route": "page:/",
+          "status": 200,
+          "duration_ms": 180,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/_next/static/css/app/layout.css?v=1783896306704",
+          "route": "page:/_next/static/css/app/layout.css",
+          "status": 200,
+          "duration_ms": 24,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/_next/static/chunks/app/error.js",
+          "route": "page:/_next/static/chunks/app/error.js",
+          "status": 200,
+          "duration_ms": 42,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/_next/static/chunks/webpack.js?v=1783896306704",
+          "route": "page:/_next/static/chunks/webpack.js",
+          "status": 200,
+          "duration_ms": 45,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/_next/static/chunks/app-pages-internals.js",
+          "route": "page:/_next/static/chunks/app-pages-internals.js",
+          "status": 200,
+          "duration_ms": 57,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/_next/static/chunks/main-app.js?v=1783896306704",
+          "route": "page:/_next/static/chunks/main-app.js",
+          "status": 200,
+          "duration_ms": 401,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/_next/static/chunks/_app-pages-browser_node_modules_next_dist_client_dev_noop-turbopack-hmr_js.js",
+          "route": "page:/_next/static/chunks/_app-pages-browser_node_modules_next_dist_client_dev_noop-turbopack-hmr_js.js",
+          "status": 200,
+          "duration_ms": 30,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/_next/image?url=%2Fmarketing%2Fskillsroom-premium%2Fhero-premium.jpg&w=828&q=75",
+          "route": "page:/_next/image",
+          "status": 304,
+          "duration_ms": 24,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/_next/image?url=%2Fmarketing%2Fskillsroom-premium%2Fcommunity-premium.png&w=640&q=75",
+          "route": "page:/_next/image",
+          "status": 304,
+          "duration_ms": 24,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/_next/static/chunks/app/page.js",
+          "route": "page:/_next/static/chunks/app/page.js",
+          "status": 200,
+          "duration_ms": 141,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/icon.svg",
+          "route": "page:/icon.svg",
+          "status": 200,
+          "duration_ms": 145,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/player/home-summary",
+          "route": "api:/player/home-summary",
+          "status": 200,
+          "duration_ms": 841,
+          "source": "server"
+        }
+      ]
+    },
+    {
+      "name": "rooms_list",
+      "path": "/matches",
+      "final_url": "http://localhost:3100/matches",
+      "ok": true,
+      "server_response_ms": 0,
+      "browser_navigation_ms": 4265,
+      "hydration_render_ms": 156,
+      "heap_before": {
+        "used_js_heap_size": 72418199,
+        "total_js_heap_size": 77922143,
+        "js_heap_size_limit": 4395630592
+      },
+      "heap_after": {
+        "used_js_heap_size": 85480764,
+        "total_js_heap_size": 101455116,
+        "js_heap_size_limit": 4395630592
+      },
+      "heap_growth_bytes": 13062565,
+      "api_request_count": 1,
+      "duplicate_requests": [],
+      "failed_requests": [],
+      "navigation_timing": {
+        "url": "http://localhost:3100/matches",
+        "dom_content_loaded_ms": 3473,
+        "load_event_ms": 3560,
+        "response_start_ms": 1468,
+        "response_end_ms": 3470
+      },
+      "response_timings": [
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/matches",
+          "route": "page:/matches",
+          "status": 200,
+          "duration_ms": 1469,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/_next/static/css/app/layout.css?v=1783896311689",
+          "route": "page:/_next/static/css/app/layout.css",
+          "status": 200,
+          "duration_ms": 29,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/_next/static/chunks/app/error.js",
+          "route": "page:/_next/static/chunks/app/error.js",
+          "status": 200,
+          "duration_ms": 30,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/_next/static/chunks/webpack.js?v=1783896311689",
+          "route": "page:/_next/static/chunks/webpack.js",
+          "status": 200,
+          "duration_ms": 50,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/_next/static/chunks/app-pages-internals.js",
+          "route": "page:/_next/static/chunks/app-pages-internals.js",
+          "status": 200,
+          "duration_ms": 49,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/_next/static/chunks/main-app.js?v=1783896311689",
+          "route": "page:/_next/static/chunks/main-app.js",
+          "status": 200,
+          "duration_ms": 392,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/_next/static/chunks/_app-pages-browser_node_modules_next_dist_client_dev_noop-turbopack-hmr_js.js",
+          "route": "page:/_next/static/chunks/_app-pages-browser_node_modules_next_dist_client_dev_noop-turbopack-hmr_js.js",
+          "status": 200,
+          "duration_ms": 34,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/_next/static/chunks/app/matches/page.js",
+          "route": "page:/_next/static/chunks/app/matches/page.js",
+          "status": 200,
+          "duration_ms": 88,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/icon.svg",
+          "route": "page:/icon.svg",
+          "status": 200,
+          "duration_ms": 157,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/match-rooms?view=list",
+          "route": "api:/match-rooms",
+          "status": 200,
+          "duration_ms": 695,
+          "source": "server"
+        }
+      ]
+    },
+    {
+      "name": "create_room_open_path",
+      "path": "/matches/new",
+      "final_url": "http://localhost:3100/matches/new",
+      "ok": true,
+      "server_response_ms": 0,
+      "browser_navigation_ms": 3965,
+      "hydration_render_ms": 145,
+      "heap_before": {
+        "used_js_heap_size": 86557172,
+        "total_js_heap_size": 101455116,
+        "js_heap_size_limit": 4395630592
+      },
+      "heap_after": {
+        "used_js_heap_size": 102329409,
+        "total_js_heap_size": 116258193,
+        "js_heap_size_limit": 4395630592
+      },
+      "heap_growth_bytes": 15772237,
+      "api_request_count": 1,
+      "duplicate_requests": [],
+      "failed_requests": [],
+      "navigation_timing": {
+        "url": "http://localhost:3100/matches/new",
+        "dom_content_loaded_ms": 3214,
+        "load_event_ms": 3261,
+        "response_start_ms": 956,
+        "response_end_ms": 3174
+      },
+      "response_timings": [
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/matches/new",
+          "route": "page:/matches/new",
+          "status": 200,
+          "duration_ms": 962,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/_next/static/css/app/layout.css?v=1783896316439",
+          "route": "page:/_next/static/css/app/layout.css",
+          "status": 200,
+          "duration_ms": 31,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/_next/static/chunks/app/error.js",
+          "route": "page:/_next/static/chunks/app/error.js",
+          "status": 200,
+          "duration_ms": 31,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/_next/static/chunks/webpack.js?v=1783896316439",
+          "route": "page:/_next/static/chunks/webpack.js",
+          "status": 200,
+          "duration_ms": 45,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/_next/static/chunks/app-pages-internals.js",
+          "route": "page:/_next/static/chunks/app-pages-internals.js",
+          "status": 200,
+          "duration_ms": 50,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/_next/static/chunks/main-app.js?v=1783896316439",
+          "route": "page:/_next/static/chunks/main-app.js",
+          "status": 200,
+          "duration_ms": 339,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/_next/static/chunks/_app-pages-browser_node_modules_next_dist_client_dev_noop-turbopack-hmr_js.js",
+          "route": "page:/_next/static/chunks/_app-pages-browser_node_modules_next_dist_client_dev_noop-turbopack-hmr_js.js",
+          "status": 200,
+          "duration_ms": 27,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/_next/static/chunks/app/matches/new/page.js",
+          "route": "page:/_next/static/chunks/app/matches/new/page.js",
+          "status": 200,
+          "duration_ms": 70,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/icon.svg",
+          "route": "page:/icon.svg",
+          "status": 200,
+          "duration_ms": 163,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/games",
+          "route": "api:/games",
+          "status": 200,
+          "duration_ms": 836,
+          "source": "server"
+        }
+      ]
+    },
+    {
+      "name": "room_detail",
+      "path": "/matches/new",
+      "final_url": "http://localhost:3100/matches/new",
+      "ok": true,
+      "server_response_ms": 0,
+      "browser_navigation_ms": 4190,
+      "hydration_render_ms": 97,
+      "heap_before": {
+        "used_js_heap_size": 102353121,
+        "total_js_heap_size": 116258193,
+        "js_heap_size_limit": 4395630592
+      },
+      "heap_after": {
+        "used_js_heap_size": 136912206,
+        "total_js_heap_size": 152169074,
+        "js_heap_size_limit": 4395630592
+      },
+      "heap_growth_bytes": 34559085,
+      "api_request_count": 2,
+      "duplicate_requests": [],
+      "failed_requests": [],
+      "navigation_timing": {
+        "url": "http://localhost:3100/matches/new",
+        "dom_content_loaded_ms": 3514,
+        "load_event_ms": 3558,
+        "response_start_ms": 1151,
+        "response_end_ms": 3510
+      },
+      "response_timings": [
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/matches",
+          "route": "page:/matches",
+          "status": 200,
+          "duration_ms": 317,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/_next/static/css/app/layout.css?v=1783896320697",
+          "route": "page:/_next/static/css/app/layout.css",
+          "status": 200,
+          "duration_ms": 58,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/_next/static/chunks/app/error.js",
+          "route": "page:/_next/static/chunks/app/error.js",
+          "status": 200,
+          "duration_ms": 59,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/_next/static/chunks/webpack.js?v=1783896320697",
+          "route": "page:/_next/static/chunks/webpack.js",
+          "status": 200,
+          "duration_ms": 62,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/_next/static/chunks/app-pages-internals.js",
+          "route": "page:/_next/static/chunks/app-pages-internals.js",
+          "status": 200,
+          "duration_ms": 65,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/_next/static/chunks/main-app.js?v=1783896320697",
+          "route": "page:/_next/static/chunks/main-app.js",
+          "status": 200,
+          "duration_ms": 503,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/_next/static/chunks/_app-pages-browser_node_modules_next_dist_client_dev_noop-turbopack-hmr_js.js",
+          "route": "page:/_next/static/chunks/_app-pages-browser_node_modules_next_dist_client_dev_noop-turbopack-hmr_js.js",
+          "status": 200,
+          "duration_ms": 35,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/_next/static/chunks/app/matches/page.js",
+          "route": "page:/_next/static/chunks/app/matches/page.js",
+          "status": 200,
+          "duration_ms": 124,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/icon.svg",
+          "route": "page:/icon.svg",
+          "status": 200,
+          "duration_ms": 1050,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/matches/new",
+          "route": "page:/matches/new",
+          "status": 200,
+          "duration_ms": 1153,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/_next/static/css/app/layout.css?v=1783896324030",
+          "route": "page:/_next/static/css/app/layout.css",
+          "status": 200,
+          "duration_ms": 29,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/_next/static/chunks/app/error.js",
+          "route": "page:/_next/static/chunks/app/error.js",
+          "status": 200,
+          "duration_ms": 30,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/_next/static/chunks/webpack.js?v=1783896324030",
+          "route": "page:/_next/static/chunks/webpack.js",
+          "status": 200,
+          "duration_ms": 32,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/_next/static/chunks/app-pages-internals.js",
+          "route": "page:/_next/static/chunks/app-pages-internals.js",
+          "status": 200,
+          "duration_ms": 44,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/_next/static/chunks/main-app.js?v=1783896324030",
+          "route": "page:/_next/static/chunks/main-app.js",
+          "status": 200,
+          "duration_ms": 394,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/_next/static/chunks/_app-pages-browser_node_modules_next_dist_client_dev_noop-turbopack-hmr_js.js",
+          "route": "page:/_next/static/chunks/_app-pages-browser_node_modules_next_dist_client_dev_noop-turbopack-hmr_js.js",
+          "status": 200,
+          "duration_ms": 28,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/_next/static/chunks/app/matches/new/page.js",
+          "route": "page:/_next/static/chunks/app/matches/new/page.js",
+          "status": 200,
+          "duration_ms": 58,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/icon.svg",
+          "route": "page:/icon.svg",
+          "status": 200,
+          "duration_ms": 100,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/match-rooms?view=list",
+          "route": "api:/match-rooms",
+          "status": 200,
+          "duration_ms": 701,
+          "source": "server"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/games",
+          "route": "api:/games",
+          "status": 200,
+          "duration_ms": 795,
+          "source": "server"
+        }
+      ]
+    },
+    {
+      "name": "tournaments_list",
+      "path": "/tournaments",
+      "final_url": "http://localhost:3100/tournaments",
+      "ok": true,
+      "server_response_ms": 0,
+      "browser_navigation_ms": 5892,
+      "hydration_render_ms": 228,
+      "heap_before": {
+        "used_js_heap_size": 136936366,
+        "total_js_heap_size": 152169074,
+        "js_heap_size_limit": 4395630592
+      },
+      "heap_after": {
+        "used_js_heap_size": 151388332,
+        "total_js_heap_size": 173415508,
+        "js_heap_size_limit": 4395630592
+      },
+      "heap_growth_bytes": 14451966,
+      "api_request_count": 2,
+      "duplicate_requests": [],
+      "failed_requests": [],
+      "navigation_timing": {
+        "url": "http://localhost:3100/tournaments",
+        "dom_content_loaded_ms": 5128,
+        "load_event_ms": 5245,
+        "response_start_ms": 2802,
+        "response_end_ms": 5120
+      },
+      "response_timings": [
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/tournaments",
+          "route": "page:/tournaments",
+          "status": 200,
+          "duration_ms": 2803,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/_next/static/css/app/layout.css?v=1783896330820",
+          "route": "page:/_next/static/css/app/layout.css",
+          "status": 200,
+          "duration_ms": 19,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/_next/static/chunks/app/error.js",
+          "route": "page:/_next/static/chunks/app/error.js",
+          "status": 200,
+          "duration_ms": 41,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/_next/static/chunks/webpack.js?v=1783896330820",
+          "route": "page:/_next/static/chunks/webpack.js",
+          "status": 200,
+          "duration_ms": 42,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/_next/static/chunks/app-pages-internals.js",
+          "route": "page:/_next/static/chunks/app-pages-internals.js",
+          "status": 200,
+          "duration_ms": 49,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/_next/static/chunks/main-app.js?v=1783896330820",
+          "route": "page:/_next/static/chunks/main-app.js",
+          "status": 200,
+          "duration_ms": 319,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/_next/static/chunks/_app-pages-browser_node_modules_next_dist_client_dev_noop-turbopack-hmr_js.js",
+          "route": "page:/_next/static/chunks/_app-pages-browser_node_modules_next_dist_client_dev_noop-turbopack-hmr_js.js",
+          "status": 200,
+          "duration_ms": 20,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/_next/image?url=%2Fmarketing%2Fskillsroom-premium%2Ftournaments-premium.png&w=640&q=75",
+          "route": "page:/_next/image",
+          "status": 200,
+          "duration_ms": 42,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/_next/static/chunks/app/tournaments/page.js",
+          "route": "page:/_next/static/chunks/app/tournaments/page.js",
+          "status": 200,
+          "duration_ms": 142,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/icon.svg",
+          "route": "page:/icon.svg",
+          "status": 200,
+          "duration_ms": 113,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/community/highlights?limit=6",
+          "route": "api:/community/highlights",
+          "status": 200,
+          "duration_ms": 192,
+          "source": "server"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/tournaments?view=list&limit=100",
+          "route": "api:/tournaments",
+          "status": 200,
+          "duration_ms": 783,
+          "source": "server"
+        }
+      ]
+    },
+    {
+      "name": "tournament_detail",
+      "path": "/tournaments/945b2294-01b9-4270-b9eb-c65699b883e1",
+      "final_url": "http://localhost:3100/tournaments/945b2294-01b9-4270-b9eb-c65699b883e1",
+      "ok": true,
+      "server_response_ms": 0,
+      "browser_navigation_ms": 16127,
+      "hydration_render_ms": 370,
+      "heap_before": {
+        "used_js_heap_size": 151940736,
+        "total_js_heap_size": 173415508,
+        "js_heap_size_limit": 4395630592
+      },
+      "heap_after": {
+        "used_js_heap_size": 204349882,
+        "total_js_heap_size": 218762378,
+        "js_heap_size_limit": 4395630592
+      },
+      "heap_growth_bytes": 52409146,
+      "api_request_count": 6,
+      "duplicate_requests": [],
+      "failed_requests": [],
+      "navigation_timing": {
+        "url": "http://localhost:3100/tournaments/945b2294-01b9-4270-b9eb-c65699b883e1",
+        "dom_content_loaded_ms": 7740,
+        "load_event_ms": 7895,
+        "response_start_ms": 2515,
+        "response_end_ms": 7730
+      },
+      "response_timings": [
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/tournaments",
+          "route": "page:/tournaments",
+          "status": 200,
+          "duration_ms": 303,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/_next/static/css/app/layout.css?v=1783896335149",
+          "route": "page:/_next/static/css/app/layout.css",
+          "status": 200,
+          "duration_ms": 33,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/_next/static/chunks/app/error.js",
+          "route": "page:/_next/static/chunks/app/error.js",
+          "status": 200,
+          "duration_ms": 58,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/_next/static/chunks/webpack.js?v=1783896335149",
+          "route": "page:/_next/static/chunks/webpack.js",
+          "status": 200,
+          "duration_ms": 63,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/_next/static/chunks/app-pages-internals.js",
+          "route": "page:/_next/static/chunks/app-pages-internals.js",
+          "status": 200,
+          "duration_ms": 66,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/_next/static/chunks/main-app.js?v=1783896335149",
+          "route": "page:/_next/static/chunks/main-app.js",
+          "status": 200,
+          "duration_ms": 403,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/_next/static/chunks/_app-pages-browser_node_modules_next_dist_client_dev_noop-turbopack-hmr_js.js",
+          "route": "page:/_next/static/chunks/_app-pages-browser_node_modules_next_dist_client_dev_noop-turbopack-hmr_js.js",
+          "status": 200,
+          "duration_ms": 19,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/_next/image?url=%2Fmarketing%2Fskillsroom-premium%2Ftournaments-premium.png&w=640&q=75",
+          "route": "page:/_next/image",
+          "status": 304,
+          "duration_ms": 20,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/_next/static/chunks/app/tournaments/page.js",
+          "route": "page:/_next/static/chunks/app/tournaments/page.js",
+          "status": 200,
+          "duration_ms": 103,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/icon.svg",
+          "route": "page:/icon.svg",
+          "status": 200,
+          "duration_ms": 1761,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/tournaments/945b2294-01b9-4270-b9eb-c65699b883e1",
+          "route": "page:/tournaments/945b2294-01b9-4270-b9eb-c65699b883e1",
+          "status": 200,
+          "duration_ms": 2516,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/_next/static/css/app/layout.css?v=1783896339668",
+          "route": "page:/_next/static/css/app/layout.css",
+          "status": 200,
+          "duration_ms": 30,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/_next/static/chunks/app/error.js",
+          "route": "page:/_next/static/chunks/app/error.js",
+          "status": 200,
+          "duration_ms": 32,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/_next/static/chunks/webpack.js?v=1783896339668",
+          "route": "page:/_next/static/chunks/webpack.js",
+          "status": 200,
+          "duration_ms": 55,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/_next/static/chunks/app-pages-internals.js",
+          "route": "page:/_next/static/chunks/app-pages-internals.js",
+          "status": 200,
+          "duration_ms": 65,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/_next/static/chunks/main-app.js?v=1783896339668",
+          "route": "page:/_next/static/chunks/main-app.js",
+          "status": 200,
+          "duration_ms": 1344,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/_next/static/chunks/_app-pages-browser_node_modules_next_dist_client_dev_noop-turbopack-hmr_js.js",
+          "route": "page:/_next/static/chunks/_app-pages-browser_node_modules_next_dist_client_dev_noop-turbopack-hmr_js.js",
+          "status": 200,
+          "duration_ms": 28,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/_next/static/chunks/app/tournaments/%5BtournamentId%5D/page.js",
+          "route": "page:/_next/static/chunks/app/tournaments/%5BtournamentId%5D/page.js",
+          "status": 200,
+          "duration_ms": 238,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/_next/image?url=%2Fmarketing%2Fskillsroom-premium%2Ftournaments-premium.png&w=640&q=75",
+          "route": "page:/_next/image",
+          "status": 304,
+          "duration_ms": 16,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/_next/static/chunks/app/tournaments/%5BtournamentId%5D/page.js",
+          "route": "page:/_next/static/chunks/app/tournaments/%5BtournamentId%5D/page.js",
+          "status": 200,
+          "duration_ms": 138,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/icon.svg",
+          "route": "page:/icon.svg",
+          "status": 200,
+          "duration_ms": 116,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/api/community/realtime/stream",
+          "route": "web-api:community/realtime/stream",
+          "status": 200,
+          "duration_ms": 3109,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/community/highlights?limit=6",
+          "route": "api:/community/highlights",
+          "status": 200,
+          "duration_ms": 203,
+          "source": "server"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/tournaments?view=list&limit=100",
+          "route": "api:/tournaments",
+          "status": 200,
+          "duration_ms": 815,
+          "source": "server"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/tournaments/945b2294-01b9-4270-b9eb-c65699b883e1?view=full",
+          "route": "api:/tournaments/:id",
+          "status": 200,
+          "duration_ms": 1308,
+          "source": "server"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/community/announcements?scope=tournament&tournament_id=945b2294-01b9-4270-b9eb-c65699b883e1&limit=12",
+          "route": "api:/community/announcements",
+          "status": 200,
+          "duration_ms": 281,
+          "source": "server"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/community/livestreams/view?target_type=tournament&tournament_id=945b2294-01b9-4270-b9eb-c65699b883e1",
+          "route": "api:/community/livestreams/view",
+          "status": 200,
+          "duration_ms": 973,
+          "source": "server"
+        }
+      ]
+    },
+    {
+      "name": "wallet",
+      "path": "/wallet",
+      "final_url": "http://localhost:3100/wallet",
+      "ok": true,
+      "server_response_ms": 0,
+      "browser_navigation_ms": 6723,
+      "hydration_render_ms": 179,
+      "heap_before": {
+        "used_js_heap_size": 204373826,
+        "total_js_heap_size": 218762378,
+        "js_heap_size_limit": 4395630592
+      },
+      "heap_after": {
+        "used_js_heap_size": 144660970,
+        "total_js_heap_size": 222419362,
+        "js_heap_size_limit": 4395630592
+      },
+      "heap_growth_bytes": -59712856,
+      "api_request_count": 1,
+      "duplicate_requests": [],
+      "failed_requests": [],
+      "navigation_timing": {
+        "url": "http://localhost:3100/wallet",
+        "dom_content_loaded_ms": 5902,
+        "load_event_ms": 5976,
+        "response_start_ms": 2235,
+        "response_end_ms": 5895
+      },
+      "response_timings": [
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/wallet",
+          "route": "page:/wallet",
+          "status": 200,
+          "duration_ms": 2237,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/_next/static/css/app/layout.css?v=1783896356502",
+          "route": "page:/_next/static/css/app/layout.css",
+          "status": 200,
+          "duration_ms": 32,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/_next/static/chunks/app/error.js",
+          "route": "page:/_next/static/chunks/app/error.js",
+          "status": 200,
+          "duration_ms": 32,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/_next/static/chunks/webpack.js?v=1783896356502",
+          "route": "page:/_next/static/chunks/webpack.js",
+          "status": 200,
+          "duration_ms": 43,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/_next/static/chunks/app-pages-internals.js",
+          "route": "page:/_next/static/chunks/app-pages-internals.js",
+          "status": 200,
+          "duration_ms": 55,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/_next/static/chunks/main-app.js?v=1783896356502",
+          "route": "page:/_next/static/chunks/main-app.js",
+          "status": 200,
+          "duration_ms": 352,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/_next/static/chunks/_app-pages-browser_node_modules_next_dist_client_dev_noop-turbopack-hmr_js.js",
+          "route": "page:/_next/static/chunks/_app-pages-browser_node_modules_next_dist_client_dev_noop-turbopack-hmr_js.js",
+          "status": 200,
+          "duration_ms": 15,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/_next/static/chunks/app/wallet/page.js",
+          "route": "page:/_next/static/chunks/app/wallet/page.js",
+          "status": 200,
+          "duration_ms": 88,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/icon.svg",
+          "route": "page:/icon.svg",
+          "status": 200,
+          "duration_ms": 215,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/wallet?view=full",
+          "route": "api:/wallet",
+          "status": 200,
+          "duration_ms": 2127,
+          "source": "server"
+        }
+      ]
+    },
+    {
+      "name": "profile",
+      "path": "/profile",
+      "final_url": "http://localhost:3100/profile",
+      "ok": true,
+      "server_response_ms": 0,
+      "browser_navigation_ms": 9913,
+      "hydration_render_ms": 225,
+      "heap_before": {
+        "used_js_heap_size": 144686990,
+        "total_js_heap_size": 222419362,
+        "js_heap_size_limit": 4395630592
+      },
+      "heap_after": {
+        "used_js_heap_size": 158105702,
+        "total_js_heap_size": 165452770,
+        "js_heap_size_limit": 4395630592
+      },
+      "heap_growth_bytes": 13418712,
+      "api_request_count": 6,
+      "duplicate_requests": [],
+      "failed_requests": [],
+      "navigation_timing": {
+        "url": "http://localhost:3100/profile",
+        "dom_content_loaded_ms": 7240,
+        "load_event_ms": 7326,
+        "response_start_ms": 2285,
+        "response_end_ms": 7233
+      },
+      "response_timings": [
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/profile",
+          "route": "page:/profile",
+          "status": 200,
+          "duration_ms": 2287,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/_next/static/css/app/layout.css?v=1783896364453",
+          "route": "page:/_next/static/css/app/layout.css",
+          "status": 200,
+          "duration_ms": 34,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/_next/static/chunks/app/error.js",
+          "route": "page:/_next/static/chunks/app/error.js",
+          "status": 200,
+          "duration_ms": 35,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/_next/static/chunks/webpack.js?v=1783896364453",
+          "route": "page:/_next/static/chunks/webpack.js",
+          "status": 200,
+          "duration_ms": 53,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/_next/static/chunks/app-pages-internals.js",
+          "route": "page:/_next/static/chunks/app-pages-internals.js",
+          "status": 200,
+          "duration_ms": 57,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/_next/static/chunks/main-app.js?v=1783896364453",
+          "route": "page:/_next/static/chunks/main-app.js",
+          "status": 200,
+          "duration_ms": 346,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/_next/static/chunks/_app-pages-browser_node_modules_next_dist_client_dev_noop-turbopack-hmr_js.js",
+          "route": "page:/_next/static/chunks/_app-pages-browser_node_modules_next_dist_client_dev_noop-turbopack-hmr_js.js",
+          "status": 200,
+          "duration_ms": 100,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/_next/static/chunks/app/profile/page.js",
+          "route": "page:/_next/static/chunks/app/profile/page.js",
+          "status": 200,
+          "duration_ms": 80,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/_next/image?url=%2Fmarketing%2Fskillsroom-premium%2Fhero-premium.jpg&w=640&q=75",
+          "route": "page:/_next/image",
+          "status": 200,
+          "duration_ms": 51,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/_next/static/chunks/app/profile/page.js",
+          "route": "page:/_next/static/chunks/app/profile/page.js",
+          "status": 200,
+          "duration_ms": 75,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/icon.svg",
+          "route": "page:/icon.svg",
+          "status": 200,
+          "duration_ms": 124,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/community/clans/mine",
+          "route": "api:/community/clans/mine",
+          "status": 200,
+          "duration_ms": 740,
+          "source": "server"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/profiles/me?view=full",
+          "route": "api:/profiles/me",
+          "status": 200,
+          "duration_ms": 1199,
+          "source": "server"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/profiles/trust/7d68ca27-12b1-4e82-b8ea-464d7c152115",
+          "route": "api:/profiles/trust/:id",
+          "status": 200,
+          "duration_ms": 1202,
+          "source": "server"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/games",
+          "route": "api:/games",
+          "status": 200,
+          "duration_ms": 1933,
+          "source": "server"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/streaming/accounts",
+          "route": "api:/streaming/accounts",
+          "status": 200,
+          "duration_ms": 1952,
+          "source": "server"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/community/referrals/me",
+          "route": "api:/community/referrals/me",
+          "status": 200,
+          "duration_ms": 3116,
+          "source": "server"
+        }
+      ]
+    },
+    {
+      "name": "notifications",
+      "path": "/notifications",
+      "final_url": "http://localhost:3100/notifications",
+      "ok": true,
+      "server_response_ms": 0,
+      "browser_navigation_ms": 12432,
+      "hydration_render_ms": 171,
+      "heap_before": {
+        "used_js_heap_size": 158124062,
+        "total_js_heap_size": 165452774,
+        "js_heap_size_limit": 4395630592
+      },
+      "heap_after": {
+        "used_js_heap_size": 168822796,
+        "total_js_heap_size": 184134576,
+        "js_heap_size_limit": 4395630592
+      },
+      "heap_growth_bytes": 10698734,
+      "api_request_count": 5,
+      "duplicate_requests": [],
+      "failed_requests": [],
+      "navigation_timing": {
+        "url": "http://localhost:3100/notifications",
+        "dom_content_loaded_ms": 4235,
+        "load_event_ms": 4329,
+        "response_start_ms": 1561,
+        "response_end_ms": 4226
+      },
+      "response_timings": [
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/notifications",
+          "route": "page:/notifications",
+          "status": 200,
+          "duration_ms": 1560,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/_next/static/css/app/layout.css?v=1783896374660",
+          "route": "page:/_next/static/css/app/layout.css",
+          "status": 200,
+          "duration_ms": 22,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/_next/static/chunks/app/error.js",
+          "route": "page:/_next/static/chunks/app/error.js",
+          "status": 200,
+          "duration_ms": 32,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/_next/static/chunks/webpack.js?v=1783896374660",
+          "route": "page:/_next/static/chunks/webpack.js",
+          "status": 200,
+          "duration_ms": 35,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/_next/static/chunks/app-pages-internals.js",
+          "route": "page:/_next/static/chunks/app-pages-internals.js",
+          "status": 200,
+          "duration_ms": 44,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/_next/static/chunks/main-app.js?v=1783896374660",
+          "route": "page:/_next/static/chunks/main-app.js",
+          "status": 200,
+          "duration_ms": 320,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/_next/static/chunks/_app-pages-browser_node_modules_next_dist_client_dev_noop-turbopack-hmr_js.js",
+          "route": "page:/_next/static/chunks/_app-pages-browser_node_modules_next_dist_client_dev_noop-turbopack-hmr_js.js",
+          "status": 200,
+          "duration_ms": 26,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/_next/image?url=%2Fmarketing%2Fskillsroom-premium%2Fcommunity-premium.png&w=640&q=75",
+          "route": "page:/_next/image",
+          "status": 200,
+          "duration_ms": 24,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/_next/static/chunks/app/notifications/page.js",
+          "route": "page:/_next/static/chunks/app/notifications/page.js",
+          "status": 200,
+          "duration_ms": 110,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/icon.svg",
+          "route": "page:/icon.svg",
+          "status": 200,
+          "duration_ms": 194,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/api/community/realtime/stream",
+          "route": "web-api:community/realtime/stream",
+          "status": 200,
+          "duration_ms": 1032,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/community/notifications?status=unread",
+          "route": "api:/community/notifications",
+          "status": 200,
+          "duration_ms": 696,
+          "source": "server"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/community/invites?status=pending",
+          "route": "api:/community/invites",
+          "status": 200,
+          "duration_ms": 710,
+          "source": "server"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/community/notification-preferences",
+          "route": "api:/community/notification-preferences",
+          "status": 200,
+          "duration_ms": 721,
+          "source": "server"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/community/dm-requests",
+          "route": "api:/community/dm-requests",
+          "status": 200,
+          "duration_ms": 1133,
+          "source": "server"
+        }
+      ]
+    },
+    {
+      "name": "community_hub",
+      "path": "/community",
+      "final_url": "http://localhost:3100/community",
+      "ok": true,
+      "server_response_ms": 0,
+      "browser_navigation_ms": 4767,
+      "hydration_render_ms": 172,
+      "heap_before": {
+        "used_js_heap_size": 168839604,
+        "total_js_heap_size": 184134576,
+        "js_heap_size_limit": 4395630592
+      },
+      "heap_after": {
+        "used_js_heap_size": 190309551,
+        "total_js_heap_size": 202892847,
+        "js_heap_size_limit": 4395630592
+      },
+      "heap_growth_bytes": 21469947,
+      "api_request_count": 7,
+      "duplicate_requests": [],
+      "failed_requests": [],
+      "navigation_timing": {
+        "url": "http://localhost:3100/community",
+        "dom_content_loaded_ms": 3914,
+        "load_event_ms": 4009,
+        "response_start_ms": 1427,
+        "response_end_ms": 3897
+      },
+      "response_timings": [
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/community",
+          "route": "page:/community",
+          "status": 200,
+          "duration_ms": 1429,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/_next/static/css/app/layout.css?v=1783896387676",
+          "route": "page:/_next/static/css/app/layout.css",
+          "status": 200,
+          "duration_ms": 26,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/_next/static/chunks/app/error.js",
+          "route": "page:/_next/static/chunks/app/error.js",
+          "status": 200,
+          "duration_ms": 38,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/_next/static/chunks/webpack.js?v=1783896387676",
+          "route": "page:/_next/static/chunks/webpack.js",
+          "status": 200,
+          "duration_ms": 42,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/_next/static/chunks/app-pages-internals.js",
+          "route": "page:/_next/static/chunks/app-pages-internals.js",
+          "status": 200,
+          "duration_ms": 60,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/_next/static/chunks/main-app.js?v=1783896387676",
+          "route": "page:/_next/static/chunks/main-app.js",
+          "status": 200,
+          "duration_ms": 382,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/_next/static/chunks/_app-pages-browser_node_modules_next_dist_client_dev_noop-turbopack-hmr_js.js",
+          "route": "page:/_next/static/chunks/_app-pages-browser_node_modules_next_dist_client_dev_noop-turbopack-hmr_js.js",
+          "status": 200,
+          "duration_ms": 13,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/_next/static/chunks/app/community/page.js",
+          "route": "page:/_next/static/chunks/app/community/page.js",
+          "status": 200,
+          "duration_ms": 165,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/_next/image?url=%2Fmarketing%2Fskillsroom-premium%2Fcommunity-premium.png&w=640&q=75",
+          "route": "page:/_next/image",
+          "status": 304,
+          "duration_ms": 50,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/_next/static/chunks/app/community/page.js",
+          "route": "page:/_next/static/chunks/app/community/page.js",
+          "status": 200,
+          "duration_ms": 84,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/_next/image?url=%2Fmarketing%2Fskillsroom-premium%2Ftournaments-premium.png&w=640&q=75",
+          "route": "page:/_next/image",
+          "status": 200,
+          "duration_ms": 18,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/icon.svg",
+          "route": "page:/icon.svg",
+          "status": 200,
+          "duration_ms": 194,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/community/leaderboard?limit=50",
+          "route": "api:/community/leaderboard",
+          "status": 200,
+          "duration_ms": 232,
+          "source": "server"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/community/highlights?limit=6",
+          "route": "api:/community/highlights",
+          "status": 200,
+          "duration_ms": 239,
+          "source": "server"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/community/clans?limit=3",
+          "route": "api:/community/clans",
+          "status": 200,
+          "duration_ms": 240,
+          "source": "server"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/community/announcements?limit=4",
+          "route": "api:/community/announcements",
+          "status": 200,
+          "duration_ms": 250,
+          "source": "server"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/community/social-proof",
+          "route": "api:/community/social-proof",
+          "status": 200,
+          "duration_ms": 254,
+          "source": "server"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/community/feed",
+          "route": "api:/community/feed",
+          "status": 200,
+          "duration_ms": 653,
+          "source": "server"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/community/invites?status=pending",
+          "route": "api:/community/invites",
+          "status": 200,
+          "duration_ms": 679,
+          "source": "server"
+        }
+      ]
+    },
+    {
+      "name": "community_public_pages",
+      "path": "/community/highlights",
+      "final_url": "http://localhost:3100/community/highlights",
+      "ok": true,
+      "server_response_ms": 0,
+      "browser_navigation_ms": 4344,
+      "hydration_render_ms": 185,
+      "heap_before": {
+        "used_js_heap_size": 183233577,
+        "total_js_heap_size": 204142909,
+        "js_heap_size_limit": 4395630592
+      },
+      "heap_after": {
+        "used_js_heap_size": 193178824,
+        "total_js_heap_size": 216048556,
+        "js_heap_size_limit": 4395630592
+      },
+      "heap_growth_bytes": 9945247,
+      "api_request_count": 1,
+      "duplicate_requests": [],
+      "failed_requests": [],
+      "navigation_timing": {
+        "url": "http://localhost:3100/community/highlights",
+        "dom_content_loaded_ms": 3488,
+        "load_event_ms": 3623,
+        "response_start_ms": 2333,
+        "response_end_ms": 3483
+      },
+      "response_timings": [
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/community/highlights",
+          "route": "page:/community/highlights",
+          "status": 200,
+          "duration_ms": 2333,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/_next/static/css/app/layout.css?v=1783896394372",
+          "route": "page:/_next/static/css/app/layout.css",
+          "status": 200,
+          "duration_ms": 35,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/_next/static/chunks/app/error.js",
+          "route": "page:/_next/static/chunks/app/error.js",
+          "status": 200,
+          "duration_ms": 35,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/_next/static/chunks/webpack.js?v=1783896394372",
+          "route": "page:/_next/static/chunks/webpack.js",
+          "status": 200,
+          "duration_ms": 40,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/_next/static/chunks/app-pages-internals.js",
+          "route": "page:/_next/static/chunks/app-pages-internals.js",
+          "status": 200,
+          "duration_ms": 44,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/_next/static/chunks/main-app.js?v=1783896394372",
+          "route": "page:/_next/static/chunks/main-app.js",
+          "status": 200,
+          "duration_ms": 330,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/_next/static/chunks/_app-pages-browser_node_modules_next_dist_client_dev_noop-turbopack-hmr_js.js",
+          "route": "page:/_next/static/chunks/_app-pages-browser_node_modules_next_dist_client_dev_noop-turbopack-hmr_js.js",
+          "status": 200,
+          "duration_ms": 9,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/_next/image?url=%2Fmarketing%2Fskillsroom-premium%2Ftournaments-premium.png&w=640&q=75",
+          "route": "page:/_next/image",
+          "status": 304,
+          "duration_ms": 13,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/_next/static/chunks/app/community/highlights/page.js",
+          "route": "page:/_next/static/chunks/app/community/highlights/page.js",
+          "status": 200,
+          "duration_ms": 132,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/icon.svg",
+          "route": "page:/icon.svg",
+          "status": 200,
+          "duration_ms": 178,
+          "source": "browser"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3100/community/highlights?limit=12",
+          "route": "api:/community/highlights",
+          "status": 200,
+          "duration_ms": 495,
+          "source": "server"
+        }
+      ]
+    }
+  ],
+  "totals": {
+    "api_request_count": 34,
+    "failed_request_count": 0,
+    "duplicate_request_count": 0,
+    "heap_growth_bytes": 228633923
+  },
+  "slow_response_summary": [
+    {
+      "route": "api:/community/referrals/me",
+      "count": 1,
+      "p50_ms": 3116,
+      "p95_ms": 3116,
+      "max_ms": 3116
+    },
+    {
+      "route": "web-api:community/realtime/stream",
+      "count": 2,
+      "p50_ms": 1032,
+      "p95_ms": 3109,
+      "max_ms": 3109
+    },
+    {
+      "route": "page:/tournaments",
+      "count": 2,
+      "p50_ms": 303,
+      "p95_ms": 2803,
+      "max_ms": 2803
+    },
+    {
+      "route": "page:/tournaments/945b2294-01b9-4270-b9eb-c65699b883e1",
+      "count": 1,
+      "p50_ms": 2516,
+      "p95_ms": 2516,
+      "max_ms": 2516
+    },
+    {
+      "route": "page:/community/highlights",
+      "count": 1,
+      "p50_ms": 2333,
+      "p95_ms": 2333,
+      "max_ms": 2333
+    },
+    {
+      "route": "page:/profile",
+      "count": 1,
+      "p50_ms": 2287,
+      "p95_ms": 2287,
+      "max_ms": 2287
+    },
+    {
+      "route": "page:/wallet",
+      "count": 1,
+      "p50_ms": 2237,
+      "p95_ms": 2237,
+      "max_ms": 2237
+    },
+    {
+      "route": "api:/wallet",
+      "count": 1,
+      "p50_ms": 2127,
+      "p95_ms": 2127,
+      "max_ms": 2127
+    },
+    {
+      "route": "api:/streaming/accounts",
+      "count": 1,
+      "p50_ms": 1952,
+      "p95_ms": 1952,
+      "max_ms": 1952
+    },
+    {
+      "route": "api:/games",
+      "count": 3,
+      "p50_ms": 836,
+      "p95_ms": 1933,
+      "max_ms": 1933
+    },
+    {
+      "route": "page:/icon.svg",
+      "count": 15,
+      "p50_ms": 163,
+      "p95_ms": 1761,
+      "max_ms": 1761
+    },
+    {
+      "route": "api:/player/home-summary",
+      "count": 2,
+      "p50_ms": 841,
+      "p95_ms": 1731,
+      "max_ms": 1731
+    },
+    {
+      "route": "page:/",
+      "count": 3,
+      "p50_ms": 217,
+      "p95_ms": 1664,
+      "max_ms": 1664
+    },
+    {
+      "route": "page:/notifications",
+      "count": 1,
+      "p50_ms": 1560,
+      "p95_ms": 1560,
+      "max_ms": 1560
+    },
+    {
+      "route": "page:/matches",
+      "count": 2,
+      "p50_ms": 317,
+      "p95_ms": 1469,
+      "max_ms": 1469
+    },
+    {
+      "route": "page:/community",
+      "count": 1,
+      "p50_ms": 1429,
+      "p95_ms": 1429,
+      "max_ms": 1429
+    },
+    {
+      "route": "page:/_next/static/chunks/main-app.js",
+      "count": 15,
+      "p50_ms": 392,
+      "p95_ms": 1344,
+      "max_ms": 1344
+    },
+    {
+      "route": "api:/tournaments/:id",
+      "count": 1,
+      "p50_ms": 1308,
+      "p95_ms": 1308,
+      "max_ms": 1308
+    },
+    {
+      "route": "api:/profiles/trust/:id",
+      "count": 1,
+      "p50_ms": 1202,
+      "p95_ms": 1202,
+      "max_ms": 1202
+    },
+    {
+      "route": "api:/profiles/me",
+      "count": 1,
+      "p50_ms": 1199,
+      "p95_ms": 1199,
+      "max_ms": 1199
+    },
+    {
+      "route": "page:/matches/new",
+      "count": 2,
+      "p50_ms": 962,
+      "p95_ms": 1153,
+      "max_ms": 1153
+    },
+    {
+      "route": "api:/community/dm-requests",
+      "count": 1,
+      "p50_ms": 1133,
+      "p95_ms": 1133,
+      "max_ms": 1133
+    },
+    {
+      "route": "api:/community/livestreams/view",
+      "count": 1,
+      "p50_ms": 973,
+      "p95_ms": 973,
+      "max_ms": 973
+    },
+    {
+      "route": "api:/tournaments",
+      "count": 2,
+      "p50_ms": 783,
+      "p95_ms": 815,
+      "max_ms": 815
+    },
+    {
+      "route": "api:/community/clans/mine",
+      "count": 1,
+      "p50_ms": 740,
+      "p95_ms": 740,
+      "max_ms": 740
+    },
+    {
+      "route": "api:/community/notification-preferences",
+      "count": 1,
+      "p50_ms": 721,
+      "p95_ms": 721,
+      "max_ms": 721
+    },
+    {
+      "route": "api:/community/invites",
+      "count": 2,
+      "p50_ms": 679,
+      "p95_ms": 710,
+      "max_ms": 710
+    },
+    {
+      "route": "api:/match-rooms",
+      "count": 2,
+      "p50_ms": 695,
+      "p95_ms": 701,
+      "max_ms": 701
+    },
+    {
+      "route": "api:/community/notifications",
+      "count": 1,
+      "p50_ms": 696,
+      "p95_ms": 696,
+      "max_ms": 696
+    },
+    {
+      "route": "api:/community/feed",
+      "count": 1,
+      "p50_ms": 653,
+      "p95_ms": 653,
+      "max_ms": 653
+    },
+    {
+      "route": "api:/community/highlights",
+      "count": 4,
+      "p50_ms": 203,
+      "p95_ms": 495,
+      "max_ms": 495
+    },
+    {
+      "route": "page:/_next/image",
+      "count": 16,
+      "p50_ms": 24,
+      "p95_ms": 457,
+      "max_ms": 457
+    },
+    {
+      "route": "api:/community/announcements",
+      "count": 2,
+      "p50_ms": 250,
+      "p95_ms": 281,
+      "max_ms": 281
+    },
+    {
+      "route": "api:/community/social-proof",
+      "count": 1,
+      "p50_ms": 254,
+      "p95_ms": 254,
+      "max_ms": 254
+    },
+    {
+      "route": "api:/community/clans",
+      "count": 1,
+      "p50_ms": 240,
+      "p95_ms": 240,
+      "max_ms": 240
+    },
+    {
+      "route": "page:/_next/static/chunks/app/tournaments/%5BtournamentId%5D/page.js",
+      "count": 2,
+      "p50_ms": 138,
+      "p95_ms": 238,
+      "max_ms": 238
+    },
+    {
+      "route": "api:/community/leaderboard",
+      "count": 1,
+      "p50_ms": 232,
+      "p95_ms": 232,
+      "max_ms": 232
+    },
+    {
+      "route": "page:/_next/static/chunks/app/page.js",
+      "count": 3,
+      "p50_ms": 141,
+      "p95_ms": 205,
+      "max_ms": 205
+    },
+    {
+      "route": "page:/_next/static/chunks/app/community/page.js",
+      "count": 2,
+      "p50_ms": 84,
+      "p95_ms": 165,
+      "max_ms": 165
+    },
+    {
+      "route": "page:/_next/static/chunks/app/tournaments/page.js",
+      "count": 2,
+      "p50_ms": 103,
+      "p95_ms": 142,
+      "max_ms": 142
+    },
+    {
+      "route": "page:/_next/static/chunks/app-pages-internals.js",
+      "count": 15,
+      "p50_ms": 57,
+      "p95_ms": 133,
+      "max_ms": 133
+    },
+    {
+      "route": "page:/_next/static/chunks/app/community/highlights/page.js",
+      "count": 1,
+      "p50_ms": 132,
+      "p95_ms": 132,
+      "max_ms": 132
+    },
+    {
+      "route": "page:/_next/static/chunks/webpack.js",
+      "count": 15,
+      "p50_ms": 45,
+      "p95_ms": 127,
+      "max_ms": 127
+    },
+    {
+      "route": "page:/_next/static/chunks/app/error.js",
+      "count": 15,
+      "p50_ms": 35,
+      "p95_ms": 125,
+      "max_ms": 125
+    },
+    {
+      "route": "page:/_next/static/chunks/app/matches/page.js",
+      "count": 2,
+      "p50_ms": 88,
+      "p95_ms": 124,
+      "max_ms": 124
+    },
+    {
+      "route": "page:/_next/static/css/app/layout.css",
+      "count": 15,
+      "p50_ms": 30,
+      "p95_ms": 118,
+      "max_ms": 118
+    },
+    {
+      "route": "page:/_next/static/chunks/app/notifications/page.js",
+      "count": 1,
+      "p50_ms": 110,
+      "p95_ms": 110,
+      "max_ms": 110
+    },
+    {
+      "route": "page:/_next/static/chunks/_app-pages-browser_node_modules_next_dist_client_dev_noop-turbopack-hmr_js.js",
+      "count": 15,
+      "p50_ms": 28,
+      "p95_ms": 100,
+      "max_ms": 100
+    },
+    {
+      "route": "page:/_next/static/chunks/app/wallet/page.js",
+      "count": 1,
+      "p50_ms": 88,
+      "p95_ms": 88,
+      "max_ms": 88
+    },
+    {
+      "route": "page:/_next/static/chunks/app/profile/page.js",
+      "count": 2,
+      "p50_ms": 75,
+      "p95_ms": 80,
+      "max_ms": 80
+    },
+    {
+      "route": "page:/_next/static/chunks/app/matches/new/page.js",
+      "count": 2,
+      "p50_ms": 58,
+      "p95_ms": 70,
+      "max_ms": 70
+    }
+  ],
+  "console_errors": [
+    "Loading the stylesheet 'https://accounts.google.com/gsi/style' violates the following Content Security Policy directive: \"style-src 'self' 'unsafe-inline'\". Note that 'style-src-elem' was not explicitly set, so 'style-src' is used as a fallback. The action has been blocked.",
+    "Failed to load resource: the server responded with a status of 403 ()",
+    "[GSI_LOGGER]: The given origin is not allowed for the given client ID."
+  ],
+  "request_failures": [
+    "GET http://localhost:3100/api/community/realtime/stream net::ERR_ABORTED",
+    "GET https://accounts.google.com/gsi/style csp",
+    "GET http://localhost:3100/api/community/realtime/stream net::ERR_ABORTED"
+  ],
+  "previous": {
+    "path": "C:\\Users\\HP\\skill-rooms-web\\reports\\player-web-load\\latest.json",
+    "navigation_deltas_ms": {
+      "unauthenticated_landing": 298,
+      "sign_in_session_reuse": -1100,
+      "home": -95,
+      "rooms_list": 275,
+      "create_room_open_path": -1162,
+      "room_detail": 1173,
+      "tournaments_list": 1045,
+      "tournament_detail": 1135,
+      "wallet": -372,
+      "profile": -1476,
+      "notifications": -2038,
+      "community_hub": -811,
+      "community_public_pages": -463
+    },
+    "api_request_count_delta": 25,
+    "heap_growth_delta_bytes": -3701923
+  }
+}

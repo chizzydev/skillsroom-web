@@ -1,0 +1,157 @@
+{
+  "run_id": "2026-07-13T07-11-15-031Z",
+  "started_at": "2026-07-13T07:12:29.974Z",
+  "base_url": "http://localhost:3100",
+  "channel": "chat_load_lab",
+  "viewport": {
+    "width": 390,
+    "height": 844
+  },
+  "scenarios": [
+    {
+      "name": "long_channel_baseline",
+      "ok": true,
+      "duration_ms": 1868,
+      "observations": {
+        "visible_message_rows": 8,
+        "older_button_visible": true,
+        "url": "http://localhost:3100/chat?channel=chat_load_lab"
+      }
+    },
+    {
+      "name": "slow_3g_initial_load",
+      "ok": true,
+      "duration_ms": 46337,
+      "observations": {
+        "shell_ready_ms": 3081,
+        "messages_ready_ms": 46332,
+        "condition": "slow_3g"
+      }
+    },
+    {
+      "name": "offline_resilience",
+      "ok": true,
+      "duration_ms": 2079,
+      "observations": {
+        "composer_visible_offline": true,
+        "draft_retained_offline": true
+      }
+    },
+    {
+      "name": "flaky_reconnect",
+      "ok": true,
+      "duration_ms": 5546,
+      "observations": {
+        "reconnecting_seen": false,
+        "recovered_live_indicator_seen": true,
+        "realtime_requests_before": 3,
+        "realtime_requests_after": 3
+      }
+    },
+    {
+      "name": "reload_reconnect",
+      "ok": true,
+      "duration_ms": 4053,
+      "observations": {
+        "reload_ms": 4052,
+        "realtime_stream_requests_before": 3,
+        "realtime_stream_requests_after": 4
+      }
+    }
+  ],
+  "response_timings": [
+    {
+      "method": "GET",
+      "route": "page:/chat",
+      "status": 200,
+      "duration_ms": 378
+    },
+    {
+      "method": "GET",
+      "route": "page:/chat",
+      "status": 200,
+      "duration_ms": 270
+    },
+    {
+      "method": "GET",
+      "route": "page:/chat",
+      "status": 200,
+      "duration_ms": 599
+    },
+    {
+      "method": "GET",
+      "route": "page:/chat",
+      "status": 200,
+      "duration_ms": 443
+    },
+    {
+      "method": "GET",
+      "route": "web-api:realtime_stream",
+      "status": 200,
+      "duration_ms": 745
+    },
+    {
+      "method": "GET",
+      "route": "page:/chat",
+      "status": 200,
+      "duration_ms": 111
+    },
+    {
+      "method": "GET",
+      "route": "web-api:realtime_stream",
+      "status": 200,
+      "duration_ms": 1423
+    },
+    {
+      "method": "POST",
+      "route": "web-api:channels/chat_load_lab/typing",
+      "status": 200,
+      "duration_ms": 1176
+    }
+  ],
+  "slow_response_summary": [
+    {
+      "route": "web-api:realtime_stream",
+      "count": 2,
+      "p50_ms": 745,
+      "p95_ms": 1423,
+      "p99_ms": 1423,
+      "max_ms": 1423
+    },
+    {
+      "route": "web-api:channels/chat_load_lab/typing",
+      "count": 1,
+      "p50_ms": 1176,
+      "p95_ms": 1176,
+      "p99_ms": 1176,
+      "max_ms": 1176
+    },
+    {
+      "route": "page:/chat",
+      "count": 5,
+      "p50_ms": 378,
+      "p95_ms": 599,
+      "p99_ms": 599,
+      "max_ms": 599
+    }
+  ],
+  "response_errors": [],
+  "console_errors": [
+    "Loading the stylesheet 'https://accounts.google.com/gsi/style' violates the following Content Security Policy directive: \"style-src 'self' 'unsafe-inline'\". Note that 'style-src-elem' was not explicitly set, so 'style-src' is used as a fallback. The action has been blocked.",
+    "Failed to load resource: the server responded with a status of 403 ()"
+  ],
+  "request_failures": [
+    "GET web-api:realtime_stream net::ERR_ABORTED",
+    "GET web-api:realtime_stream net::ERR_ABORTED",
+    "POST web-api:channels/chat_load_lab/typing net::ERR_ABORTED",
+    "GET web-api:realtime_stream net::ERR_ABORTED"
+  ],
+  "heap_growth_bytes": 56412870,
+  "frame_sample": {
+    "duration_ms": 8005,
+    "frames": 479,
+    "dropped_frames": 0,
+    "max_frame_ms": 34,
+    "average_frame_ms": 17
+  }
+}

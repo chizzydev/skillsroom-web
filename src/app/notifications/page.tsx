@@ -3,20 +3,18 @@ import Link from "next/link";
 import Image from "next/image";
 import { AppShell } from "@/components/layout/AppShell";
 import { LiveUpdateStream } from "@/components/realtime/LiveUpdateStream";
+import { NotificationRealtimeSummary } from "@/components/realtime/NotificationRealtimeSummary";
+import { RealtimePatchStatus } from "@/components/realtime/RealtimePatchStatus";
 import { Badge } from "@/components/ui/Badge";
 import { DataTable } from "@/components/ui/DataTable";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { FormActionButton } from "@/components/ui/FormActionButton";
 import { Panel, PanelHeader } from "@/components/ui/Panel";
-import { StatusPanel } from "@/components/ui/StatusPanel";
 import { SubmitButton } from "@/components/ui/SubmitButton";
 import { getCurrentUser } from "@/lib/auth-bridge";
 import {
   formatEntryAmount,
-  getNotificationPreferences,
-  listDmRequests,
-  listNotifications,
-  listRoomInvites,
+  getNotificationBootstrap,
   type ChatDmRequest,
   type NotificationPreference,
   type RoomInvite,
@@ -66,16 +64,11 @@ export default async function NotificationsPage({ searchParams }: { searchParams
   let preferences: NotificationPreference | null = null;
   let loadError: string | null = null;
   try {
-    const [notificationResult, inviteResult, dmRequestResult, preferenceResult] = await Promise.all([
-      listNotifications("unread"),
-      listRoomInvites("pending"),
-      listDmRequests(),
-      getNotificationPreferences()
-    ]);
-    notifications = notificationResult.notifications;
-    invites = inviteResult.invites;
-    dmRequests = dmRequestResult.requests;
-    preferences = preferenceResult.preferences;
+    const bootstrap = await getNotificationBootstrap();
+    notifications = bootstrap.notifications;
+    invites = bootstrap.invites;
+    dmRequests = bootstrap.requests;
+    preferences = bootstrap.preferences;
   } catch {
     loadError = "Unable to load notifications.";
   }
@@ -127,7 +120,8 @@ export default async function NotificationsPage({ searchParams }: { searchParams
           </div>
         </section>
 
-        <LiveUpdateStream eventTypePrefixes={["notification.", "room.invite.", "chat.dm.request."]} label="Inbox live" />
+        <LiveUpdateStream autoConnect={false} eventTypePrefixes={["notification.", "room.invite.", "chat.dm.request."]} label="Inbox live" refreshTargetLabel="inbox" />
+        <RealtimePatchStatus label="Inbox" targets={["notifications", "room", "chat"]} />
 
         {(error || loadError) && (
           <div className="rounded-md border border-danger bg-red-50 p-4 text-sm font-bold text-danger">
@@ -135,18 +129,13 @@ export default async function NotificationsPage({ searchParams }: { searchParams
           </div>
         )}
 
-        <div className="grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-5">
-          <StatusPanel detail="Unread" label="Notifications" tone="warning" value={notifications.length.toString()} />
-          <StatusPanel detail="Awaiting you" label="DM Requests" tone="cyan" value={incomingDmRequests.length.toString()} />
-          <StatusPanel detail="Pending" label="Invites" tone="cyan" value={invites.length.toString()} />
-          <StatusPanel detail="Current channel" label="In-app" tone={preferences?.in_app_enabled ? "success" : "danger"} value={preferences?.in_app_enabled ? "On" : "Off"} />
-          <StatusPanel
-            detail={`Email ${preferences?.email_enabled ? "on" : "off"} / SMS ${preferences?.sms_enabled ? "on" : "off"}`}
-            label="External"
-            tone={preferences?.email_enabled || preferences?.sms_enabled ? "success" : "neutral"}
-            value={(preferences?.email_enabled || preferences?.sms_enabled) ? "On" : "Off"}
-          />
-        </div>
+        <NotificationRealtimeSummary
+          externalEnabled={Boolean(preferences?.email_enabled || preferences?.sms_enabled)}
+          inAppEnabled={Boolean(preferences?.in_app_enabled)}
+          initialDmRequests={incomingDmRequests.length}
+          initialInvites={invites.length}
+          initialUnread={notifications.length}
+        />
 
         <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1fr)_420px]">
           <Panel>

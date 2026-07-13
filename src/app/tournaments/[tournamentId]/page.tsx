@@ -1,9 +1,11 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
+import { Suspense } from "react";
 import { AppShell } from "@/components/layout/AppShell";
 import { MotionSection, Reveal } from "@/components/motion";
 import { LiveUpdateStream } from "@/components/realtime/LiveUpdateStream";
+import { RealtimePatchStatus } from "@/components/realtime/RealtimePatchStatus";
 import { Badge, type BadgeTone } from "@/components/ui/Badge";
 import { DataTable } from "@/components/ui/DataTable";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -18,7 +20,11 @@ import {
   ApiRequestError,
   displayEnumLabel,
   formatMinorMoney,
-  getTournamentDetail,
+  getTournamentBracket,
+  getTournamentEntrants,
+  getTournamentFunding,
+  getTournamentResultReviews,
+  getTournamentSummary,
   getTournamentWinnerPage,
   getWalletOverview,
   listAccessibleLivestreams,
@@ -36,7 +42,6 @@ import {
   type TournamentRound,
   type TournamentStage,
   type TournamentStanding,
-  type TournamentStateEvent,
   type TournamentStatus,
   type WalletOverview
 } from "@/lib/match-room-api";
@@ -51,6 +56,8 @@ import {
   registerForTournamentAction,
   submitTournamentContributionAction
 } from "./actions";
+
+export const dynamic = "force-dynamic";
 
 const premiumArtwork = {
   tournaments: "/marketing/skillsroom-premium/tournaments-premium.png"
@@ -71,6 +78,634 @@ function projectedPrize(tournament: Tournament) {
   return Math.max(
     tournament.approved_prize_contribution_minor ?? 0,
     tournament.sponsored_prize_pool_minor + tournament.guaranteed_prize_pool_minor
+  );
+}
+
+function TournamentSectionFallback({ eyebrow, title }: { eyebrow: string; title: string }) {
+  return (
+    <Panel>
+      <PanelHeader eyebrow={eyebrow} title={title} />
+      <div className="p-4">
+        <div className="h-24 rounded-md border border-line bg-surfaceWarm" />
+      </div>
+    </Panel>
+  );
+}
+
+async function TournamentBroadcastSection({ tournamentId }: { tournamentId: string }) {
+  const { livestreams } = await listAccessibleLivestreams({ target_type: "tournament", tournament_id: tournamentId });
+
+  return (
+    <Panel>
+      <PanelHeader
+        eyebrow="Broadcast"
+        title="Livestream and watch links"
+        description="Official event streams and watch-party links posted by operators or tournament hosts."
+      />
+      {livestreams.length ? (
+        <div className="grid gap-4 p-4">
+          {hasEmbeddableLivestream(livestreams) ? (
+            <div className="grid gap-4 xl:grid-cols-[minmax(0,1.3fr)_minmax(0,0.7fr)]">
+              <div className="motion-state-card motion-glow overflow-hidden rounded-md border border-line bg-black">
+                <iframe
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                  allowFullScreen
+                  className="aspect-video w-full"
+                  referrerPolicy="strict-origin-when-cross-origin"
+                  src={livestreams.find((item) => item.embed_url)?.embed_url ?? undefined}
+                  title={livestreams.find((item) => item.embed_url)?.title ?? "Tournament livestream"}
+                />
+              </div>
+              <div className="grid gap-3">
+                {livestreams.map((item) => (
+                  <TournamentStreamCard item={item} key={item.id} />
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="grid gap-3 md:grid-cols-2">
+              {livestreams.map((item) => (
+                <TournamentStreamCard item={item} key={item.id} />
+              ))}
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="p-4">
+          <EmptyState title="No livestream links yet" description="When hosts publish a watch link, it will appear here for the event." />
+        </div>
+      )}
+    </Panel>
+  );
+}
+
+function TournamentStreamCard({ item }: { item: CommunityLivestreamLink }) {
+  return (
+    <a
+      className="motion-flow-card rounded-md border border-line bg-white p-4 transition hover:border-action hover:bg-surfaceHigh"
+      href={item.stream_url}
+      rel="noreferrer"
+      target="_blank"
+    >
+      <div className="flex flex-wrap items-center gap-2">
+        <Badge tone={item.is_featured ? "success" : "cyan"}>{item.provider}</Badge>
+        <Badge tone="neutral">{item.visibility}</Badge>
+      </div>
+      <h2 className="mt-3 text-base font-black text-ink">{item.title}</h2>
+      <p className="mt-2 text-sm text-muted">
+        {item.embed_url ? "Embedded watch available here." : `Open stream on ${item.provider}.`}
+      </p>
+    </a>
+  );
+}
+
+async function TournamentAnnouncementsSection({ tournamentId }: { tournamentId: string }) {
+  const { announcements } = await listCommunityAnnouncements({ scope: "tournament", tournament_id: tournamentId, limit: 12 });
+
+  return (
+    <Panel>
+      <PanelHeader
+        eyebrow="Announcements"
+        title="Tournament updates"
+        description="Published host and operator updates for this event."
+      />
+      {announcements.length ? (
+        <div className="grid gap-3 p-4">
+          {announcements.map((item) => (
+            <Link
+              className="rounded-md border border-line bg-white p-4 transition hover:border-action hover:bg-surfaceHigh"
+              href={`/community/announcements/${encodeURIComponent(item.id)}`}
+              key={item.id}
+            >
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge tone={item.priority === "critical" ? "danger" : item.priority === "high" ? "warning" : "cyan"}>{item.priority}</Badge>
+                <Badge tone="neutral">{item.category.replaceAll("_", " ")}</Badge>
+              </div>
+              <h2 className="mt-3 text-base font-black text-ink">{item.title}</h2>
+              <p className="mt-2 text-sm leading-6 text-muted">{item.summary}</p>
+              <p className="mt-3 text-xs font-bold uppercase tracking-[0.12em] text-muted">
+                {new Date(item.published_at ?? item.created_at).toLocaleString("en-NG")}
+              </p>
+            </Link>
+          ))}
+        </div>
+      ) : (
+        <div className="p-4">
+          <EmptyState title="No published updates yet" description="Tournament hosts and operators can post public updates here." />
+        </div>
+      )}
+    </Panel>
+  );
+}
+
+async function TournamentHostBroadcastSection({ tournamentId, canAttemptManage }: { tournamentId: string; canAttemptManage: boolean }) {
+  if (!canAttemptManage) return null;
+  let livestreams: CommunityLivestreamLink[] = [];
+  try {
+    const result = await listManageableLivestreams({ target_type: "tournament", tournament_id: tournamentId });
+    livestreams = result.livestreams;
+  } catch {
+    return null;
+  }
+
+  return (
+    <Panel>
+      <PanelHeader
+        eyebrow="Host Broadcast"
+        title="Manage livestream links"
+        description="Attach official watch links for YouTube, Twitch, Facebook, TikTok, Kick, or another safe HTTPS destination."
+      />
+      <div className="grid gap-5 p-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+        <form action={createTournamentLivestreamAction} className="motion-flow-card grid gap-3 rounded-md border border-line bg-white p-4">
+          <input name="tournament_id" type="hidden" value={tournamentId} />
+          <div className="grid gap-3 md:grid-cols-2">
+            <label className="grid gap-2 text-sm font-bold text-ink">
+              Provider
+              <select className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="provider">
+                <option value="youtube">YouTube</option>
+                <option value="twitch">Twitch</option>
+                <option value="facebook">Facebook</option>
+                <option value="tiktok">TikTok</option>
+                <option value="kick">Kick</option>
+                <option value="generic">Generic HTTPS</option>
+              </select>
+            </label>
+            <label className="grid gap-2 text-sm font-bold text-ink">
+              Visibility
+              <select className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="visibility">
+                <option value="public">Public</option>
+                <option value="participants">Participants</option>
+              </select>
+            </label>
+          </div>
+          <label className="grid gap-2 text-sm font-bold text-ink">
+            Title
+            <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" maxLength={140} name="title" required />
+          </label>
+          <label className="grid gap-2 text-sm font-bold text-ink">
+            Stream URL
+            <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="stream_url" required type="url" />
+          </label>
+          <SubmitButton idleLabel="Save livestream" pendingLabel="Saving livestream..." />
+        </form>
+
+        <div className="grid gap-3 rounded-md border border-line bg-white p-4">
+          {livestreams.length ? (
+            livestreams.map((item) => (
+              <div className="motion-flow-card rounded-md border border-line bg-surfaceWarm p-4" key={item.id}>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge tone={item.status === "active" ? "success" : "danger"}>{item.status}</Badge>
+                  <Badge tone="cyan">{item.provider}</Badge>
+                </div>
+                <h3 className="mt-3 text-base font-black text-ink">{item.title}</h3>
+                <p className="mt-2 text-sm text-muted">{item.stream_url}</p>
+                {item.status !== "archived" ? (
+                  <form action={archiveTournamentLivestreamAction} className="mt-3">
+                    <input name="tournament_id" type="hidden" value={tournamentId} />
+                    <input name="livestream_id" type="hidden" value={item.id} />
+                    <SubmitButton idleLabel="Archive" pendingLabel="Archiving..." size="sm" variant="secondary" />
+                  </form>
+                ) : null}
+              </div>
+            ))
+          ) : (
+            <EmptyState title="No host livestreams yet" description="Saved tournament watch links will appear here." />
+          )}
+        </div>
+      </div>
+    </Panel>
+  );
+}
+
+async function TournamentHostAnnouncementsSection({ tournamentId, canAttemptManage }: { tournamentId: string; canAttemptManage: boolean }) {
+  if (!canAttemptManage) return null;
+  let announcements: CommunityAnnouncement[] = [];
+  try {
+    const result = await listManageableAnnouncements({ scope: "tournament", tournament_id: tournamentId, limit: 20 });
+    announcements = result.announcements;
+  } catch {
+    return null;
+  }
+
+  return (
+    <Panel>
+      <PanelHeader
+        eyebrow="Host Controls"
+        title="Post a tournament update"
+        description="Creators, co-hosts, and operators can save drafts or publish public updates for this tournament."
+      />
+      <div className="grid gap-5 p-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+        <form action={createTournamentAnnouncementAction} className="grid gap-3 rounded-md border border-line bg-white p-4">
+          <input name="tournament_id" type="hidden" value={tournamentId} />
+          <div className="grid gap-3 md:grid-cols-2">
+            <label className="grid gap-2 text-sm font-bold text-ink">
+              Category
+              <select className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="category">
+                <option value="tournament_update">Tournament update</option>
+                <option value="announcement">Announcement</option>
+                <option value="winner_post">Winner post</option>
+                <option value="sponsor_note">Sponsor note</option>
+                <option value="incident">Incident</option>
+              </select>
+            </label>
+            <label className="grid gap-2 text-sm font-bold text-ink">
+              Priority
+              <select className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="priority">
+                <option value="normal">Normal</option>
+                <option value="high">High</option>
+                <option value="critical">Critical</option>
+                <option value="low">Low</option>
+              </select>
+            </label>
+          </div>
+          <label className="grid gap-2 text-sm font-bold text-ink">
+            Title
+            <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" maxLength={140} name="title" required />
+          </label>
+          <label className="grid gap-2 text-sm font-bold text-ink">
+            Summary <span className="text-xs font-bold text-muted">(optional)</span>
+            <textarea className="min-h-20 rounded-md border border-line bg-white px-3 py-2 text-sm outline-none focus:border-action" maxLength={280} name="summary" placeholder="Leave blank to use the start of the body." />
+          </label>
+          <label className="grid gap-2 text-sm font-bold text-ink">
+            Body
+            <textarea className="min-h-32 rounded-md border border-line bg-white px-3 py-2 text-sm outline-none focus:border-action" maxLength={4000} name="body" required />
+          </label>
+          <label className="flex min-h-11 items-center gap-2 rounded-md border border-line bg-white px-3 text-sm font-bold text-ink">
+            <input name="publish_now" type="checkbox" />
+            Publish immediately
+          </label>
+          <SubmitButton idleLabel="Save update" pendingLabel="Saving update..." />
+        </form>
+
+        <div className="grid gap-3 rounded-md border border-line bg-white p-4">
+          {announcements.length ? (
+            announcements.map((item) => (
+              <div className="rounded-md border border-line bg-surfaceWarm p-4" key={item.id}>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge tone={item.status === "published" ? "success" : item.status === "archived" ? "danger" : "warning"}>{item.status}</Badge>
+                  <Badge tone={item.priority === "critical" ? "danger" : item.priority === "high" ? "warning" : "cyan"}>{item.priority}</Badge>
+                </div>
+                <h3 className="mt-3 text-base font-black text-ink">{item.title}</h3>
+                <p className="mt-2 text-sm text-muted">{item.summary}</p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {item.status !== "published" ? (
+                    <form action={publishTournamentAnnouncementAction}>
+                      <input name="tournament_id" type="hidden" value={tournamentId} />
+                      <input name="announcement_id" type="hidden" value={item.id} />
+                      <SubmitButton idleLabel="Publish" pendingLabel="Publishing..." size="sm" variant="secondary" />
+                    </form>
+                  ) : null}
+                  {item.status !== "archived" ? (
+                    <form action={archiveTournamentAnnouncementAction}>
+                      <input name="tournament_id" type="hidden" value={tournamentId} />
+                      <input name="announcement_id" type="hidden" value={item.id} />
+                      <SubmitButton idleLabel="Archive" pendingLabel="Archiving..." size="sm" variant="secondary" />
+                    </form>
+                  ) : null}
+                </div>
+              </div>
+            ))
+          ) : (
+            <EmptyState title="No host updates yet" description="Draft and published tournament posts will appear here." />
+          )}
+        </div>
+      </div>
+    </Panel>
+  );
+}
+
+async function TournamentFundingSection({ tournament, view }: { tournament: TournamentDetail; view: "summary" | "full" }) {
+  const funding = view === "full" ? await getTournamentFunding(tournament.id, "full") : null;
+  const prize = projectedPrize(tournament);
+
+  return (
+    <Panel>
+      <PanelHeader
+        description="Prize records are explicit so manual payout and future provider automation can reconcile cleanly."
+        eyebrow="Prizes"
+        title="Prize pool and allocations"
+      />
+      <div className="grid gap-4 p-4 lg:grid-cols-2">
+        <div className="motion-premium-panel motion-flow-card rounded-md border border-line bg-surfaceWarm p-4">
+          <p className="font-mono text-xs font-black uppercase tracking-[0.12em] text-dim">Projected or approved</p>
+          <strong className="mt-2 block text-3xl font-black text-success">{formatMinorMoney(tournament.currency, prize)}</strong>
+          <p className="mt-2 text-sm font-bold text-muted">{displayEnumLabel(tournament.prize_distribution_mode)} distribution</p>
+        </div>
+        <div className="motion-premium-panel motion-flow-card rounded-md border border-line bg-surfaceWarm p-4">
+          <p className="font-mono text-xs font-black uppercase tracking-[0.12em] text-dim">Contribution records</p>
+          <strong className="mt-2 block text-3xl font-black text-ink">{view === "full" ? funding?.prize_contributions.length ?? 0 : "Open"}</strong>
+          <p className="mt-2 text-sm font-bold text-muted">Detailed allocation history loads only when requested.</p>
+        </div>
+      </div>
+      {view === "summary" ? (
+        <div className="grid gap-3 p-4 pt-0 sm:grid-cols-3">
+          <div className="rounded-md border border-line bg-white p-4">
+            <p className="font-mono text-xs font-black uppercase tracking-[0.12em] text-dim">Approved in</p>
+            <p className="mt-2 text-xl font-black text-success">{formatMinorMoney(tournament.currency, tournament.approved_prize_contribution_minor ?? 0)}</p>
+          </div>
+          <div className="rounded-md border border-line bg-white p-4">
+            <p className="font-mono text-xs font-black uppercase tracking-[0.12em] text-dim">Prize mode</p>
+            <p className="mt-2 text-xl font-black text-ink">{displayEnumLabel(tournament.prize_distribution_mode)}</p>
+          </div>
+          <div className="rounded-md border border-line bg-white p-4">
+            <p className="font-mono text-xs font-black uppercase tracking-[0.12em] text-dim">Commission</p>
+            <p className="mt-2 text-xl font-black text-ink">{tournament.commission_bps / 100}%</p>
+          </div>
+          <PendingLink
+            className="inline-flex min-h-10 items-center justify-center rounded-md border border-line bg-white px-4 text-sm font-black text-ink hover:bg-surfaceHigh sm:col-span-3"
+            href={`/tournaments/${encodeURIComponent(tournament.id)}?funding=full`}
+            pendingLabel="Loading full funding..."
+          >
+            Show allocation history
+          </PendingLink>
+        </div>
+      ) : funding && funding.prize_allocations.length ? (
+        <>
+          <DataTable
+            columns={[
+              { key: "rank", label: "Rank", render: (row) => <span className="font-mono text-xs font-bold text-ink">{row.rank ?? "Entry"}</span> },
+              { key: "amount_minor", label: "Amount", render: (row) => <span className="font-bold text-ink">{formatMinorMoney(row.currency, row.amount_minor)}</span> },
+              { key: "status", label: "Status", render: (row) => <Badge tone={statusTone(row.status)}>{displayEnumLabel(row.status)}</Badge> },
+              { key: "notes", label: "Notes", render: (row) => <span className="text-muted">{row.notes ?? "No note"}</span> }
+            ]}
+            rows={funding.prize_allocations}
+          />
+          <div className="border-t border-line p-4">
+            <PendingLink className="inline-flex min-h-10 items-center justify-center rounded-md border border-line bg-white px-4 text-sm font-black text-ink hover:bg-surfaceHigh" href={`/tournaments/${encodeURIComponent(tournament.id)}`} pendingLabel="Loading summary...">
+              Back to summary
+            </PendingLink>
+          </div>
+        </>
+      ) : (
+        <div className="p-4 pt-0">
+          <EmptyState description="Prize allocations will appear after operators configure payout ranks or fixed awards." title="No prize allocations yet" />
+          {view === "full" ? (
+            <PendingLink className="mt-3 inline-flex min-h-10 items-center justify-center rounded-md border border-line bg-white px-4 text-sm font-black text-ink hover:bg-surfaceHigh" href={`/tournaments/${encodeURIComponent(tournament.id)}`} pendingLabel="Loading summary...">
+              Back to summary
+            </PendingLink>
+          ) : null}
+        </div>
+      )}
+    </Panel>
+  );
+}
+
+async function TournamentCompetitionSections({ tournament, view }: { tournament: TournamentDetail; view: "summary" | "full" }) {
+  if (view === "summary") {
+    return (
+      <Panel>
+        <PanelHeader
+          description="Full match cards, standings, and generated bracket details load only when requested."
+          eyebrow="Competition"
+          title="Bracket summary"
+        />
+        <div className="grid gap-3 p-4 sm:grid-cols-3">
+          <div className="rounded-md border border-line bg-surfaceWarm p-4">
+            <p className="font-mono text-xs font-black uppercase tracking-[0.12em] text-dim">Format</p>
+            <p className="mt-2 text-xl font-black text-ink">{displayEnumLabel(tournament.format)}</p>
+          </div>
+          <div className="rounded-md border border-line bg-surfaceWarm p-4">
+            <p className="font-mono text-xs font-black uppercase tracking-[0.12em] text-dim">Entrants</p>
+            <p className="mt-2 text-xl font-black text-ink">{tournament.registered_entry_count ?? 0}/{tournament.max_entries}</p>
+          </div>
+          <div className="rounded-md border border-line bg-surfaceWarm p-4">
+            <p className="font-mono text-xs font-black uppercase tracking-[0.12em] text-dim">Status</p>
+            <p className="mt-2 text-xl font-black text-ink">{displayEnumLabel(tournament.status)}</p>
+          </div>
+        </div>
+        <div className="border-t border-line p-4">
+          <PendingLink
+            className="inline-flex min-h-10 items-center justify-center rounded-md border border-line bg-white px-4 text-sm font-black text-ink hover:bg-surfaceHigh"
+            href={`/tournaments/${encodeURIComponent(tournament.id)}?bracket=full`}
+            pendingLabel="Loading full bracket..."
+          >
+            Show match cards
+          </PendingLink>
+        </div>
+      </Panel>
+    );
+  }
+
+  const bracket = await getTournamentBracket(tournament.id, "full");
+  const detail: TournamentDetail = {
+    ...tournament,
+    stages: bracket.stages,
+    rounds: bracket.rounds,
+    matches: bracket.matches,
+    match_sides: bracket.match_sides,
+    match_check_ins: bracket.match_check_ins,
+    standings: bracket.standings,
+    prize_allocations: [],
+    prize_contributions: []
+  };
+  const leaderboardRows = orderedStandings(detail);
+  const tiePolicy = configuredTiebreakers(detail);
+  const visualStages = bracketStages(detail);
+
+  return (
+    <>
+      {detail.standings.length ? (
+        <Panel>
+          <PanelHeader
+            description="Placements, points, records, tie-breakers, and prize eligibility are calculated from approved tournament results and explicit prize allocation records."
+            eyebrow="Leaderboard"
+            title="Tournament standings"
+          />
+          <div className="grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="rounded-md border border-line bg-surfaceWarm p-4">
+              <p className="font-mono text-xs font-black uppercase tracking-[0.12em] text-dim">Ranked entries</p>
+              <p className="mt-2 text-2xl font-black text-ink">{detail.standings.length}</p>
+              <p className="mt-1 text-sm font-bold text-muted">Across {new Set(detail.standings.map((standing) => standing.stage_id ?? "overall")).size} table scopes</p>
+            </div>
+            <div className="rounded-md border border-line bg-surfaceWarm p-4">
+              <p className="font-mono text-xs font-black uppercase tracking-[0.12em] text-dim">Top points</p>
+              <p className="mt-2 text-2xl font-black text-ink">{bestPoints(detail)}</p>
+              <p className="mt-1 text-sm font-bold text-muted">{displayEnumLabel(detail.scoring_mode)} scoring</p>
+            </div>
+            <div className="rounded-md border border-line bg-surfaceWarm p-4">
+              <p className="font-mono text-xs font-black uppercase tracking-[0.12em] text-dim">Tie policy</p>
+              <p className="mt-2 text-sm font-black text-ink [overflow-wrap:anywhere]">
+                {tiePolicy.length ? tiePolicy.map((item) => displayEnumLabel(item)).join(", ") : "Default rank, points, and score rules"}
+              </p>
+            </div>
+          </div>
+          <DataTable
+            columns={[
+              { key: "rank", label: "Place", render: (row) => <span className="font-mono text-xs font-black text-ink">{rankLabel(row.rank)}</span> },
+              {
+                key: "entry_id",
+                label: "Entry",
+                render: (row) => (
+                  <div>
+                    <strong className="text-ink">{standingEntryLabel(row, detail)}</strong>
+                    <p className="mt-1 text-xs font-bold text-muted">{standingSeed(row)}</p>
+                  </div>
+                )
+              },
+              { key: "stage_id", label: "Stage", render: (row) => <span className="text-sm font-bold text-muted">{standingStageLabel(row, detail)}</span> },
+              { key: "record", label: "Record", render: (row) => <span className="font-mono text-xs font-bold text-ink">{standingRecord(row)}</span> },
+              { key: "points", label: "Pts", render: (row) => <span className="font-mono text-xs font-black text-ink">{row.points}</span> },
+              { key: "tiebreakers", label: "Tie-breakers", render: (row) => <span className="text-sm font-bold text-muted">{tiebreakerSummary(row)}</span> }
+            ]}
+            rows={leaderboardRows}
+          />
+        </Panel>
+      ) : null}
+
+      {visualStages.length ? (
+        <Panel>
+          <PanelHeader
+            description="Round-by-round view of generated tournament matches, including unresolved slots, byes, linked match rooms, and reviewed outcomes."
+            eyebrow="Bracket"
+            title="Competition map"
+          />
+          <div className="grid gap-5 p-4">
+            {visualStages.map((stage) => {
+              const stageRounds = roundsForStage(stage, detail);
+              const progress = stageProgress(stage, detail);
+              return (
+                <section className="motion-bracket-reveal min-w-0 rounded-md border border-line bg-white" key={stage.id}>
+                  <div className="flex flex-wrap items-start justify-between gap-3 border-b border-line p-4">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap gap-2">
+                        <Badge tone={statusTone(stage.status)}>{displayEnumLabel(stage.status)}</Badge>
+                        <Badge tone="cyan">{displayEnumLabel(stage.stage_type)}</Badge>
+                      </div>
+                      <h2 className="mt-2 break-words text-lg font-black text-ink [overflow-wrap:anywhere]">{stage.name}</h2>
+                    </div>
+                    <div className="rounded-md border border-line bg-surfaceWarm px-3 py-2 text-right">
+                      <p className="font-mono text-[0.65rem] font-black uppercase tracking-[0.12em] text-dim">Progress</p>
+                      <p className="mt-1 text-sm font-black text-ink">{progress.completed}/{progress.total} matches</p>
+                    </div>
+                  </div>
+                  <div className="overflow-x-auto p-4">
+                    <div className="grid min-w-[48rem] auto-cols-[minmax(15rem,1fr)] grid-flow-col gap-4">
+                      {stageRounds.map(({ round, matches }) => (
+                        <div className="grid content-start gap-3" key={round.id}>
+                          <div className="rounded-md border border-line bg-surfaceWarm p-3">
+                            <p className="font-mono text-[0.65rem] font-black uppercase tracking-[0.12em] text-dim">Round {round.round_number}</p>
+                            <p className="mt-1 text-sm font-black text-ink [overflow-wrap:anywhere]">{round.name}</p>
+                            <p className="mt-1 text-xs font-bold text-muted">{matches.length} matches</p>
+                          </div>
+                          {matches.map((match) => {
+                            const sides = matchSides(match, detail);
+                            return (
+                              <article className="motion-flow-card rounded-md border border-line bg-white p-3 shadow-tight" key={match.id}>
+                                <div className="flex items-start justify-between gap-2">
+                                  <div>
+                                    <p className="font-mono text-[0.65rem] font-black uppercase tracking-[0.12em] text-dim">Match {match.match_number}</p>
+                                    <Badge tone={statusTone(match.status)}>{displayEnumLabel(match.status)}</Badge>
+                                  </div>
+                                  {match.match_room_id ? (
+                                    <PendingLink className="shrink-0 rounded-md border border-line bg-white px-2 py-1 text-xs font-black text-cyan hover:bg-surfaceHigh" href={`/matches/${match.match_room_id}`} pendingLabel="Opening room...">
+                                      Room
+                                    </PendingLink>
+                                  ) : null}
+                                </div>
+                                <div className="mt-3 grid gap-2">
+                                  {sides.length ? sides.map((side) => (
+                                    <div className="grid min-h-11 grid-cols-[minmax(0,1fr)_auto] items-center gap-2 rounded-md border border-line bg-surfaceWarm px-3 py-2" key={side.id}>
+                                      <span className="min-w-0 text-sm font-black text-ink [overflow-wrap:anywhere]">{sideEntryLabel(side, detail)}</span>
+                                      <Badge tone={sideResultTone(side)}>{displayEnumLabel(side.result)}</Badge>
+                                    </div>
+                                  )) : (
+                                    <div className="rounded-md border border-line bg-surfaceWarm px-3 py-2 text-sm font-bold text-muted">Entrants pending</div>
+                                  )}
+                                </div>
+                                <p className="mt-3 text-xs font-bold text-muted [overflow-wrap:anywhere]">
+                                  {match.result_summary ?? formatDate(match.scheduled_at)}
+                                </p>
+                              </article>
+                            );
+                          })}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </section>
+              );
+            })}
+          </div>
+        </Panel>
+      ) : null}
+
+      <Panel>
+        <PanelHeader
+          description="Stages, rounds, and matches will fill in as operators seed and generate the tournament structure."
+          eyebrow="Competition"
+          title="Stages and matches"
+        />
+        {detail.stages.length ? (
+          <DataTable
+            columns={[
+              { key: "name", label: "Stage", render: (row) => <strong className="text-ink">{row.name}</strong> },
+              { key: "stage_type", label: "Type", render: (row) => <span className="font-bold text-muted">{displayEnumLabel(row.stage_type)}</span> },
+              { key: "status", label: "Status", render: (row) => <Badge tone={statusTone(row.status)}>{displayEnumLabel(row.status)}</Badge> },
+              { key: "rounds", label: "Rounds", render: (row) => <span className="font-mono text-xs font-bold text-ink">{countRoundsForStage(row, detail.rounds)}</span> },
+              { key: "matches", label: "Matches", render: (row) => <span className="font-mono text-xs font-bold text-ink">{countMatchesForStage(row, detail.matches)}</span> }
+            ]}
+            rows={detail.stages}
+          />
+        ) : (
+          <div className="p-4">
+            <EmptyState description="When seeding begins, generated groups, brackets, rounds, and linked match rooms will appear here." title="Structure not generated yet" />
+          </div>
+        )}
+      </Panel>
+
+      {detail.matches.length ? (
+        <Panel>
+          <PanelHeader eyebrow="Matches" title="Tournament match rooms" />
+          <DataTable
+            columns={[
+              { key: "match_number", label: "Match", render: (row) => <span className="font-mono text-xs font-bold text-ink">#{row.match_number}</span> },
+              { key: "entrants", label: "Entrants", render: (row) => <span className="text-sm font-bold text-ink">{matchEntrants(row, detail)}</span> },
+              { key: "status", label: "Status", render: (row) => <Badge tone={statusTone(row.status)}>{displayEnumLabel(row.status)}</Badge> },
+              { key: "scheduled_at", label: "Scheduled", render: (row) => <span className="text-muted">{formatDate(row.scheduled_at)}</span> },
+              {
+                key: "match_room_id",
+                label: "Room",
+                render: (row) =>
+                  row.match_room_id ? (
+                    <PendingLink className="font-black text-cyan hover:text-action" href={`/matches/${row.match_room_id}`} pendingLabel="Opening room...">
+                      Open room
+                    </PendingLink>
+                  ) : (
+                    <span className="text-muted">Not linked</span>
+                  )
+              },
+              { key: "result_summary", label: "Result", render: (row) => <span className="text-muted">{row.result_summary ?? "Pending"}</span> }
+            ]}
+            rows={detail.matches}
+          />
+        </Panel>
+      ) : null}
+    </>
+  );
+}
+
+async function TournamentResultReviewsSection({ tournamentId, viewerHasSensitiveAuditAccess }: { tournamentId: string; viewerHasSensitiveAuditAccess: boolean }) {
+  if (!viewerHasSensitiveAuditAccess) return null;
+  const { result_reviews: reviews } = await getTournamentResultReviews(tournamentId);
+  if (!reviews.length) return null;
+
+  return (
+    <Panel>
+      <PanelHeader
+        description="Review rows are loaded separately from the first tournament render because they can grow with every contested match."
+        eyebrow="Reviews"
+        title="Result reviews"
+      />
+      <DataTable
+        columns={[
+          { key: "created_at", label: "When", render: (row) => <span className="font-mono text-xs font-bold text-muted">{formatDate(row.created_at)}</span> },
+          { key: "decision", label: "Decision", render: (row) => <Badge tone={statusTone(row.decision)}>{displayEnumLabel(row.decision)}</Badge> },
+          { key: "score_summary", label: "Score", render: (row) => <span className="font-bold text-ink">{row.score_summary ?? "No score summary"}</span> },
+          { key: "note", label: "Note", render: (row) => <span className="text-sm font-bold text-muted">{row.note ?? "No note"}</span> }
+        ]}
+        rows={reviews}
+      />
+    </Panel>
   );
 }
 
@@ -112,25 +747,6 @@ function lifecycleDetail(status: TournamentStatus) {
     voided: "Event outcome is invalidated for audit."
   };
   return details[status];
-}
-
-function buildAuditTimeline(events: TournamentStateEvent[]) {
-  return events.length
-    ? events.map((event, index) => ({
-        label: displayEnumLabel(event.to_status),
-        detail: event.reason.replaceAll("_", " "),
-        status: index === events.length - 1 ? ("current" as const) : ("done" as const)
-      }))
-    : [{ label: "Tournament created", detail: "State changes will appear here.", status: "current" as const }];
-}
-
-function eventMetadataSummary(event: TournamentStateEvent) {
-  const keys = Object.keys(event.metadata ?? {});
-  if (!keys.length) return "No metadata";
-  return keys
-    .slice(0, 4)
-    .map((key) => `${displayEnumLabel(key)}: ${String(event.metadata[key])}`)
-    .join(" / ");
 }
 
 function countMatchesForStage(stage: TournamentStage, matches: TournamentMatch[]) {
@@ -252,16 +868,6 @@ function orderedStandings(detail: TournamentDetail) {
   });
 }
 
-function prizeAllocationForStanding(standing: TournamentStanding, detail: TournamentDetail) {
-  return detail.prize_allocations.find((allocation) => allocation.entry_id === standing.entry_id)
-    ?? detail.prize_allocations.find((allocation) => allocation.rank !== null && allocation.rank === standing.rank)
-    ?? null;
-}
-
-function prizeEligibleCount(detail: TournamentDetail) {
-  return detail.standings.filter((standing) => Boolean(prizeAllocationForStanding(standing, detail))).length;
-}
-
 function bestPoints(detail: TournamentDetail) {
   return detail.standings.reduce((best, standing) => Math.max(best, standing.points), 0);
 }
@@ -314,6 +920,24 @@ function registrationAction(tournament: TournamentDetail) {
   return [displayEnumLabel(tournament.status), lifecycleDetail(tournament.status)] as const;
 }
 
+function tournamentSummaryDetail(tournament: Tournament): TournamentDetail {
+  return {
+    ...tournament,
+    entries: [],
+    entry_members: [],
+    stages: [],
+    rounds: [],
+    matches: [],
+    match_sides: [],
+    match_check_ins: [],
+    result_reviews: [],
+    standings: [],
+    prize_allocations: [],
+    prize_contributions: [],
+    hosts: []
+  };
+}
+
 export default async function TournamentDetailPage({
   params,
   searchParams
@@ -330,6 +954,11 @@ export default async function TournamentDetailPage({
     announcement_archived?: string;
     livestream_saved?: string;
     livestream_archived?: string;
+    bracket?: string;
+    funding?: string;
+    streams?: string;
+    entrants?: string;
+    updates?: string;
   }>;
 }) {
   const user = await getCurrentUser();
@@ -345,26 +974,31 @@ export default async function TournamentDetailPage({
     announcement_published: announcementPublished,
     announcement_archived: announcementArchived,
     livestream_saved: livestreamSaved,
-    livestream_archived: livestreamArchived
+    livestream_archived: livestreamArchived,
+    bracket,
+    funding,
+    streams,
+    entrants: entrantsViewParam,
+    updates
   } = await searchParams;
+  const bracketView = bracket === "full" ? "full" : "summary";
+  const fundingView = funding === "full" ? "full" : "summary";
+  const streamsView = streams === "full" ? "full" : "summary";
+  const entrantsView = entrantsViewParam === "full" ? "full" : "summary";
+  const updatesView = updates === "full" ? "full" : "summary";
 
   let detail: TournamentDetail | null = null;
-  let events: TournamentStateEvent[] = [];
-  let announcements: CommunityAnnouncement[] = [];
-  let livestreams: CommunityLivestreamLink[] = [];
-  let manageableAnnouncements: CommunityAnnouncement[] = [];
-  let manageableLivestreams: CommunityLivestreamLink[] = [];
   let walletOverview: WalletOverview | null = null;
   let loadError: string | null = null;
 
   try {
-    const result = await getTournamentDetail(tournamentId);
-    detail = result.tournament;
-    events = result.events;
-    const announcementResult = await listCommunityAnnouncements({ scope: "tournament", tournament_id: tournamentId, limit: 12 });
-    announcements = announcementResult.announcements;
-    const livestreamResult = await listAccessibleLivestreams({ target_type: "tournament", tournament_id: tournamentId });
-    livestreams = livestreamResult.livestreams;
+    const summaryResult = await getTournamentSummary(tournamentId);
+    const entrantResult = entrantsView === "full" ? await getTournamentEntrants(tournamentId, "full") : null;
+    detail = {
+      ...tournamentSummaryDetail(summaryResult.tournament),
+      entries: entrantResult?.entries ?? summaryResult.viewer_entries ?? [],
+      entry_members: entrantResult?.entry_members ?? summaryResult.viewer_entry_members ?? []
+    };
   } catch {
     loadError = "This tournament could not be loaded. Check the link and try again.";
   }
@@ -414,20 +1048,6 @@ export default async function TournamentDetailPage({
   const walletAvailableMinor = walletCurrencyMatches && walletOverview ? walletOverview.account.available_balance_minor : 0;
   const hasEnoughTournamentBalance = walletAvailableMinor >= detail.entry_fee_amount_minor;
   const canManageAnnouncements = canAccessAdmin(user) || canManageTournamentAnnouncements(user.id, detail.hosts) || detail.created_by_user_id === user.id;
-  if (canManageAnnouncements) {
-    try {
-      const result = await listManageableAnnouncements({ scope: "tournament", tournament_id: tournamentId, limit: 20 });
-      manageableAnnouncements = result.announcements;
-      const livestreamResult = await listManageableLivestreams({ target_type: "tournament", tournament_id: tournamentId });
-      manageableLivestreams = livestreamResult.livestreams;
-    } catch {
-      loadError = loadError ?? "Tournament loaded, but host broadcast controls could not be loaded.";
-    }
-  }
-  const leaderboardRows = orderedStandings(detail);
-  const eligiblePrizeRows = prizeEligibleCount(detail);
-  const tiePolicy = configuredTiebreakers(detail);
-  const visualStages = bracketStages(detail);
   const lifecycle = lifecycleStatus(detail.status, [
     "published",
     "registration_open",
@@ -517,7 +1137,12 @@ export default async function TournamentDetailPage({
           </div>
         </MotionSection>
 
-        <LiveUpdateStream eventTypePrefixes={["tournament.", "notification."]} label="Tournament live" tournamentId={detail.id} />
+        <LiveUpdateStream autoConnect={false} eventTypePrefixes={["tournament.", "notification."]} label="Tournament live" tournamentId={detail.id} />
+        <div className="grid gap-2 sm:grid-cols-3">
+          <RealtimePatchStatus label="Tournament" targets={["tournament"]} />
+          <RealtimePatchStatus label="Funding" targets={["tournament-funding", "wallet"]} />
+          <RealtimePatchStatus label="Results" targets={["tournament-result"]} />
+        </div>
 
         <div className="grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <Reveal staggerIndex={0}><StatusPanel detail={registrationDetail} label="Registration" tone="cyan" value={registrationTitle} /></Reveal>
@@ -640,283 +1265,59 @@ export default async function TournamentDetailPage({
             </div>
           </Panel>
 
-          <Panel>
-            <PanelHeader
-              eyebrow="Broadcast"
-              title="Livestream and watch links"
-              description="Official event streams and watch-party links posted by operators or tournament hosts."
-            />
-            {livestreams.length ? (
-              <div className="grid gap-4 p-4">
-                {hasEmbeddableLivestream(livestreams) ? (
-                  <div className="grid gap-4 xl:grid-cols-[minmax(0,1.3fr)_minmax(0,0.7fr)]">
-                    <div className="motion-state-card motion-glow overflow-hidden rounded-md border border-line bg-black">
-                      <iframe
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                        allowFullScreen
-                        className="aspect-video w-full"
-                        referrerPolicy="strict-origin-when-cross-origin"
-                        src={livestreams.find((item) => item.embed_url)?.embed_url ?? undefined}
-                        title={livestreams.find((item) => item.embed_url)?.title ?? "Tournament livestream"}
-                      />
-                    </div>
-                    <div className="grid gap-3">
-                      {livestreams.map((item) => (
-                        <a
-                          className="motion-flow-card rounded-md border border-line bg-white p-4 transition hover:border-action hover:bg-surfaceHigh"
-                          href={item.stream_url}
-                          key={item.id}
-                          rel="noreferrer"
-                          target="_blank"
-                        >
-                          <div className="flex flex-wrap items-center gap-2">
-                            <Badge tone={item.is_featured ? "success" : "cyan"}>{item.provider}</Badge>
-                            <Badge tone="neutral">{item.visibility}</Badge>
-                          </div>
-                          <h2 className="mt-3 text-base font-black text-ink">{item.title}</h2>
-                          <p className="mt-2 text-sm text-muted">
-                            {item.embed_url ? "Embedded watch available here." : "Opens on the provider because inline embed is not trusted for this source."}
-                          </p>
-                        </a>
-                      ))}
-                    </div>
-                  </div>
-                ) : (
-                  <div className="grid gap-3 md:grid-cols-2">
-                    {livestreams.map((item) => (
-                      <a
-                        className="motion-flow-card rounded-md border border-line bg-white p-4 transition hover:border-action hover:bg-surfaceHigh"
-                        href={item.stream_url}
-                        key={item.id}
-                        rel="noreferrer"
-                        target="_blank"
-                      >
-                        <div className="flex flex-wrap items-center gap-2">
-                          <Badge tone={item.is_featured ? "success" : "cyan"}>{item.provider}</Badge>
-                          <Badge tone="neutral">{item.visibility}</Badge>
-                        </div>
-                        <h2 className="mt-3 text-base font-black text-ink">{item.title}</h2>
-                        <p className="mt-2 text-sm text-muted">Open stream on {item.provider}.</p>
-                      </a>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="p-4">
-                <EmptyState title="No livestream links yet" description="When hosts publish a watch link, it will appear here for the event." />
-              </div>
-            )}
-          </Panel>
-
-          <Panel>
-            <PanelHeader
-              eyebrow="Announcements"
-              title="Tournament updates"
-              description="Published host and operator updates for this event."
-            />
-            {announcements.length ? (
-              <div className="grid gap-3 p-4">
-                {announcements.map((item) => (
-                  <Link
-                    className="rounded-md border border-line bg-white p-4 transition hover:border-action hover:bg-surfaceHigh"
-                    href={`/community/announcements/${encodeURIComponent(item.id)}`}
-                    key={item.id}
-                  >
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Badge tone={item.priority === "critical" ? "danger" : item.priority === "high" ? "warning" : "cyan"}>{item.priority}</Badge>
-                      <Badge tone="neutral">{item.category.replaceAll("_", " ")}</Badge>
-                    </div>
-                    <h2 className="mt-3 text-base font-black text-ink">{item.title}</h2>
-                    <p className="mt-2 text-sm leading-6 text-muted">{item.summary}</p>
-                    <p className="mt-3 text-xs font-bold uppercase tracking-[0.12em] text-muted">
-                      {new Date(item.published_at ?? item.created_at).toLocaleString("en-NG")}
-                    </p>
-                  </Link>
-                ))}
-              </div>
-            ) : (
-              <div className="p-4">
-                <EmptyState title="No published updates yet" description="Tournament hosts and operators can post public updates here." />
-              </div>
-            )}
-          </Panel>
-
-          {canManageAnnouncements ? (
+          {streamsView === "full" ? (
+            <Suspense fallback={<TournamentSectionFallback eyebrow="Broadcast" title="Livestream and watch links" />}>
+              <TournamentBroadcastSection tournamentId={detail.id} />
+            </Suspense>
+          ) : (
             <Panel>
               <PanelHeader
-                eyebrow="Host Broadcast"
-                title="Manage livestream links"
-                description="Attach official watch links for YouTube, Twitch, Facebook, TikTok, Kick, or another safe HTTPS destination."
+                eyebrow="Broadcast"
+                title="Livestream and watch links"
+                description="Watch links load only when opened so tournament details stay quick."
               />
-              <div className="grid gap-5 p-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-                <form action={createTournamentLivestreamAction} className="motion-flow-card grid gap-3 rounded-md border border-line bg-white p-4">
-                  <input name="tournament_id" type="hidden" value={detail.id} />
-                  <div className="grid gap-3 md:grid-cols-2">
-                    <label className="grid gap-2 text-sm font-bold text-ink">
-                      Provider
-                      <select className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="provider">
-                        <option value="youtube">YouTube</option>
-                        <option value="twitch">Twitch</option>
-                        <option value="facebook">Facebook</option>
-                        <option value="tiktok">TikTok</option>
-                        <option value="kick">Kick</option>
-                        <option value="generic">Generic HTTPS</option>
-                      </select>
-                    </label>
-                    <label className="grid gap-2 text-sm font-bold text-ink">
-                      Visibility
-                      <select className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="visibility">
-                        <option value="public">Public</option>
-                        <option value="participants">Participants</option>
-                      </select>
-                    </label>
-                  </div>
-                  <label className="grid gap-2 text-sm font-bold text-ink">
-                    Title
-                    <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" maxLength={140} name="title" required />
-                  </label>
-                  <label className="grid gap-2 text-sm font-bold text-ink">
-                    Stream URL
-                    <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="stream_url" required type="url" />
-                  </label>
-                  <div className="grid gap-3 md:grid-cols-2">
-                    <label className="grid gap-2 text-sm font-bold text-ink">
-                      Display order
-                      <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" defaultValue={0} name="display_order" type="number" />
-                    </label>
-                    <label className="flex min-h-11 items-center gap-2 rounded-md border border-line bg-white px-3 text-sm font-bold text-ink">
-                      <input name="is_featured" type="checkbox" />
-                      Featured stream
-                    </label>
-                  </div>
-                  <SubmitButton idleLabel="Save livestream" pendingLabel="Saving livestream..." />
-                </form>
-
-                <div className="grid gap-3 rounded-md border border-line bg-white p-4">
-                  {manageableLivestreams.length ? (
-                    manageableLivestreams.map((item) => (
-                      <div className="motion-flow-card rounded-md border border-line bg-surfaceWarm p-4" key={item.id}>
-                        <div className="flex flex-wrap items-center gap-2">
-                          <Badge tone={item.status === "active" ? "success" : "danger"}>{item.status}</Badge>
-                          <Badge tone="cyan">{item.provider}</Badge>
-                        </div>
-                        <h3 className="mt-3 text-base font-black text-ink">{item.title}</h3>
-                        <p className="mt-2 text-sm text-muted">{item.stream_url}</p>
-                        <div className="mt-3 flex flex-wrap gap-2">
-                          {item.status !== "archived" ? (
-                            <form action={archiveTournamentLivestreamAction}>
-                              <input name="tournament_id" type="hidden" value={detail.id} />
-                              <input name="livestream_id" type="hidden" value={item.id} />
-                              <SubmitButton idleLabel="Archive" pendingLabel="Archiving..." size="sm" variant="secondary" />
-                            </form>
-                          ) : null}
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <EmptyState title="No host livestreams yet" description="Saved tournament watch links will appear here." />
-                  )}
-                </div>
+              <div className="p-4">
+                <PendingLink
+                  className="inline-flex min-h-10 items-center justify-center rounded-md border border-line bg-white px-4 text-sm font-black text-ink hover:bg-surfaceHigh"
+                  href={`/tournaments/${encodeURIComponent(detail.id)}?streams=full`}
+                  pendingLabel="Loading streams..."
+                >
+                  Show watch links
+                </PendingLink>
               </div>
             </Panel>
-          ) : null}
+          )}
 
-          {canManageAnnouncements ? (
+          {updatesView === "full" ? (
+            <Suspense fallback={<TournamentSectionFallback eyebrow="Announcements" title="Tournament updates" />}>
+              <TournamentAnnouncementsSection tournamentId={detail.id} />
+            </Suspense>
+          ) : (
             <Panel>
               <PanelHeader
-                eyebrow="Host Controls"
-                title="Post a tournament update"
-                description="Creators, co-hosts, and operators can save drafts or publish public updates for this tournament."
+                eyebrow="Announcements"
+                title="Tournament updates"
+                description="Published updates load only when opened so tournament details stay quick."
               />
-              <div className="grid gap-5 p-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-                <form action={createTournamentAnnouncementAction} className="grid gap-3 rounded-md border border-line bg-white p-4">
-                  <input name="tournament_id" type="hidden" value={detail.id} />
-                  <div className="grid gap-3 md:grid-cols-2">
-                    <label className="grid gap-2 text-sm font-bold text-ink">
-                      Category
-                      <select className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="category">
-                        <option value="tournament_update">Tournament update</option>
-                        <option value="announcement">Announcement</option>
-                        <option value="winner_post">Winner post</option>
-                        <option value="sponsor_note">Sponsor note</option>
-                        <option value="incident">Incident</option>
-                      </select>
-                    </label>
-                    <label className="grid gap-2 text-sm font-bold text-ink">
-                      Priority
-                      <select className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="priority">
-                        <option value="normal">Normal</option>
-                        <option value="high">High</option>
-                        <option value="critical">Critical</option>
-                        <option value="low">Low</option>
-                      </select>
-                    </label>
-                  </div>
-                  <label className="grid gap-2 text-sm font-bold text-ink">
-                    Title
-                    <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" maxLength={140} name="title" required />
-                  </label>
-                  <label className="grid gap-2 text-sm font-bold text-ink">
-                    Summary <span className="text-xs font-bold text-muted">(optional)</span>
-                    <textarea className="min-h-20 rounded-md border border-line bg-white px-3 py-2 text-sm outline-none focus:border-action" maxLength={280} name="summary" placeholder="Leave blank to use the start of the body." />
-                  </label>
-                  <label className="grid gap-2 text-sm font-bold text-ink">
-                    Body
-                    <textarea className="min-h-32 rounded-md border border-line bg-white px-3 py-2 text-sm outline-none focus:border-action" maxLength={4000} name="body" required />
-                  </label>
-                  <div className="grid gap-3 md:grid-cols-2">
-                    <label className="grid gap-2 text-sm font-bold text-ink">
-                      CTA label <span className="text-xs font-bold text-muted">(optional)</span>
-                      <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="cta_label" placeholder="Example: View bracket" />
-                    </label>
-                    <label className="grid gap-2 text-sm font-bold text-ink">
-                      CTA URL <span className="text-xs font-bold text-muted">(optional)</span>
-                      <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="cta_url" placeholder="Add only if this update needs a button." type="url" />
-                    </label>
-                  </div>
-                  <label className="flex min-h-11 items-center gap-2 rounded-md border border-line bg-white px-3 text-sm font-bold text-ink">
-                    <input name="publish_now" type="checkbox" />
-                    Publish immediately
-                  </label>
-                  <SubmitButton idleLabel="Save update" pendingLabel="Saving update..." />
-                </form>
-
-                <div className="grid gap-3 rounded-md border border-line bg-white p-4">
-                  {manageableAnnouncements.length ? (
-                    manageableAnnouncements.map((item) => (
-                      <div className="rounded-md border border-line bg-surfaceWarm p-4" key={item.id}>
-                        <div className="flex flex-wrap items-center gap-2">
-                          <Badge tone={item.status === "published" ? "success" : item.status === "archived" ? "danger" : "warning"}>{item.status}</Badge>
-                          <Badge tone={item.priority === "critical" ? "danger" : item.priority === "high" ? "warning" : "cyan"}>{item.priority}</Badge>
-                        </div>
-                        <h3 className="mt-3 text-base font-black text-ink">{item.title}</h3>
-                        <p className="mt-2 text-sm text-muted">{item.summary}</p>
-                        <div className="mt-3 flex flex-wrap gap-2">
-                          {item.status !== "published" ? (
-                            <form action={publishTournamentAnnouncementAction}>
-                              <input name="tournament_id" type="hidden" value={detail.id} />
-                              <input name="announcement_id" type="hidden" value={item.id} />
-                              <SubmitButton idleLabel="Publish" pendingLabel="Publishing..." size="sm" variant="secondary" />
-                            </form>
-                          ) : null}
-                          {item.status !== "archived" ? (
-                            <form action={archiveTournamentAnnouncementAction}>
-                              <input name="tournament_id" type="hidden" value={detail.id} />
-                              <input name="announcement_id" type="hidden" value={item.id} />
-                              <SubmitButton idleLabel="Archive" pendingLabel="Archiving..." size="sm" variant="secondary" />
-                            </form>
-                          ) : null}
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <EmptyState title="No host updates yet" description="Draft and published tournament posts will appear here." />
-                  )}
-                </div>
+              <div className="p-4">
+                <PendingLink
+                  className="inline-flex min-h-10 items-center justify-center rounded-md border border-line bg-white px-4 text-sm font-black text-ink hover:bg-surfaceHigh"
+                  href={`/tournaments/${encodeURIComponent(detail.id)}?updates=full`}
+                  pendingLabel="Loading updates..."
+                >
+                  Show updates
+                </PendingLink>
               </div>
             </Panel>
-          ) : null}
+          )}
+
+          <Suspense fallback={<TournamentSectionFallback eyebrow="Host Broadcast" title="Manage livestream links" />}>
+            <TournamentHostBroadcastSection tournamentId={detail.id} canAttemptManage={canManageAnnouncements} />
+          </Suspense>
+
+          <Suspense fallback={<TournamentSectionFallback eyebrow="Host Controls" title="Post a tournament update" />}>
+            <TournamentHostAnnouncementsSection tournamentId={detail.id} canAttemptManage={canManageAnnouncements} />
+          </Suspense>
 
           <Panel>
             <PanelHeader eyebrow="Contribution" title="Submit prize or entry funding" />
@@ -1049,40 +1450,9 @@ export default async function TournamentDetailPage({
         </div>
 
         <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1fr)_24rem]">
-          <Panel>
-            <PanelHeader
-              description="Prize records are explicit so manual payout and future provider automation can reconcile cleanly."
-              eyebrow="Prizes"
-              title="Prize pool and allocations"
-            />
-            <div className="grid gap-4 p-4 lg:grid-cols-2">
-              <div className="motion-premium-panel motion-flow-card rounded-md border border-line bg-surfaceWarm p-4">
-                <p className="font-mono text-xs font-black uppercase tracking-[0.12em] text-dim">Projected or approved</p>
-                <strong className="mt-2 block text-3xl font-black text-success">{formatMinorMoney(detail.currency, prize)}</strong>
-                <p className="mt-2 text-sm font-bold text-muted">{displayEnumLabel(detail.prize_distribution_mode)} distribution</p>
-              </div>
-              <div className="motion-premium-panel motion-flow-card rounded-md border border-line bg-surfaceWarm p-4">
-                <p className="font-mono text-xs font-black uppercase tracking-[0.12em] text-dim">Contribution records</p>
-                <strong className="mt-2 block text-3xl font-black text-ink">{detail.prize_contributions.length}</strong>
-                <p className="mt-2 text-sm font-bold text-muted">Participant, sponsor, platform, and manual adjustment records</p>
-              </div>
-            </div>
-            {detail.prize_allocations.length ? (
-              <DataTable
-                columns={[
-                  { key: "rank", label: "Rank", render: (row) => <span className="font-mono text-xs font-bold text-ink">{row.rank ?? "Entry"}</span> },
-                  { key: "amount_minor", label: "Amount", render: (row) => <span className="font-bold text-ink">{formatMinorMoney(row.currency, row.amount_minor)}</span> },
-                  { key: "status", label: "Status", render: (row) => <Badge tone={statusTone(row.status)}>{displayEnumLabel(row.status)}</Badge> },
-                  { key: "notes", label: "Notes", render: (row) => <span className="text-muted">{row.notes ?? "No note"}</span> }
-                ]}
-                rows={detail.prize_allocations}
-              />
-            ) : (
-              <div className="p-4 pt-0">
-                <EmptyState description="Prize allocations will appear after operators configure payout ranks or fixed awards." title="No prize allocations yet" />
-              </div>
-            )}
-          </Panel>
+          <Suspense fallback={<TournamentSectionFallback eyebrow="Prizes" title="Prize pool and allocations" />}>
+            <TournamentFundingSection tournament={detail} view={fundingView} />
+          </Suspense>
 
           <Panel>
             <PanelHeader eyebrow="Registration" title="Entry readiness" />
@@ -1160,7 +1530,29 @@ export default async function TournamentDetailPage({
             eyebrow="Entrants"
             title="Registered entries"
           />
-          {detail.entries.length ? (
+          {entrantsView === "summary" ? (
+            <div className="grid gap-3 p-4 sm:grid-cols-3">
+              <div className="rounded-md border border-line bg-surfaceWarm p-4">
+                <p className="font-mono text-xs font-black uppercase tracking-[0.12em] text-dim">Registered</p>
+                <p className="mt-2 text-2xl font-black text-ink">{entries}/{detail.max_entries}</p>
+              </div>
+              <div className="rounded-md border border-line bg-surfaceWarm p-4">
+                <p className="font-mono text-xs font-black uppercase tracking-[0.12em] text-dim">Checked in</p>
+                <p className="mt-2 text-2xl font-black text-ink">{checkedIn}</p>
+              </div>
+              <div className="rounded-md border border-line bg-surfaceWarm p-4">
+                <p className="font-mono text-xs font-black uppercase tracking-[0.12em] text-dim">Your entry</p>
+                <p className="mt-2 text-2xl font-black text-ink">{myEntry ? displayEnumLabel(myEntry.status) : "Not entered"}</p>
+              </div>
+              <PendingLink
+                className="inline-flex min-h-10 items-center justify-center rounded-md border border-line bg-white px-4 text-sm font-black text-ink hover:bg-surfaceHigh sm:col-span-3"
+                href={`/tournaments/${encodeURIComponent(detail.id)}?entrants=full`}
+                pendingLabel="Loading roster..."
+              >
+                Show full roster
+              </PendingLink>
+            </div>
+          ) : detail.entries.length ? (
             <DataTable
               columns={[
                 {
@@ -1195,247 +1587,28 @@ export default async function TournamentDetailPage({
           ) : (
             <div className="p-4">
               <EmptyState description="Entries will appear as players register from this page." title="No registered entries yet" />
+              <PendingLink className="mt-3 inline-flex min-h-10 items-center justify-center rounded-md border border-line bg-white px-4 text-sm font-black text-ink hover:bg-surfaceHigh" href={`/tournaments/${encodeURIComponent(detail.id)}`} pendingLabel="Loading summary...">
+                Back to summary
+              </PendingLink>
             </div>
           )}
+          {entrantsView === "full" && detail.entries.length ? (
+            <div className="border-t border-line p-4">
+              <PendingLink className="inline-flex min-h-10 items-center justify-center rounded-md border border-line bg-white px-4 text-sm font-black text-ink hover:bg-surfaceHigh" href={`/tournaments/${encodeURIComponent(detail.id)}`} pendingLabel="Loading summary...">
+                Back to summary
+              </PendingLink>
+            </div>
+          ) : null}
         </Panel>
 
-        {detail.standings.length ? (
-          <Panel>
-            <PanelHeader
-              description="Placements, points, records, tie-breakers, and prize eligibility are calculated from approved tournament results and explicit prize allocation records."
-              eyebrow="Leaderboard"
-              title="Tournament standings"
-            />
-            <div className="grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-4">
-              <div className="rounded-md border border-line bg-surfaceWarm p-4">
-                <p className="font-mono text-xs font-black uppercase tracking-[0.12em] text-dim">Ranked entries</p>
-                <p className="mt-2 text-2xl font-black text-ink">{detail.standings.length}</p>
-                <p className="mt-1 text-sm font-bold text-muted">Across {new Set(detail.standings.map((standing) => standing.stage_id ?? "overall")).size} table scopes</p>
-              </div>
-              <div className="rounded-md border border-line bg-surfaceWarm p-4">
-                <p className="font-mono text-xs font-black uppercase tracking-[0.12em] text-dim">Prize eligible</p>
-                <p className="mt-2 text-2xl font-black text-success">{eligiblePrizeRows}</p>
-                <p className="mt-1 text-sm font-bold text-muted">Backed by allocation rows</p>
-              </div>
-              <div className="rounded-md border border-line bg-surfaceWarm p-4">
-                <p className="font-mono text-xs font-black uppercase tracking-[0.12em] text-dim">Top points</p>
-                <p className="mt-2 text-2xl font-black text-ink">{bestPoints(detail)}</p>
-                <p className="mt-1 text-sm font-bold text-muted">{displayEnumLabel(detail.scoring_mode)} scoring</p>
-              </div>
-              <div className="rounded-md border border-line bg-surfaceWarm p-4">
-                <p className="font-mono text-xs font-black uppercase tracking-[0.12em] text-dim">Tie policy</p>
-                <p className="mt-2 text-sm font-black text-ink [overflow-wrap:anywhere]">
-                  {tiePolicy.length
-                    ? tiePolicy.map((item) => displayEnumLabel(item)).join(", ")
-                    : "Default rank, points, and score rules"}
-                </p>
-              </div>
-            </div>
-            <DataTable
-              columns={[
-                { key: "rank", label: "Place", render: (row) => <span className="font-mono text-xs font-black text-ink">{rankLabel(row.rank)}</span> },
-                {
-                  key: "entry_id",
-                  label: "Entry",
-                  render: (row) => (
-                    <div>
-                      <strong className="text-ink">{standingEntryLabel(row, detail)}</strong>
-                      <p className="mt-1 text-xs font-bold text-muted">{standingSeed(row)}</p>
-                    </div>
-                  )
-                },
-                { key: "stage_id", label: "Stage", render: (row) => <span className="text-sm font-bold text-muted">{standingStageLabel(row, detail)}</span> },
-                { key: "record", label: "Record", render: (row) => <span className="font-mono text-xs font-bold text-ink">{standingRecord(row)}</span> },
-                { key: "points", label: "Pts", render: (row) => <span className="font-mono text-xs font-black text-ink">{row.points}</span> },
-                {
-                  key: "tiebreakers",
-                  label: "Tie-breakers",
-                  render: (row) => <span className="text-sm font-bold text-muted">{tiebreakerSummary(row)}</span>
-                },
-                {
-                  key: "prize",
-                  label: "Prize eligibility",
-                  render: (row) => {
-                    const allocation = prizeAllocationForStanding(row, detail);
-                    return allocation ? (
-                      <div>
-                        <span className="font-black text-success">{formatMinorMoney(allocation.currency, allocation.amount_minor)}</span>
-                        <p className="mt-1 text-xs font-bold text-muted">{displayEnumLabel(allocation.status)}</p>
-                      </div>
-                    ) : (
-                      <span className="text-sm font-bold text-muted">Not in payout band</span>
-                    );
-                  }
-                }
-              ]}
-              rows={leaderboardRows}
-            />
-          </Panel>
-        ) : null}
+        <Suspense fallback={<TournamentSectionFallback eyebrow="Competition" title="Bracket and standings" />}>
+          <TournamentCompetitionSections tournament={detail} view={bracketView} />
+        </Suspense>
 
-        {visualStages.length ? (
-          <Panel>
-            <PanelHeader
-              description="Round-by-round view of generated tournament matches, including unresolved slots, byes, linked match rooms, and reviewed outcomes."
-              eyebrow="Bracket"
-              title="Competition map"
-            />
-            <div className="grid gap-5 p-4">
-              {visualStages.map((stage) => {
-                const stageRounds = roundsForStage(stage, detail);
-                const progress = stageProgress(stage, detail);
-                return (
-                  <section className="motion-bracket-reveal min-w-0 rounded-md border border-line bg-white" key={stage.id}>
-                    <div className="flex flex-wrap items-start justify-between gap-3 border-b border-line p-4">
-                      <div className="min-w-0">
-                        <div className="flex flex-wrap gap-2">
-                          <Badge tone={statusTone(stage.status)}>{displayEnumLabel(stage.status)}</Badge>
-                          <Badge tone="cyan">{displayEnumLabel(stage.stage_type)}</Badge>
-                        </div>
-                        <h2 className="mt-2 break-words text-lg font-black text-ink [overflow-wrap:anywhere]">{stage.name}</h2>
-                      </div>
-                      <div className="rounded-md border border-line bg-surfaceWarm px-3 py-2 text-right">
-                        <p className="font-mono text-[0.65rem] font-black uppercase tracking-[0.12em] text-dim">Progress</p>
-                        <p className="mt-1 text-sm font-black text-ink">{progress.completed}/{progress.total} matches</p>
-                      </div>
-                    </div>
-                    <div className="overflow-x-auto p-4">
-                      <div className="grid min-w-[48rem] auto-cols-[minmax(15rem,1fr)] grid-flow-col gap-4">
-                        {stageRounds.map(({ round, matches }) => (
-                          <div className="grid content-start gap-3" key={round.id}>
-                            <div className="rounded-md border border-line bg-surfaceWarm p-3">
-                              <p className="font-mono text-[0.65rem] font-black uppercase tracking-[0.12em] text-dim">Round {round.round_number}</p>
-                              <p className="mt-1 text-sm font-black text-ink [overflow-wrap:anywhere]">{round.name}</p>
-                              <p className="mt-1 text-xs font-bold text-muted">{matches.length} matches</p>
-                            </div>
-                            {matches.map((match) => {
-                              const sides = matchSides(match, detail);
-                              return (
-                                <article className="motion-flow-card rounded-md border border-line bg-white p-3 shadow-tight" key={match.id}>
-                                  <div className="flex items-start justify-between gap-2">
-                                    <div>
-                                      <p className="font-mono text-[0.65rem] font-black uppercase tracking-[0.12em] text-dim">Match {match.match_number}</p>
-                                      <Badge tone={statusTone(match.status)}>{displayEnumLabel(match.status)}</Badge>
-                                    </div>
-                                    {match.match_room_id ? (
-                                      <PendingLink className="shrink-0 rounded-md border border-line bg-white px-2 py-1 text-xs font-black text-cyan hover:bg-surfaceHigh" href={`/matches/${match.match_room_id}`} pendingLabel="Opening room...">
-                                        Room
-                                      </PendingLink>
-                                    ) : null}
-                                  </div>
-                                  <div className="mt-3 grid gap-2">
-                                    {sides.length ? sides.map((side) => (
-                                      <div className="grid min-h-11 grid-cols-[minmax(0,1fr)_auto] items-center gap-2 rounded-md border border-line bg-surfaceWarm px-3 py-2" key={side.id}>
-                                        <span className="min-w-0 text-sm font-black text-ink [overflow-wrap:anywhere]">{sideEntryLabel(side, detail)}</span>
-                                        <Badge tone={sideResultTone(side)}>{displayEnumLabel(side.result)}</Badge>
-                                      </div>
-                                    )) : (
-                                      <div className="rounded-md border border-line bg-surfaceWarm px-3 py-2 text-sm font-bold text-muted">Entrants pending</div>
-                                    )}
-                                  </div>
-                                  <p className="mt-3 text-xs font-bold text-muted [overflow-wrap:anywhere]">
-                                    {match.result_summary ?? formatDate(match.scheduled_at)}
-                                  </p>
-                                </article>
-                              );
-                            })}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </section>
-                );
-              })}
-            </div>
-          </Panel>
-        ) : null}
+        <Suspense fallback={<TournamentSectionFallback eyebrow="Reviews" title="Result reviews" />}>
+          <TournamentResultReviewsSection tournamentId={detail.id} viewerHasSensitiveAuditAccess={viewerHasSensitiveAuditAccess} />
+        </Suspense>
 
-        <Panel>
-          <PanelHeader
-            description="Stages, rounds, and matches will fill in as operators seed and generate the tournament structure."
-            eyebrow="Competition"
-            title="Stages and matches"
-          />
-          {detail.stages.length ? (
-            <DataTable
-              columns={[
-                { key: "name", label: "Stage", render: (row) => <strong className="text-ink">{row.name}</strong> },
-                { key: "stage_type", label: "Type", render: (row) => <span className="font-bold text-muted">{displayEnumLabel(row.stage_type)}</span> },
-                { key: "status", label: "Status", render: (row) => <Badge tone={statusTone(row.status)}>{displayEnumLabel(row.status)}</Badge> },
-                { key: "rounds", label: "Rounds", render: (row) => <span className="font-mono text-xs font-bold text-ink">{countRoundsForStage(row, detail.rounds)}</span> },
-                { key: "matches", label: "Matches", render: (row) => <span className="font-mono text-xs font-bold text-ink">{countMatchesForStage(row, detail.matches)}</span> }
-              ]}
-              rows={detail.stages}
-            />
-          ) : (
-            <div className="p-4">
-              <EmptyState description="When seeding begins, generated groups, brackets, rounds, and linked match rooms will appear here." title="Structure not generated yet" />
-            </div>
-          )}
-        </Panel>
-
-        {detail.matches.length ? (
-          <Panel>
-            <PanelHeader eyebrow="Matches" title="Tournament match rooms" />
-            <DataTable
-              columns={[
-                { key: "match_number", label: "Match", render: (row) => <span className="font-mono text-xs font-bold text-ink">#{row.match_number}</span> },
-                { key: "entrants", label: "Entrants", render: (row) => <span className="text-sm font-bold text-ink">{matchEntrants(row, detail)}</span> },
-                { key: "status", label: "Status", render: (row) => <Badge tone={statusTone(row.status)}>{displayEnumLabel(row.status)}</Badge> },
-                { key: "scheduled_at", label: "Scheduled", render: (row) => <span className="text-muted">{formatDate(row.scheduled_at)}</span> },
-                {
-                  key: "match_room_id",
-                  label: "Room",
-                  render: (row) =>
-                    row.match_room_id ? (
-                      <PendingLink className="font-black text-cyan hover:text-action" href={`/matches/${row.match_room_id}`} pendingLabel="Opening room...">
-                        Open room
-                      </PendingLink>
-                    ) : (
-                      <span className="text-muted">Not linked</span>
-                    )
-                },
-                { key: "result_summary", label: "Result", render: (row) => <span className="text-muted">{row.result_summary ?? "Pending"}</span> }
-              ]}
-              rows={detail.matches}
-            />
-          </Panel>
-        ) : null}
-
-        <Panel>
-          <PanelHeader
-            description={
-              viewerHasSensitiveAuditAccess
-                ? "Important tournament changes are kept here so the team can review support, payment, and dispute decisions."
-                : "Major tournament updates stay visible here without showing private payment or review details."
-            }
-            eyebrow={viewerHasSensitiveAuditAccess ? "Team History" : "Updates"}
-            title={viewerHasSensitiveAuditAccess ? "Tournament history" : "Tournament updates"}
-          />
-          <div className="grid gap-4 p-4">
-            <Timeline items={buildAuditTimeline(events)} />
-            {events.length ? (
-              <DataTable
-                columns={
-                  viewerHasSensitiveAuditAccess
-                    ? [
-                        { key: "created_at", label: "When", render: (row) => <span className="font-mono text-xs font-bold text-muted">{formatDate(row.created_at)}</span> },
-                        { key: "status", label: "State", render: (row) => <Badge tone={statusTone(row.to_status)}>{displayEnumLabel(row.to_status)}</Badge> },
-                        { key: "reason", label: "Reason", render: (row) => <span className="font-bold text-ink">{row.reason.replaceAll("_", " ")}</span> },
-                        { key: "actor_user_id", label: "Actor", render: (row) => <span className="font-mono text-xs font-bold text-muted [overflow-wrap:anywhere]">{row.actor_user_id ?? "System"}</span> },
-                        { key: "metadata", label: "Metadata", render: (row) => <span className="text-sm font-bold text-muted">{eventMetadataSummary(row)}</span> }
-                      ]
-                    : [
-                        { key: "created_at", label: "When", render: (row) => <span className="font-mono text-xs font-bold text-muted">{formatDate(row.created_at)}</span> },
-                        { key: "status", label: "State", render: (row) => <Badge tone={statusTone(row.to_status)}>{displayEnumLabel(row.to_status)}</Badge> },
-                        { key: "reason", label: "Public-safe summary", render: (row) => <span className="font-bold text-ink">{row.reason.replaceAll("_", " ")}</span> }
-                      ]
-                }
-                rows={[...events].reverse().slice(0, 12)}
-              />
-            ) : null}
-          </div>
-        </Panel>
       </MotionSection>
     </AppShell>
   );

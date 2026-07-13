@@ -72,65 +72,36 @@ function projectedPrize(tournament: Tournament) {
   );
 }
 
-function filterByTab(tournaments: Tournament[], filter: TournamentBoardFilter) {
-  if (filter === "all") return tournaments;
-  if (filter === "in_progress") {
-    return tournaments.filter((tournament) =>
-      ["seeding", "in_progress", "awaiting_results", "under_review", "disputed", "settlement_pending"].includes(
-        tournament.status
-      )
-    );
-  }
-  return tournaments.filter((tournament) => tournament.status === filter);
-}
-
-function sortTournaments(tournaments: Tournament[]) {
-  const rank: Record<TournamentStatus, number> = {
-    registration_open: 1,
-    published: 2,
-    registration_locked: 3,
-    seeding: 4,
-    in_progress: 5,
-    awaiting_results: 6,
-    under_review: 7,
-    disputed: 8,
-    settlement_pending: 9,
-    refunded: 10,
-    completed: 11,
-    draft: 12,
-    cancelled: 13,
-    voided: 14
-  };
-
-  return [...tournaments].sort((left, right) => {
-    const statusRank = rank[left.status] - rank[right.status];
-    if (statusRank !== 0) return statusRank;
-    return Date.parse(left.starts_at ?? left.created_at) - Date.parse(right.starts_at ?? right.created_at);
-  });
+function statusForFilter(filter: TournamentBoardFilter): TournamentStatus | undefined {
+  if (filter === "registration_open" || filter === "completed") return filter;
+  if (filter === "in_progress") return "in_progress";
+  return undefined;
 }
 
 export default async function TournamentsPage({
   searchParams
 }: {
-  searchParams: Promise<{ filter?: TournamentBoardFilter }>;
+  searchParams: Promise<{ filter?: TournamentBoardFilter; cursor?: string }>;
 }) {
   const user = await getCurrentUser();
   if (!user) redirect("/sign-in?redirect=/tournaments");
-  const { filter = "all" } = await searchParams;
+  const { filter = "all", cursor } = await searchParams;
   const activeFilter: TournamentBoardFilter = ["all", "registration_open", "in_progress", "completed"].includes(filter)
     ? filter
     : "all";
 
   let tournaments: Tournament[] = [];
+  let nextCursor: string | null = null;
   let highlights: CommunityTournamentHighlightCard[] = [];
   let loadError: string | null = null;
 
   try {
     const [result, highlightResult] = await Promise.all([
-      listTournaments({ limit: 100 }),
+      listTournaments({ status: statusForFilter(activeFilter), cursor, limit: 24 }),
       listCommunityHighlights(6)
     ]);
-    tournaments = sortTournaments(result.tournaments.filter((tournament) => visibleStatuses.includes(tournament.status)));
+    tournaments = result.tournaments.filter((tournament) => visibleStatuses.includes(tournament.status));
+    nextCursor = result.next_cursor;
     highlights = highlightResult.tournament_highlights;
   } catch {
     loadError = "Unable to load tournaments right now. Check your session and try again.";
@@ -158,7 +129,7 @@ export default async function TournamentsPage({
     team_size_label: `${tournament.team_size_min}-${tournament.team_size_max}`
   }));
   const openCount = tournaments.filter((tournament) => tournament.status === "registration_open").length;
-  const liveCount = filterByTab(tournaments, "in_progress").length;
+  const liveCount = tournaments.filter((tournament) => ["seeding", "in_progress", "awaiting_results", "under_review", "disputed", "settlement_pending"].includes(tournament.status)).length;
   const completedCount = tournaments.filter((tournament) => tournament.status === "completed").length;
   const totalPrize = tournaments.reduce((sum, tournament) => sum + projectedPrize(tournament), 0);
 
@@ -237,7 +208,7 @@ export default async function TournamentsPage({
         <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
           <Reveal>
           <Panel>
-            <TournamentBoardClient initialFilter={activeFilter} rows={tournamentBoardRows} />
+                <TournamentBoardClient initialFilter={activeFilter} nextCursor={nextCursor} rows={tournamentBoardRows} />
           </Panel>
           </Reveal>
 

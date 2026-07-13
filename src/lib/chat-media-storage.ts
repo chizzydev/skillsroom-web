@@ -1,5 +1,7 @@
 import { createHash } from "node:crypto";
 import { evidenceStorageProvider } from "./evidence-storage-provider";
+import { imageDimensions } from "./image-dimensions";
+import { generateImageThumbnail, thumbnailFileName } from "./media-thumbnails";
 
 export const chatImageMaxBytes = 8 * 1024 * 1024;
 export const chatDocumentMaxBytes = 12 * 1024 * 1024;
@@ -74,13 +76,30 @@ export async function storeChatMedia(input: { file: File; attachmentId: string }
     );
   }
   if (!rule.matches(bytes)) throw new Error("The file content does not match its file type.");
+  const dimensions = rule.attachmentType === "image" ? imageDimensions(bytes, rule.mimeType) : null;
   const storageKey = `chat-media-v1_${input.attachmentId}.${rule.extension}`;
-  await evidenceStorageProvider().writeFile(storageKey, bytes, { exclusive: true });
+  const thumbnail = rule.attachmentType === "image"
+    ? await generateImageThumbnail({ bytes, mimeType: rule.mimeType, fallbackDimensions: dimensions })
+    : null;
+  const provider = evidenceStorageProvider();
+  await provider.writeFile(storageKey, bytes, { exclusive: true, contentType: rule.mimeType });
+  if (thumbnail) {
+    try {
+      await provider.writeFile(thumbnailFileName(storageKey), thumbnail.bytes, { exclusive: true, contentType: thumbnail.mimeType });
+    } catch (error) {
+      await provider.deleteFile(storageKey).catch(() => undefined);
+      throw error;
+    }
+  }
   return {
     attachmentType: rule.attachmentType,
     storageKey,
     mimeType: rule.mimeType,
     byteSize: bytes.byteLength,
+    width: dimensions?.width ?? null,
+    height: dimensions?.height ?? null,
+    thumbnailWidth: thumbnail?.width ?? null,
+    thumbnailHeight: thumbnail?.height ?? null,
     sha256: createHash("sha256").update(bytes).digest("hex")
   };
 }
@@ -102,7 +121,11 @@ export function readChatImage(storageKey: string) {
 
 export async function deleteChatMedia(storageKey: string) {
   if (!/^chat-(?:image|media)-v1_[0-9a-f-]{36}\.(jpg|png|webp|pdf|doc|docx|odt|txt)$/i.test(storageKey)) return;
-  await evidenceStorageProvider().deleteFile(storageKey).catch(() => undefined);
+  const provider = evidenceStorageProvider();
+  await Promise.all([
+    provider.deleteFile(storageKey).catch(() => undefined),
+    provider.deleteFile(thumbnailFileName(storageKey)).catch(() => undefined)
+  ]);
 }
 
 export async function deleteChatImage(storageKey: string) {

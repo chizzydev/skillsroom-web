@@ -7,6 +7,8 @@ import { Panel, PanelHeader } from "@/components/ui/Panel";
 import { getCommunityAnnouncement } from "@/lib/match-room-api";
 import { shareMetadata, shareUrl } from "@/lib/share-cards";
 
+export const revalidate = 300;
+
 function tone(priority: "low" | "normal" | "high" | "critical"): BadgeTone {
   if (priority === "critical") return "danger";
   if (priority === "high") return "warning";

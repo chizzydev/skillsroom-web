@@ -16,6 +16,7 @@ export const metadata: Metadata = shareMetadata({
   description: "Recent winners, finished tournaments, and public highlights from the Skillsroom community.",
   path: "/community/highlights"
 });
+export const revalidate = 60;
 
 export default async function CommunityHighlightsPage() {
   let highlights: Awaited<ReturnType<typeof listCommunityHighlights>>["tournament_highlights"] = [];

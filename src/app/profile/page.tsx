@@ -17,7 +17,10 @@ import {
   getMyCommunityClan,
   getMyReferralProgram,
   getPlayerTrustSummary,
+  getProfileGameAccounts,
   getProfileMe,
+  getProfilePayoutProfile,
+  getProfileSettlementHistory,
   listGameCatalog,
   listStreamingAccounts,
   type Game,
@@ -36,6 +39,8 @@ import {
   upsertGameAccountAction,
   upsertPayoutProfileAction
 } from "./actions";
+
+export const dynamic = "force-dynamic";
 
 const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3100";
 
@@ -108,13 +113,20 @@ type ProfilePageProps = {
     streaming_removed?: string;
     streaming_saved?: string;
     streaming_synced?: string;
+    sections?: string;
   }>;
+};
+
+type ProfileSummaryData = Awaited<ReturnType<typeof getProfileMe>> & {
+  game_account_count?: number;
+  primary_game_account?: Partial<UserGameAccount> | null;
 };
 
 export default async function ProfilePage({ searchParams }: ProfilePageProps) {
   const params = await searchParams;
   const user = await getCurrentUser();
   if (!user) redirect("/sign-in?redirect=/profile");
+  const fullSections = params?.sections === "full";
 
   let profileData: Awaited<ReturnType<typeof getProfileMe>> | null = null;
   let trustData: Awaited<ReturnType<typeof getPlayerTrustSummary>>["trust"] | null = null;
@@ -126,22 +138,45 @@ export default async function ProfilePage({ searchParams }: ProfilePageProps) {
   let loadError: string | null = null;
 
   try {
-    const [profileResult, trustResult, clanResult, referralResult, googleResult, streamingResult, catalogResult] = await Promise.all([
-      getProfileMe(),
-      getPlayerTrustSummary(user.id),
-      getMyCommunityClan(),
-      getMyReferralProgram(),
-      getGoogleLinkStatus(),
-      listStreamingAccounts(),
-      listGameCatalog()
-    ]);
+    const profileResult = await getProfileMe("summary");
     profileData = profileResult;
-    trustData = trustResult.trust;
-    clanData = clanResult;
-    referralData = referralResult;
-    googleLinkStatus = googleResult;
-    streamingAccounts = streamingResult.accounts;
-    games = catalogResult.games;
+    if (fullSections) {
+      const [
+        trustResult,
+        clanResult,
+        referralResult,
+        googleResult,
+        streamingResult,
+        catalogResult,
+        gameAccountResult,
+        payoutProfileResult,
+        settlementResult
+      ] = await Promise.all([
+        getPlayerTrustSummary(user.id),
+        getMyCommunityClan(),
+        getMyReferralProgram(),
+        getGoogleLinkStatus(),
+        listStreamingAccounts(),
+        listGameCatalog(),
+        getProfileGameAccounts(),
+        getProfilePayoutProfile(),
+        getProfileSettlementHistory(10)
+      ]);
+      trustData = trustResult.trust;
+      clanData = clanResult;
+      referralData = referralResult;
+      googleLinkStatus = googleResult;
+      streamingAccounts = streamingResult.accounts;
+      games = catalogResult.games;
+      profileData = {
+        ...profileResult,
+        game_accounts: gameAccountResult.game_accounts,
+        payout_profile: payoutProfileResult.payout_profile,
+        payout_history: settlementResult.payout_history,
+        refund_history: settlementResult.refund_history,
+        risk_flags: profileResult.risk_flags ?? []
+      };
+    }
   } catch {
     loadError = "Unable to load your player profile.";
   }
@@ -155,7 +190,13 @@ export default async function ProfilePage({ searchParams }: ProfilePageProps) {
   const refundHistory = profileData?.refund_history ?? [];
   const referralSummary = referralData?.summary ?? { total: 0, pending_activation: 0, reward_issued: 0, reward_held: 0 };
   const referrals = referralData?.referrals ?? [];
-  const gameAccounts = profileData?.game_accounts ?? [];
+  const profileSummary = profileData as ProfileSummaryData | null;
+  const summaryPrimaryGameAccount = profileSummary?.primary_game_account ?? null;
+  const gameAccounts = profileData?.game_accounts?.length
+    ? profileData.game_accounts
+    : summaryPrimaryGameAccount
+      ? [summaryPrimaryGameAccount as UserGameAccount]
+      : [];
   const gameMap = new Map(games.map((game) => [game.id, game]));
   const betaLeadGame = games.find((game) => game.slug === "free-fire") ?? games[0] ?? null;
   const completion = profileData?.completion;
@@ -304,6 +345,24 @@ export default async function ProfilePage({ searchParams }: ProfilePageProps) {
           </Panel>
         </div>
 
+        {!fullSections ? (
+          <Panel>
+            <PanelHeader
+              eyebrow="Profile Sections"
+              title="Open full profile controls"
+              description="Game accounts, payout profile, clan, referrals, streaming accounts, and settlement history load separately from profile readiness."
+            />
+            <div className="grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-3">
+              <StatusPanel detail="Identity and readiness are already loaded." label="Bootstrap" tone="success" value="Fast" />
+              <StatusPanel detail={`${profileSummary?.game_account_count ?? gameAccounts.length} saved handles`} label="Game accounts" tone={gameAccounts.length ? "cyan" : "warning"} value={gameAccounts.length ? "Saved" : "Open"} />
+              <StatusPanel detail={payoutProfile ? payoutProfile.bank_name : "Add bank details before payouts"} label="Payout" tone={payoutProfile ? "success" : "warning"} value={payoutProfile ? "Ready" : "Open"} />
+              <Link className="inline-flex min-h-10 items-center justify-center rounded-md border border-line bg-white px-4 text-sm font-black text-ink hover:bg-surfaceHigh sm:col-span-2 lg:col-span-3" href="/profile?sections=full">
+                Show full profile sections
+              </Link>
+            </div>
+          </Panel>
+        ) : (
+        <>
         <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
           <Panel>
             <PanelHeader
@@ -983,6 +1042,8 @@ export default async function ProfilePage({ searchParams }: ProfilePageProps) {
             </div>
           </form>
         </Panel>
+        </>
+        )}
       </section>
     </AppShell>
   );

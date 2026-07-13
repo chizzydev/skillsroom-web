@@ -39,10 +39,11 @@ async function signedAttachmentUrl(channelSlug: string, attachmentId: string) {
   if (cached && cached.expiresAt > Date.now() + signedAttachmentUrlRefreshSkewMs) return cached.url;
 
   const response = await fetch(`/api/community/channels/${encodeURIComponent(channelSlug)}/attachments/${encodeURIComponent(attachmentId)}/url`, { headers: { accept: "application/json" }, cache: "no-store" });
-  const payload = await response.json() as ApiEnvelope<{ url: string; expires_in?: number }>;
+  const payload = await response.json() as ApiEnvelope<{ url: string; expires_in?: number; expires_at?: string }>;
   if (!response.ok || payload.ok !== true) throw new Error(payload.ok === false ? payload.error?.message ?? "Attachment unavailable." : "Attachment unavailable.");
   const ttl = typeof payload.data.expires_in === "number" ? Math.max(5_000, payload.data.expires_in * 1000) : signedAttachmentUrlFallbackTtlMs;
-  signedAttachmentUrlCache.set(cacheKey, { url: payload.data.url, expiresAt: Date.now() + ttl });
+  const absoluteExpiry = payload.data.expires_at ? new Date(payload.data.expires_at).getTime() : Number.NaN;
+  signedAttachmentUrlCache.set(cacheKey, { url: payload.data.url, expiresAt: Number.isFinite(absoluteExpiry) ? absoluteExpiry : Date.now() + ttl });
   return payload.data.url;
 }
 
@@ -103,7 +104,18 @@ const ChatImage = memo(function ChatImage({ attachment, autoLoad, channelSlug, c
   if (failed) return <button ref={setRootRef} className={["grid min-h-28 place-items-center rounded-md bg-black/15 p-4 text-xs font-black text-slate-300", className].filter(Boolean).join(" ")} onClick={() => { setFailed(false); setLoadRequested(false); window.requestAnimationFrame(() => setLoadRequested(true)); }} type="button">Image unavailable. Tap to retry.</button>;
   if (!loadRequested) return <button ref={setRootRef} aria-label={`Load image from ${attachment.uploader_label}`} className={["grid place-items-center rounded-md border border-white/10 bg-black/20 p-4 text-center text-slate-200", className].filter(Boolean).join(" ")} onClick={() => setLoadRequested(true)} type="button"><span className="grid gap-2"><span aria-hidden="true" className="text-2xl">&#8595;</span><span className="text-xs font-black">{loadOnVisible ? "Image preview" : hasLoadedImageBefore(attachment.id) ? "Load again" : "Load image"}</span><span className="text-[0.68rem] font-bold text-slate-400">{Math.max(1, Math.round(attachment.byte_size / 1024))} KB</span></span></button>;
   if (!url) return <div ref={setRootRef} className={["grid animate-pulse place-items-center rounded-md bg-black/15 text-xs font-bold text-slate-400", className].filter(Boolean).join(" ")} aria-label="Loading image">Loading image...</div>;
-  return <button ref={setRootRef} aria-label={`Open image from ${attachment.uploader_label}`} className={["grid h-full min-w-0 place-items-center overflow-hidden rounded-md bg-black/20", className].filter(Boolean).join(" ")} onClick={() => onOpen?.(url)} type="button"><img alt={attachment.alt_text ?? attachment.original_name ?? "Chat image"} className="h-full max-h-full w-full object-contain" loading="lazy" src={url} /></button>;
+  return (
+    <button ref={setRootRef} aria-label={`Open image from ${attachment.uploader_label}`} className={["grid h-full min-w-0 place-items-center overflow-hidden rounded-md bg-black/20", className].filter(Boolean).join(" ")} onClick={() => onOpen?.(url)} type="button">
+      <img
+        alt={attachment.alt_text ?? attachment.original_name ?? "Chat image"}
+        className="h-full max-h-full w-full object-contain"
+        height={attachment.thumbnail_height ?? attachment.height ?? undefined}
+        loading="lazy"
+        src={attachment.thumbnail_url || url}
+        width={attachment.thumbnail_width ?? attachment.width ?? undefined}
+      />
+    </button>
+  );
 });
 
 export const ChatAttachmentTile = memo(function ChatAttachmentTile({ attachment, autoLoadImage, channelSlug, className, compact, loadImageOnVisible, onOpenImage }: { attachment: ChatAttachment; autoLoadImage?: boolean; channelSlug: string; className?: string; compact?: boolean; loadImageOnVisible?: boolean; onOpenImage?: (url: string) => void }) {

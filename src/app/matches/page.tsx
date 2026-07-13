@@ -8,7 +8,14 @@ import { Panel, PanelHeader } from "@/components/ui/Panel";
 import { StatusPanel } from "@/components/ui/StatusPanel";
 import { TransientStatusBanner } from "@/components/ui/TransientStatusBanner";
 import { getCurrentUser } from "@/lib/auth-bridge";
-import { formatEntryAmount, listMatchRooms, matchStatusLabel, type MatchRoom, type MatchRoomStatus } from "@/lib/match-room-api";
+import {
+  formatEntryAmount,
+  getMatchRoomStatusCounts,
+  listMatchRooms,
+  matchStatusLabel,
+  type MatchRoomListRow,
+  type MatchRoomStatus
+} from "@/lib/match-room-api";
 import { joinMatchRoomAction } from "./actions";
 import { RoomActivityPanelClient, type RoomActivityStatus } from "./RoomActivityPanelClient";
 
@@ -26,20 +33,28 @@ function isRoomActivityStatus(status: MatchRoomStatus): status is RoomActivitySt
   return roomActivityStatuses.includes(status as RoomActivityStatus);
 }
 
-function countStatus(rooms: MatchRoom[], status: MatchRoomStatus) {
-  return rooms.filter((room) => room.status === status).length.toString();
+function countStatus(counts: Partial<Record<MatchRoomStatus, number>>, status: MatchRoomStatus) {
+  return (counts[status] ?? 0).toString();
 }
 
-export default async function MatchesPage({ searchParams }: { searchParams: Promise<{ error?: string; queue?: string }> }) {
+export default async function MatchesPage({ searchParams }: { searchParams: Promise<{ error?: string; queue?: string; cursor?: string }> }) {
   const user = await getCurrentUser();
   if (!user) redirect("/sign-in?redirect=/matches");
-  const { error, queue } = await searchParams;
+  const { error, queue, cursor } = await searchParams;
   const selectedQueue = parseRoomQueue(queue);
 
-  let rooms: MatchRoom[] = [];
+  let rooms: MatchRoomListRow[] = [];
+  let nextCursor: string | null = null;
+  let counts: Partial<Record<MatchRoomStatus, number>> = {};
   let loadError: string | null = null;
   try {
-    rooms = (await listMatchRooms()).rooms;
+    const [roomPage, statusCounts] = await Promise.all([
+      listMatchRooms({ status: selectedQueue, cursor, limit: 24 }),
+      getMatchRoomStatusCounts()
+    ]);
+    rooms = roomPage.rooms;
+    nextCursor = roomPage.next_cursor;
+    counts = statusCounts.counts;
   } catch {
     loadError = "Rooms could not load right now. Please refresh the page or sign in again if this continues.";
   }
@@ -82,14 +97,14 @@ export default async function MatchesPage({ searchParams }: { searchParams: Prom
         {(error || loadError) ? <TransientStatusBanner clearKeys={["error"]} durationMs={12000} message={error ?? loadError ?? ""} /> : null}
 
         <div className="grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <Reveal staggerIndex={0}><StatusPanel detail="Visible to lobby" label="Open" tone="cyan" value={countStatus(rooms, "open")} /></Reveal>
-          <Reveal staggerIndex={1}><StatusPanel detail="Manual transfer next" label="Awaiting Funding" tone="warning" value={countStatus(rooms, "awaiting_funding")} /></Reveal>
-          <Reveal staggerIndex={2}><StatusPanel detail="Payment proof check" label="Funding Review" tone="danger" value={countStatus(rooms, "funding_review")} /></Reveal>
-          <Reveal staggerIndex={3}><StatusPanel detail="Visible rooms" label="Tracked" tone="success" value={rooms.length.toString()} /></Reveal>
+          <Reveal staggerIndex={0}><StatusPanel detail="Visible to lobby" label="Open" tone="cyan" value={countStatus(counts, "open")} /></Reveal>
+          <Reveal staggerIndex={1}><StatusPanel detail="Manual transfer next" label="Awaiting Funding" tone="warning" value={countStatus(counts, "awaiting_funding")} /></Reveal>
+          <Reveal staggerIndex={2}><StatusPanel detail="Payment proof check" label="Funding Review" tone="danger" value={countStatus(counts, "funding_review")} /></Reveal>
+          <Reveal staggerIndex={3}><StatusPanel detail="Visible rooms" label="Tracked" tone="success" value={Object.values(counts).reduce((sum, value) => sum + (value ?? 0), 0).toString()} /></Reveal>
         </div>
 
         <Reveal>
-          <RoomActivityPanelClient initialQueue={selectedQueue} rooms={roomActivityRows} />
+          <RoomActivityPanelClient initialQueue={selectedQueue} nextCursor={nextCursor} rooms={roomActivityRows} />
         </Reveal>
 
         <Reveal>

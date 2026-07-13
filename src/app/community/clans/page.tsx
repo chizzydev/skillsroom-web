@@ -15,6 +15,7 @@ export const metadata: Metadata = shareMetadata({
   description: "Clan and team pages with members, captains, game focus, and match history on Skillsroom.",
   path: "/community/clans"
 });
+export const revalidate = 300;
 
 type ClanListPageProps = {
   searchParams: Promise<{

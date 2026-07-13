@@ -36,6 +36,30 @@ export type MatchRoom = {
   participant_count?: number;
 };
 
+export type MatchRoomListRow = Pick<
+  MatchRoom,
+  | "id"
+  | "game_id"
+  | "ruleset_id"
+  | "room_code"
+  | "status"
+  | "currency"
+  | "entry_amount_minor"
+  | "commission_bps"
+  | "max_participants"
+  | "title"
+  | "created_by_user_id"
+  | "created_at"
+  | "updated_at"
+  | "expires_at"
+> & {
+  participant_count: number;
+  game_slug: string | null;
+  game_name: string | null;
+  ruleset_slug: string | null;
+  ruleset_title: string | null;
+};
+
 export type Game = {
   id: string;
   slug: string;
@@ -275,9 +299,56 @@ export type WalletPayoutRequest = {
 
 export type WalletOverview = {
   account: WalletAccount;
-  ledger_entries: WalletLedgerEntry[];
-  topups: WalletTopup[];
-  payout_requests: WalletPayoutRequest[];
+  ledger_entries?: WalletLedgerEntry[];
+  topups?: WalletTopup[];
+  payout_requests?: WalletPayoutRequest[];
+  pending_topups?: {
+    pending_count: number;
+    pending_amount_minor: number;
+  };
+  pending_payouts?: {
+    pending_count: number;
+    pending_amount_minor: number;
+  };
+};
+
+export type PlayerHomeRoomPreview = Pick<
+  MatchRoom,
+  | "id"
+  | "game_id"
+  | "ruleset_id"
+  | "room_code"
+  | "status"
+  | "currency"
+  | "entry_amount_minor"
+  | "commission_bps"
+  | "max_participants"
+  | "title"
+  | "created_by_user_id"
+  | "created_at"
+  | "updated_at"
+  | "expires_at"
+> & {
+  participant_count: number;
+  game_slug: string | null;
+  game_name: string | null;
+  ruleset_slug: string | null;
+  ruleset_title: string | null;
+};
+
+export type PlayerHomeSummary = {
+  room_status_counts: Partial<Record<MatchRoomStatus, number>>;
+  active_room_previews: PlayerHomeRoomPreview[];
+  unread_notification_count: number;
+  wallet_mini_balance: {
+    currency: string;
+    available_balance_minor: number;
+    locked_balance_minor: number;
+    winnings_balance_minor: number;
+    status: WalletAccount["status"] | null;
+  };
+  active_tournament_preview_count: number;
+  community_highlights_preview: CommunityTournamentHighlightCard[];
 };
 
 export type AdminWalletDashboard = {
@@ -641,6 +712,49 @@ export type RiskDashboard = {
   users: Array<{ moderation_status: string; count: string }>;
 };
 
+export type ChatPerformanceMetricName =
+  | "message_list_latency"
+  | "send_latency"
+  | "search_latency"
+  | "thread_latency"
+  | "media_latency"
+  | "reaction_latency";
+
+export type ChatPerformanceMetricSnapshot = {
+  sample_count: number;
+  failed_count: number;
+  p50_ms: number | null;
+  p95_ms: number | null;
+  p99_ms: number | null;
+  max_ms: number | null;
+};
+
+export type ChatPerformanceMetrics = {
+  latency: Partial<Record<ChatPerformanceMetricName, ChatPerformanceMetricSnapshot>>;
+  http: {
+    total_requests: number;
+    failed_requests: number;
+    failure_rate: number;
+    status_counts: Record<string, number>;
+    routes: Record<string, { total: number; failed: number }>;
+    recent_failures: Array<{ method: string; route: string; status: number; duration_ms: number; at: string }>;
+  };
+  sse: {
+    active_clients: number;
+    opened_total: number;
+    closed_total: number;
+  };
+  db_pool: {
+    total_count: number;
+    idle_count: number;
+    waiting_count: number;
+  };
+  health: {
+    status: "healthy" | "watch";
+  };
+  sampled_at: string;
+};
+
 export type UserNotification = {
   id: string;
   user_id: string;
@@ -761,6 +875,12 @@ export type ChatAttachment = {
   byte_size: number;
   width: number | null;
   height: number | null;
+  thumbnail_url?: string | null;
+  thumbnail_width?: number | null;
+  thumbnail_height?: number | null;
+  cdn_url?: string | null;
+  media_object_path?: string | null;
+  original_url_available?: boolean;
   original_name: string | null;
   alt_text: string | null;
   created_at: string;
@@ -1618,6 +1738,20 @@ export type TournamentMatchResultReview = {
   created_at: string;
 };
 
+export type TournamentStageSummary = TournamentStage & {
+  round_count: number;
+  match_count: number;
+  completed_match_count: number;
+};
+
+export type TournamentFundingSummary = {
+  contribution_count: number;
+  allocation_count: number;
+  approved_contribution_minor: number;
+  planned_allocation_minor: number;
+  paid_allocation_minor: number;
+};
+
 export type TournamentSettlement = {
   id: string;
   tournament_id: string;
@@ -1809,6 +1943,53 @@ export type TournamentDetail = Tournament & {
   hosts: TournamentHost[];
 };
 
+export type TournamentBoardPage = {
+  tournaments: Tournament[];
+  next_cursor: string | null;
+};
+
+export type TournamentEntrantsPayload = {
+  tournament_id: string;
+  view?: "summary" | "full";
+  entries: TournamentEntry[];
+  entry_members: TournamentEntryMember[];
+};
+
+export type TournamentSummaryPayload = {
+  tournament: Tournament;
+  viewer_entries?: TournamentEntry[];
+  viewer_entry_members?: TournamentEntryMember[];
+};
+
+export type TournamentBracketPayload = {
+  tournament_id: string;
+  view?: "summary" | "full";
+  stages: Array<TournamentStage | TournamentStageSummary>;
+  rounds: TournamentRound[];
+  matches: TournamentMatch[];
+  match_sides: TournamentMatchSide[];
+  match_check_ins: TournamentMatchCheckIn[];
+  standings: TournamentStanding[];
+};
+
+export type TournamentFundingPayload = {
+  tournament_id: string;
+  view?: "summary" | "full";
+  summary: TournamentFundingSummary | null;
+  prize_contributions: TournamentPrizeContribution[];
+  prize_allocations: TournamentPrizeAllocation[];
+};
+
+export type TournamentResultReviewsPayload = {
+  tournament_id: string;
+  result_reviews: TournamentMatchResultReview[];
+};
+
+export type TournamentActivityPayload = {
+  tournament_id: string;
+  events: TournamentStateEvent[];
+};
+
 export type MatchStateEvent = {
   id: string;
   match_room_id: string;
@@ -1826,6 +2007,18 @@ export type MatchTimeline = {
   tournament_match_check_ins?: TournamentMatchCheckIn[];
 };
 
+export type MatchRoomShell = {
+  room: MatchRoom & {
+    participant_count: number;
+    game_slug: string | null;
+    game_name: string | null;
+    ruleset_slug: string | null;
+    ruleset_title: string | null;
+  };
+  participants: MatchParticipant[];
+  tournament_match_check_ins?: TournamentMatchCheckIn[];
+};
+
 export class ApiRequestError extends Error {
   constructor(
     message: string,
@@ -1839,7 +2032,13 @@ export class ApiRequestError extends Error {
 
 type ApiSuccess<T> = { ok: true; data: T };
 type ApiFailure = { ok: false; error?: { code?: string; message?: string; requestId?: string } };
-type ApiRequestInit = RequestInit & { timeoutMs?: number };
+type ApiRequestInit = RequestInit & {
+  next?: {
+    revalidate?: number | false;
+    tags?: string[];
+  };
+  timeoutMs?: number;
+};
 
 function appOrigin() {
   return process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3100";
@@ -1872,6 +2071,26 @@ function requestError(error: unknown) {
   );
 }
 
+function traceApiRequest(input: {
+  path: string;
+  method: string;
+  status: number | null;
+  durationMs: number;
+  ok: boolean;
+  publicRequest: boolean;
+}) {
+  if (typeof process === "undefined" || process.env.PLAYER_WEB_LOAD_TRACE_API !== "1") return;
+  console.log(`PLAYER_WEB_LOAD_API ${JSON.stringify({
+    at: new Date().toISOString(),
+    path: input.path,
+    method: input.method,
+    status: input.status,
+    duration_ms: input.durationMs,
+    ok: input.ok,
+    public: input.publicRequest
+  })}`);
+}
+
 async function apiRequest<T>(path: string, init: ApiRequestInit = {}): Promise<T> {
   const token = await getAccessToken();
   if (!token) {
@@ -1880,6 +2099,7 @@ async function apiRequest<T>(path: string, init: ApiRequestInit = {}): Promise<T
 
   const fetchInit = toFetchInit(init);
   let response: Response;
+  const startedAt = performance.now();
   try {
     response = await fetch(`${apiBaseUrl()}${path}`, {
       ...fetchInit,
@@ -1894,8 +2114,24 @@ async function apiRequest<T>(path: string, init: ApiRequestInit = {}): Promise<T
       cache: "no-store"
     });
   } catch (error) {
+    traceApiRequest({
+      path,
+      method: init.method ?? "GET",
+      status: null,
+      durationMs: Math.round(performance.now() - startedAt),
+      ok: false,
+      publicRequest: false
+    });
     throw requestError(error);
   }
+  traceApiRequest({
+    path,
+    method: init.method ?? "GET",
+    status: response.status,
+    durationMs: Math.round(performance.now() - startedAt),
+    ok: response.ok,
+    publicRequest: false
+  });
 
   const payload = (await response.json().catch(() => null)) as ApiSuccess<T> | ApiFailure | null;
   if (!response.ok || !payload || payload.ok !== true) {
@@ -1913,7 +2149,10 @@ async function apiRequest<T>(path: string, init: ApiRequestInit = {}): Promise<T
 
 async function publicApiRequest<T>(path: string, init: ApiRequestInit = {}): Promise<T> {
   const fetchInit = toFetchInit(init);
+  const cacheMode = init.cache ?? "force-cache";
+  const nextConfig = init.next ?? { revalidate: 60 };
   let response: Response;
+  const startedAt = performance.now();
   try {
     response = await fetch(`${apiBaseUrl()}${path}`, {
       ...fetchInit,
@@ -1924,11 +2163,28 @@ async function publicApiRequest<T>(path: string, init: ApiRequestInit = {}): Pro
         ...(init.body ? { "content-type": "application/json" } : {}),
         ...init.headers
       },
-      cache: "no-store"
+      cache: cacheMode,
+      next: nextConfig
     });
   } catch (error) {
+    traceApiRequest({
+      path,
+      method: init.method ?? "GET",
+      status: null,
+      durationMs: Math.round(performance.now() - startedAt),
+      ok: false,
+      publicRequest: true
+    });
     throw requestError(error);
   }
+  traceApiRequest({
+    path,
+    method: init.method ?? "GET",
+    status: response.status,
+    durationMs: Math.round(performance.now() - startedAt),
+    ok: response.ok,
+    publicRequest: true
+  });
 
   const payload = (await response.json().catch(() => null)) as ApiSuccess<T> | ApiFailure | null;
   if (!response.ok || !payload || payload.ok !== true) {
@@ -1984,22 +2240,38 @@ export function confirmAdminStepUp(input: { password: string }) {
   });
 }
 
-export function listMatchRooms(status?: MatchRoomStatus) {
-  const query = status ? `?status=${encodeURIComponent(status)}` : "";
-  return apiRequest<{ rooms: MatchRoom[] }>(`/match-rooms${query}`, { timeoutMs: 8_000 });
+export function listMatchRooms(input: { status?: MatchRoomStatus; cursor?: string; limit?: number; view?: "list" | "full" } = {}) {
+  return apiRequest<{ rooms: MatchRoomListRow[]; next_cursor: string | null }>(
+    `/match-rooms${queryString({ status: input.status, cursor: input.cursor, limit: input.limit, view: input.view ?? "list" })}`,
+    { timeoutMs: 8_000 }
+  );
+}
+
+export function getMatchRoomStatusCounts() {
+  return apiRequest<{ counts: Partial<Record<MatchRoomStatus, number>> }>("/match-rooms/status-counts", { timeoutMs: 8_000 });
+}
+
+export function getMatchRoomShell(matchRoomId: string) {
+  return apiRequest<MatchRoomShell>(`/match-rooms/${encodeURIComponent(matchRoomId)}?view=shell`, { timeoutMs: 12_000 });
+}
+
+export function getPlayerHomeSummary() {
+  return apiRequest<PlayerHomeSummary>("/player/home-summary", { timeoutMs: 8_000 });
 }
 
 export function listGameCatalog() {
   return apiRequest<{ games: Game[]; rulesets: MatchRuleset[] }>("/games", { timeoutMs: 8_000 });
 }
 
-export function listTournaments(input: { status?: TournamentStatus; format?: TournamentFormat; limit?: number } = {}) {
+export function listTournaments(input: { status?: TournamentStatus; format?: TournamentFormat; limit?: number; cursor?: string; view?: "list" | "full" } = {}) {
   const params = new URLSearchParams();
+  params.set("view", input.view ?? "list");
   if (input.status) params.set("status", input.status);
   if (input.format) params.set("format", input.format);
   if (input.limit) params.set("limit", input.limit.toString());
+  if (input.cursor) params.set("cursor", input.cursor);
   const query = params.toString() ? `?${params.toString()}` : "";
-  return apiRequest<{ tournaments: Tournament[] }>(`/tournaments${query}`);
+  return apiRequest<TournamentBoardPage>(`/tournaments${query}`);
 }
 
 export function createTournament(input: {
@@ -2033,10 +2305,34 @@ export function createTournament(input: {
   });
 }
 
-export function getTournamentDetail(tournamentId: string) {
+export function getTournamentDetail(tournamentId: string, view: "summary" | "full" = "full") {
   return apiRequest<{ tournament: TournamentDetail; events: TournamentStateEvent[] }>(
-    `/tournaments/${encodeURIComponent(tournamentId)}`
+    `/tournaments/${encodeURIComponent(tournamentId)}${queryString({ view })}`
   );
+}
+
+export function getTournamentSummary(tournamentId: string) {
+  return apiRequest<TournamentSummaryPayload>(`/tournaments/${encodeURIComponent(tournamentId)}?view=summary`, { timeoutMs: 8_000 });
+}
+
+export function getTournamentEntrants(tournamentId: string, view: "summary" | "full" = "summary") {
+  return apiRequest<TournamentEntrantsPayload>(`/tournaments/${encodeURIComponent(tournamentId)}/entrants${queryString({ view })}`);
+}
+
+export function getTournamentBracket(tournamentId: string, view: "summary" | "full" = "summary") {
+  return apiRequest<TournamentBracketPayload>(`/tournaments/${encodeURIComponent(tournamentId)}/bracket${queryString({ view })}`);
+}
+
+export function getTournamentFunding(tournamentId: string, view: "summary" | "full" = "summary") {
+  return apiRequest<TournamentFundingPayload>(`/tournaments/${encodeURIComponent(tournamentId)}/funding${queryString({ view })}`);
+}
+
+export function getTournamentResultReviews(tournamentId: string) {
+  return apiRequest<TournamentResultReviewsPayload>(`/tournaments/${encodeURIComponent(tournamentId)}/result-reviews`);
+}
+
+export function getTournamentActivity(tournamentId: string) {
+  return apiRequest<TournamentActivityPayload>(`/tournaments/${encodeURIComponent(tournamentId)}/activity`);
 }
 
 export function listTournamentHosts(tournamentId: string) {
@@ -2424,8 +2720,22 @@ export function updateTournamentRefundInstructions(
   );
 }
 
-export function getProfileMe() {
-  return apiRequest<ProfileMe>("/profiles/me");
+export function getProfileMe(view: "summary" | "full" = "full") {
+  return apiRequest<ProfileMe>(`/profiles/me${queryString({ view })}`);
+}
+
+export function getProfileGameAccounts() {
+  return apiRequest<{ game_accounts: UserGameAccount[] }>("/profiles/me/game-accounts");
+}
+
+export function getProfilePayoutProfile() {
+  return apiRequest<{ payout_profile: PlayerPayoutProfile | null }>("/profiles/me/payout-profile");
+}
+
+export function getProfileSettlementHistory(limit = 10) {
+  return apiRequest<{ payout_history: MatchPayout[]; refund_history: MatchRefund[] }>(
+    `/profiles/me/settlements${queryString({ limit })}`
+  );
 }
 
 export function upsertPlayerPayoutProfile(input: {
@@ -2611,8 +2921,26 @@ export function reviewFundingSubmission(
   });
 }
 
-export function getWalletOverview() {
-  return apiRequest<WalletOverview>("/wallet");
+export function getWalletOverview(view: "summary" | "full" = "full") {
+  return apiRequest<WalletOverview>(`/wallet${queryString({ view })}`);
+}
+
+export function listWalletLedger(input: { limit?: number; cursor?: string } = {}) {
+  return apiRequest<{ ledger_entries: WalletLedgerEntry[]; next_cursor: string | null }>(
+    `/wallet/ledger${queryString(input)}`
+  );
+}
+
+export function listMyWalletTopups(input: { status?: WalletTopupStatus; limit?: number; cursor?: string } = {}) {
+  return apiRequest<{ topups: WalletTopup[]; next_cursor: string | null }>(
+    `/wallet/topups${queryString(input)}`
+  );
+}
+
+export function listMyWalletPayoutRequests(input: { status?: WalletPayoutRequestStatus; limit?: number; cursor?: string } = {}) {
+  return apiRequest<{ payout_requests: WalletPayoutRequest[]; next_cursor: string | null }>(
+    `/wallet/payout-requests${queryString(input)}`
+  );
 }
 
 export function submitWalletTopup(input: {
@@ -2878,6 +3206,10 @@ export function getRiskDashboard() {
   return apiRequest<RiskDashboard>("/admin/risk/dashboard");
 }
 
+export function getChatPerformanceMetrics() {
+  return apiRequest<ChatPerformanceMetrics>("/community/chat/performance-metrics", { timeoutMs: 8_000 });
+}
+
 export function listAdminTeamMembers() {
   return apiRequest<{ members: AdminTeamMember[] }>("/admin/team/members");
 }
@@ -2976,6 +3308,15 @@ export function listNotifications(status: UserNotification["status"] = "unread")
   return apiRequest<{ notifications: UserNotification[] }>(
     `/community/notifications?status=${encodeURIComponent(status)}`
   );
+}
+
+export function getNotificationBootstrap() {
+  return apiRequest<{
+    notifications: UserNotification[];
+    invites: RoomInvite[];
+    requests: ChatDmRequest[];
+    preferences: NotificationPreference;
+  }>("/community/notifications/bootstrap");
 }
 
 export function markNotificationRead(notificationId: string) {
@@ -3269,11 +3610,11 @@ export function muteChatMember(channelIdOrSlug: string, input: { user_id: string
 }
 
 export function getCommunitySocialProof() {
-  return publicApiRequest<{ metrics: CommunitySocialProofMetrics }>("/community/social-proof");
+  return publicApiRequest<{ metrics: CommunitySocialProofMetrics }>("/community/social-proof", { next: { revalidate: 60 } });
 }
 
 export function listCommunityAnnouncements(filters: Omit<CommunityAnnouncementFilters, "status"> = {}) {
-  return publicApiRequest<CommunityAnnouncementListResponse>(`/community/announcements${queryString(filters)}`);
+  return publicApiRequest<CommunityAnnouncementListResponse>(`/community/announcements${queryString(filters)}`, { next: { revalidate: 60 } });
 }
 
 export function listCommunityLivestreams(input: {
@@ -3281,7 +3622,7 @@ export function listCommunityLivestreams(input: {
   tournament_id?: string;
   match_room_id?: string;
 }) {
-  return publicApiRequest<CommunityLivestreamListResponse>(`/community/livestreams${queryString(input)}`);
+  return publicApiRequest<CommunityLivestreamListResponse>(`/community/livestreams${queryString(input)}`, { next: { revalidate: 30 } });
 }
 
 export function listAccessibleLivestreams(input: {
@@ -3332,7 +3673,8 @@ export function listManageableAnnouncements(filters: CommunityAnnouncementFilter
 
 export function getCommunityAnnouncement(announcementId: string) {
   return publicApiRequest<{ announcement: CommunityAnnouncement }>(
-    `/community/announcements/${encodeURIComponent(announcementId)}`
+    `/community/announcements/${encodeURIComponent(announcementId)}`,
+    { next: { revalidate: 300 } }
   );
 }
 
@@ -3389,38 +3731,42 @@ export function archiveCommunityAnnouncement(announcementId: string) {
 }
 
 export function listLeaderboard(filters: CommunityLeaderboardFilters = {}) {
-  return publicApiRequest<CommunityLeaderboardResponse>(`/community/leaderboard${queryString(filters)}`);
+  return publicApiRequest<CommunityLeaderboardResponse>(`/community/leaderboard${queryString(filters)}`, { next: { revalidate: 120 } });
 }
 
 export function getCommunityPlayerRanking(userId: string, filters: Omit<CommunityLeaderboardFilters, "limit"> = {}) {
   return publicApiRequest<CommunityPlayerRankingResponse>(
-    `/community/leaderboard/players/${encodeURIComponent(userId)}${queryString(filters)}`
+    `/community/leaderboard/players/${encodeURIComponent(userId)}${queryString(filters)}`,
+    { next: { revalidate: 120 } }
   );
 }
 
 export function listCommunityHighlights(limit = 8) {
-  return publicApiRequest<CommunityHighlightsResponse>(`/community/highlights${queryString({ limit })}`);
+  return publicApiRequest<CommunityHighlightsResponse>(`/community/highlights${queryString({ limit })}`, { next: { revalidate: 60 } });
 }
 
 export function getTournamentWinnerPage(tournamentId: string) {
   return publicApiRequest<CommunityTournamentWinnerPage>(
-    `/community/winners/tournaments/${encodeURIComponent(tournamentId)}`
+    `/community/winners/tournaments/${encodeURIComponent(tournamentId)}`,
+    { next: { revalidate: 300 } }
   );
 }
 
 export function getMatchWinnerPage(matchRoomId: string) {
   return publicApiRequest<CommunityMatchWinnerPage>(
-    `/community/winners/matches/${encodeURIComponent(matchRoomId)}`
+    `/community/winners/matches/${encodeURIComponent(matchRoomId)}`,
+    { next: { revalidate: 300 } }
   );
 }
 
 export function listCommunityClans(filters: CommunityLeaderboardFilters = {}) {
-  return publicApiRequest<CommunityClanListResponse>(`/community/clans${queryString(filters)}`);
+  return publicApiRequest<CommunityClanListResponse>(`/community/clans${queryString(filters)}`, { next: { revalidate: 300 } });
 }
 
 export function getCommunityClan(clanIdOrSlug: string) {
   return publicApiRequest<CommunityClanDetailResponse>(
-    `/community/clans/${encodeURIComponent(clanIdOrSlug)}`
+    `/community/clans/${encodeURIComponent(clanIdOrSlug)}`,
+    { next: { revalidate: 300 } }
   );
 }
 

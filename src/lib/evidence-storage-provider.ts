@@ -38,6 +38,11 @@ export type EvidenceObjectInfo = {
   byteSize: number;
 };
 
+export type EvidenceWriteOptions = {
+  exclusive?: boolean;
+  contentType?: string;
+};
+
 export type EvidenceStorageProvider = {
   name: EvidenceStorageProviderName;
   status: () => EvidenceStorageProviderStatus;
@@ -45,10 +50,11 @@ export type EvidenceStorageProvider = {
   metadataObjectKey: (fileName: string) => string;
   quarantineObjectKey: (fileName: string) => string;
   readFile: (fileName: string) => Promise<Buffer>;
-  writeFile: (fileName: string, bytes: Buffer, options?: { exclusive?: boolean }) => Promise<void>;
+  writeFile: (fileName: string, bytes: Buffer, options?: EvidenceWriteOptions) => Promise<void>;
   statFile: (fileName: string) => Promise<EvidenceObjectInfo>;
   readMetadata: (fileName: string) => Promise<unknown>;
-  writeMetadata: (fileName: string, metadata: unknown, options?: { exclusive?: boolean }) => Promise<void>;
+  writeMetadata: (fileName: string, metadata: unknown, options?: EvidenceWriteOptions) => Promise<void>;
+  listActiveFileNames: () => Promise<string[]>;
   listMetadataFileNames: () => Promise<string[]>;
   quarantineFile: (fileName: string) => Promise<{ originalObjectKey: string; quarantineObjectKey: string }>;
   restoreFile: (fileName: string) => Promise<{ objectKey: string; quarantineObjectKey: string }>;
@@ -202,6 +208,11 @@ const localEvidenceStorageProvider: EvidenceStorageProvider = {
       JSON.stringify(metadata, null, 2),
       options?.exclusive ? { flag: "wx" } : undefined
     );
+  },
+  async listActiveFileNames() {
+    await ensureLocalEvidenceRoot();
+    const fileNames = await readdir(localEvidenceRoot);
+    return fileNames.filter((fileName) => !fileName.endsWith(".json"));
   },
   async listMetadataFileNames() {
     await ensureLocalEvidenceRoot();
@@ -361,7 +372,7 @@ function createExternalProvider(config: ExternalProviderConfig): EvidenceStorage
           Bucket: config.bucket,
           Key: objectKey(fileName),
           Body: bytes,
-          ContentType: "application/octet-stream"
+          ContentType: options?.contentType ?? "application/octet-stream"
         })
       );
     },
@@ -410,6 +421,29 @@ function createExternalProvider(config: ExternalProviderConfig): EvidenceStorage
           const key = object.Key || "";
           if (!key.endsWith(".json")) continue;
           fileNames.push(path.basename(key).replace(/\.json$/, ""));
+        }
+        continuationToken = response.IsTruncated ? response.NextContinuationToken : undefined;
+      } while (continuationToken);
+
+      return fileNames;
+    },
+    async listActiveFileNames() {
+      const prefix = `${config.prefix}active/`;
+      let continuationToken: string | undefined;
+      const fileNames: string[] = [];
+
+      do {
+        const response = await client.send(
+          new ListObjectsV2Command({
+            Bucket: config.bucket,
+            Prefix: prefix,
+            ContinuationToken: continuationToken
+          })
+        );
+        for (const object of response.Contents ?? []) {
+          const key = object.Key || "";
+          if (!key || key.endsWith("/")) continue;
+          fileNames.push(path.basename(key));
         }
         continuationToken = response.IsTruncated ? response.NextContinuationToken : undefined;
       } while (continuationToken);

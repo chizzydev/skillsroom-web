@@ -4,12 +4,15 @@ import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Toast } from "@/components/ui/Toast";
 import { describeRealtimeEvent, type RealtimeEvent, type RealtimeToastTone } from "./realtimeEventPresentation";
+import { dispatchRealtimePatch, type RealtimePatchTarget } from "./realtimePatches";
 
 type LiveUpdateStreamProps = {
+  autoConnect?: boolean;
   className?: string;
   eventTypePrefixes?: string[];
   label?: string;
   matchRoomId?: string;
+  refreshTargetLabel?: string;
   tournamentId?: string;
 };
 
@@ -20,9 +23,10 @@ type LiveToast = {
   tone: RealtimeToastTone;
 };
 
-type RefreshNotice = {
+type PatchNotice = {
   title: string;
   description: string;
+  target: RealtimePatchTarget;
 };
 
 function matchesPrefix(value: string, prefixes: string[]) {
@@ -62,61 +66,63 @@ function eventBelongsToTournament(event: RealtimeEvent, tournamentId?: string) {
   return Boolean(actionUrl?.includes(`/tournaments/${tournamentId}`));
 }
 
-function refreshNoticeFor(event: RealtimeEvent): RefreshNotice {
-  switch (event.event_type) {
-    case "match.funding.approved":
-      return {
-        title: "Funding changed",
-        description: "Refreshing this room so the funding card and next step stay correct."
-      };
-    case "match.funding.rejected":
-      return {
-        title: "Funding needs attention",
-        description: "Refreshing this room so the player sees what to fix."
-      };
-    case "match.result.reviewed.approve_claim":
-      return {
-        title: "Result approved",
-        description: "Refreshing the result, room status, and payout state now."
-      };
-    case "match.result.reviewed.reject_claim":
-    case "match.result.reviewed.mark_disputed":
-    case "match.result.reviewed.void_match":
-      return {
-        title: "Result decision updated",
-        description: "Refreshing this room so the result section shows the latest decision."
-      };
-    case "match.settlement.reserved":
-    case "match.payout.completed":
-    case "match.refunds.reserved":
-    case "match.refund.completed":
-      return {
-        title: "Money status updated",
-        description: "Refreshing this room so payout or refund details are up to date."
-      };
+function patchTargetLabel(target: RealtimePatchTarget) {
+  switch (target) {
+    case "room-funding":
+      return "Funding";
+    case "room-result":
+      return "Result";
+    case "tournament-funding":
+      return "Tournament funding";
+    case "tournament-result":
+      return "Tournament results";
+    case "notifications":
+      return "Notifications";
+    case "wallet":
+      return "Wallet";
+    case "admin-queue":
+      return "Review queue";
+    case "chat":
+      return "Chat";
+    case "tournament":
+      return "Tournament";
+    case "room":
+      return "Room";
     default:
-      return {
-        title: "Room update received",
-        description: "Refreshing this room so the latest changes appear."
-      };
+      return "Live section";
   }
 }
 
+function patchNoticeFor(event: RealtimeEvent, target: RealtimePatchTarget, handled: boolean): PatchNotice {
+  const label = patchTargetLabel(target);
+  return {
+    title: handled ? `${label} updated` : `${label} update received`,
+    description: handled
+      ? "A focused live patch was sent to the relevant section without refreshing the whole page."
+      : "No focused section accepted this update yet. Use manual refresh if this view needs the newest server-rendered data.",
+    target
+  };
+}
+
 export function LiveUpdateStream({
+  autoConnect = true,
   className,
   eventTypePrefixes = [],
   label = "Live updates on",
   matchRoomId,
+  refreshTargetLabel,
   tournamentId
 }: LiveUpdateStreamProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const [isEnabled, setIsEnabled] = useState(autoConnect);
   const [status, setStatus] = useState<"live" | "reconnecting" | "idle">("idle");
   const [updatedAt, setUpdatedAt] = useState<string | null>(null);
   const [toasts, setToasts] = useState<LiveToast[]>([]);
-  const [refreshNotice, setRefreshNotice] = useState<RefreshNotice | null>(null);
+  const [patchNotice, setPatchNotice] = useState<PatchNotice | null>(null);
   const [showRefreshFallback, setShowRefreshFallback] = useState(false);
   const dirtyRef = useRef(false);
+  const hiddenPatchEventsRef = useRef<RealtimeEvent[]>([]);
   const hiddenEventsRef = useRef(0);
   const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fallbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -126,8 +132,11 @@ export function LiveUpdateStream({
   const toastTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
   const prefixes = useMemo(() => eventTypePrefixes.filter(Boolean), [eventTypePrefixes]);
+  const refreshTarget = refreshTargetLabel ?? (tournamentId && !matchRoomId ? "tournament" : "room");
 
   useEffect(() => {
+    if (!isEnabled) return;
+
     const toastTimers = toastTimersRef.current;
 
     const dismissToast = (toastId: string) => {
@@ -163,23 +172,22 @@ export function LiveUpdateStream({
       clearNoticeTimerRef.current = null;
     };
 
-    const refresh = (event?: RealtimeEvent) => {
+    const patch = (event: RealtimeEvent) => {
       if (document.visibilityState === "hidden") {
         dirtyRef.current = true;
+        hiddenPatchEventsRef.current = [event, ...hiddenPatchEventsRef.current].slice(0, 10);
         return;
       }
 
       if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
       clearFallbackTimers();
-      setRefreshNotice(event ? refreshNoticeFor(event) : { title: "Refreshing room", description: "Checking for the newest room details." });
-      setShowRefreshFallback(false);
+      const detail = dispatchRealtimePatch(event);
+      setPatchNotice(patchNoticeFor(event, detail.target, detail.handled));
+      setShowRefreshFallback(!detail.handled);
       refreshTimerRef.current = setTimeout(() => {
-        startTransition(() => {
-          router.refresh();
-        });
         setUpdatedAt(new Date().toISOString());
         clearNoticeTimerRef.current = setTimeout(() => {
-          setRefreshNotice(null);
+          setPatchNotice(null);
           setShowRefreshFallback(false);
         }, 9000);
       }, 300);
@@ -188,7 +196,10 @@ export function LiveUpdateStream({
     const onVisibilityChange = () => {
       if (document.visibilityState === "visible" && dirtyRef.current) {
         dirtyRef.current = false;
-        refresh();
+        for (const event of hiddenPatchEventsRef.current.reverse()) {
+          patch(event);
+        }
+        hiddenPatchEventsRef.current = [];
       }
       if (document.visibilityState === "visible" && hiddenEventsRef.current > 0) {
         const count = hiddenEventsRef.current;
@@ -234,7 +245,7 @@ export function LiveUpdateStream({
         if (!eventBelongsToRoom(payload, matchRoomId)) return;
         if (!eventBelongsToTournament(payload, tournamentId)) return;
         showToast(payload);
-        refresh(payload);
+        patch(payload);
       } catch {
         // Ignore malformed events and let the stream continue.
       }
@@ -248,12 +259,14 @@ export function LiveUpdateStream({
       toastTimers.clear();
       source.close();
     };
-  }, [matchRoomId, prefixes, router, tournamentId]);
+  }, [isEnabled, matchRoomId, prefixes, refreshTarget, router, tournamentId]);
 
-  const statusLabel = status === "live" ? "On" : status === "reconnecting" ? "Reconnecting" : "Starting";
+  const statusLabel = !isEnabled ? "Paused" : status === "live" ? "On" : status === "reconnecting" ? "Reconnecting" : "Starting";
   const updatedLabel = updatedAt
     ? `Updated ${new Date(updatedAt).toLocaleTimeString("en-NG", { hour: "2-digit", minute: "2-digit" })}`
-    : "Listening for updates";
+    : isEnabled
+      ? "Listening for updates"
+      : "Connect when live refresh matters";
   const needsManualRefresh = showRefreshFallback;
 
   return (
@@ -273,24 +286,34 @@ export function LiveUpdateStream({
           <span className="block truncate text-sm font-black text-ink">{label.replace(/\s*live$/i, "") || "Live updates"}</span>
           <span className="block text-xs font-bold text-muted">{updatedLabel}</span>
         </span>
-        <span className="ml-auto rounded-full bg-white/70 px-3 py-1 text-xs font-black text-ink shadow-tight">{isPending ? "Updating" : statusLabel}</span>
+        {isEnabled ? (
+          <span className="ml-auto rounded-full bg-white/70 px-3 py-1 text-xs font-black text-ink shadow-tight">{isPending ? "Updating" : statusLabel}</span>
+        ) : (
+          <button
+            className="motion-tap ml-auto inline-flex min-h-9 shrink-0 items-center justify-center rounded-md border border-line bg-white px-3 text-xs font-black text-ink shadow-tight hover:bg-surfaceHigh"
+            onClick={() => setIsEnabled(true)}
+            type="button"
+          >
+            Connect
+          </button>
+        )}
       </div>
-      {refreshNotice || needsManualRefresh ? (
+      {patchNotice || needsManualRefresh ? (
         <div className="rounded-2xl border border-cyan bg-cyanSoft p-4 shadow-tight">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="min-w-0">
-              <p className="text-sm font-black text-ink">{refreshNotice?.title ?? "Live updates are slow"}</p>
+              <p className="text-sm font-black text-ink">{patchNotice?.title ?? "Live updates need a manual check"}</p>
               <p className="mt-1 text-xs font-bold leading-5 text-muted">
                 {needsManualRefresh
-                  ? "If the room does not change in a few seconds, refresh this room manually."
-                  : refreshNotice?.description}
+                  ? `If the ${refreshTarget} does not change in a few seconds, refresh this ${refreshTarget} manually.`
+                  : patchNotice?.description}
               </p>
             </div>
             <button
               className="motion-tap inline-flex min-h-10 shrink-0 items-center justify-center rounded-md border border-line bg-white px-4 text-sm font-black text-ink shadow-tight hover:bg-surfaceHigh"
               onClick={() => {
                 setShowRefreshFallback(false);
-                setRefreshNotice({ title: "Refreshing room", description: "Checking for the newest room details." });
+                setPatchNotice({ title: `Refreshing ${refreshTarget}`, description: `Checking for the newest ${refreshTarget} details.`, target: "unknown" });
                 startTransition(() => {
                   router.refresh();
                 });

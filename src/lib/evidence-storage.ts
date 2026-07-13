@@ -7,6 +7,8 @@ import {
   localEvidenceMetadataPath,
   localEvidenceStoragePath
 } from "./evidence-storage-provider";
+import { imageDimensions, type ImageDimensions } from "./image-dimensions";
+import { generateImageThumbnail, thumbnailFileName, type GeneratedMediaThumbnail } from "./media-thumbnails";
 
 const dayMs = 24 * 60 * 60 * 1000;
 
@@ -40,11 +42,21 @@ export type StoredEvidenceMetadata = {
   mimeType: string;
   evidenceType: EvidenceItemType;
   byteSize: number;
+  width?: number | null;
+  height?: number | null;
+  thumbnail?: StoredEvidenceThumbnail | null;
+  mediaObjectPath?: string | null;
+  cdnUrl?: string | null;
   sha256: string;
   createdAt: string;
   retention?: StoredEvidenceRetention;
   storage?: StoredEvidenceStorage;
   cleanup?: StoredEvidenceCleanup;
+};
+
+export type StoredEvidenceThumbnail = ImageDimensions & {
+  url: string | null;
+  objectPath: string | null;
 };
 
 export type StoredEvidenceStorage = {
@@ -137,6 +149,34 @@ function buildEvidenceStorageMetadata(fileName: string): StoredEvidenceStorage {
     provider: provider.name,
     objectKey: provider.objectKey(fileName),
     metadataObjectKey: provider.metadataObjectKey(fileName)
+  };
+}
+
+function configuredCdnOrigin() {
+  return (process.env.MEDIA_CDN_ORIGIN || process.env.EVIDENCE_CDN_ORIGIN || "").trim().replace(/\/+$/, "");
+}
+
+export function evidenceObjectPath(fileName: string) {
+  const storage = buildEvidenceStorageMetadata(fileName);
+  const objectKey = storage.objectKey.replace(/\\/g, "/");
+  if (storage.provider === "local") return `local/active/${path.basename(fileName)}`;
+  return objectKey.replace(/^\/+/, "");
+}
+
+export function cdnUrlForObjectPath(objectPath: string | null) {
+  const origin = configuredCdnOrigin();
+  if (!origin || !objectPath) return null;
+  return `${origin}/${objectPath.split("/").map((segment) => encodeURIComponent(segment)).join("/")}`;
+}
+
+function thumbnailMetadata(fileName: string, thumbnail: GeneratedMediaThumbnail | null): StoredEvidenceThumbnail | null {
+  if (!thumbnail) return null;
+  const objectPath = evidenceObjectPath(fileName).replace(/\.[^.]+$/, ".thumb.webp");
+  return {
+    width: thumbnail.width,
+    height: thumbnail.height,
+    objectPath,
+    url: cdnUrlForObjectPath(objectPath)
   };
 }
 
@@ -745,7 +785,21 @@ export async function storeEvidenceFile(input: {
   ].join("_") + `.${rule.extension}`;
 
   const createdAt = new Date();
-  await evidenceStorageProvider().writeFile(fileName, bytes, { exclusive: true });
+  const dimensions = rule.evidenceType === "screenshot" ? imageDimensions(bytes, input.file.type) : null;
+  const thumbnail = rule.evidenceType === "screenshot"
+    ? await generateImageThumbnail({ bytes, mimeType: input.file.type, fallbackDimensions: dimensions })
+    : null;
+  const mediaObjectPath = evidenceObjectPath(fileName);
+  const provider = evidenceStorageProvider();
+  await provider.writeFile(fileName, bytes, { exclusive: true, contentType: input.file.type });
+  if (thumbnail) {
+    try {
+      await provider.writeFile(thumbnailFileName(fileName), thumbnail.bytes, { exclusive: true, contentType: thumbnail.mimeType });
+    } catch (error) {
+      await provider.deleteFile(fileName).catch(() => undefined);
+      throw error;
+    }
+  }
   const metadata: StoredEvidenceMetadata = {
     version: 1,
     fileName,
@@ -755,6 +809,11 @@ export async function storeEvidenceFile(input: {
     mimeType: input.file.type,
     evidenceType: rule.evidenceType,
     byteSize: bytes.byteLength,
+    width: dimensions?.width ?? null,
+    height: dimensions?.height ?? null,
+    thumbnail: thumbnailMetadata(fileName, thumbnail),
+    mediaObjectPath,
+    cdnUrl: cdnUrlForObjectPath(mediaObjectPath),
     sha256: createHash("sha256").update(bytes).digest("hex"),
     createdAt: createdAt.toISOString(),
     retention: buildEvidenceRetention({

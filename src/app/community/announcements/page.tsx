@@ -15,6 +15,7 @@ export const metadata: Metadata = shareMetadata({
   description: "Platform news, tournament updates, maintenance notices, and winner posts from Skillsroom.",
   path: "/community/announcements"
 });
+export const revalidate = 60;
 
 function tone(priority: CommunityAnnouncement["priority"]): BadgeTone {
   if (priority === "critical") return "danger";

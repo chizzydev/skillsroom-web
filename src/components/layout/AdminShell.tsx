@@ -16,6 +16,7 @@ const nav: Array<{ key: AdminSection; label: string; href: string }> = [
   { key: "settlements", label: "Payments", href: "/admin/settlements" },
   { key: "tournaments", label: "Tournaments", href: "/admin/tournaments" },
   { key: "players", label: "Players", href: "/admin/players" },
+  { key: "observability", label: "Observability", href: "/admin/observability" },
   { key: "team", label: "Team roles", href: "/admin/team" },
   { key: "risk", label: "Safety", href: "/admin/risk" }
 ] as const;

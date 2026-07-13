@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Badge, type BadgeTone } from "@/components/ui/Badge";
 import { DataTable } from "@/components/ui/DataTable";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { PendingLink } from "@/components/ui/PendingLink";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
+import { VirtualList } from "@/components/ui/VirtualList";
 
 export type TournamentBoardFilter = "all" | "registration_open" | "in_progress" | "completed";
 
@@ -40,17 +41,6 @@ function filterRows(rows: TournamentBoardRow[], filter: TournamentBoardFilter) {
   return rows.filter((row) => row.status === filter);
 }
 
-function syncFilterInUrl(filter: TournamentBoardFilter) {
-  if (typeof window === "undefined") return;
-  const url = new URL(window.location.href);
-  if (filter === "all") {
-    url.searchParams.delete("filter");
-  } else {
-    url.searchParams.set("filter", filter);
-  }
-  window.history.replaceState(window.history.state, "", url);
-}
-
 function BoardSkeleton() {
   return (
     <div className="grid gap-3 p-4">
@@ -71,9 +61,9 @@ function BoardSkeleton() {
   );
 }
 
-function TournamentCard({ tournament }: { tournament: TournamentBoardRow }) {
+const TournamentCard = memo(function TournamentCard({ tournament }: { tournament: TournamentBoardRow }) {
   return (
-    <article className="grid gap-4 border-b border-line p-4 last:border-b-0 xl:grid-cols-[minmax(0,1fr)_18rem] xl:items-center">
+    <article className="grid gap-4 border-b border-line bg-white p-4 last:border-b-0 xl:grid-cols-[minmax(0,1fr)_18rem] xl:items-center">
       <div className="min-w-0">
         <div className="flex flex-wrap items-center gap-2">
           <Badge tone={tournament.status_tone}>{tournament.status_label}</Badge>
@@ -113,17 +103,20 @@ function TournamentCard({ tournament }: { tournament: TournamentBoardRow }) {
       </div>
     </article>
   );
-}
+});
 
 export function TournamentBoardClient({
   initialFilter,
+  nextCursor,
   rows
 }: {
   initialFilter: TournamentBoardFilter;
+  nextCursor: string | null;
   rows: TournamentBoardRow[];
 }) {
   const [selectedFilter, setSelectedFilter] = useState<TournamentBoardFilter>(initialFilter);
   const [switchingTo, setSwitchingTo] = useState<TournamentBoardFilter | null>(null);
+  const [showTable, setShowTable] = useState(false);
   const switchTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -140,8 +133,9 @@ export function TournamentBoardClient({
 
   const visibleRows = useMemo(() => filterRows(rows, selectedFilter), [rows, selectedFilter]);
   const visibleFilter = switchingTo ?? selectedFilter;
+  const renderTournament = useCallback((tournament: TournamentBoardRow) => <TournamentCard tournament={tournament} />, []);
 
-  const handleFilterChange = (value: string) => {
+  const handleFilterChange = useCallback((value: string) => {
     const nextFilter = value as TournamentBoardFilter;
     if (!["all", "registration_open", "in_progress", "completed"].includes(nextFilter)) return;
     if (nextFilter === selectedFilter && !switchingTo) return;
@@ -152,12 +146,19 @@ export function TournamentBoardClient({
 
     setSwitchingTo(nextFilter);
     switchTimerRef.current = window.setTimeout(() => {
-      setSelectedFilter(nextFilter);
-      setSwitchingTo(null);
-      syncFilterInUrl(nextFilter);
+      const url = new URL(window.location.href);
+      if (nextFilter === "all") {
+        url.searchParams.delete("filter");
+      } else {
+        url.searchParams.set("filter", nextFilter);
+      }
+      url.searchParams.delete("cursor");
+      window.location.assign(url.toString());
       switchTimerRef.current = null;
     }, filterSwitchDelayMs);
-  };
+  }, [selectedFilter, switchingTo]);
+
+  const handleShowTable = useCallback(() => setShowTable((current) => !current), []);
 
   return (
     <>
@@ -188,11 +189,7 @@ export function TournamentBoardClient({
       {switchingTo ? (
         <BoardSkeleton />
       ) : visibleRows.length ? (
-        <div>
-          {visibleRows.map((tournament) => (
-            <TournamentCard key={tournament.id} tournament={tournament} />
-          ))}
-        </div>
+        <VirtualList estimateItemHeight={190} itemKey={(tournament) => tournament.id} items={visibleRows} renderItem={renderTournament} threshold={10} />
       ) : (
         <div className="p-4">
           <EmptyState
@@ -202,34 +199,60 @@ export function TournamentBoardClient({
         </div>
       )}
 
+      {nextCursor ? (
+        <div className="border-t border-line bg-white p-4">
+          <PendingLink
+            className="inline-flex min-h-10 items-center justify-center rounded-md border border-line bg-white px-4 text-sm font-black text-ink hover:bg-surfaceHigh"
+            href={`/tournaments?${new URLSearchParams({
+              ...(selectedFilter === "all" ? {} : { filter: selectedFilter }),
+              cursor: nextCursor
+            }).toString()}`}
+            pendingLabel="Loading more tournaments..."
+          >
+            Load more tournaments
+          </PendingLink>
+        </div>
+      ) : null}
+
       {visibleRows.length ? (
         <div className="border-t border-line">
-          <div className="border-b border-line bg-white p-4">
-            <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Compare</p>
-            <h2 className="mt-1 text-lg font-black leading-tight text-ink">Tournament table</h2>
-            <p className="mt-1 text-sm leading-6 text-muted">
-              Compact table view for comparing schedule, capacity, status, and prize exposure.
-            </p>
+          <div className="grid gap-3 border-b border-line bg-white p-4 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
+            <div>
+              <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Compare</p>
+              <h2 className="mt-1 text-lg font-black leading-tight text-ink">Tournament table</h2>
+              <p className="mt-1 text-sm leading-6 text-muted">
+                Open the compact table only when you need side-by-side comparison.
+              </p>
+            </div>
+            <button
+              className="inline-flex min-h-10 items-center justify-center rounded-md border border-line bg-white px-4 text-sm font-black text-ink hover:bg-surfaceHigh"
+              onClick={handleShowTable}
+              type="button"
+            >
+              {showTable ? "Hide table" : "Show table"}
+            </button>
           </div>
-          <DataTable
-            columns={[
-              {
-                key: "title",
-                label: "Tournament",
-                render: (row) => (
-                  <PendingLink className="font-black text-ink hover:text-action" href={`/tournaments/${row.id}`} pendingLabel="Opening tournament...">
-                    {row.title}
-                  </PendingLink>
-                )
-              },
-              { key: "status", label: "Status", render: (row) => <Badge tone={row.status_tone}>{row.status_label}</Badge> },
-              { key: "format_label", label: "Format", render: (row) => <span className="font-bold text-muted">{row.format_label}</span> },
-              { key: "entries", label: "Entries", render: (row) => <span className="font-mono text-xs font-bold text-ink">{row.registered_entry_count}/{row.max_entries}</span> },
-              { key: "starts_at_label", label: "Starts", render: (row) => <span className="text-muted">{row.starts_at_label}</span> },
-              { key: "prize_label", label: "Prize", render: (row) => <span className="font-bold text-ink">{row.prize_label}</span> }
-            ]}
-            rows={visibleRows}
-          />
+          {showTable ? (
+            <DataTable
+              columns={[
+                {
+                  key: "title",
+                  label: "Tournament",
+                  render: (row) => (
+                    <PendingLink className="font-black text-ink hover:text-action" href={`/tournaments/${row.id}`} pendingLabel="Opening tournament...">
+                      {row.title}
+                    </PendingLink>
+                  )
+                },
+                { key: "status", label: "Status", render: (row) => <Badge tone={row.status_tone}>{row.status_label}</Badge> },
+                { key: "format_label", label: "Format", render: (row) => <span className="font-bold text-muted">{row.format_label}</span> },
+                { key: "entries", label: "Entries", render: (row) => <span className="font-mono text-xs font-bold text-ink">{row.registered_entry_count}/{row.max_entries}</span> },
+                { key: "starts_at_label", label: "Starts", render: (row) => <span className="text-muted">{row.starts_at_label}</span> },
+                { key: "prize_label", label: "Prize", render: (row) => <span className="font-bold text-ink">{row.prize_label}</span> }
+              ]}
+              rows={visibleRows}
+            />
+          ) : null}
         </div>
       ) : null}
     </>

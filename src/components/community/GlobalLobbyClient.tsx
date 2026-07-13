@@ -119,6 +119,7 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
   const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
   const [notice, setNotice] = useState<string | null>(null);
   const [streamStatus, setStreamStatus] = useState<"starting" | "live" | "reconnecting">("starting");
+  const [streamReconnectKey, setStreamReconnectKey] = useState(0);
   const [showChannelInfo, setShowChannelInfo] = useState(false);
   const [infoTab, setInfoTab] = useState<ChatInfoTab>("members");
   const [mediaByChannel, setMediaByChannel] = useState<Record<string, MediaPage>>({});
@@ -895,9 +896,19 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
   }, [mentionFragment]);
 
   useEffect(() => {
+    const markOffline = () => setStreamStatus("reconnecting");
+    const markOnline = () => {
+      setStreamStatus("reconnecting");
+      setStreamReconnectKey((current) => current + 1);
+    };
     const source = new EventSource("/api/community/realtime/stream");
     source.addEventListener("open", () => setStreamStatus("live"));
     source.addEventListener("error", () => setStreamStatus("reconnecting"));
+    window.addEventListener("offline", markOffline);
+    window.addEventListener("online", markOnline);
+    const onlineCheck = window.setInterval(() => {
+      if (!navigator.onLine) setStreamStatus("reconnecting");
+    }, 750);
     source.addEventListener("realtime-event", (event) => {
       try {
         const realtimeEvent = JSON.parse((event as MessageEvent).data) as RealtimeEvent;
@@ -1042,8 +1053,13 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
       }
     });
 
-    return () => source.close();
-  }, [filterChannelMessages, markRead, patchChannelBySlug, patchChannelPresence, patchMessage, updateMessage, upsertMessage]);
+    return () => {
+      window.removeEventListener("offline", markOffline);
+      window.removeEventListener("online", markOnline);
+      window.clearInterval(onlineCheck);
+      source.close();
+    };
+  }, [filterChannelMessages, markRead, patchChannelBySlug, patchChannelPresence, patchMessage, streamReconnectKey, updateMessage, upsertMessage]);
 
   function uploadAttachment(file: File, existingLocalId?: string) {
     const localId = existingLocalId ?? crypto.randomUUID();
@@ -2333,7 +2349,7 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
             {activeChannelSubtitle}
           </p>
         </button>
-        <div className={["hidden min-h-9 w-fit items-center gap-2 rounded-full border px-3 text-xs font-black sm:inline-flex", fullLayout ? "border-white/10 bg-white/5 text-slate-300" : "border-line bg-white text-muted"].join(" ")}>
+        <div className={["inline-flex min-h-9 w-fit shrink-0 items-center gap-2 rounded-full border px-2 text-[0.68rem] font-black sm:px-3 sm:text-xs", fullLayout ? "border-white/10 bg-white/5 text-slate-300" : "border-line bg-white text-muted"].join(" ")} data-testid="chat-stream-status">
           <span className={streamStatus === "live" ? "text-success" : "text-warning"}>{statusLabel}</span>
         </div>
         <button aria-label="Open saved messages" className={["hidden h-9 min-w-9 shrink-0 place-items-center rounded-full border px-2 text-xs font-black sm:grid", fullLayout ? "border-white/10 bg-white/5 text-white hover:bg-white/10" : "border-line bg-white text-ink hover:bg-surfaceHigh"].join(" ")} onClick={() => void loadBookmarks()} title="Saved messages" type="button">Saved</button>

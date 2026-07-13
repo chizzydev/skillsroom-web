@@ -1,0 +1,179 @@
+{
+  "run_id": "2026-07-13T07-20-12-492Z",
+  "started_at": "2026-07-13T07:21:30.520Z",
+  "base_url": "http://localhost:3100",
+  "channel": "chat_load_lab",
+  "viewport": {
+    "width": 390,
+    "height": 844
+  },
+  "scenarios": [
+    {
+      "name": "long_channel_baseline",
+      "ok": true,
+      "duration_ms": 1675,
+      "observations": {
+        "visible_message_rows": 8,
+        "older_button_visible": true,
+        "url": "http://localhost:3100/chat?channel=chat_load_lab"
+      }
+    },
+    {
+      "name": "slow_3g_initial_load",
+      "ok": true,
+      "duration_ms": 46541,
+      "observations": {
+        "shell_ready_ms": 2989,
+        "messages_ready_ms": 46537,
+        "condition": "slow_3g"
+      }
+    },
+    {
+      "name": "offline_resilience",
+      "ok": true,
+      "duration_ms": 2109,
+      "observations": {
+        "composer_visible_offline": true,
+        "draft_retained_offline": true
+      }
+    },
+    {
+      "name": "flaky_reconnect",
+      "ok": false,
+      "duration_ms": 9579,
+      "note": "Realtime reconnecting state was not visible while offline. Status text: Live.",
+      "observations": {}
+    },
+    {
+      "name": "reload_reconnect",
+      "ok": true,
+      "duration_ms": 4743,
+      "observations": {
+        "reload_ms": 4742,
+        "realtime_stream_requests_before": 6,
+        "realtime_stream_requests_after": 7
+      }
+    }
+  ],
+  "response_timings": [
+    {
+      "method": "GET",
+      "route": "page:/chat",
+      "status": 200,
+      "duration_ms": 149
+    },
+    {
+      "method": "GET",
+      "route": "page:/chat",
+      "status": 200,
+      "duration_ms": 122
+    },
+    {
+      "method": "GET",
+      "route": "page:/chat",
+      "status": 200,
+      "duration_ms": 125
+    },
+    {
+      "method": "GET",
+      "route": "web-api:realtime_stream",
+      "status": 200,
+      "duration_ms": 761
+    },
+    {
+      "method": "GET",
+      "route": "page:/chat",
+      "status": 200,
+      "duration_ms": 448
+    },
+    {
+      "method": "GET",
+      "route": "web-api:realtime_stream",
+      "status": 200,
+      "duration_ms": 759
+    },
+    {
+      "method": "GET",
+      "route": "web-api:realtime_stream",
+      "status": 200,
+      "duration_ms": 732
+    },
+    {
+      "method": "GET",
+      "route": "web-api:realtime_stream",
+      "status": 200,
+      "duration_ms": 792
+    },
+    {
+      "method": "POST",
+      "route": "web-api:channels/chat_load_lab/typing",
+      "status": 200,
+      "duration_ms": 728
+    },
+    {
+      "method": "GET",
+      "route": "page:/chat",
+      "status": 200,
+      "duration_ms": 115
+    },
+    {
+      "method": "GET",
+      "route": "web-api:realtime_stream",
+      "status": 200,
+      "duration_ms": 1568
+    },
+    {
+      "method": "POST",
+      "route": "web-api:channels/chat_load_lab/typing",
+      "status": 200,
+      "duration_ms": 734
+    }
+  ],
+  "slow_response_summary": [
+    {
+      "route": "web-api:realtime_stream",
+      "count": 5,
+      "p50_ms": 761,
+      "p95_ms": 1568,
+      "p99_ms": 1568,
+      "max_ms": 1568
+    },
+    {
+      "route": "web-api:channels/chat_load_lab/typing",
+      "count": 2,
+      "p50_ms": 728,
+      "p95_ms": 734,
+      "p99_ms": 734,
+      "max_ms": 734
+    },
+    {
+      "route": "page:/chat",
+      "count": 5,
+      "p50_ms": 125,
+      "p95_ms": 448,
+      "p99_ms": 448,
+      "max_ms": 448
+    }
+  ],
+  "response_errors": [],
+  "console_errors": [
+    "Loading the stylesheet 'https://accounts.google.com/gsi/style' violates the following Content Security Policy directive: \"style-src 'self' 'unsafe-inline'\". Note that 'style-src-elem' was not explicitly set, so 'style-src' is used as a fallback. The action has been blocked."
+  ],
+  "request_failures": [
+    "GET web-api:realtime_stream net::ERR_ABORTED",
+    "GET web-api:realtime_stream net::ERR_ABORTED",
+    "GET web-api:realtime_stream net::ERR_ABORTED",
+    "GET web-api:realtime_stream net::ERR_ABORTED",
+    "GET web-api:realtime_stream net::ERR_ABORTED",
+    "GET web-api:realtime_stream net::ERR_ABORTED",
+    "POST web-api:channels/chat_load_lab/typing net::ERR_ABORTED"
+  ],
+  "heap_growth_bytes": 30775842,
+  "frame_sample": {
+    "duration_ms": 8000,
+    "frames": 481,
+    "dropped_frames": 0,
+    "max_frame_ms": 33,
+    "average_frame_ms": 17
+  }
+}

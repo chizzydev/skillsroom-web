@@ -40,7 +40,16 @@ export async function POST(request: Request, context: Context) {
     const complete = await fetch(new URL(`${base}/${attachmentId}/complete`, apiBaseUrl()), {
       method: "POST",
       headers: buildApiProxyHeaders(request, { accept: "application/json", authorization: `Bearer ${token}`, "content-type": "application/json" }),
-      body: JSON.stringify({ attachment_type: stored.attachmentType, storage_key: stored.storageKey, mime_type: stored.mimeType, byte_size: stored.byteSize, sha256: stored.sha256 }), cache: "no-store"
+      body: JSON.stringify({
+        attachment_type: stored.attachmentType,
+        storage_key: stored.storageKey,
+        mime_type: stored.mimeType,
+        byte_size: stored.byteSize,
+        width: stored.width,
+        height: stored.height,
+        sha256: stored.sha256
+      }),
+      cache: "no-store"
     });
     const completed = await complete.text();
     if (!complete.ok) throw new Error((JSON.parse(completed) as { error?: { message?: string } }).error?.message ?? "Attachment upload could not finish.");

@@ -65,7 +65,7 @@ type ChatWebLoadReport = {
   heap_growth_bytes: number | null;
   navigation_timing: NavigationTiming | null;
   response_timings: ResponseTiming[];
-  slow_response_summary: Array<{ route: string; count: number; p50_ms: number | null; p95_ms: number | null; max_ms: number | null }>;
+  slow_response_summary: Array<{ route: string; count: number; p50_ms: number | null; p95_ms: number | null; p99_ms: number | null; max_ms: number | null }>;
   response_errors: ResponseTiming[];
   console_errors: string[];
   request_failures: string[];
@@ -498,6 +498,7 @@ function routeLabel(rawUrl: string) {
   const pathName = url.pathname;
   if (pathName === "/chat") return "page:/chat";
   if (pathName.includes("/api/community/channels/") && pathName.endsWith("/messages/search")) return "web-api:messages_search";
+  if (pathName.includes("/api/community/channels/") && pathName.endsWith("/messages") && url.searchParams.has("cursor")) return "web-api:older_messages";
   if (pathName.includes("/api/community/channels/") && pathName.endsWith("/messages")) return "web-api:messages";
   if (pathName.includes("/api/community/channels/") && pathName.endsWith("/heartbeat")) return "web-api:heartbeat";
   if (pathName.includes("/api/community/channels/") && pathName.endsWith("/read")) return "web-api:read";
@@ -532,6 +533,7 @@ function summarizeResponses(timings: ResponseTiming[]) {
       count: values.length,
       p50_ms: percentile(values, 50),
       p95_ms: percentile(values, 95),
+      p99_ms: percentile(values, 99),
       max_ms: values.length ? Math.max(...values) : null
     }))
     .sort((left, right) => (right.max_ms ?? 0) - (left.max_ms ?? 0));

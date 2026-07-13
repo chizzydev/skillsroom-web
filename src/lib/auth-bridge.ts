@@ -20,6 +20,7 @@ export type AdminSection =
   | "tournaments"
   | "players"
   | "team"
+  | "observability"
   | "risk";
 
 export async function getAccessToken(): Promise<string | null> {
@@ -104,9 +105,9 @@ export function canUseAdminSection(user: CurrentUser | null, section: AdminSecti
   if (user?.role === "owner") return true;
 
   const sectionsByRole: Record<Exclude<CurrentUser["role"], "player" | "owner">, AdminSection[]> = {
-    admin: ["overview", "funding", "wallet", "results", "settlements", "tournaments"],
-    moderator: ["overview", "results", "tournaments", "players", "risk"],
-    support: ["overview", "players", "risk"]
+    admin: ["overview", "funding", "wallet", "results", "settlements", "tournaments", "observability"],
+    moderator: ["overview", "results", "tournaments", "players", "risk", "observability"],
+    support: ["overview", "players", "risk", "observability"]
   };
 
   return user ? sectionsByRole[user.role as Exclude<CurrentUser["role"], "player" | "owner">]?.includes(section) ?? false : false;
