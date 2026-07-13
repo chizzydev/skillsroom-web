@@ -455,10 +455,21 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
     const previousRootOverflow = root.style.overflow;
     const previousBodyOverflow = bodyElement.style.overflow;
     const previousBodyOverscroll = bodyElement.style.overscrollBehavior;
+    const previousBodyPosition = bodyElement.style.position;
+    const previousBodyInset = bodyElement.style.inset;
+    const previousBodyWidth = bodyElement.style.width;
 
     root.style.overflow = "hidden";
     bodyElement.style.overflow = "hidden";
     bodyElement.style.overscrollBehavior = "none";
+    bodyElement.style.position = "fixed";
+    bodyElement.style.inset = "0";
+    bodyElement.style.width = "100%";
+
+    const repairFocusScroll = () => {
+      if (document.activeElement !== composerRef.current) return;
+      window.scrollTo(0, 0);
+    };
 
     const updateViewport = () => {
       const viewportHeight = Math.round(visualViewport?.height ?? window.innerHeight);
@@ -470,6 +481,7 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
         keyboardActive
       };
       setChatViewport((current) => current?.height === next.height && current.top === next.top && current.keyboardActive === next.keyboardActive ? current : next);
+      repairFocusScroll();
     };
 
     updateViewport();
@@ -486,7 +498,18 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
       root.style.overflow = previousRootOverflow;
       bodyElement.style.overflow = previousBodyOverflow;
       bodyElement.style.overscrollBehavior = previousBodyOverscroll;
+      bodyElement.style.position = previousBodyPosition;
+      bodyElement.style.inset = previousBodyInset;
+      bodyElement.style.width = previousBodyWidth;
     };
+  }, [fullLayout]);
+
+  const repairComposerViewport = useCallback(() => {
+    if (!fullLayout) return;
+    window.scrollTo(0, 0);
+    window.requestAnimationFrame(() => window.scrollTo(0, 0));
+    window.setTimeout(() => window.scrollTo(0, 0), 80);
+    window.setTimeout(() => window.scrollTo(0, 0), 220);
   }, [fullLayout]);
 
   useEffect(() => {
@@ -2688,6 +2711,7 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
             onInsertMention={insertMention}
             onLoadBookmarks={loadBookmarks}
             onLoadScheduledAnnouncements={loadScheduledAnnouncements}
+            onComposerFocus={repairComposerViewport}
             onRemoveAttachment={removePendingAttachment}
             onRetryAttachment={(file, localId) => uploadAttachment(file, localId)}
             onSetEmojiGroup={setEmojiGroup}

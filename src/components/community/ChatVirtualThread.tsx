@@ -168,6 +168,8 @@ export const ChatVirtualThread = memo(function ChatVirtualThread({
     );
   }, [isLoadingOlder, onLoadOlder, pageInfoHasOlder, presence.active, presence.online_count]);
 
+  const Footer = useCallback(() => <div className={fullLayout ? "h-4" : "h-2"} />, [fullLayout]);
+
   const itemContent = useCallback((_: number, message: ChatMessage) => {
     const index = messageIndexById.get(message.id) ?? 0;
     const previous = messages[index - 1];
@@ -254,7 +256,7 @@ export const ChatVirtualThread = memo(function ChatVirtualThread({
         <Virtuoso
           atBottomStateChange={onNearLatestChange}
           className="h-full overflow-x-hidden overscroll-contain"
-          components={{ Header }}
+          components={{ Footer, Header }}
           computeItemKey={(_, message) => message.id}
           data={messages}
           data-testid="chat-thread-virtual-list"
