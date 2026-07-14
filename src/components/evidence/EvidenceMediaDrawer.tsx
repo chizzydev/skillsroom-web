@@ -1,7 +1,7 @@
 "use client";
 /* eslint-disable @next/next/no-img-element -- evidence media is private and served through access-audited routes */
 
-import { type ReactNode, useMemo, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useState } from "react";
 
 type EvidenceMediaDrawerProps = {
   url: string | null | undefined;
@@ -28,6 +28,25 @@ export function EvidenceMediaDrawer({ url, title, description, className, compac
     if (isVideoUrl(url)) return "video";
     return "link";
   }, [url]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setIsOpen(false);
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [isOpen]);
 
   if (!url) {
     return (
@@ -58,22 +77,32 @@ export function EvidenceMediaDrawer({ url, title, description, className, compac
       </button>
 
       {isOpen ? (
-        <div className="fixed inset-0 z-50 grid bg-ink/70 p-4 backdrop-blur-sm md:p-8" role="dialog" aria-modal="true" aria-label={title}>
-          <div className="mx-auto grid h-full w-full max-w-5xl grid-rows-[auto_minmax(0,1fr)] overflow-hidden rounded-lg bg-white shadow-panel">
-            <div className="flex items-start justify-between gap-4 border-b border-line p-4">
+        <div className="fixed inset-0 z-50 grid bg-ink/90 p-0 backdrop-blur-sm sm:p-4 md:p-8" role="dialog" aria-modal="true" aria-label={title}>
+          <div className="mx-auto grid h-[100dvh] w-full max-w-7xl grid-rows-[auto_minmax(0,1fr)] overflow-hidden bg-white shadow-panel sm:h-full sm:rounded-lg">
+            <div className="flex items-start justify-between gap-3 border-b border-line p-3 sm:gap-4 sm:p-4">
               <div className="min-w-0">
                 <p className="truncate text-sm font-black text-ink">{title}</p>
                 {description ? <p className="mt-1 line-clamp-2 text-xs font-bold text-muted">{description}</p> : null}
               </div>
-              <button className="grid h-10 w-10 shrink-0 place-items-center rounded-md border border-line bg-surfaceHigh text-sm font-black text-ink" onClick={() => setIsOpen(false)} type="button">
-                X
-              </button>
+              <div className="flex shrink-0 items-center gap-2">
+                <a
+                  className="inline-flex min-h-10 items-center justify-center rounded-md border border-line bg-surfaceHigh px-3 text-xs font-black text-ink hover:bg-white"
+                  href={url}
+                  rel="noreferrer"
+                  target="_blank"
+                >
+                  Open
+                </a>
+                <button className="grid h-10 w-10 place-items-center rounded-md border border-line bg-surfaceHigh text-sm font-black text-ink hover:bg-white" onClick={() => setIsOpen(false)} type="button">
+                  X
+                </button>
+              </div>
             </div>
-            <div className="grid min-h-0 place-items-center bg-surface p-4">
+            <div className="grid min-h-0 place-items-center bg-ink p-2 sm:p-4">
               {mediaKind === "image" ? (
-                <img alt={title} className="max-h-full max-w-full object-contain" loading="eager" src={url} />
+                <img alt={title} className="h-full max-h-full w-full max-w-full object-contain" loading="eager" src={url} />
               ) : mediaKind === "video" ? (
-                <video className="max-h-full max-w-full" controls preload="metadata" src={url} />
+                <video className="h-full max-h-full w-full max-w-full object-contain" controls playsInline preload="metadata" src={url} />
               ) : (
                 <a className="rounded-md bg-ink px-4 py-3 text-sm font-black text-white" href={url} rel="noreferrer" target="_blank">
                   Open evidence
