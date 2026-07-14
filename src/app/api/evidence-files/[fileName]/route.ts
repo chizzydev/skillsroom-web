@@ -66,8 +66,35 @@ type EvidenceAuditAction =
   | "retention_expired"
   | "quarantined";
 
+type ByteRange = { start: number; end: number };
+
 function appOrigin() {
   return process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3100";
+}
+
+function parseByteRange(header: string | null, size: number): ByteRange | "invalid" | null {
+  if (!header) return null;
+  if (!Number.isSafeInteger(size) || size <= 0) return "invalid";
+
+  const match = /^bytes=(\d*)-(\d*)$/.exec(header.trim());
+  if (!match) return "invalid";
+
+  const [, startRaw, endRaw] = match;
+  if (!startRaw && !endRaw) return "invalid";
+
+  if (!startRaw) {
+    const suffixLength = Number(endRaw);
+    if (!Number.isSafeInteger(suffixLength) || suffixLength <= 0) return "invalid";
+    return { start: Math.max(size - suffixLength, 0), end: size - 1 };
+  }
+
+  const start = Number(startRaw);
+  const end = endRaw ? Number(endRaw) : size - 1;
+  if (!Number.isSafeInteger(start) || !Number.isSafeInteger(end) || start < 0 || end < start || start >= size) {
+    return "invalid";
+  }
+
+  return { start, end: Math.min(end, size - 1) };
 }
 
 function isActiveOperator(user: CurrentUser) {
@@ -142,13 +169,15 @@ async function recordEvidenceAudit(input: {
 async function proxyEvidenceFileFromApi(input: { request: Request; token: string; fileName: string }) {
   const forwardedFor = input.request.headers.get("x-forwarded-for");
   const userAgent = input.request.headers.get("user-agent");
+  const range = input.request.headers.get("range");
   const response = await fetch(`${apiBaseUrl()}/evidence/files/${encodeURIComponent(input.fileName)}`, {
     headers: {
       authorization: `Bearer ${input.token}`,
       accept: "*/*",
       origin: appOrigin(),
       ...(forwardedFor ? { "x-forwarded-for": forwardedFor } : {}),
-      ...(userAgent ? { "user-agent": userAgent } : {})
+      ...(userAgent ? { "user-agent": userAgent } : {}),
+      ...(range ? { range } : {})
     },
     cache: "no-store"
   });
@@ -156,8 +185,10 @@ async function proxyEvidenceFileFromApi(input: { request: Request; token: string
   const passthroughHeaders = new Headers();
   [
     "cache-control",
+    "accept-ranges",
     "content-disposition",
     "content-length",
+    "content-range",
     "content-security-policy",
     "content-type",
     "x-content-type-options",
@@ -335,18 +366,46 @@ export async function GET(request: Request, { params }: { params: Promise<{ file
       metadata
     });
 
+    const range = parseByteRange(request.headers.get("range"), fileStat.byteSize);
+    const sharedHeaders = {
+      "accept-ranges": "bytes",
+      "cache-control": "private, max-age=300",
+      "content-disposition": `inline; filename="${safeName}"`,
+      "content-security-policy": "default-src 'none'; img-src 'self' blob:; media-src 'self' blob:; style-src 'none'; script-src 'none'; sandbox",
+      "content-type": contentType,
+      "x-evidence-access": accessReason,
+      ...(retention ? { "x-evidence-retain-until": retention.retainUntil } : {}),
+      ...(retentionState ? { "x-evidence-retention-state": retentionState } : { "x-evidence-retention-state": "legacy_unclassified" }),
+      "x-evidence-storage": isHardenedFile ? "hardened" : "legacy",
+      "x-content-type-options": "nosniff"
+    };
+
+    if (range === "invalid") {
+      return new Response(null, {
+        status: 416,
+        headers: {
+          ...sharedHeaders,
+          "content-range": `bytes */${fileStat.byteSize}`
+        }
+      });
+    }
+
+    if (range) {
+      const chunk = file.subarray(range.start, range.end + 1);
+      return new Response(new Uint8Array(chunk), {
+        status: 206,
+        headers: {
+          ...sharedHeaders,
+          "content-length": chunk.byteLength.toString(),
+          "content-range": `bytes ${range.start}-${range.end}/${fileStat.byteSize}`
+        }
+      });
+    }
+
     return new Response(new Uint8Array(file), {
       headers: {
-        "cache-control": "private, max-age=300",
-        "content-disposition": `inline; filename="${safeName}"`,
+        ...sharedHeaders,
         "content-length": fileStat.byteSize.toString(),
-        "content-security-policy": "default-src 'none'; img-src 'self' blob:; media-src 'self' blob:; style-src 'none'; script-src 'none'; sandbox",
-        "content-type": contentType,
-        "x-evidence-access": accessReason,
-        ...(retention ? { "x-evidence-retain-until": retention.retainUntil } : {}),
-        ...(retentionState ? { "x-evidence-retention-state": retentionState } : { "x-evidence-retention-state": "legacy_unclassified" }),
-        "x-evidence-storage": isHardenedFile ? "hardened" : "legacy",
-        "x-content-type-options": "nosniff"
       }
     });
   } catch {
