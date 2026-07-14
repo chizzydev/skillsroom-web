@@ -28,9 +28,7 @@ const roomActivityStatuses: RoomActivityStatus[] = [
   "active",
   "awaiting_results",
   "under_review",
-  "disputed",
-  "settlement_pending",
-  "completed"
+  "disputed"
 ];
 
 function parseRoomQueue(value: string | undefined): RoomActivityStatus {
@@ -60,21 +58,26 @@ export default async function MatchesPage({ searchParams }: { searchParams: Prom
   let counts: Partial<Record<MatchRoomStatus, number>> = {};
   let loadError: string | null = null;
   try {
-    const [roomPages, statusCounts] = await Promise.all([
-      Promise.all(
-        roomActivityStatuses.map((status) =>
-          listMatchRooms({
+    const [roomPageResults, statusCounts] = await Promise.all([
+      Promise.allSettled(
+        roomActivityStatuses.map(async (status) => ({
+          status,
+          page: await listMatchRooms({
             status,
             cursor: status === selectedQueue ? cursor : undefined,
             limit: 24
-          }).then((page) => ({ status, page }))
-        )
+          })
+        }))
       ),
       getMatchRoomStatusCounts()
     ]);
+    const roomPages = roomPageResults.flatMap((result) => result.status === "fulfilled" ? [result.value] : []);
     rooms = roomPages.flatMap(({ page }) => page.rooms);
     nextCursor = roomPages.find((item) => item.status === selectedQueue)?.page.next_cursor ?? null;
     counts = statusCounts.counts;
+    if (roomPageResults.some((result) => result.status === "rejected")) {
+      loadError = "Some room groups could not load. The available rooms below are still safe to use.";
+    }
   } catch {
     loadError = "Rooms could not load right now. Please refresh the page or sign in again if this continues.";
   }

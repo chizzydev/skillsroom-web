@@ -20,8 +20,6 @@ export type RoomActivityStatus = Extract<
   | "awaiting_results"
   | "under_review"
   | "disputed"
-  | "settlement_pending"
-  | "completed"
 >;
 
 type RoomActivityRow = {
@@ -43,9 +41,7 @@ const defaultQueueStatuses: RoomActivityStatus[] = [
   "active",
   "awaiting_results",
   "under_review",
-  "disputed",
-  "settlement_pending",
-  "completed"
+  "disputed"
 ];
 
 function queueLabel(status: RoomActivityStatus) {
@@ -58,8 +54,7 @@ function queueLabel(status: RoomActivityStatus) {
   if (status === "awaiting_results") return "Needs Result";
   if (status === "under_review") return "Result Review";
   if (status === "disputed") return "Disputed";
-  if (status === "settlement_pending") return "Payout";
-  return "Completed";
+  return "Disputed";
 }
 
 function statusTone(status: RoomActivityStatus) {
@@ -85,8 +80,7 @@ function queueActionLabel(status: RoomActivityStatus) {
   if (status === "active") return "Open live room";
   if (status === "awaiting_results") return "Submit result";
   if (status === "under_review" || status === "disputed") return "Review result";
-  if (status === "settlement_pending") return "Check payout";
-  return "View record";
+  return "Review result";
 }
 
 const RoomActivityMobileCard = memo(function RoomActivityMobileCard({ room }: { room: RoomActivityRow }) {
