@@ -48,7 +48,7 @@ function queueLabel(status: RoomActivityStatus) {
   if (status === "open") return "Open";
   if (status === "awaiting_funding") return "Awaiting Funding";
   if (status === "funding_review") return "Funding Review";
-  if (status === "funded") return "Ready";
+  if (status === "funded") return "Ready to Play";
   if (status === "active") return "Live";
   if (status === "awaiting_results") return "Needs Result";
   if (status === "under_review") return "Result Review";
@@ -211,14 +211,14 @@ type RoomQueueTabsProps = {
 function RoomQueueTabs({ statuses, selectedQueue, onSelect }: RoomQueueTabsProps) {
   return (
     <div className="border-b border-line bg-white px-3 py-3 sm:px-5">
-      <div className="-mx-1 max-w-full overflow-x-auto px-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        <div className="inline-flex min-w-max gap-1 rounded-md border border-line bg-surfaceHigh p-1">
+      <div className="max-w-full overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div className="grid min-w-full grid-cols-3 gap-1 rounded-md border border-line bg-surfaceHigh p-1 min-[360px]:grid-cols-5 lg:inline-flex lg:min-w-max">
           {statuses.map((status) => {
             const active = status === selectedQueue;
             return (
               <button
                 className={[
-                  "inline-flex min-h-10 shrink-0 items-center justify-center rounded-sm px-3 text-center text-[0.72rem] font-black leading-tight transition",
+                  "inline-flex min-h-10 min-w-0 items-center justify-center rounded-sm px-1.5 text-center text-[0.62rem] font-black leading-tight transition min-[360px]:px-2 min-[430px]:text-[0.68rem] sm:px-3 sm:text-[0.72rem] lg:shrink-0",
                   "focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan focus-visible:ring-offset-2",
                   active ? "bg-white text-ink shadow-tight" : "text-muted hover:bg-white/70 hover:text-ink"
                 ].join(" ")}
@@ -226,8 +226,8 @@ function RoomQueueTabs({ statuses, selectedQueue, onSelect }: RoomQueueTabsProps
                 onClick={() => onSelect(status)}
                 type="button"
               >
-                <span className="hidden min-[410px]:inline">{queueLabel(status)}</span>
-                <span className="min-[410px]:hidden">{compactQueueLabel(status)}</span>
+                <span className="hidden md:inline">{queueLabel(status)}</span>
+                <span className="md:hidden">{compactQueueLabel(status)}</span>
               </button>
             );
           })}

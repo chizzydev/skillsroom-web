@@ -96,17 +96,17 @@ export default async function MatchesPage({ searchParams }: { searchParams: Prom
     }));
   return (
     <AppShell active="matches">
-      <MotionSection className="grid min-w-0 gap-6" variant="page">
-        <MotionSection className="min-w-0 rounded-lg border border-line bg-white p-5 shadow-panel md:p-7" variant="hero">
+      <MotionSection className="grid min-w-0 max-w-full gap-6 overflow-hidden" variant="page">
+        <MotionSection className="min-w-0 max-w-full overflow-hidden rounded-lg border border-line bg-white p-4 shadow-panel sm:p-5 md:p-7" variant="hero">
           <div className="flex min-w-0 flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
             <div className="min-w-0">
               <Badge tone="cyan">Match Rooms</Badge>
-              <h1 className="mt-3 text-3xl font-black leading-tight text-ink sm:text-4xl lg:text-5xl">Create, join, and track rooms.</h1>
-              <p className="mt-3 max-w-3xl text-sm leading-6 text-muted md:text-base">
+              <h1 className="mt-3 max-w-full text-2xl font-black leading-tight text-ink [overflow-wrap:anywhere] sm:text-4xl lg:text-5xl">Create, join, and track rooms.</h1>
+              <p className="mt-3 max-w-3xl text-sm leading-6 text-muted [overflow-wrap:anywhere] md:text-base">
                 Track rooms from open entry through funding, play, result review, and settlement.
               </p>
             </div>
-            <div className="grid w-full min-w-0 gap-2 min-[380px]:grid-cols-2 lg:w-auto lg:min-w-[20rem]">
+            <div className="grid w-full min-w-0 max-w-full gap-2 min-[380px]:grid-cols-2 lg:w-auto lg:min-w-[20rem]">
               <PendingLink className="inline-flex min-h-10 items-center justify-center rounded-md bg-action px-3 text-center text-sm font-black text-navy-950 shadow-action hover:bg-actionHover" href="/matches/new" pendingLabel="Opening creator...">
                 Create room
               </PendingLink>
@@ -119,7 +119,7 @@ export default async function MatchesPage({ searchParams }: { searchParams: Prom
 
         {(error || loadError) ? <TransientStatusBanner clearKeys={["error"]} durationMs={12000} message={error ?? loadError ?? ""} /> : null}
 
-        <div className="grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid min-w-0 max-w-full gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <Reveal staggerIndex={0}><StatusPanel detail="Visible to lobby" label="Open" tone="cyan" value={countStatus(counts, "open")} /></Reveal>
           <Reveal staggerIndex={1}><StatusPanel detail="Manual transfer next" label="Awaiting Funding" tone="warning" value={countStatus(counts, "awaiting_funding")} /></Reveal>
           <Reveal staggerIndex={2}><StatusPanel detail="Payment proof check" label="Funding Review" tone="danger" value={countStatus(counts, "funding_review")} /></Reveal>
