@@ -304,11 +304,11 @@ function payoutCheckpointSummary(room: MatchRoom, latestClaim: MatchResultClaim 
   };
 }
 
-function resultReadinessMessage(room: MatchRoom, canStartPlay: boolean) {
+function resultReadinessMessage(room: MatchRoom, canConfirmStart: boolean) {
   if (room.status === "funded") {
-    return canStartPlay
-      ? "Funding is complete. Start live play first, then submit result evidence when the match ends."
-      : "Funding is complete, but the match still needs to be started before result evidence opens.";
+    return canConfirmStart
+      ? "Funding is complete. Confirm you are ready; the match goes live only after both players confirm."
+      : "Your readiness is confirmed. Waiting for the other player before result evidence opens.";
   }
   if (room.status === "open" || room.status === "awaiting_funding" || room.status === "funding_review") {
     return "Result evidence stays locked until funding is fully approved and live play has started.";
@@ -908,7 +908,7 @@ export default async function MatchDetailPage({
   searchParams
 }: {
   params: Promise<{ matchId: string }>;
-  searchParams: Promise<{ error?: string; invite_sent?: string; checked_in?: string; livestream_saved?: string; livestream_archived?: string; play_started?: string; balance_funded?: string; streams?: string; trust?: string }>;
+  searchParams: Promise<{ error?: string; invite_sent?: string; checked_in?: string; livestream_saved?: string; livestream_archived?: string; play_started?: string; play_confirmed?: string; balance_funded?: string; streams?: string; trust?: string }>;
 }) {
   const user = await getCurrentUser();
   if (!user) redirect("/sign-in?redirect=/matches");
@@ -920,6 +920,7 @@ export default async function MatchDetailPage({
     livestream_saved: livestreamSaved,
     livestream_archived: livestreamArchived,
     play_started: playStarted,
+    play_confirmed: playConfirmed,
     balance_funded: balanceFunded,
     streams,
     trust
@@ -970,6 +971,7 @@ export default async function MatchDetailPage({
   const { match: tournamentMatch, stage: tournamentStage, round: tournamentRound, sides: tournamentSides } =
     tournamentMatchContext(tournamentDetail, tournamentMatchId);
   const tournamentCheckIns = data.tournament_match_check_ins ?? [];
+  const startConfirmations = data.start_confirmations ?? [];
   const currentParticipant = participants.find((participant) => participant.user_id === user.id);
   const canViewSensitiveInternals =
     Boolean(currentParticipant) || ["moderator", "admin", "owner", "support"].includes(user.role);
@@ -978,6 +980,9 @@ export default async function MatchDetailPage({
   const gameName = tournamentDetail?.game_name ?? "the game";
   const currentPlayerCheckedIn = currentParticipant
     ? tournamentCheckIns.some((checkIn) => checkIn.participant_id === currentParticipant.id)
+    : false;
+  const currentPlayerStartConfirmed = currentParticipant
+    ? startConfirmations.some((confirmation) => confirmation.participant_id === currentParticipant.id)
     : false;
 
   if (canViewSensitiveInternals) {
@@ -1015,12 +1020,27 @@ export default async function MatchDetailPage({
     (currentFundingStatus === "pending" || currentFundingStatus === "rejected");
   const availableBalanceMinor = walletOverview?.account.available_balance_minor ?? 0;
   const canPayWithBalance = canSubmitFunding && availableBalanceMinor >= room.entry_amount_minor;
-  const canStartPlay =
+  const joinedParticipants = participants.filter((participant) => participant.participant_status === "joined");
+  const startConfirmationsRequired = joinedParticipants.length;
+  const waitingForOpponentStart =
     room.status === "funded" &&
-    participants.length === room.max_participants &&
+    Boolean(currentParticipant) &&
+    currentPlayerStartConfirmed &&
+    startConfirmations.length < startConfirmationsRequired;
+  const canConfirmStart =
+    room.status === "funded" &&
+    joinedParticipants.length === room.max_participants &&
     allJoinedParticipantsApproved &&
-    canViewSensitiveInternals;
-  const canSubmitResult = canViewSensitiveInternals && ["active", "awaiting_results", "under_review", "disputed"].includes(room.status);
+    Boolean(currentParticipant) &&
+    !currentPlayerStartConfirmed;
+  const canSubmitResult = Boolean(currentParticipant) && ["active", "awaiting_results", "under_review", "disputed"].includes(room.status);
+  const canRespondToLatestClaim =
+    Boolean(currentParticipant) &&
+    Boolean(latestClaim) &&
+    latestClaim?.status === "submitted" &&
+    latestClaim.claimant_user_id !== user.id &&
+    latestClaim.claimant_participant_id !== currentParticipant?.id &&
+    latestClaim.claimed_winner_participant_id !== currentParticipant?.id;
   const canTournamentCheckIn =
     isTournamentRoom &&
     Boolean(currentParticipant) &&
@@ -1056,11 +1076,15 @@ export default async function MatchDetailPage({
   const primaryAction =
     canSubmitFunding
       ? { href: "#funding", label: "Submit funding" }
-      : canSubmitResult
-        ? { href: "#result", label: "Submit result" }
-        : canManageLivestreams
-          ? { href: "#live", label: "Add livestream" }
-          : { href: "#players", label: displayedParticipantCount < room.max_participants ? "Check players" : "View players" };
+      : canConfirmStart
+        ? { href: "#live", label: "Confirm ready" }
+        : waitingForOpponentStart
+          ? { href: "#live", label: "Waiting opponent" }
+          : canSubmitResult
+            ? { href: "#result", label: "Submit result" }
+            : canManageLivestreams
+              ? { href: "#live", label: "Add livestream" }
+              : { href: "#players", label: displayedParticipantCount < room.max_participants ? "Check players" : "View players" };
 
   return (
     <AppShell active="matches">
@@ -1088,10 +1112,10 @@ export default async function MatchDetailPage({
               <PendingLink className="inline-flex min-h-10 items-center justify-center rounded-md border border-white/10 bg-white px-4 text-sm font-black text-ink hover:bg-surfaceHigh" href="/matches" pendingLabel="Opening rooms...">
                 All rooms
               </PendingLink>
-              {canStartPlay ? (
+              {canConfirmStart ? (
                 <form action={startMatchPlayAction}>
                   <input name="match_room_id" type="hidden" value={room.id} />
-                  <SubmitButton idleLabel="Start match" pendingLabel="Starting match..." />
+                  <SubmitButton idleLabel="Confirm ready" pendingLabel="Confirming..." />
                 </form>
               ) : null}
               {canSubmitResult ? (
@@ -1122,6 +1146,7 @@ export default async function MatchDetailPage({
         {livestreamSaved ? <TransientStatusBanner clearKeys={["livestream_saved"]} durationMs={12000} message="Livestream link saved." tone="success" /> : null}
         {livestreamArchived ? <TransientStatusBanner clearKeys={["livestream_archived"]} durationMs={12000} message="Livestream archived." tone="success" /> : null}
         {playStarted ? <TransientStatusBanner clearKeys={["play_started"]} durationMs={10000} message="Match play started. Submit result evidence after the game is complete." tone="success" /> : null}
+        {playConfirmed ? <TransientStatusBanner clearKeys={["play_confirmed"]} durationMs={10000} message="Ready confirmed. Waiting for the other player before the match goes live." tone="success" /> : null}
         {balanceFunded ? <TransientStatusBanner clearKeys={["balance_funded"]} durationMs={10000} message="Entry paid from Skillsroom Balance. Your funds are locked for this room." tone="success" /> : null}
 
         <nav className="sticky top-16 z-30 max-w-full overflow-hidden rounded-2xl border border-line bg-white/95 p-2 shadow-[0_12px_30px_rgba(15,23,42,0.08)] backdrop-blur md:top-16">
@@ -1151,13 +1176,13 @@ export default async function MatchDetailPage({
                     <SubmitButton idleLabel="Open room" pendingLabel="Opening room..." />
                   </form>
                 ) : null}
-                {canStartPlay ? (
+                {canConfirmStart ? (
                   <form action={startMatchPlayAction}>
                     <input name="match_room_id" type="hidden" value={room.id} />
-                    <SubmitButton idleLabel="Start match" pendingLabel="Starting match..." />
+                    <SubmitButton idleLabel="Confirm ready" pendingLabel="Confirming..." />
                   </form>
                 ) : null}
-                {!canOpen && !canStartPlay ? (
+                {!canOpen && !canConfirmStart ? (
                   <a className="inline-flex min-h-10 items-center justify-center rounded-md bg-action px-4 text-sm font-black text-navy-950 shadow-action hover:bg-actionHover" href={primaryAction.href}>
                     {primaryAction.label}
                   </a>
@@ -1404,7 +1429,7 @@ export default async function MatchDetailPage({
           </Reveal>
         ) : null}
 
-        {canStartPlay ? (
+        {canConfirmStart ? (
           <Reveal>
           <Panel>
             <PanelHeader
@@ -1418,7 +1443,7 @@ export default async function MatchDetailPage({
               </p>
               <form action={startMatchPlayAction}>
                 <input name="match_room_id" type="hidden" value={room.id} />
-                <SubmitButton idleLabel="Start match now" pendingLabel="Starting match..." />
+                <SubmitButton idleLabel="Confirm ready" pendingLabel="Confirming..." />
               </form>
             </div>
           </Panel>
@@ -1739,14 +1764,11 @@ export default async function MatchDetailPage({
               <RoomActionForm action={submitResultClaimIslandAction} className="grid gap-3 p-4">
                 <input name="match_room_id" type="hidden" value={room.id} />
                 <label className="grid gap-2 text-sm font-bold text-ink">
-                  Claimed winner
-                  <select className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="claimed_winner_participant_id" required>
-                    {(results?.participants ?? participants).map((participant) => (
-                      <option key={participant.id} value={participant.id}>
-                        {playerOptionLabel(participant, trustByUserId.get(participant.user_id))}
-                      </option>
-                    ))}
-                  </select>
+                  Result claim
+                  <input name="claimed_winner_participant_id" type="hidden" value={currentParticipant?.id ?? ""} />
+                  <div className="rounded-md border border-line bg-surfaceWarm px-3 py-3 text-sm font-black text-ink">
+                    You are submitting your own win claim as {playerOptionLabel(currentParticipant, currentParticipant ? trustByUserId.get(currentParticipant.user_id) : null)}.
+                  </div>
                 </label>
                 <label className="grid gap-2 text-sm font-bold text-ink">
                   Score summary <span className="font-bold text-muted">(optional)</span>
@@ -1787,12 +1809,12 @@ export default async function MatchDetailPage({
             ) : (
               <div className="grid gap-4 p-4">
                 <div className="rounded-md border border-cyan-200 bg-cyanSoft p-4 text-sm font-bold text-cyan">
-                  {resultReadinessMessage(room, canStartPlay)}
+                  {resultReadinessMessage(room, canConfirmStart)}
                 </div>
-                {canStartPlay ? (
+                {canConfirmStart ? (
                   <form action={startMatchPlayAction} className="grid gap-3 sm:max-w-xs">
                     <input name="match_room_id" type="hidden" value={room.id} />
-                    <SubmitButton idleLabel="Start match now" pendingLabel="Starting match..." />
+                    <SubmitButton idleLabel="Confirm ready" pendingLabel="Confirming..." />
                   </form>
                 ) : null}
                 <p className="text-xs font-bold leading-5 text-muted">
@@ -1804,7 +1826,7 @@ export default async function MatchDetailPage({
         </div>
         ) : null}
 
-        {canViewSensitiveInternals && latestClaim ? (
+        {canViewSensitiveInternals && latestClaim && canRespondToLatestClaim ? (
           <Panel>
             <PanelHeader eyebrow="Opponent Response" title="Respond to latest claim" description="Agree when the score is correct. Dispute only when evidence or rules need Skillsroom review." />
             <form action={respondToResultClaimAction} className="grid gap-3 p-4 md:grid-cols-[1fr_12rem_12rem]">

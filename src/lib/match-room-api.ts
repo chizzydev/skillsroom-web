@@ -1722,6 +1722,15 @@ export type TournamentMatchCheckIn = {
   metadata: Record<string, unknown>;
 };
 
+export type MatchStartConfirmation = {
+  id: string;
+  match_room_id: string;
+  participant_id: string;
+  user_id: string;
+  confirmed_at: string;
+  metadata: Record<string, unknown>;
+};
+
 export type TournamentMatchResultReview = {
   id: string;
   tournament_id: string;
@@ -2005,6 +2014,7 @@ export type MatchTimeline = {
   participants: MatchParticipant[];
   events: MatchStateEvent[];
   tournament_match_check_ins?: TournamentMatchCheckIn[];
+  start_confirmations?: MatchStartConfirmation[];
 };
 
 export type MatchRoomShell = {
@@ -2017,6 +2027,7 @@ export type MatchRoomShell = {
   };
   participants: MatchParticipant[];
   tournament_match_check_ins?: TournamentMatchCheckIn[];
+  start_confirmations?: MatchStartConfirmation[];
 };
 
 export class ApiRequestError extends Error {

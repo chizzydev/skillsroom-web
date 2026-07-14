@@ -244,14 +244,18 @@ export async function checkInTournamentMatchRoomAction(formData: FormData) {
 
 export async function startMatchPlayAction(formData: FormData) {
   const matchRoomId = String(formData.get("match_room_id") || "");
+  let confirmedOnly = false;
 
   try {
-    await startMatchPlay(matchRoomId);
+    const result = await startMatchPlay(matchRoomId);
+    if (result.room.status !== "active") {
+      confirmedOnly = true;
+    }
   } catch (error) {
     redirect(withError(`/matches/${matchRoomId}`, error));
   }
 
-  redirect(`/matches/${matchRoomId}?play_started=1`);
+  redirect(`/matches/${matchRoomId}?${confirmedOnly ? "play_confirmed" : "play_started"}=1`);
 }
 
 export async function payRoomWithBalanceAction(formData: FormData) {
