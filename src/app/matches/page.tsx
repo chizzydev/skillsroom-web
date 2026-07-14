@@ -19,7 +19,19 @@ import {
 import { joinMatchRoomAction } from "./actions";
 import { RoomActivityPanelClient, type RoomActivityStatus } from "./RoomActivityPanelClient";
 
-const roomActivityStatuses: RoomActivityStatus[] = ["draft", "open", "awaiting_funding", "funding_review"];
+const roomActivityStatuses: RoomActivityStatus[] = [
+  "draft",
+  "open",
+  "awaiting_funding",
+  "funding_review",
+  "funded",
+  "active",
+  "awaiting_results",
+  "under_review",
+  "disputed",
+  "settlement_pending",
+  "completed"
+];
 
 function parseRoomQueue(value: string | undefined): RoomActivityStatus {
   if (value && roomActivityStatuses.includes(value as RoomActivityStatus)) {
@@ -48,12 +60,20 @@ export default async function MatchesPage({ searchParams }: { searchParams: Prom
   let counts: Partial<Record<MatchRoomStatus, number>> = {};
   let loadError: string | null = null;
   try {
-    const [roomPage, statusCounts] = await Promise.all([
-      listMatchRooms({ status: selectedQueue, cursor, limit: 24 }),
+    const [roomPages, statusCounts] = await Promise.all([
+      Promise.all(
+        roomActivityStatuses.map((status) =>
+          listMatchRooms({
+            status,
+            cursor: status === selectedQueue ? cursor : undefined,
+            limit: 24
+          }).then((page) => ({ status, page }))
+        )
+      ),
       getMatchRoomStatusCounts()
     ]);
-    rooms = roomPage.rooms;
-    nextCursor = roomPage.next_cursor;
+    rooms = roomPages.flatMap(({ page }) => page.rooms);
+    nextCursor = roomPages.find((item) => item.status === selectedQueue)?.page.next_cursor ?? null;
     counts = statusCounts.counts;
   } catch {
     loadError = "Rooms could not load right now. Please refresh the page or sign in again if this continues.";

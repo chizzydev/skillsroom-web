@@ -1,14 +1,28 @@
 "use client";
 
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { PendingLink } from "@/components/ui/PendingLink";
 import { Panel, PanelHeader } from "@/components/ui/Panel";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { VirtualList } from "@/components/ui/VirtualList";
+import type { MatchRoomStatus } from "@/lib/match-room-api";
 
-export type RoomActivityStatus = "draft" | "open" | "awaiting_funding" | "funding_review";
+export type RoomActivityStatus = Extract<
+  MatchRoomStatus,
+  | "draft"
+  | "open"
+  | "awaiting_funding"
+  | "funding_review"
+  | "funded"
+  | "active"
+  | "awaiting_results"
+  | "under_review"
+  | "disputed"
+  | "settlement_pending"
+  | "completed"
+>;
 
 type RoomActivityRow = {
   id: string;
@@ -21,43 +35,58 @@ type RoomActivityRow = {
   max_participants: number;
 };
 
-const defaultQueueStatuses: RoomActivityStatus[] = ["open", "awaiting_funding", "funding_review"];
-const queueSwitchDelayMs = 140;
+const defaultQueueStatuses: RoomActivityStatus[] = [
+  "open",
+  "awaiting_funding",
+  "funding_review",
+  "funded",
+  "active",
+  "awaiting_results",
+  "under_review",
+  "disputed",
+  "settlement_pending",
+  "completed"
+];
 
 function queueLabel(status: RoomActivityStatus) {
   if (status === "draft") return "Drafts";
   if (status === "open") return "Open";
   if (status === "awaiting_funding") return "Awaiting Funding";
-  return "Funding Review";
+  if (status === "funding_review") return "Funding Review";
+  if (status === "funded") return "Ready";
+  if (status === "active") return "Live";
+  if (status === "awaiting_results") return "Needs Result";
+  if (status === "under_review") return "Result Review";
+  if (status === "disputed") return "Disputed";
+  if (status === "settlement_pending") return "Payout";
+  return "Completed";
 }
 
 function statusTone(status: RoomActivityStatus) {
   if (status === "draft") return "neutral" as const;
   if (status === "open") return "cyan" as const;
-  return "warning" as const;
+  if (["awaiting_funding", "funding_review", "funded"].includes(status)) return "warning" as const;
+  if (["under_review", "disputed"].includes(status)) return "danger" as const;
+  return "success" as const;
 }
 
-function queuePanelTone(status: RoomActivityStatus): "neutral" | "cyan" | "warning" {
+function queuePanelTone(status: RoomActivityStatus): "neutral" | "cyan" | "warning" | "danger" {
   if (status === "draft") return "neutral";
-  return status === "open" ? "cyan" : "warning";
+  const tone = statusTone(status);
+  return tone === "success" ? "cyan" : tone;
 }
 
-function QueueSkeleton() {
-  return (
-    <div className="grid gap-3 p-4">
-      {Array.from({ length: 3 }).map((_, index) => (
-        <div className="grid gap-3 rounded-md border border-line bg-surfaceWarm p-4" key={index}>
-          <div className="h-4 w-24 rounded bg-surfaceHigh" />
-          <div className="h-5 w-48 rounded bg-surfaceHigh" />
-          <div className="grid gap-2 sm:grid-cols-3">
-            <div className="h-4 rounded bg-surfaceHigh" />
-            <div className="h-4 rounded bg-surfaceHigh" />
-            <div className="h-4 rounded bg-surfaceHigh" />
-          </div>
-        </div>
-      ))}
-    </div>
-  );
+function queueActionLabel(status: RoomActivityStatus) {
+  if (status === "draft") return "Finish setup";
+  if (status === "open") return "Share or join";
+  if (status === "awaiting_funding") return "Complete entry";
+  if (status === "funding_review") return "Check funding";
+  if (status === "funded") return "Start match";
+  if (status === "active") return "Open live room";
+  if (status === "awaiting_results") return "Submit result";
+  if (status === "under_review" || status === "disputed") return "Review result";
+  if (status === "settlement_pending") return "Check payout";
+  return "View record";
 }
 
 const RoomActivityMobileCard = memo(function RoomActivityMobileCard({ room }: { room: RoomActivityRow }) {
@@ -95,7 +124,7 @@ const RoomActivityMobileCard = memo(function RoomActivityMobileCard({ room }: { 
         href={`/matches/${room.id}`}
         pendingLabel="Opening room..."
       >
-        View room
+          {queueActionLabel(room.status)}
       </PendingLink>
     </article>
   );
@@ -127,7 +156,7 @@ const RoomActivityDesktopRow = memo(function RoomActivityDesktopRow({ room }: { 
           href={`/matches/${room.id}`}
           pendingLabel="Opening room..."
         >
-          View
+          {queueActionLabel(room.status)}
         </PendingLink>
       </div>
     </div>
@@ -175,8 +204,6 @@ type RoomActivityPanelClientProps = {
 
 export function RoomActivityPanelClient({ rooms, initialQueue, nextCursor }: RoomActivityPanelClientProps) {
   const [selectedQueue, setSelectedQueue] = useState<RoomActivityStatus>(initialQueue);
-  const [switchingTo, setSwitchingTo] = useState<RoomActivityStatus | null>(null);
-  const switchTimerRef = useRef<number | null>(null);
   const queueStatuses = useMemo<RoomActivityStatus[]>(
     () => ["draft", ...defaultQueueStatuses],
     []
@@ -192,14 +219,6 @@ export function RoomActivityPanelClient({ rooms, initialQueue, nextCursor }: Roo
     }
   }, [queueStatuses, selectedQueue]);
 
-  useEffect(() => {
-    return () => {
-      if (switchTimerRef.current !== null) {
-        window.clearTimeout(switchTimerRef.current);
-      }
-    };
-  }, []);
-
   const queuedRooms = useMemo(
     () => rooms.filter((room) => room.status === selectedQueue),
     [rooms, selectedQueue]
@@ -208,27 +227,15 @@ export function RoomActivityPanelClient({ rooms, initialQueue, nextCursor }: Roo
   const handleQueueChange = (nextQueue: string) => {
     if (!queueStatuses.includes(nextQueue as RoomActivityStatus)) return;
     const nextStatus = nextQueue as RoomActivityStatus;
-    if (nextStatus === selectedQueue && !switchingTo) return;
+    if (nextStatus === selectedQueue) return;
 
-    if (switchTimerRef.current !== null) {
-      window.clearTimeout(switchTimerRef.current);
-    }
-
-    setSwitchingTo(nextStatus);
-    switchTimerRef.current = window.setTimeout(() => {
-      const url = new URL(window.location.href);
-      if (nextStatus === "open") {
-        url.searchParams.delete("queue");
-      } else {
-        url.searchParams.set("queue", nextStatus);
-      }
-      url.searchParams.delete("cursor");
-      window.location.assign(url.toString());
-      switchTimerRef.current = null;
-    }, queueSwitchDelayMs);
+    setSelectedQueue(nextStatus);
+    const url = new URL(window.location.href);
+    if (nextStatus === "open") url.searchParams.delete("queue");
+    else url.searchParams.set("queue", nextStatus);
+    url.searchParams.delete("cursor");
+    window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
   };
-
-  const visibleQueue = switchingTo ?? selectedQueue;
 
   return (
     <Panel id="room-activity">
@@ -236,21 +243,18 @@ export function RoomActivityPanelClient({ rooms, initialQueue, nextCursor }: Roo
         action={
           <SegmentedControl
             onSelect={handleQueueChange}
-            pendingValue={switchingTo ?? undefined}
             segments={queueStatuses.map((status) => ({
               value: status,
               label: queueLabel(status),
-              active: status === visibleQueue
+              active: status === selectedQueue
             }))}
           />
         }
-        description="Switch between room groups to see the latest activity without losing your place."
+        description="Switch between room groups instantly. Rooms stay visible as they move from funding into play, result review, and payout."
         eyebrow="Rooms"
         title="Room activity"
       />
-      {switchingTo ? (
-        <QueueSkeleton />
-      ) : queuedRooms.length ? (
+      {queuedRooms.length ? (
         <>
           <RoomActivityMobileCards rooms={queuedRooms} />
           <RoomActivityDesktopTable rooms={queuedRooms} />
