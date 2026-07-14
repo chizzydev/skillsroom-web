@@ -139,6 +139,43 @@ async function recordEvidenceAudit(input: {
   }
 }
 
+async function proxyEvidenceFileFromApi(input: { request: Request; token: string; fileName: string }) {
+  const forwardedFor = input.request.headers.get("x-forwarded-for");
+  const userAgent = input.request.headers.get("user-agent");
+  const response = await fetch(`${apiBaseUrl()}/evidence/files/${encodeURIComponent(input.fileName)}`, {
+    headers: {
+      authorization: `Bearer ${input.token}`,
+      accept: "*/*",
+      origin: appOrigin(),
+      ...(forwardedFor ? { "x-forwarded-for": forwardedFor } : {}),
+      ...(userAgent ? { "user-agent": userAgent } : {})
+    },
+    cache: "no-store"
+  });
+
+  const passthroughHeaders = new Headers();
+  [
+    "cache-control",
+    "content-disposition",
+    "content-length",
+    "content-security-policy",
+    "content-type",
+    "x-content-type-options",
+    "x-evidence-access",
+    "x-evidence-retain-until",
+    "x-evidence-retention-state"
+  ].forEach((headerName) => {
+    const value = response.headers.get(headerName);
+    if (value) passthroughHeaders.set(headerName, value);
+  });
+  passthroughHeaders.set("x-evidence-storage", "api-canonical");
+
+  return new Response(response.body, {
+    status: response.status,
+    headers: passthroughHeaders
+  });
+}
+
 async function canOpenMatchRoomEvidence(user: CurrentUser, token: string, matchRoomId: string): Promise<EvidenceAccessDecision> {
   const timeline = await apiRead<MatchRoomEvidenceAccessPayload>(
     `/match-rooms/${encodeURIComponent(matchRoomId)}/timeline`,
@@ -313,6 +350,14 @@ export async function GET(request: Request, { params }: { params: Promise<{ file
       }
     });
   } catch {
+    if (isHardenedFile) {
+      try {
+        return await proxyEvidenceFileFromApi({ request, token, fileName: safeName });
+      } catch {
+        // Keep the local route's existing not-found behavior when the API storage fallback is unavailable.
+      }
+    }
+
     await recordEvidenceAudit({
       request,
       token,
