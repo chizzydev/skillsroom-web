@@ -1124,11 +1124,11 @@ export default async function MatchDetailPage({
         {playStarted ? <TransientStatusBanner clearKeys={["play_started"]} durationMs={10000} message="Match play started. Submit result evidence after the game is complete." tone="success" /> : null}
         {balanceFunded ? <TransientStatusBanner clearKeys={["balance_funded"]} durationMs={10000} message="Entry paid from Skillsroom Balance. Your funds are locked for this room." tone="success" /> : null}
 
-        <nav className="sticky top-16 z-30 max-w-full overflow-hidden rounded-2xl border border-line bg-white/95 py-2 shadow-[0_12px_30px_rgba(15,23,42,0.08)] backdrop-blur md:top-16">
-          <div className="flex max-w-full gap-2 overflow-x-auto px-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:px-3">
+        <nav className="sticky top-16 z-30 max-w-full overflow-hidden rounded-2xl border border-line bg-white/95 p-2 shadow-[0_12px_30px_rgba(15,23,42,0.08)] backdrop-blur md:top-16">
+          <div className="grid max-w-full grid-cols-3 gap-2 min-[430px]:grid-cols-4 lg:flex lg:flex-wrap">
             {roomNavItems.map((item) => (
               <a
-                className="motion-tap inline-flex min-h-10 shrink-0 items-center justify-center rounded-xl border border-line bg-surfaceHigh px-4 text-sm font-black text-ink hover:border-cyan hover:bg-cyanSoft"
+                className="motion-tap inline-flex min-h-10 min-w-0 items-center justify-center rounded-xl border border-line bg-surfaceHigh px-2 text-center text-xs font-black leading-tight text-ink hover:border-cyan hover:bg-cyanSoft sm:px-4 sm:text-sm"
                 href={item.href}
                 key={item.href}
               >

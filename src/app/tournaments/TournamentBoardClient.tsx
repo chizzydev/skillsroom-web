@@ -171,7 +171,7 @@ export function TournamentBoardClient({
               Only published or active tournament records appear here. Drafts stay in admin operations.
             </p>
           </div>
-          <div className="flex max-w-full shrink-0 flex-wrap gap-2 overflow-x-auto">
+          <div className="w-full max-w-full shrink-0 md:w-auto">
             <SegmentedControl
               onSelect={handleFilterChange}
               pendingValue={switchingTo ?? undefined}

@@ -36,7 +36,7 @@ export function PanelHeader({ eyebrow, title, description, action }: PanelHeader
         <h2 className="mt-1 text-lg font-black leading-tight text-ink sm:text-[1.15rem]">{title}</h2>
         {description ? <p className="mt-1 text-sm leading-6 text-muted">{description}</p> : null}
       </div>
-      {action ? <div className="flex max-w-full shrink-0 flex-wrap gap-2 overflow-x-auto">{action}</div> : null}
+      {action ? <div className="flex w-full max-w-full shrink-0 flex-wrap gap-2 md:w-auto">{action}</div> : null}
     </header>
   );
 }

@@ -63,11 +63,11 @@ export async function AdminShell({ active, children }: AdminShellProps) {
             </span>
           </div>
         </div>
-        <nav className="flex gap-1 overflow-x-auto p-3 lg:grid lg:overflow-visible">
+        <nav className="grid grid-cols-3 gap-1 p-3 min-[520px]:grid-cols-5 lg:grid-cols-1">
           {navItems.map((item) => (
             <Link
               className={[
-                "motion-tap whitespace-nowrap rounded-md px-3 py-2 text-sm font-black transition",
+                "motion-tap min-h-10 rounded-md px-2 py-2 text-center text-xs font-black leading-tight transition sm:px-3 sm:text-sm lg:text-left",
                 item.key === active ? "bg-white text-navy-900 shadow-tight" : "text-slate-300 hover:bg-white/10"
               ].join(" ")}
               href={item.href}
