@@ -5,7 +5,6 @@ import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { PendingLink } from "@/components/ui/PendingLink";
 import { Panel, PanelHeader } from "@/components/ui/Panel";
-import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { VirtualList } from "@/components/ui/VirtualList";
 import type { MatchRoomStatus } from "@/lib/match-room-api";
 
@@ -53,6 +52,19 @@ function queueLabel(status: RoomActivityStatus) {
   if (status === "active") return "Live";
   if (status === "awaiting_results") return "Needs Result";
   if (status === "under_review") return "Result Review";
+  if (status === "disputed") return "Disputed";
+  return "Disputed";
+}
+
+function compactQueueLabel(status: RoomActivityStatus) {
+  if (status === "draft") return "Drafts";
+  if (status === "open") return "Open";
+  if (status === "awaiting_funding") return "Funding";
+  if (status === "funding_review") return "Review";
+  if (status === "funded") return "Ready";
+  if (status === "active") return "Live";
+  if (status === "awaiting_results") return "Result";
+  if (status === "under_review") return "Review";
   if (status === "disputed") return "Disputed";
   return "Disputed";
 }
@@ -190,6 +202,41 @@ function RoomActivityDesktopTable({ rooms }: { rooms: RoomActivityRow[] }) {
   );
 }
 
+type RoomQueueTabsProps = {
+  statuses: RoomActivityStatus[];
+  selectedQueue: RoomActivityStatus;
+  onSelect: (status: RoomActivityStatus) => void;
+};
+
+function RoomQueueTabs({ statuses, selectedQueue, onSelect }: RoomQueueTabsProps) {
+  return (
+    <div className="border-b border-line bg-white px-3 py-3 sm:px-5">
+      <div className="-mx-1 max-w-full overflow-x-auto px-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div className="inline-flex min-w-max gap-1 rounded-md border border-line bg-surfaceHigh p-1">
+          {statuses.map((status) => {
+            const active = status === selectedQueue;
+            return (
+              <button
+                className={[
+                  "inline-flex min-h-10 shrink-0 items-center justify-center rounded-sm px-3 text-center text-[0.72rem] font-black leading-tight transition",
+                  "focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan focus-visible:ring-offset-2",
+                  active ? "bg-white text-ink shadow-tight" : "text-muted hover:bg-white/70 hover:text-ink"
+                ].join(" ")}
+                key={status}
+                onClick={() => onSelect(status)}
+                type="button"
+              >
+                <span className="hidden min-[410px]:inline">{queueLabel(status)}</span>
+                <span className="min-[410px]:hidden">{compactQueueLabel(status)}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 type RoomActivityPanelClientProps = {
   rooms: RoomActivityRow[];
   initialQueue: RoomActivityStatus;
@@ -218,9 +265,8 @@ export function RoomActivityPanelClient({ rooms, initialQueue, nextCursor }: Roo
     [rooms, selectedQueue]
   );
 
-  const handleQueueChange = (nextQueue: string) => {
-    if (!queueStatuses.includes(nextQueue as RoomActivityStatus)) return;
-    const nextStatus = nextQueue as RoomActivityStatus;
+  const handleQueueChange = (nextStatus: RoomActivityStatus) => {
+    if (!queueStatuses.includes(nextStatus)) return;
     if (nextStatus === selectedQueue) return;
 
     setSelectedQueue(nextStatus);
@@ -234,20 +280,11 @@ export function RoomActivityPanelClient({ rooms, initialQueue, nextCursor }: Roo
   return (
     <Panel id="room-activity">
       <PanelHeader
-        action={
-          <SegmentedControl
-            onSelect={handleQueueChange}
-            segments={queueStatuses.map((status) => ({
-              value: status,
-              label: queueLabel(status),
-              active: status === selectedQueue
-            }))}
-          />
-        }
         description="Switch between room groups instantly. Rooms stay visible as they move from funding into play, result review, and payout."
         eyebrow="Rooms"
         title="Room activity"
       />
+      <RoomQueueTabs statuses={queueStatuses} selectedQueue={selectedQueue} onSelect={handleQueueChange} />
       {queuedRooms.length ? (
         <>
           <RoomActivityMobileCards rooms={queuedRooms} />
