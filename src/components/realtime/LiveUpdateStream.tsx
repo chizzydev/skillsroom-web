@@ -12,6 +12,7 @@ type LiveUpdateStreamProps = {
   eventTypePrefixes?: string[];
   label?: string;
   matchRoomId?: string;
+  refreshOnPatch?: boolean;
   refreshTargetLabel?: string;
   tournamentId?: string;
 };
@@ -110,6 +111,7 @@ export function LiveUpdateStream({
   eventTypePrefixes = [],
   label = "Live updates on",
   matchRoomId,
+  refreshOnPatch = false,
   refreshTargetLabel,
   tournamentId
 }: LiveUpdateStreamProps) {
@@ -185,6 +187,11 @@ export function LiveUpdateStream({
       setPatchNotice(patchNoticeFor(event, detail.target, detail.handled));
       setShowRefreshFallback(!detail.handled);
       refreshTimerRef.current = setTimeout(() => {
+        if (refreshOnPatch) {
+          startTransition(() => {
+            router.refresh();
+          });
+        }
         setUpdatedAt(new Date().toISOString());
         clearNoticeTimerRef.current = setTimeout(() => {
           setPatchNotice(null);
@@ -259,7 +266,7 @@ export function LiveUpdateStream({
       toastTimers.clear();
       source.close();
     };
-  }, [isEnabled, matchRoomId, prefixes, refreshTarget, router, tournamentId]);
+  }, [isEnabled, matchRoomId, prefixes, refreshOnPatch, refreshTarget, router, tournamentId]);
 
   const statusLabel = !isEnabled ? "Paused" : status === "live" ? "On" : status === "reconnecting" ? "Reconnecting" : "Starting";
   const updatedLabel = updatedAt

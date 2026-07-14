@@ -258,6 +258,25 @@ export async function startMatchPlayAction(formData: FormData) {
   redirect(`/matches/${matchRoomId}?${confirmedOnly ? "play_confirmed" : "play_started"}=1`);
 }
 
+export async function startMatchPlayIslandAction(
+  _state: RoomActionState,
+  formData: FormData
+): Promise<RoomActionState> {
+  const matchRoomId = String(formData.get("match_room_id") || "");
+
+  try {
+    const result = await startMatchPlay(matchRoomId);
+    revalidateRoom(matchRoomId);
+    return roomActionSuccess(
+      result.room.status === "active"
+        ? "Both players are ready. The match is live."
+        : "Ready confirmed. Waiting for the other player before the match goes live."
+    );
+  } catch (error) {
+    return roomActionError(actionErrorMessage(error));
+  }
+}
+
 export async function payRoomWithBalanceAction(formData: FormData) {
   let matchRoomId = String(formData.get("match_room_id") || "");
 

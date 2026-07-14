@@ -52,9 +52,9 @@ import {
   createMatchLivestreamIslandAction,
   createRoomInviteAction,
   openMatchRoomAction,
-  payRoomWithBalanceAction,
+  payRoomWithBalanceIslandAction,
+  startMatchPlayIslandAction,
   respondToResultClaimAction,
-  startMatchPlayAction,
   submitManualFundingIslandAction,
   submitResultClaimIslandAction
 } from "../actions";
@@ -1113,10 +1113,10 @@ export default async function MatchDetailPage({
                 All rooms
               </PendingLink>
               {canConfirmStart ? (
-                <form action={startMatchPlayAction}>
+                <RoomActionForm action={startMatchPlayIslandAction} className="grid gap-2" refreshOnSuccess>
                   <input name="match_room_id" type="hidden" value={room.id} />
                   <SubmitButton idleLabel="Confirm ready" pendingLabel="Confirming..." />
-                </form>
+                </RoomActionForm>
               ) : null}
               {canSubmitResult ? (
                 <a className="inline-flex min-h-10 items-center justify-center rounded-md bg-action px-4 text-sm font-black text-navy-950 shadow-action hover:bg-actionHover" href="#result">
@@ -1128,10 +1128,11 @@ export default async function MatchDetailPage({
         </MotionSection>
 
         <LiveUpdateStream
-          autoConnect={false}
+          autoConnect
           eventTypePrefixes={["match.", "notification.", "room.invite."]}
           label="Room live"
           matchRoomId={room.id}
+          refreshOnPatch
           tournamentId={tournamentId ?? undefined}
         />
         <div className="grid gap-2 sm:grid-cols-3">
@@ -1177,10 +1178,10 @@ export default async function MatchDetailPage({
                   </form>
                 ) : null}
                 {canConfirmStart ? (
-                  <form action={startMatchPlayAction}>
+                  <RoomActionForm action={startMatchPlayIslandAction} className="grid gap-2" refreshOnSuccess>
                     <input name="match_room_id" type="hidden" value={room.id} />
                     <SubmitButton idleLabel="Confirm ready" pendingLabel="Confirming..." />
-                  </form>
+                  </RoomActionForm>
                 ) : null}
                 {!canOpen && !canConfirmStart ? (
                   <a className="inline-flex min-h-10 items-center justify-center rounded-md bg-action px-4 text-sm font-black text-navy-950 shadow-action hover:bg-actionHover" href={primaryAction.href}>
@@ -1441,10 +1442,10 @@ export default async function MatchDetailPage({
               <p className="text-sm leading-6 text-muted">
                 This lets both players see that the match has started and opens result evidence when the match ends.
               </p>
-              <form action={startMatchPlayAction}>
+              <RoomActionForm action={startMatchPlayIslandAction} className="grid gap-3" refreshOnSuccess>
                 <input name="match_room_id" type="hidden" value={room.id} />
                 <SubmitButton idleLabel="Confirm ready" pendingLabel="Confirming..." />
-              </form>
+              </RoomActionForm>
             </div>
           </Panel>
           </Reveal>
@@ -1468,10 +1469,10 @@ export default async function MatchDetailPage({
                       Available: <span className="font-black text-ink">{formatMinorMoney(room.currency, availableBalanceMinor)}</span>. Required: <span className="font-black text-ink">{formatEntryAmount(room)}</span>.
                     </p>
                   </div>
-                  <form action={payRoomWithBalanceAction} className="shrink-0">
+                  <RoomActionForm action={payRoomWithBalanceIslandAction} className="shrink-0" refreshOnSuccess>
                     <input name="match_room_id" type="hidden" value={room.id} />
                     <SubmitButton disabled={!canPayWithBalance} idleLabel="Use balance" pendingLabel="Locking funds..." />
-                  </form>
+                  </RoomActionForm>
                 </div>
                 {!canSubmitFunding && currentFundingStatus === "approved" ? (
                   <p className="mt-3 text-sm font-bold text-success">Your room entry is already funded.</p>
@@ -1545,28 +1546,8 @@ export default async function MatchDetailPage({
                 <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" disabled={!canSubmitFunding} name="sender_account_name" placeholder="Name shown on the transfer" required />
               </label>
               <div className="rounded-md border border-cyan bg-cyanSoft p-4 text-sm leading-6 text-muted">
-                <span className="font-black text-ink">Winner payout details</span>
+                <span className="font-black text-ink">Payout details live on Profile.</span> Add or update your payout account there before result review so winnings can be paid without slowing down entry confirmation.
               </div>
-              <label className="grid gap-2 text-sm font-bold text-ink">
-                Payout recipient name
-                <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" disabled={!canSubmitFunding} name="payout_recipient_name" placeholder="Account holder name for payout or refund" required />
-              </label>
-              <label className="grid gap-2 text-sm font-bold text-ink">
-                Payout bank
-                <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" disabled={!canSubmitFunding} name="payout_bank_name" placeholder="OPay, GTBank, PalmPay..." required />
-              </label>
-              <label className="grid gap-2 text-sm font-bold text-ink">
-                Payout account number
-                <input className="min-h-11 rounded-md border border-line bg-white px-3 font-mono text-sm outline-none focus:border-action" disabled={!canSubmitFunding} inputMode="numeric" name="payout_account_number" pattern="[0-9]{6,20}" placeholder="Destination account number" required />
-              </label>
-              <label className="grid gap-2 text-sm font-bold text-ink">
-                Payout bank code <span className="font-bold text-muted">(optional)</span>
-                <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" disabled={!canSubmitFunding} name="payout_bank_code" placeholder="Routing or bank code if needed" />
-              </label>
-              <label className="grid gap-2 text-sm font-bold text-ink">
-                Payout note <span className="font-bold text-muted">(optional)</span>
-                <textarea className="min-h-24 rounded-md border border-line bg-white px-3 py-2 text-sm outline-none focus:border-action" disabled={!canSubmitFunding} name="payout_note" placeholder="Optional instruction for ops, like preferred account label." />
-              </label>
               <label className="grid gap-2 text-sm font-bold text-ink">
                 Transfer screenshot
                 <input
@@ -1812,10 +1793,10 @@ export default async function MatchDetailPage({
                   {resultReadinessMessage(room, canConfirmStart)}
                 </div>
                 {canConfirmStart ? (
-                  <form action={startMatchPlayAction} className="grid gap-3 sm:max-w-xs">
+                  <RoomActionForm action={startMatchPlayIslandAction} className="grid gap-3 sm:max-w-xs" refreshOnSuccess>
                     <input name="match_room_id" type="hidden" value={room.id} />
                     <SubmitButton idleLabel="Confirm ready" pendingLabel="Confirming..." />
-                  </form>
+                  </RoomActionForm>
                 ) : null}
                 <p className="text-xs font-bold leading-5 text-muted">
                   Score summaries stay optional because some games resolve through placement, eliminations, survival, forfeit, or other non-scoreline outcomes.

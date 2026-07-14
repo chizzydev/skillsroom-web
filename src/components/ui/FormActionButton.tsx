@@ -42,7 +42,7 @@ export function FormActionButton({
   useEffect(() => {
     if (pending) return;
     if (!clickedPending) return;
-    const timer = window.setTimeout(() => setClickedPending(false), 12000);
+    const timer = window.setTimeout(() => setClickedPending(false), 800);
     return () => window.clearTimeout(timer);
   }, [clickedPending, pending]);
 
