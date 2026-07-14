@@ -28,6 +28,10 @@ export async function getAccessToken(): Promise<string | null> {
   const refreshedToken = headerStore.get(refreshedAccessTokenHeader);
   if (refreshedToken) return refreshedToken;
 
+  const authorization = headerStore.get("authorization");
+  const bearerToken = authorization?.match(/^Bearer\s+(.+)$/i)?.[1]?.trim();
+  if (bearerToken) return bearerToken;
+
   const cookieStore = await cookies();
   return (
     accessTokenCookieNames()
