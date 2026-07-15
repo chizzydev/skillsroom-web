@@ -17,23 +17,22 @@ import {
   type MatchRoomStatus
 } from "@/lib/match-room-api";
 import { joinMatchRoomAction } from "./actions";
-import { RoomActivityPanelClient, type RoomActivityStatus } from "./RoomActivityPanelClient";
+import {
+  RoomActivityPanelClient,
+  queueForRoomStatus,
+  roomActivityQueueStatuses,
+  roomActivityQueues,
+  roomActivityStatuses,
+  type RoomActivityQueue,
+  type RoomActivityStatus
+} from "./RoomActivityPanelClient";
 
-const roomActivityStatuses: RoomActivityStatus[] = [
-  "draft",
-  "open",
-  "awaiting_funding",
-  "funding_review",
-  "funded",
-  "active",
-  "awaiting_results",
-  "under_review",
-  "disputed"
-];
-
-function parseRoomQueue(value: string | undefined): RoomActivityStatus {
+function parseRoomQueue(value: string | undefined): RoomActivityQueue {
+  if (value && roomActivityQueues.includes(value as RoomActivityQueue)) {
+    return value as RoomActivityQueue;
+  }
   if (value && roomActivityStatuses.includes(value as RoomActivityStatus)) {
-    return value as RoomActivityStatus;
+    return queueForRoomStatus(value as RoomActivityStatus);
   }
 
   return "open";
@@ -52,6 +51,7 @@ export default async function MatchesPage({ searchParams }: { searchParams: Prom
   if (!user) redirect("/sign-in?redirect=/matches");
   const { error, queue, cursor } = await searchParams;
   const selectedQueue = parseRoomQueue(queue);
+  const selectedQueueStatuses = roomActivityQueueStatuses[selectedQueue];
 
   let rooms: MatchRoomListRow[] = [];
   let nextCursor: string | null = null;
@@ -64,7 +64,7 @@ export default async function MatchesPage({ searchParams }: { searchParams: Prom
           status,
           page: await listMatchRooms({
             status,
-            cursor: status === selectedQueue ? cursor : undefined,
+            cursor: selectedQueueStatuses.length === 1 && status === selectedQueueStatuses[0] ? cursor : undefined,
             limit: 24
           })
         }))
@@ -73,7 +73,7 @@ export default async function MatchesPage({ searchParams }: { searchParams: Prom
     ]);
     const roomPages = roomPageResults.flatMap((result) => result.status === "fulfilled" ? [result.value] : []);
     rooms = roomPages.flatMap(({ page }) => page.rooms);
-    nextCursor = roomPages.find((item) => item.status === selectedQueue)?.page.next_cursor ?? null;
+    nextCursor = selectedQueueStatuses.length === 1 ? (roomPages.find((item) => item.status === selectedQueueStatuses[0])?.page.next_cursor ?? null) : null;
     counts = statusCounts.counts;
     if (roomPageResults.some((result) => result.status === "rejected")) {
       loadError = "Some room groups could not load. The available rooms below are still safe to use.";

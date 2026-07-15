@@ -19,7 +19,24 @@ export type RoomActivityStatus = Extract<
   | "awaiting_results"
   | "under_review"
   | "disputed"
+  | "settlement_pending"
+  | "completed"
+  | "cancelled"
+  | "refunded"
+  | "voided"
 >;
+
+export type RoomActivityQueue =
+  | "draft"
+  | "open"
+  | "funding"
+  | "ready"
+  | "live"
+  | "result"
+  | "review"
+  | "disputed"
+  | "payout"
+  | "done";
 
 type RoomActivityRow = {
   id: string;
@@ -32,7 +49,8 @@ type RoomActivityRow = {
   max_participants: number;
 };
 
-const defaultQueueStatuses: RoomActivityStatus[] = [
+export const roomActivityStatuses: RoomActivityStatus[] = [
+  "draft",
   "open",
   "awaiting_funding",
   "funding_review",
@@ -40,33 +58,58 @@ const defaultQueueStatuses: RoomActivityStatus[] = [
   "active",
   "awaiting_results",
   "under_review",
-  "disputed"
+  "disputed",
+  "settlement_pending",
+  "completed",
+  "cancelled",
+  "refunded",
+  "voided"
 ];
 
-function queueLabel(status: RoomActivityStatus) {
-  if (status === "draft") return "Drafts";
-  if (status === "open") return "Open";
-  if (status === "awaiting_funding") return "Awaiting Funding";
-  if (status === "funding_review") return "Funding Review";
-  if (status === "funded") return "Ready to Play";
-  if (status === "active") return "Live";
-  if (status === "awaiting_results") return "Needs Result";
-  if (status === "under_review") return "Result Review";
-  if (status === "disputed") return "Disputed";
-  return "Disputed";
+export const roomActivityQueueStatuses: Record<RoomActivityQueue, RoomActivityStatus[]> = {
+  draft: ["draft"],
+  open: ["open"],
+  funding: ["awaiting_funding", "funding_review"],
+  ready: ["funded"],
+  live: ["active"],
+  result: ["awaiting_results"],
+  review: ["under_review"],
+  disputed: ["disputed"],
+  payout: ["settlement_pending"],
+  done: ["completed", "refunded", "voided", "cancelled"]
+};
+
+export const roomActivityQueues = Object.keys(roomActivityQueueStatuses) as RoomActivityQueue[];
+
+export function queueForRoomStatus(status: RoomActivityStatus): RoomActivityQueue {
+  const match = roomActivityQueues.find((queue) => roomActivityQueueStatuses[queue].includes(status));
+  return match ?? "open";
 }
 
-function compactQueueLabel(status: RoomActivityStatus) {
-  if (status === "draft") return "Drafts";
-  if (status === "open") return "Open";
-  if (status === "awaiting_funding") return "Funding";
-  if (status === "funding_review") return "Review";
-  if (status === "funded") return "Ready";
-  if (status === "active") return "Live";
-  if (status === "awaiting_results") return "Result";
-  if (status === "under_review") return "Review";
-  if (status === "disputed") return "Disputed";
-  return "Disputed";
+function queueLabel(queue: RoomActivityQueue) {
+  if (queue === "draft") return "Drafts";
+  if (queue === "open") return "Open";
+  if (queue === "funding") return "Funding";
+  if (queue === "ready") return "Ready";
+  if (queue === "live") return "Live";
+  if (queue === "result") return "Result";
+  if (queue === "review") return "Review";
+  if (queue === "disputed") return "Disputed";
+  if (queue === "payout") return "Payout";
+  return "Done";
+}
+
+function queueDescription(queue: RoomActivityQueue) {
+  if (queue === "funding") return "Rooms waiting for entry payment or funding approval.";
+  if (queue === "ready") return "Rooms funded by both players and waiting for match start.";
+  if (queue === "live") return "Rooms currently in play.";
+  if (queue === "result") return "Rooms waiting for a player to submit the match result.";
+  if (queue === "review") return "Rooms with result evidence waiting for review.";
+  if (queue === "disputed") return "Rooms where players disagree and Skillsroom must review.";
+  if (queue === "payout") return "Rooms approved and waiting for payout or refund completion.";
+  if (queue === "done") return "Completed, refunded, voided, or cancelled rooms.";
+  if (queue === "draft") return "Room drafts you started but have not opened.";
+  return "Open rooms that can still be joined.";
 }
 
 function statusTone(status: RoomActivityStatus) {
@@ -74,13 +117,15 @@ function statusTone(status: RoomActivityStatus) {
   if (status === "open") return "cyan" as const;
   if (["awaiting_funding", "funding_review", "funded"].includes(status)) return "warning" as const;
   if (["under_review", "disputed"].includes(status)) return "danger" as const;
+  if (["cancelled", "voided"].includes(status)) return "neutral" as const;
   return "success" as const;
 }
 
-function queuePanelTone(status: RoomActivityStatus): "neutral" | "cyan" | "warning" | "danger" {
-  if (status === "draft") return "neutral";
-  const tone = statusTone(status);
-  return tone === "success" ? "cyan" : tone;
+function queuePanelTone(queue: RoomActivityQueue): "neutral" | "cyan" | "warning" | "danger" {
+  if (["draft", "done"].includes(queue)) return "neutral";
+  if (["funding", "ready", "payout"].includes(queue)) return "warning";
+  if (["review", "disputed"].includes(queue)) return "danger";
+  return "cyan";
 }
 
 function queueActionLabel(status: RoomActivityStatus) {
@@ -92,7 +137,8 @@ function queueActionLabel(status: RoomActivityStatus) {
   if (status === "active") return "Open live room";
   if (status === "awaiting_results") return "Submit result";
   if (status === "under_review" || status === "disputed") return "Review result";
-  return "Review result";
+  if (status === "settlement_pending") return "Track payout";
+  return "Open room";
 }
 
 const RoomActivityMobileCard = memo(function RoomActivityMobileCard({ room }: { room: RoomActivityRow }) {
@@ -203,18 +249,17 @@ function RoomActivityDesktopTable({ rooms }: { rooms: RoomActivityRow[] }) {
 }
 
 type RoomQueueTabsProps = {
-  statuses: RoomActivityStatus[];
-  selectedQueue: RoomActivityStatus;
-  onSelect: (status: RoomActivityStatus) => void;
+  queues: RoomActivityQueue[];
+  selectedQueue: RoomActivityQueue;
+  onSelect: (queue: RoomActivityQueue) => void;
 };
 
-function RoomQueueTabs({ statuses, selectedQueue, onSelect }: RoomQueueTabsProps) {
+function RoomQueueTabs({ queues, selectedQueue, onSelect }: RoomQueueTabsProps) {
   return (
     <div className="border-b border-line bg-white px-3 py-3 sm:px-5">
-      <div className="max-w-full overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        <div className="grid min-w-full grid-cols-3 gap-1 rounded-md border border-line bg-surfaceHigh p-1 min-[360px]:grid-cols-5 lg:inline-flex lg:min-w-max">
-          {statuses.map((status) => {
-            const active = status === selectedQueue;
+      <div className="grid min-w-full grid-cols-3 gap-1 rounded-md border border-line bg-surfaceHigh p-1 min-[360px]:grid-cols-5 lg:grid-cols-10">
+          {queues.map((queue) => {
+            const active = queue === selectedQueue;
             return (
               <button
                 className={[
@@ -222,16 +267,14 @@ function RoomQueueTabs({ statuses, selectedQueue, onSelect }: RoomQueueTabsProps
                   "focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan focus-visible:ring-offset-2",
                   active ? "bg-white text-ink shadow-tight" : "text-muted hover:bg-white/70 hover:text-ink"
                 ].join(" ")}
-                key={status}
-                onClick={() => onSelect(status)}
+                key={queue}
+                onClick={() => onSelect(queue)}
                 type="button"
               >
-                <span className="hidden md:inline">{queueLabel(status)}</span>
-                <span className="md:hidden">{compactQueueLabel(status)}</span>
+                {queueLabel(queue)}
               </button>
             );
           })}
-        </div>
       </div>
     </div>
   );
@@ -239,40 +282,37 @@ function RoomQueueTabs({ statuses, selectedQueue, onSelect }: RoomQueueTabsProps
 
 type RoomActivityPanelClientProps = {
   rooms: RoomActivityRow[];
-  initialQueue: RoomActivityStatus;
+  initialQueue: RoomActivityQueue;
   nextCursor: string | null;
 };
 
 export function RoomActivityPanelClient({ rooms, initialQueue, nextCursor }: RoomActivityPanelClientProps) {
-  const [selectedQueue, setSelectedQueue] = useState<RoomActivityStatus>(initialQueue);
-  const queueStatuses = useMemo<RoomActivityStatus[]>(
-    () => ["draft", ...defaultQueueStatuses],
-    []
-  );
+  const [selectedQueue, setSelectedQueue] = useState<RoomActivityQueue>(initialQueue);
+  const queues = useMemo<RoomActivityQueue[]>(() => roomActivityQueues, []);
 
   useEffect(() => {
     setSelectedQueue(initialQueue);
   }, [initialQueue]);
 
   useEffect(() => {
-    if (!queueStatuses.includes(selectedQueue)) {
+    if (!queues.includes(selectedQueue)) {
       setSelectedQueue("open");
     }
-  }, [queueStatuses, selectedQueue]);
+  }, [queues, selectedQueue]);
 
   const queuedRooms = useMemo(
-    () => rooms.filter((room) => room.status === selectedQueue),
+    () => rooms.filter((room) => roomActivityQueueStatuses[selectedQueue].includes(room.status)),
     [rooms, selectedQueue]
   );
 
-  const handleQueueChange = (nextStatus: RoomActivityStatus) => {
-    if (!queueStatuses.includes(nextStatus)) return;
-    if (nextStatus === selectedQueue) return;
+  const handleQueueChange = (nextQueue: RoomActivityQueue) => {
+    if (!queues.includes(nextQueue)) return;
+    if (nextQueue === selectedQueue) return;
 
-    setSelectedQueue(nextStatus);
+    setSelectedQueue(nextQueue);
     const url = new URL(window.location.href);
-    if (nextStatus === "open") url.searchParams.delete("queue");
-    else url.searchParams.set("queue", nextStatus);
+    if (nextQueue === "open") url.searchParams.delete("queue");
+    else url.searchParams.set("queue", nextQueue);
     url.searchParams.delete("cursor");
     window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
   };
@@ -284,7 +324,7 @@ export function RoomActivityPanelClient({ rooms, initialQueue, nextCursor }: Roo
         eyebrow="Rooms"
         title="Room activity"
       />
-      <RoomQueueTabs statuses={queueStatuses} selectedQueue={selectedQueue} onSelect={handleQueueChange} />
+      <RoomQueueTabs queues={queues} selectedQueue={selectedQueue} onSelect={handleQueueChange} />
       {queuedRooms.length ? (
         <>
           <RoomActivityMobileCards rooms={queuedRooms} />
@@ -293,7 +333,7 @@ export function RoomActivityPanelClient({ rooms, initialQueue, nextCursor }: Roo
       ) : (
         <div className="p-4">
           <EmptyState
-            description={`Rooms in ${queueLabel(selectedQueue).toLowerCase()} will appear here as soon as they enter that queue.`}
+            description={queueDescription(selectedQueue)}
             title={`No ${queueLabel(selectedQueue).toLowerCase()} rooms right now`}
             tone={queuePanelTone(selectedQueue)}
           />
