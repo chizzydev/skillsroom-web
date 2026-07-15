@@ -1,6 +1,7 @@
 import { GlobalLobbyClient } from "@/components/community/GlobalLobbyClient";
 import { Panel, PanelHeader } from "@/components/ui/Panel";
 import { redirect } from "next/navigation";
+import { ChatHomeClient } from "./ChatHomeClient";
 import {
   listChatBootstrap,
   type ChatChannel,
@@ -46,10 +47,13 @@ export default async function ChatPage({ searchParams }: ChatPageProps) {
   }
 
   if (!user) redirect("/");
+  const showChatHome = !requested.channel && !requested.message;
 
   return (
-    <main className="min-h-[100svh] overflow-hidden bg-[#0f1b26]">
-      {activeChannel ? (
+    <main className={showChatHome ? "min-h-[100svh] bg-[#edf4fa]" : "min-h-[100svh] overflow-hidden bg-[#0f1b26]"}>
+      {showChatHome ? (
+        <ChatHomeClient channels={channels} currentUserId={user.id} dmRequests={dmRequests} />
+      ) : activeChannel ? (
         <GlobalLobbyClient
           channels={channels}
           currentUserId={user.id}
