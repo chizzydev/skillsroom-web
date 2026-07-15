@@ -12,6 +12,8 @@ type EvidenceMediaDrawerProps = {
   children?: ReactNode;
 };
 
+const evidencePathPattern = /\/api\/evidence-files\/([^/?#]+)/i;
+
 function isImageUrl(url: string) {
   return /\.(?:jpg|jpeg|png|webp)(?:[?#].*)?$/i.test(url);
 }
@@ -24,10 +26,18 @@ type FullscreenVideoElement = HTMLVideoElement & {
   webkitEnterFullscreen?: () => void;
 };
 
+function evidenceViewerUrl(url: string, title: string) {
+  const match = evidencePathPattern.exec(url);
+  if (!match?.[1]) return url;
+  return `/evidence/files/${encodeURIComponent(decodeURIComponent(match[1]))}?${new URLSearchParams({ title }).toString()}`;
+}
+
 export function EvidenceMediaDrawer({ url, title, description, className, compact, children }: EvidenceMediaDrawerProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [hasStartedVideo, setHasStartedVideo] = useState(false);
   const viewerRef = useRef<HTMLDivElement | null>(null);
   const videoRef = useRef<FullscreenVideoElement | null>(null);
+  const openUrl = url ? evidenceViewerUrl(url, title) : "";
   const mediaKind = useMemo(() => {
     if (!url) return "none";
     if (isImageUrl(url)) return "image";
@@ -54,6 +64,10 @@ export function EvidenceMediaDrawer({ url, title, description, className, compac
     };
   }, [isOpen]);
 
+  useEffect(() => {
+    if (!isOpen) setHasStartedVideo(false);
+  }, [isOpen, url]);
+
   async function openFullscreen() {
     const video = videoRef.current;
     if (video?.webkitEnterFullscreen) {
@@ -65,6 +79,13 @@ export function EvidenceMediaDrawer({ url, title, description, className, compac
     if (target?.requestFullscreen) {
       await target.requestFullscreen().catch(() => undefined);
     }
+  }
+
+  async function playVideo() {
+    const video = videoRef.current;
+    if (!video) return;
+    setHasStartedVideo(true);
+    await video.play().catch(() => undefined);
   }
 
   if (!url) {
@@ -111,7 +132,7 @@ export function EvidenceMediaDrawer({ url, title, description, className, compac
                 ) : null}
                 <a
                   className="inline-flex min-h-10 items-center justify-center rounded-md border border-white/15 bg-white/10 px-3 text-xs font-black text-white hover:bg-white/15"
-                  href={url}
+                  href={openUrl}
                   rel="noreferrer"
                   target="_blank"
                 >
@@ -126,7 +147,27 @@ export function EvidenceMediaDrawer({ url, title, description, className, compac
               {mediaKind === "image" ? (
                 <img alt={title} className="block h-full max-h-full w-full max-w-full object-contain" loading="eager" src={url} />
               ) : mediaKind === "video" ? (
-                <video ref={videoRef} className="block h-full max-h-full w-full max-w-full bg-black object-contain" controls playsInline preload="metadata" src={url} />
+                <div className="relative grid h-full w-full place-items-center overflow-hidden bg-black">
+                  <video
+                    ref={videoRef}
+                    className="block h-full max-h-full w-full max-w-full bg-black object-contain"
+                    controls={hasStartedVideo}
+                    onPlay={() => setHasStartedVideo(true)}
+                    playsInline
+                    preload="metadata"
+                    src={url}
+                  />
+                  {!hasStartedVideo ? (
+                    <button
+                      aria-label={`Play ${title}`}
+                      className="absolute left-1/2 top-1/2 grid h-14 w-14 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border border-white/25 bg-white/95 text-xl font-black text-ink shadow-[0_12px_35px_rgba(0,0,0,0.35)] transition hover:scale-105 hover:bg-white"
+                      onClick={() => void playVideo()}
+                      type="button"
+                    >
+                      <span className="ml-1 h-0 w-0 border-y-[0.55rem] border-l-[0.85rem] border-y-transparent border-l-ink" />
+                    </button>
+                  ) : null}
+                </div>
               ) : (
                 <a className="rounded-md border border-white/15 bg-white/10 px-4 py-3 text-sm font-black text-white hover:bg-white/15" href={url} rel="noreferrer" target="_blank">
                   Open evidence

@@ -40,6 +40,7 @@ import {
   upsertGameAccountAction,
   upsertPayoutProfileAction
 } from "./actions";
+import { ProfileSectionsDisclosure } from "./ProfileSectionsDisclosure";
 
 export const dynamic = "force-dynamic";
 
@@ -127,7 +128,21 @@ export default async function ProfilePage({ searchParams }: ProfilePageProps) {
   const params = await searchParams;
   const user = await getCurrentUser();
   if (!user) redirect("/sign-in?redirect=/profile");
-  const fullSections = params?.sections === "full";
+  const openFullSectionsByDefault = Boolean(
+    params?.sections === "full" ||
+    params?.error ||
+    params?.game_account_saved ||
+    params?.clan_saved ||
+    params?.google_linked ||
+    params?.google_link_error ||
+    params?.password_link ||
+    params?.payout_profile_saved ||
+    params?.profile_updated ||
+    params?.streaming_connected ||
+    params?.streaming_removed ||
+    params?.streaming_saved ||
+    params?.streaming_synced
+  );
 
   let profileData: Awaited<ReturnType<typeof getProfileMe>> | null = null;
   let trustData: Awaited<ReturnType<typeof getPlayerTrustSummary>>["trust"] | null = null;
@@ -141,42 +156,45 @@ export default async function ProfilePage({ searchParams }: ProfilePageProps) {
   try {
     const profileResult = await getProfileMe("summary");
     profileData = profileResult;
-    if (fullSections) {
-      const [
-        trustResult,
-        clanResult,
-        referralResult,
-        googleResult,
-        streamingResult,
-        catalogResult,
-        gameAccountResult,
-        payoutProfileResult,
-        settlementResult
-      ] = await Promise.all([
-        getPlayerTrustSummary(user.id),
-        getMyCommunityClan(),
-        getMyReferralProgram(),
-        getGoogleLinkStatus(),
-        listStreamingAccounts(),
-        listGameCatalog(),
-        getProfileGameAccounts(),
-        getProfilePayoutProfile(),
-        getProfileSettlementHistory(10)
-      ]);
-      trustData = trustResult.trust;
-      clanData = clanResult;
-      referralData = referralResult;
-      googleLinkStatus = googleResult;
-      streamingAccounts = streamingResult.accounts;
-      games = catalogResult.games;
-      profileData = {
-        ...profileResult,
-        game_accounts: gameAccountResult.game_accounts,
-        payout_profile: payoutProfileResult.payout_profile,
-        payout_history: settlementResult.payout_history,
-        refund_history: settlementResult.refund_history,
-        risk_flags: profileResult.risk_flags ?? []
-      };
+    const [
+      trustResult,
+      clanResult,
+      referralResult,
+      googleResult,
+      streamingResult,
+      catalogResult,
+      gameAccountResult,
+      payoutProfileResult,
+      settlementResult
+    ] = await Promise.allSettled([
+      getPlayerTrustSummary(user.id),
+      getMyCommunityClan(),
+      getMyReferralProgram(),
+      getGoogleLinkStatus(),
+      listStreamingAccounts(),
+      listGameCatalog(),
+      getProfileGameAccounts(),
+      getProfilePayoutProfile(),
+      getProfileSettlementHistory(10)
+    ]);
+
+    if (trustResult.status === "fulfilled") trustData = trustResult.value.trust;
+    if (clanResult.status === "fulfilled") clanData = clanResult.value;
+    if (referralResult.status === "fulfilled") referralData = referralResult.value;
+    if (googleResult.status === "fulfilled") googleLinkStatus = googleResult.value;
+    if (streamingResult.status === "fulfilled") streamingAccounts = streamingResult.value.accounts;
+    if (catalogResult.status === "fulfilled") games = catalogResult.value.games;
+    profileData = {
+      ...profileResult,
+      game_accounts: gameAccountResult.status === "fulfilled" ? gameAccountResult.value.game_accounts : profileResult.game_accounts,
+      payout_profile: payoutProfileResult.status === "fulfilled" ? payoutProfileResult.value.payout_profile : profileResult.payout_profile,
+      payout_history: settlementResult.status === "fulfilled" ? settlementResult.value.payout_history : profileResult.payout_history,
+      refund_history: settlementResult.status === "fulfilled" ? settlementResult.value.refund_history : profileResult.refund_history,
+      risk_flags: profileResult.risk_flags ?? []
+    };
+
+    if ([trustResult, clanResult, referralResult, googleResult, streamingResult, catalogResult, gameAccountResult, payoutProfileResult, settlementResult].some((result) => result.status === "rejected")) {
+      loadError = "Some profile sections could not refresh. Saved details that loaded are still shown below.";
     }
   } catch {
     loadError = "Unable to load your player profile.";
@@ -365,24 +383,26 @@ export default async function ProfilePage({ searchParams }: ProfilePageProps) {
           </Panel>
         ) : null}
 
-        {!fullSections ? (
-          <Panel>
-            <PanelHeader
-              eyebrow="Profile Sections"
-              title="Open full profile controls"
-              description="Game accounts, payout profile, clan, referrals, streaming accounts, and settlement history load separately from profile readiness."
-            />
-            <div className="grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-3">
-              <StatusPanel detail="Identity and readiness are already loaded." label="Bootstrap" tone="success" value="Fast" />
-              <StatusPanel detail={`${profileSummary?.game_account_count ?? gameAccounts.length} saved handles`} label="Game accounts" tone={gameAccounts.length ? "cyan" : "warning"} value={gameAccounts.length ? "Saved" : "Open"} />
-              <StatusPanel detail={payoutProfile ? payoutProfile.bank_name : "Add bank details before payouts"} label="Payout" tone={payoutProfile ? "success" : "warning"} value={payoutProfile ? "Ready" : "Open"} />
-              <Link className="inline-flex min-h-10 items-center justify-center rounded-md border border-line bg-white px-4 text-sm font-black text-ink hover:bg-surfaceHigh sm:col-span-2 lg:col-span-3" href="/profile?sections=full">
-                Show full profile sections
-              </Link>
-            </div>
-          </Panel>
-        ) : (
-        <>
+        <ProfileSectionsDisclosure
+          defaultOpen={openFullSectionsByDefault}
+          summary={(
+            <Panel>
+              <PanelHeader
+                eyebrow="Profile Sections"
+                title="Open full profile controls"
+                description="Game accounts, payout profile, clan, referrals, streaming accounts, and settlement history are ready when you need them."
+              />
+              <div className="grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-3">
+                <StatusPanel detail="Identity and readiness are already loaded." label="Bootstrap" tone="success" value="Fast" />
+                <StatusPanel detail={`${profileSummary?.game_account_count ?? gameAccounts.length} saved handles`} label="Game accounts" tone={gameAccounts.length ? "cyan" : "warning"} value={gameAccounts.length ? "Saved" : "Open"} />
+                <StatusPanel detail={payoutProfile ? payoutProfile.bank_name : "Add bank details before payouts"} label="Payout" tone={payoutProfile ? "success" : "warning"} value={payoutProfile ? "Ready" : "Open"} />
+                <button className="inline-flex min-h-10 items-center justify-center rounded-md border border-line bg-white px-4 text-sm font-black text-ink hover:bg-surfaceHigh sm:col-span-2 lg:col-span-3" data-profile-sections-toggle type="button">
+                  Show full profile sections
+                </button>
+              </div>
+            </Panel>
+          )}
+        >
         <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
           <Panel>
             <PanelHeader
@@ -816,7 +836,7 @@ export default async function ProfilePage({ searchParams }: ProfilePageProps) {
                 Linked and ready for future sign-ins.
               </div>
             ) : (
-              <GoogleAuthButton action="/api/auth/identity/link" label="Link Google account" redirectTo="/profile" />
+              <GoogleAuthButton action="/api/auth/identity/link" label="Link Google account" redirectTo="/profile?sections=full" />
             )}
           </div>
         </Panel>
@@ -836,7 +856,7 @@ export default async function ProfilePage({ searchParams }: ProfilePageProps) {
             </div>
             <form action="/api/auth/password-reset/request" className="grid gap-3" method="post">
               <input name="email" type="hidden" value={user.email ?? ""} />
-              <input name="redirect" type="hidden" value="/profile" />
+              <input name="redirect" type="hidden" value="/profile?sections=full" />
               <SubmitButton fullWidth idleLabel="Email me the password link" pendingLabel="Sending password link..." variant="secondary" />
             </form>
           </div>
@@ -1079,8 +1099,7 @@ export default async function ProfilePage({ searchParams }: ProfilePageProps) {
             </div>
           </form>
         </Panel>
-        </>
-        )}
+        </ProfileSectionsDisclosure>
       </section>
     </AppShell>
   );

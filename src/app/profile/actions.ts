@@ -38,10 +38,10 @@ export async function updateProfileAction(formData: FormData) {
       age_confirmed: formData.get("age_confirmed") === "on"
     });
   } catch (error) {
-    redirect(`/profile?error=${encodeURIComponent(actionErrorMessage(error))}`);
+    redirect(`/profile?sections=full&error=${encodeURIComponent(actionErrorMessage(error))}`);
   }
 
-  redirect("/profile?profile_updated=1");
+  redirect("/profile?sections=full&profile_updated=1");
 }
 
 export async function upsertGameAccountAction(formData: FormData) {
@@ -55,10 +55,10 @@ export async function upsertGameAccountAction(formData: FormData) {
       is_primary: true
     });
   } catch (error) {
-    redirect(`/profile?error=${encodeURIComponent(actionErrorMessage(error))}`);
+    redirect(`/profile?sections=full&error=${encodeURIComponent(actionErrorMessage(error))}#game-accounts`);
   }
 
-  redirect("/profile?game_account_saved=1#game-accounts");
+  redirect("/profile?sections=full&game_account_saved=1#game-accounts");
 }
 
 export async function upsertCommunityClanAction(formData: FormData) {
@@ -79,10 +79,10 @@ export async function upsertCommunityClanAction(formData: FormData) {
         .filter(Boolean)
     });
   } catch (error) {
-    redirect(`/profile?error=${encodeURIComponent(actionErrorMessage(error))}`);
+    redirect(`/profile?sections=full&error=${encodeURIComponent(actionErrorMessage(error))}#clan-profile`);
   }
 
-  redirect("/profile?clan_saved=1#clan-profile");
+  redirect("/profile?sections=full&clan_saved=1#clan-profile");
 }
 
 export async function upsertPayoutProfileAction(formData: FormData) {
@@ -96,10 +96,10 @@ export async function upsertPayoutProfileAction(formData: FormData) {
       currency: String(formData.get("currency") || "NGN").trim()
     });
   } catch (error) {
-    redirect(`/profile?error=${encodeURIComponent(actionErrorMessage(error))}`);
+    redirect(`/profile?sections=full&error=${encodeURIComponent(actionErrorMessage(error))}#payout-profile`);
   }
 
-  redirect("/profile?payout_profile_saved=1#payout-profile");
+  redirect("/profile?sections=full&payout_profile_saved=1#payout-profile");
 }
 
 export async function startStreamingOauthAction(formData: FormData) {
@@ -107,11 +107,11 @@ export async function startStreamingOauthAction(formData: FormData) {
   try {
     const result = await startStreamingOauth({
       provider: String(formData.get("provider") || "youtube") as "youtube" | "twitch",
-      redirect_path: "/profile"
+      redirect_path: "/profile?sections=full"
     });
     authorizationUrl = result.authorization_url;
   } catch (error) {
-    redirect(`/profile?error=${encodeURIComponent(actionErrorMessage(error))}#streaming-accounts`);
+    redirect(`/profile?sections=full&error=${encodeURIComponent(actionErrorMessage(error))}#streaming-accounts`);
   }
 
   redirect(authorizationUrl);
@@ -126,28 +126,28 @@ export async function connectManualStreamingAccountAction(formData: FormData) {
       provider_login: cleanOptional(formData.get("provider_login"))
     });
   } catch (error) {
-    redirect(`/profile?error=${encodeURIComponent(actionErrorMessage(error))}#streaming-accounts`);
+    redirect(`/profile?sections=full&error=${encodeURIComponent(actionErrorMessage(error))}#streaming-accounts`);
   }
 
-  redirect("/profile?streaming_saved=1#streaming-accounts");
+  redirect("/profile?sections=full&streaming_saved=1#streaming-accounts");
 }
 
 export async function syncStreamingAccountAction(formData: FormData) {
   try {
     await syncStreamingAccount(String(formData.get("account_id") || ""));
   } catch (error) {
-    redirect(`/profile?error=${encodeURIComponent(actionErrorMessage(error))}#streaming-accounts`);
+    redirect(`/profile?sections=full&error=${encodeURIComponent(actionErrorMessage(error))}#streaming-accounts`);
   }
 
-  redirect("/profile?streaming_synced=1#streaming-accounts");
+  redirect("/profile?sections=full&streaming_synced=1#streaming-accounts");
 }
 
 export async function disconnectStreamingAccountAction(formData: FormData) {
   try {
     await disconnectStreamingAccount(String(formData.get("account_id") || ""));
   } catch (error) {
-    redirect(`/profile?error=${encodeURIComponent(actionErrorMessage(error))}#streaming-accounts`);
+    redirect(`/profile?sections=full&error=${encodeURIComponent(actionErrorMessage(error))}#streaming-accounts`);
   }
 
-  redirect("/profile?streaming_removed=1#streaming-accounts");
+  redirect("/profile?sections=full&streaming_removed=1#streaming-accounts");
 }
