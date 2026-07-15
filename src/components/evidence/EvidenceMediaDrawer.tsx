@@ -1,7 +1,7 @@
 "use client";
 /* eslint-disable @next/next/no-img-element -- evidence media is private and served through access-audited routes */
 
-import { type ReactNode, useEffect, useMemo, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 
 type EvidenceMediaDrawerProps = {
   url: string | null | undefined;
@@ -20,8 +20,14 @@ function isVideoUrl(url: string) {
   return /\.(?:mp4|webm|mov)(?:[?#].*)?$/i.test(url);
 }
 
+type FullscreenVideoElement = HTMLVideoElement & {
+  webkitEnterFullscreen?: () => void;
+};
+
 export function EvidenceMediaDrawer({ url, title, description, className, compact, children }: EvidenceMediaDrawerProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const viewerRef = useRef<HTMLDivElement | null>(null);
+  const videoRef = useRef<FullscreenVideoElement | null>(null);
   const mediaKind = useMemo(() => {
     if (!url) return "none";
     if (isImageUrl(url)) return "image";
@@ -47,6 +53,19 @@ export function EvidenceMediaDrawer({ url, title, description, className, compac
       document.body.style.overflow = previousOverflow;
     };
   }, [isOpen]);
+
+  async function openFullscreen() {
+    const video = videoRef.current;
+    if (video?.webkitEnterFullscreen) {
+      video.webkitEnterFullscreen();
+      return;
+    }
+
+    const target = video ?? viewerRef.current;
+    if (target?.requestFullscreen) {
+      await target.requestFullscreen().catch(() => undefined);
+    }
+  }
 
   if (!url) {
     return (
@@ -77,34 +96,39 @@ export function EvidenceMediaDrawer({ url, title, description, className, compac
       </button>
 
       {isOpen ? (
-        <div className="fixed inset-0 z-50 grid bg-ink/90 p-0 backdrop-blur-sm sm:p-4 md:p-8" role="dialog" aria-modal="true" aria-label={title}>
-          <div className="mx-auto grid h-[100dvh] w-full max-w-7xl grid-rows-[auto_minmax(0,1fr)] overflow-hidden bg-white shadow-panel sm:h-full sm:rounded-lg">
-            <div className="flex items-start justify-between gap-3 border-b border-line p-3 sm:gap-4 sm:p-4">
+        <div className="fixed inset-0 z-50 grid h-[100dvh] w-screen overflow-hidden bg-ink" role="dialog" aria-modal="true" aria-label={title}>
+          <div className="grid h-[100dvh] min-h-0 w-full grid-rows-[auto_minmax(0,1fr)] overflow-hidden bg-ink [padding-bottom:env(safe-area-inset-bottom)] [padding-left:env(safe-area-inset-left)] [padding-right:env(safe-area-inset-right)] [padding-top:env(safe-area-inset-top)]">
+            <div className="z-10 flex min-h-14 items-center justify-between gap-2 border-b border-white/10 bg-ink/95 px-3 py-2 text-white shadow-[0_10px_30px_rgba(0,0,0,0.35)] backdrop-blur sm:px-4">
               <div className="min-w-0">
-                <p className="truncate text-sm font-black text-ink">{title}</p>
-                {description ? <p className="mt-1 line-clamp-2 text-xs font-bold text-muted">{description}</p> : null}
+                <p className="truncate text-sm font-black text-white">{title}</p>
+                {description ? <p className="mt-0.5 line-clamp-1 text-xs font-bold text-white/65">{description}</p> : null}
               </div>
               <div className="flex shrink-0 items-center gap-2">
+                {mediaKind === "video" ? (
+                  <button className="inline-flex min-h-10 items-center justify-center rounded-md border border-white/15 bg-white/10 px-3 text-xs font-black text-white hover:bg-white/15" onClick={() => void openFullscreen()} type="button">
+                    Full screen
+                  </button>
+                ) : null}
                 <a
-                  className="inline-flex min-h-10 items-center justify-center rounded-md border border-line bg-surfaceHigh px-3 text-xs font-black text-ink hover:bg-white"
+                  className="inline-flex min-h-10 items-center justify-center rounded-md border border-white/15 bg-white/10 px-3 text-xs font-black text-white hover:bg-white/15"
                   href={url}
                   rel="noreferrer"
                   target="_blank"
                 >
                   Open
                 </a>
-                <button className="grid h-10 w-10 place-items-center rounded-md border border-line bg-surfaceHigh text-sm font-black text-ink hover:bg-white" onClick={() => setIsOpen(false)} type="button">
+                <button className="grid h-10 w-10 place-items-center rounded-md border border-white/15 bg-white/10 text-sm font-black text-white hover:bg-white/15" onClick={() => setIsOpen(false)} type="button">
                   X
                 </button>
               </div>
             </div>
-            <div className="grid min-h-0 place-items-center bg-ink p-2 sm:p-4">
+            <div ref={viewerRef} className="grid min-h-0 place-items-center overflow-hidden bg-ink p-0">
               {mediaKind === "image" ? (
-                <img alt={title} className="h-full max-h-full w-full max-w-full object-contain" loading="eager" src={url} />
+                <img alt={title} className="block h-full max-h-full w-full max-w-full object-contain" loading="eager" src={url} />
               ) : mediaKind === "video" ? (
-                <video className="h-full max-h-full w-full max-w-full object-contain" controls playsInline preload="metadata" src={url} />
+                <video ref={videoRef} className="block h-full max-h-full w-full max-w-full bg-black object-contain" controls playsInline preload="metadata" src={url} />
               ) : (
-                <a className="rounded-md bg-ink px-4 py-3 text-sm font-black text-white" href={url} rel="noreferrer" target="_blank">
+                <a className="rounded-md border border-white/15 bg-white/10 px-4 py-3 text-sm font-black text-white hover:bg-white/15" href={url} rel="noreferrer" target="_blank">
                   Open evidence
                 </a>
               )}
