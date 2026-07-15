@@ -18,14 +18,14 @@ import {
 } from "@/lib/match-room-api";
 import { joinMatchRoomAction } from "./actions";
 import {
-  RoomActivityPanelClient,
   queueForRoomStatus,
   roomActivityQueueStatuses,
   roomActivityQueues,
   roomActivityStatuses,
   type RoomActivityQueue,
   type RoomActivityStatus
-} from "./RoomActivityPanelClient";
+} from "./roomActivityConfig";
+import { RoomActivityPanelClient } from "./RoomActivityPanelClient";
 
 function parseRoomQueue(value: string | undefined): RoomActivityQueue {
   if (value && roomActivityQueues.includes(value as RoomActivityQueue)) {
@@ -44,6 +44,63 @@ function isRoomActivityStatus(status: MatchRoomStatus): status is RoomActivitySt
 
 function countStatus(counts: Partial<Record<MatchRoomStatus, number>>, status: MatchRoomStatus) {
   return (counts[status] ?? 0).toString();
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value && typeof value === "object" && !Array.isArray(value));
+}
+
+const roomStatusSet = new Set<MatchRoomStatus>(roomActivityStatuses);
+
+function toFiniteNumber(value: unknown, fallback: number) {
+  return typeof value === "number" && Number.isFinite(value) ? value : fallback;
+}
+
+function sanitizeRoom(row: unknown): MatchRoomListRow | null {
+  if (!isRecord(row)) return null;
+  if (typeof row.id !== "string" || typeof row.room_code !== "string") return null;
+  if (typeof row.status !== "string" || !roomStatusSet.has(row.status as MatchRoomStatus)) return null;
+
+  return {
+    id: row.id,
+    game_id: typeof row.game_id === "string" ? row.game_id : undefined,
+    ruleset_id: typeof row.ruleset_id === "string" ? row.ruleset_id : undefined,
+    room_code: row.room_code,
+    status: row.status as MatchRoomStatus,
+    currency: typeof row.currency === "string" && row.currency.trim() ? row.currency : "NGN",
+    entry_amount_minor: toFiniteNumber(row.entry_amount_minor, 0),
+    commission_bps: toFiniteNumber(row.commission_bps, 0),
+    max_participants: Math.max(1, toFiniteNumber(row.max_participants, 2)),
+    title: typeof row.title === "string" ? row.title : null,
+    created_by_user_id: typeof row.created_by_user_id === "string" ? row.created_by_user_id : "",
+    created_at: typeof row.created_at === "string" ? row.created_at : "",
+    updated_at: typeof row.updated_at === "string" ? row.updated_at : "",
+    expires_at: typeof row.expires_at === "string" ? row.expires_at : null,
+    participant_count: Math.max(0, toFiniteNumber(row.participant_count, 0)),
+    game_slug: typeof row.game_slug === "string" ? row.game_slug : null,
+    game_name: typeof row.game_name === "string" ? row.game_name : null,
+    ruleset_slug: typeof row.ruleset_slug === "string" ? row.ruleset_slug : null,
+    ruleset_title: typeof row.ruleset_title === "string" ? row.ruleset_title : null
+  };
+}
+
+function deriveCounts(rooms: MatchRoomListRow[]) {
+  return rooms.reduce<Partial<Record<MatchRoomStatus, number>>>((current, room) => ({
+    ...current,
+    [room.status]: (current[room.status] ?? 0) + 1
+  }), {});
+}
+
+function sanitizeCounts(value: unknown, fallbackRooms: MatchRoomListRow[]) {
+  if (!isRecord(value)) return deriveCounts(fallbackRooms);
+  const source = isRecord(value.counts) ? value.counts : value;
+  return roomActivityStatuses.reduce<Partial<Record<MatchRoomStatus, number>>>((current, status) => {
+    const count = source[status];
+    if (typeof count === "number" && Number.isFinite(count) && count >= 0) {
+      current[status] = count;
+    }
+    return current;
+  }, deriveCounts(fallbackRooms));
 }
 
 export default async function MatchesPage({ searchParams }: { searchParams: Promise<{ error?: string; queue?: string; cursor?: string }> }) {
@@ -73,18 +130,25 @@ export default async function MatchesPage({ searchParams }: { searchParams: Prom
       (reason) => ({ status: "rejected" as const, reason })
     )
   ]);
-  const roomPages = roomPageResults.flatMap((result) => result.status === "fulfilled" ? [result.value] : []);
+  const roomPages = roomPageResults.flatMap((result) => {
+    if (result.status !== "fulfilled") return [];
+    const rows = Array.isArray(result.value.page?.rooms) ? result.value.page.rooms.map(sanitizeRoom).filter((room): room is MatchRoomListRow => Boolean(room)) : [];
+    return [{
+      status: result.value.status,
+      page: {
+        rooms: rows,
+        next_cursor: typeof result.value.page?.next_cursor === "string" ? result.value.page.next_cursor : null
+      }
+    }];
+  });
   rooms = roomPages.flatMap(({ page }) => page.rooms);
   nextCursor = selectedQueueStatuses.length === 1 ? (roomPages.find((item) => item.status === selectedQueueStatuses[0])?.page.next_cursor ?? null) : null;
   counts = statusCountsResult.status === "fulfilled"
-    ? statusCountsResult.value.counts
-    : rooms.reduce<Partial<Record<MatchRoomStatus, number>>>((current, room) => ({
-      ...current,
-      [room.status]: (current[room.status] ?? 0) + 1
-    }), {});
+    ? sanitizeCounts(statusCountsResult.value, rooms)
+    : deriveCounts(rooms);
   if (roomPageResults.every((result) => result.status === "rejected")) {
     loadError = "Rooms are temporarily unavailable. Your account is still signed in; try this page again in a moment.";
-  } else if (roomPageResults.some((result) => result.status === "rejected") || statusCountsResult.status === "rejected") {
+  } else if (roomPageResults.some((result) => result.status === "rejected") || statusCountsResult.status === "rejected" || roomPages.length < roomActivityStatuses.length) {
     loadError = "Some room data could not load. The rooms shown below are still safe to use.";
   }
 

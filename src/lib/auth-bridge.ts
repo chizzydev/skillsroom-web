@@ -57,12 +57,12 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
 
   if (!response.ok) return null;
 
-  const payload = (await response.json()) as {
+  const payload = (await response.json().catch(() => null)) as {
     ok: true;
     data: { user: CurrentUser };
-  };
+  } | null;
 
-  return payload.data.user;
+  return payload?.data?.user ?? null;
 }
 
 export async function getGoogleLinkStatus(): Promise<{
@@ -87,7 +87,7 @@ export async function getGoogleLinkStatus(): Promise<{
 
   if (!response.ok) return null;
 
-  const payload = (await response.json()) as {
+  const payload = (await response.json().catch(() => null)) as {
     ok: true;
     data: {
       linked: boolean;
@@ -95,9 +95,9 @@ export async function getGoogleLinkStatus(): Promise<{
       linked_at: string | null;
       last_login_at: string | null;
     };
-  };
+  } | null;
 
-  return payload.data;
+  return payload?.data ?? null;
 }
 
 export function canAccessAdmin(user: CurrentUser | null) {
