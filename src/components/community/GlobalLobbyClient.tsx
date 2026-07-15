@@ -12,6 +12,7 @@ import { ChatSearchPanel } from "./ChatSearchPanel";
 import { ChatSideRail } from "./ChatSideRail";
 import { ChatThreadPanel } from "./ChatThreadPanel";
 import { ChatVirtualThread } from "./ChatVirtualThread";
+import { Toast } from "@/components/ui/Toast";
 import { useStableCallback } from "./chat-hooks";
 import { useChatStore } from "./chat-store";
 import {
@@ -42,6 +43,12 @@ const emptyPinnedMessages: ChatPinnedMessage[] = [];
 const emptyPresence: ChatPresenceSummary = { online_count: 0, active: [], typing: [] };
 const readReceiptDebounceMs = 900;
 const typingRefreshMs = 8_000;
+type ChatActionNotice = {
+  id: number;
+  title: string;
+  description?: string;
+  tone: "success" | "warning" | "danger" | "neutral";
+};
 const reactionOptions = [
   { key: "like", label: "👍" },
   { key: "gg", label: "GG" },
@@ -117,7 +124,7 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
   const [isEditing, setIsEditing] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<ChatMessage | null>(null);
   const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
-  const [notice, setNotice] = useState<string | null>(null);
+  const [notice, setNotice] = useState<ChatActionNotice | null>(null);
   const [streamStatus, setStreamStatus] = useState<"starting" | "live" | "reconnecting">("starting");
   const [streamReconnectKey, setStreamReconnectKey] = useState(0);
   const [showChannelInfo, setShowChannelInfo] = useState(false);
@@ -354,6 +361,21 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
     return response;
   }, []);
 
+  const showNotice = useCallback((title: string, options?: { description?: string; tone?: ChatActionNotice["tone"] }) => {
+    setNotice({
+      id: Date.now(),
+      title,
+      description: options?.description,
+      tone: options?.tone ?? "success"
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!notice) return;
+    const timer = window.setTimeout(() => setNotice((current) => current?.id === notice.id ? null : current), notice.tone === "danger" ? 7600 : 4200);
+    return () => window.clearTimeout(timer);
+  }, [notice]);
+
   function openUserProfile(user: ChatProfileUser) {
     setProfileUser(user);
     setProfileDmIntro("");
@@ -408,8 +430,7 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
   async function copyToClipboard(value: string, successMessage: string) {
     try {
       await navigator.clipboard.writeText(value);
-      setNotice(successMessage);
-      window.setTimeout(() => setNotice(null), 2200);
+      showNotice(successMessage);
     } catch {
       setError("Your browser could not copy that message.");
     } finally {
@@ -1118,7 +1139,7 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
       });
       const payload = await response.json() as ApiEnvelope<unknown>;
       if (!response.ok || payload.ok !== true) throw new Error(payload.ok === false ? payload.error?.message ?? "Attachment could not be reported." : "Attachment could not be reported.");
-      setNotice("Attachment reported. The moderation team can now review it.");
+      showNotice("Attachment reported. The moderation team can now review it.");
       setViewer(null);
     } catch (reportError) { setError(reportError instanceof Error ? reportError.message : "Attachment could not be reported."); }
   }
@@ -1528,8 +1549,7 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
       }
       setEditTarget(null);
       setEditBody("");
-      setNotice("Message edited.");
-      window.setTimeout(() => setNotice(null), 2200);
+      showNotice("Message edited.");
     } catch (editError) {
       setError(editError instanceof Error ? editError.message : "Message could not be edited.");
     } finally {
@@ -1576,8 +1596,7 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
       setReplyTo((current) => current?.id === message.id ? null : current);
       setDeleteTarget(null);
       setActionMessage(null);
-      setNotice("Message deleted.");
-      window.setTimeout(() => setNotice(null), 2200);
+      showNotice("Message deleted.");
     } catch (deleteError) {
       setError(deleteError instanceof Error ? deleteError.message : "Message could not be deleted.");
     } finally {
@@ -1630,8 +1649,7 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
       setPinnedByChannel((current) => ({ ...current, [activeChannel.slug]: payload.data.pinned_messages }));
       setPinBannerIndexByChannel((current) => ({ ...current, [activeChannel.slug]: 0 }));
       if (payload.data.pinned_messages.length > 3) {
-        setNotice("Pinned. The chat banner rotates the latest 3 pins; all pins stay in the Pins tab.");
-        window.setTimeout(() => setNotice(null), 2800);
+        showNotice("Pinned. The chat banner rotates the latest 3 pins; all pins stay in the Pins tab.");
       }
       setPinTarget(null);
     } catch (pinError) {
@@ -1781,8 +1799,7 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
       }
       setForwardTarget(null);
       setForwardChannelSlug("");
-      setNotice("Message forwarded.");
-      window.setTimeout(() => setNotice(null), 2200);
+      showNotice("Message forwarded.");
     } catch (forwardError) {
       setError(forwardError instanceof Error ? forwardError.message : "Message could not be forwarded.");
     } finally {
@@ -1802,8 +1819,7 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
       const payload = (await response.json()) as ApiEnvelope<{ bookmarked: boolean }>;
       if (!response.ok || payload.ok !== true) throw new Error(payload.ok === false ? payload.error?.message ?? "Saved state could not change." : "Saved state could not change.");
       patchMessage(activeChannel.slug, message.id, { bookmarked_by_me: payload.data.bookmarked });
-      setNotice(payload.data.bookmarked ? "Saved privately." : "Removed from saved.");
-      window.setTimeout(() => setNotice(null), 2200);
+      showNotice(payload.data.bookmarked ? "Saved privately." : "Removed from saved.");
     } catch (bookmarkError) {
       setError(bookmarkError instanceof Error ? bookmarkError.message : "Saved state could not change.");
     } finally {
@@ -1960,8 +1976,7 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
       setDmIntro("");
     } catch (dmError) {
       if (dmError instanceof Error && /already pending/i.test(dmError.message)) {
-        setNotice("DM request already pending. Open Inbox to check or respond.");
-        window.setTimeout(() => setNotice(null), 3200);
+        showNotice("DM request already pending. Open Inbox to check or respond.");
         return;
       }
       setError(dmError instanceof Error ? dmError.message : "DM request could not be sent.");
@@ -1986,13 +2001,11 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
       setDmRequests((current) => [payload.data.request, ...current.filter((item) => item.id !== payload.data.request.id)]);
       setProfileDmIntro("");
       setProfileUser(null);
-      setNotice("DM request sent.");
-      window.setTimeout(() => setNotice(null), 2200);
+      showNotice("DM request sent.");
     } catch (dmError) {
       if (dmError instanceof Error && /already pending/i.test(dmError.message)) {
         setProfileUser(null);
-        setNotice("DM request already pending. Open Inbox to check or respond.");
-        window.setTimeout(() => setNotice(null), 3200);
+        showNotice("DM request already pending. Open Inbox to check or respond.");
         return;
       }
       setError(dmError instanceof Error ? dmError.message : "DM request could not be sent.");
@@ -2108,7 +2121,7 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
       });
       const payload = await response.json() as ApiEnvelope<{ membership: { notification_level: ChatNotificationLevel; dm_notification_level: ChatNotificationLevel; push_enabled: boolean } }>;
       if (!response.ok || payload.ok !== true) throw new Error(payload.ok === false ? payload.error?.message ?? "Notification settings could not be saved." : "Notification settings could not be saved.");
-      setNotice("Notification settings saved.");
+      showNotice("Notification settings saved.");
     } catch (controlError) {
       setPushEnabled(false);
       setError(controlError instanceof Error ? controlError.message : "Notification settings could not be saved.");
@@ -2147,7 +2160,7 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
         lockdown_until: payload.data.channel.lockdown_until ?? null,
         lockdown_reason: payload.data.channel.lockdown_reason ?? null
       } : current);
-      setNotice(action === "unlock" ? "Channel lockdown removed." : action === "lock" ? "Channel locked temporarily." : "Slow mode saved.");
+      showNotice(action === "unlock" ? "Channel lockdown removed." : action === "lock" ? "Channel locked temporarily." : "Slow mode saved.");
     } catch (controlError) {
       setError(controlError instanceof Error ? controlError.message : "Channel controls could not be saved.");
     } finally {
@@ -2179,7 +2192,7 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
       const payload = await response.json() as ApiEnvelope<{ blocked_user_id: string }>;
       if (!response.ok || payload.ok !== true) throw new Error(payload.ok === false ? payload.error?.message ?? "User could not be unblocked." : "User could not be unblocked.");
       setBlockedUsers((current) => current.filter((block) => block.blocked_user_id !== userId));
-      setNotice("User unblocked.");
+      showNotice("User unblocked.");
     } catch (blockError) {
       setError(blockError instanceof Error ? blockError.message : "User could not be unblocked.");
     } finally {
@@ -2230,8 +2243,7 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
       if (!response.ok || payload.ok !== true) {
         throw new Error(payload.ok === false ? payload.error?.message ?? "User could not be reported." : "User could not be reported.");
       }
-      setNotice("User reported.");
-      window.setTimeout(() => setNotice(null), 2200);
+      showNotice("User reported.");
     } catch (reportError) {
       setError(reportError instanceof Error ? reportError.message : "User could not be reported.");
     } finally {
@@ -2258,8 +2270,7 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
       }
       filterChannelMessages(activeChannel.slug, (item) => item.sender_user_id !== target.user_id);
       setProfileUser(null);
-      setNotice("User blocked.");
-      window.setTimeout(() => setNotice(null), 2200);
+      showNotice("User blocked.");
     } catch (blockError) {
       setError(blockError instanceof Error ? blockError.message : "User could not be blocked.");
     } finally {
@@ -2428,8 +2439,19 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
       ) : null}
 
       {notice ? (
-        <div aria-live="polite" className="fixed left-1/2 top-[max(env(safe-area-inset-top),1rem)] z-[80] -translate-x-1/2 rounded-full bg-emerald-500 px-4 py-2 text-sm font-black text-navy-950 shadow-panel">
-          {notice}
+        <div className="pointer-events-none fixed inset-x-3 bottom-[calc(5.75rem+env(safe-area-inset-bottom))] z-[80] md:inset-x-auto md:right-6 md:top-20 md:bottom-auto md:w-[24rem]">
+          <div aria-live={notice.tone === "danger" ? "assertive" : "polite"} className="pointer-events-auto motion-page-enter">
+            <Toast description={notice.description} title={notice.title} tone={notice.tone}>
+              <button
+                aria-label="Dismiss message"
+                className="rounded-sm px-2 py-1 text-xs font-black text-muted hover:bg-white/60 hover:text-ink"
+                onClick={() => setNotice(null)}
+                type="button"
+              >
+                Close
+              </button>
+            </Toast>
+          </div>
         </div>
       ) : null}
 
