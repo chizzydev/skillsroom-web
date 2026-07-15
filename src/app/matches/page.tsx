@@ -57,29 +57,35 @@ export default async function MatchesPage({ searchParams }: { searchParams: Prom
   let nextCursor: string | null = null;
   let counts: Partial<Record<MatchRoomStatus, number>> = {};
   let loadError: string | null = null;
-  try {
-    const [roomPageResults, statusCounts] = await Promise.all([
-      Promise.allSettled(
-        roomActivityStatuses.map(async (status) => ({
+  const [roomPageResults, statusCountsResult] = await Promise.all([
+    Promise.allSettled(
+      roomActivityStatuses.map(async (status) => ({
+        status,
+        page: await listMatchRooms({
           status,
-          page: await listMatchRooms({
-            status,
-            cursor: selectedQueueStatuses.length === 1 && status === selectedQueueStatuses[0] ? cursor : undefined,
-            limit: 24
-          })
-        }))
-      ),
-      getMatchRoomStatusCounts()
-    ]);
-    const roomPages = roomPageResults.flatMap((result) => result.status === "fulfilled" ? [result.value] : []);
-    rooms = roomPages.flatMap(({ page }) => page.rooms);
-    nextCursor = selectedQueueStatuses.length === 1 ? (roomPages.find((item) => item.status === selectedQueueStatuses[0])?.page.next_cursor ?? null) : null;
-    counts = statusCounts.counts;
-    if (roomPageResults.some((result) => result.status === "rejected")) {
-      loadError = "Some room groups could not load. The available rooms below are still safe to use.";
-    }
-  } catch {
-    loadError = "Rooms could not load right now. Please refresh the page or sign in again if this continues.";
+          cursor: selectedQueueStatuses.length === 1 && status === selectedQueueStatuses[0] ? cursor : undefined,
+          limit: 24
+        })
+      }))
+    ),
+    getMatchRoomStatusCounts().then(
+      (value) => ({ status: "fulfilled" as const, value }),
+      (reason) => ({ status: "rejected" as const, reason })
+    )
+  ]);
+  const roomPages = roomPageResults.flatMap((result) => result.status === "fulfilled" ? [result.value] : []);
+  rooms = roomPages.flatMap(({ page }) => page.rooms);
+  nextCursor = selectedQueueStatuses.length === 1 ? (roomPages.find((item) => item.status === selectedQueueStatuses[0])?.page.next_cursor ?? null) : null;
+  counts = statusCountsResult.status === "fulfilled"
+    ? statusCountsResult.value.counts
+    : rooms.reduce<Partial<Record<MatchRoomStatus, number>>>((current, room) => ({
+      ...current,
+      [room.status]: (current[room.status] ?? 0) + 1
+    }), {});
+  if (roomPageResults.every((result) => result.status === "rejected")) {
+    loadError = "Rooms are temporarily unavailable. Your account is still signed in; try this page again in a moment.";
+  } else if (roomPageResults.some((result) => result.status === "rejected") || statusCountsResult.status === "rejected") {
+    loadError = "Some room data could not load. The rooms shown below are still safe to use.";
   }
 
   const roomActivityRows = rooms

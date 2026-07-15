@@ -68,6 +68,106 @@ const flagMessages: Record<string, Omit<FeedbackMessage, "key">> = {
     title: "Channel saved",
     description: "The community channel settings are updated.",
     tone: "success"
+  },
+  profile_updated: {
+    title: "Profile saved",
+    description: "Your player details are updated.",
+    tone: "success"
+  },
+  game_account_saved: {
+    title: "Game account saved",
+    description: "Your primary handle is updated.",
+    tone: "success"
+  },
+  payout_profile_saved: {
+    title: "Payout details saved",
+    description: "Future payout instructions are updated.",
+    tone: "success"
+  },
+  clan_saved: {
+    title: "Clan profile saved",
+    description: "Your clan details are updated.",
+    tone: "success"
+  },
+  streaming_saved: {
+    title: "Stream channel saved",
+    description: "Your streaming account is updated.",
+    tone: "success"
+  },
+  streaming_synced: {
+    title: "Stream status refreshed",
+    description: "The latest channel status is now loaded.",
+    tone: "success"
+  },
+  streaming_removed: {
+    title: "Stream channel removed",
+    description: "That channel is no longer connected.",
+    tone: "success"
+  },
+  game_account_reviewed: {
+    title: "Handle review saved",
+    description: "The player account status is updated.",
+    tone: "success"
+  },
+  registered: {
+    title: "Registration saved",
+    description: "Your tournament entry is recorded.",
+    tone: "success"
+  },
+  contribution_submitted: {
+    title: "Receipt submitted",
+    description: "The tournament payment proof is waiting for review.",
+    tone: "success"
+  },
+  created: {
+    title: "Tournament created",
+    description: "The tournament draft is ready for setup.",
+    tone: "success"
+  },
+  seeded: {
+    title: "Tournament seeded",
+    description: "The bracket or match order has been updated.",
+    tone: "success"
+  },
+  structured: {
+    title: "Structure generated",
+    description: "Tournament rounds and matches are prepared.",
+    tone: "success"
+  },
+  linked: {
+    title: "Match rooms linked",
+    description: "Tournament matches are connected to room records.",
+    tone: "success"
+  },
+  scored: {
+    title: "Scores applied",
+    description: "Tournament standings have been recalculated.",
+    tone: "success"
+  },
+  result_reviewed: {
+    title: "Result reviewed",
+    description: "The tournament match decision is saved.",
+    tone: "success"
+  },
+  settlement_reserved: {
+    title: "Settlement reserved",
+    description: "Prize payout workflow has been prepared.",
+    tone: "success"
+  },
+  refunds_reserved: {
+    title: "Refunds reserved",
+    description: "Tournament refund workflow has been prepared.",
+    tone: "success"
+  },
+  host_granted: {
+    title: "Host access saved",
+    description: "Tournament host permissions are updated.",
+    tone: "success"
+  },
+  event_updated: {
+    title: "Tournament event updated",
+    description: "The timeline entry is saved.",
+    tone: "success"
   }
 };
 
