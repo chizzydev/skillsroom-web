@@ -123,8 +123,8 @@ export function ChatHomeClient({ channels, currentUserId, dmRequests }: ChatHome
               Chat
             </div>
             {globalChannel ? (
-              <Link aria-label="Open Global Chat" className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-white/10 text-lg font-black text-white hover:bg-white/15" href={channelHref(globalChannel)}>
-                ↗
+              <Link aria-label="Open Global Chat" className="grid h-11 min-w-11 shrink-0 place-items-center rounded-full bg-white/10 px-3 text-xs font-black text-white hover:bg-white/15" href={channelHref(globalChannel)}>
+                Open
               </Link>
             ) : null}
           </div>

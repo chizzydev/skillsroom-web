@@ -680,21 +680,11 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
 
   function handleBack() {
     if (closeLocalSurface()) return;
-    if (activeChannel.channel_type === "dm") {
-      setInfoTab("messages");
-      setShowChannelInfo(true);
-      return;
-    }
-    if (activeChannel.slug !== "global_lobby") {
-      setInfoTab("channels");
-      setShowChannelInfo(true);
-      return;
-    }
-    window.location.assign("/");
+    window.location.replace("/chat");
   }
 
   function goHome() {
-    window.location.assign("/");
+    window.location.replace("/chat");
   }
 
   function replaceThreadCache(rootMessageId: string, nextMessages: ChatMessage[], pageInfo: ChatMessagePageInfo = { has_older: false, older_cursor: null }) {

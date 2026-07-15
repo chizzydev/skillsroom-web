@@ -125,7 +125,7 @@ export function ChatInfoPanel({
             <h2 className="truncate text-base font-black text-white sm:text-xl">{channelTitle(displayActiveChannel)}</h2>
             <p className="mt-0.5 truncate text-xs font-bold text-slate-300 sm:mt-1 sm:text-sm">{activeChannelSubtitle} / {userDirectory.length} active or recent</p>
           </div>
-          <button aria-label="Go to home" className="min-h-9 shrink-0 rounded-full border border-white/10 bg-white/5 px-3 text-xs font-black text-white hover:bg-white/10" onClick={onGoHome} title="Go to home" type="button">Home</button>
+          <button aria-label="Go to chat home" className="min-h-9 shrink-0 rounded-full border border-white/10 bg-white/5 px-3 text-xs font-black text-white hover:bg-white/10" onClick={onGoHome} title="Go to chat home" type="button">Chat</button>
         </header>
 
         <div className="grid grid-cols-6 border-b border-white/10 px-1 sm:px-3">
