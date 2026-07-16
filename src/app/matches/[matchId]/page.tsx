@@ -88,6 +88,21 @@ function resultTone(status: MatchResultClaim["status"]) {
   return "warning" as const;
 }
 
+function dateTimeLabel(value?: string | null) {
+  if (!value) return "Not set";
+  return new Intl.DateTimeFormat("en-NG", {
+    dateStyle: "medium",
+    timeStyle: "short",
+    timeZone: "Africa/Lagos"
+  }).format(new Date(value));
+}
+
+function responseWindowExpired(claim: MatchResultClaim) {
+  if (claim.opponent_response_overdue_at) return true;
+  const dueAt = claim.opponent_response_due_at ? new Date(claim.opponent_response_due_at).getTime() : Number.NaN;
+  return Number.isFinite(dueAt) && dueAt <= Date.now();
+}
+
 function nextAction(room: MatchRoom, participantCount: number) {
   if (room.status === "draft") return ["Open this room", "Review the details, then publish the room so an opponent can join."] as const;
   if (room.status === "open") return participantCount < room.max_participants
@@ -1697,6 +1712,22 @@ export default async function MatchDetailPage({
                       )}
                     </p>
                     {claim.note ? <p className="mt-2 text-sm leading-6 text-muted">{claim.note}</p> : null}
+                    {claim.status === "submitted" ? (
+                      <div className={`mt-3 rounded-lg border p-3 text-sm leading-6 ${
+                        responseWindowExpired(claim)
+                          ? "border-amber-300 bg-amber-50 text-amber-950"
+                          : "border-cyan/25 bg-cyan/10 text-ink"
+                      }`}>
+                        <p className="font-black">
+                          {responseWindowExpired(claim) ? "Opponent response is overdue" : `Opponent response due: ${dateTimeLabel(claim.opponent_response_due_at)}`}
+                        </p>
+                        <p className="mt-1 text-muted">
+                          {responseWindowExpired(claim)
+                            ? "The Skillsroom team can review this under the no-response policy after checking room history and evidence."
+                            : "The opponent can still agree or dispute this result before admin winner approval opens."}
+                        </p>
+                      </div>
+                    ) : null}
                     {results.evidence_items.filter((item) => item.result_claim_id === claim.id).length ? (
                       <div className="mt-4 grid gap-2">
                         {results.evidence_items

@@ -9,7 +9,7 @@ import { SubmitButton } from "@/components/ui/SubmitButton";
 import { Timeline } from "@/components/ui/Timeline";
 import { TransientStatusBanner } from "@/components/ui/TransientStatusBanner";
 import { getCurrentUser } from "@/lib/auth-bridge";
-import { listGameCatalog, type Game, type MatchRuleset } from "@/lib/match-room-api";
+import { getProfileMe, listGameCatalog, type Game, type MatchRuleset } from "@/lib/match-room-api";
 import { createMatchRoomAction } from "../actions";
 
 const steps = [
@@ -19,20 +19,34 @@ const steps = [
   { label: "Funding review", detail: "Both entries must be checked before play starts.", status: "pending" as const }
 ];
 
+function missingSetupLabel(key: string) {
+  if (key === "username") return "Choose a username in Profile.";
+  if (key === "age_confirmation") return "Confirm your age in Profile.";
+  if (key === "primary_game_account") return "Add your main in-game handle in Profile.";
+  return key.replaceAll("_", " ");
+}
+
 export default async function NewMatchPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
   const user = await getCurrentUser();
   if (!user) redirect("/sign-in?redirect=/matches/new");
   const { error } = await searchParams;
   let games: Game[] = [];
   let rulesets: MatchRuleset[] = [];
+  let profileReady = false;
+  let missingProfileItems: string[] = [];
   let loadError: string | null = null;
 
   try {
-    const catalog = await listGameCatalog();
+    const [catalog, profile] = await Promise.all([
+      listGameCatalog(),
+      getProfileMe("summary")
+    ]);
     games = catalog.games;
     rulesets = catalog.rulesets;
+    profileReady = Boolean(profile.completion.complete);
+    missingProfileItems = profile.completion.missing ?? [];
   } catch {
-    loadError = "Unable to load available games and rulesets.";
+    loadError = "Unable to confirm your player setup and available games.";
   }
 
   const selectedGame = games.find((game) => game.slug === "free-fire") ?? games[0] ?? null;
@@ -68,28 +82,46 @@ export default async function NewMatchPage({ searchParams }: { searchParams: Pro
         <Panel>
           <PanelHeader
             eyebrow="Ready check"
-            title="Finish your player setup first"
-            description="Before you create or join money rooms, Skillsroom needs your username, age confirmation, and at least one primary game account saved on your profile."
+            title={profileReady ? "Player setup ready" : "Finish your player setup first"}
+            description={profileReady
+              ? "Your profile has the player identity checks needed for match rooms."
+              : "Before you create or join money rooms, Skillsroom needs your username, age confirmation, and at least one primary game account saved on your profile."}
           />
           <div className="p-4">
-            <div className="relative overflow-hidden rounded-[1.5rem] border border-cyan/30 bg-navy-950 p-5 text-white shadow-panel md:p-6">
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_15%_20%,rgba(34,211,238,0.24),transparent_32%),radial-gradient(circle_at_90%_15%,rgba(16,185,129,0.18),transparent_28%)]" />
+            <div className={[
+              "relative overflow-hidden rounded-[1.5rem] border p-5 shadow-panel md:p-6",
+              profileReady ? "border-emerald-200 bg-emerald-50 text-emerald-950" : "border-cyan/30 bg-navy-950 text-white"
+            ].join(" ")}>
+              {!profileReady ? <div className="absolute inset-0 bg-[radial-gradient(circle_at_15%_20%,rgba(34,211,238,0.24),transparent_32%),radial-gradient(circle_at_90%_15%,rgba(16,185,129,0.18),transparent_28%)]" /> : null}
               <div className="relative grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
                 <div className="min-w-0">
-                  <span className="inline-flex rounded-full border border-white/20 bg-white px-4 py-2 font-mono text-xs font-black uppercase tracking-[0.18em] text-navy-950">
-                    Stand by
+                  <span className={[
+                    "inline-flex rounded-full border px-4 py-2 font-mono text-xs font-black uppercase tracking-[0.18em]",
+                    profileReady ? "border-emerald-200 bg-white text-emerald-700" : "border-white/20 bg-white text-navy-950"
+                  ].join(" ")}>
+                    {profileReady ? "Ready" : "Stand by"}
                   </span>
-                  <h2 className="mt-4 text-2xl font-black md:text-3xl">Profile setup required</h2>
-                  <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-200 md:text-base">
-                    Add your game handle in Profile and mark it as your primary account. Once that is done, come back here and room creation will go through normally.
+                  <h2 className="mt-4 text-2xl font-black md:text-3xl">{profileReady ? "Profile checks passed" : "Profile setup required"}</h2>
+                  <p className={["mt-3 max-w-3xl text-sm leading-6 md:text-base", profileReady ? "text-emerald-900" : "text-slate-200"].join(" ")}>
+                    {profileReady
+                      ? "Rooms can be created with your saved username, age confirmation, and primary game account."
+                      : missingProfileItems.length
+                        ? missingProfileItems.map(missingSetupLabel).join(" ")
+                        : "Add your game handle in Profile and mark it as your primary account. Once that is done, come back here and room creation will go through normally."}
                   </p>
                 </div>
-                <Link
-                  className="inline-flex min-h-11 items-center justify-center rounded-md bg-action px-5 text-sm font-black text-navy-950 shadow-action hover:bg-actionHover"
-                  href="/profile#game-accounts"
-                >
-                  Open profile setup
-                </Link>
+                {profileReady ? (
+                  <span className="inline-flex min-h-11 items-center justify-center rounded-md border border-emerald-200 bg-white px-5 text-sm font-black text-emerald-700">
+                    Ready to create
+                  </span>
+                ) : (
+                  <Link
+                    className="inline-flex min-h-11 items-center justify-center rounded-md bg-action px-5 text-sm font-black text-navy-950 shadow-action hover:bg-actionHover"
+                    href="/profile#game-accounts"
+                  >
+                    Open profile setup
+                  </Link>
+                )}
               </div>
             </div>
           </div>
@@ -122,7 +154,12 @@ export default async function NewMatchPage({ searchParams }: { searchParams: Pro
                 <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="title" placeholder="Room title" />
               </label>
               <div className="flex flex-wrap gap-2 md:col-span-2">
-                <SubmitButton idleLabel="Create room" pendingLabel="Creating room..." />
+                <SubmitButton disabled={!profileReady} idleLabel={profileReady ? "Create room" : "Finish profile setup first"} pendingLabel="Creating room..." />
+                {!profileReady ? (
+                  <Link className="inline-flex min-h-11 items-center justify-center rounded-md border border-line bg-white px-4 text-sm font-black text-ink hover:bg-surfaceHigh" href="/profile#game-accounts">
+                    Open Profile
+                  </Link>
+                ) : null}
               </div>
             </form>
             ) : (

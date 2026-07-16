@@ -393,7 +393,7 @@ export type ResultClaimStatus =
   | "admin_approved"
   | "admin_rejected"
   | "withdrawn";
-export type ResultReviewDecision = "approve_claim" | "reject_claim" | "mark_disputed" | "void_match";
+export type ResultReviewDecision = "approve_claim" | "approve_no_response" | "reject_claim" | "mark_disputed" | "void_match";
 export type SettlementStatus = "reserved" | "payout_pending" | "completed" | "cancelled";
 export type PayoutStatus = "queued" | "completed" | "failed" | "cancelled";
 export type RefundStatus = "queued" | "completed" | "failed" | "cancelled";
@@ -409,6 +409,9 @@ export type MatchResultClaim = {
   score_summary: string | null;
   note: string | null;
   submitted_at: string;
+  opponent_response_due_at: string | null;
+  opponent_response_reminder_sent_at: string | null;
+  opponent_response_overdue_at: string | null;
   resolved_by_user_id: string | null;
   resolved_at: string | null;
   resolution_note: string | null;

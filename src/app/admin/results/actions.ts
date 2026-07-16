@@ -12,6 +12,7 @@ function actionErrorMessage(error: unknown) {
 
 const resultSuccessMessages: Record<ResultReviewDecision, string> = {
   approve_claim: "Result claim approved.",
+  approve_no_response: "Result approved after no opponent response.",
   reject_claim: "Result claim rejected.",
   mark_disputed: "Result claim moved to dispute review.",
   void_match: "Match was voided."

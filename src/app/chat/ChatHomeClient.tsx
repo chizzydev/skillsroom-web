@@ -105,7 +105,10 @@ export function ChatHomeClient({ channels, currentUserId, dmRequests }: ChatHome
     [channels, globalChannel?.id]
   );
   const dmChannels = useMemo(() => channels.filter((channel) => channel.channel_type === "dm"), [channels]);
-  const pendingRequests = useMemo(() => dmRequests.filter((request) => request.status === "pending"), [dmRequests]);
+  const pendingRequests = useMemo(
+    () => dmRequests.filter((request) => request.status === "pending" && request.recipient_user_id === currentUserId),
+    [currentUserId, dmRequests]
+  );
   const acceptedRequests = useMemo(
     () => dmRequests.filter((request) => request.status === "accepted" && request.channel_slug && !dmChannels.some((channel) => channel.slug === request.channel_slug)),
     [dmChannels, dmRequests]
@@ -115,18 +118,16 @@ export function ChatHomeClient({ channels, currentUserId, dmRequests }: ChatHome
 
   return (
     <div className="min-h-[100svh] bg-[#edf4fa] px-3 py-4 text-white sm:px-6 lg:px-8">
-      <div className="mx-auto grid w-full max-w-5xl gap-4 pb-24">
+      <div className="mx-auto grid w-full max-w-5xl gap-4 pb-[max(env(safe-area-inset-bottom),1rem)]">
         <section className="rounded-lg bg-[#0f1b29] p-5 shadow-panel sm:p-6">
           <div className="flex items-start justify-between gap-3">
             <div className="inline-flex min-h-9 items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 text-xs font-black uppercase tracking-[0.16em] text-white">
               <span className="text-sky-300">#</span>
               Chat
             </div>
-            {globalChannel ? (
-              <Link aria-label="Open Global Chat" className="grid h-11 min-w-11 shrink-0 place-items-center rounded-full bg-white/10 px-3 text-xs font-black text-white hover:bg-white/15" href={channelHref(globalChannel)}>
-                Open
-              </Link>
-            ) : null}
+            <Link aria-label="Go to Home" className="grid h-11 min-w-11 shrink-0 place-items-center rounded-full bg-white/10 px-3 text-xs font-black text-white hover:bg-white/15" href="/">
+              Home
+            </Link>
           </div>
           <h1 className="mt-5 max-w-xl text-3xl font-black leading-tight text-white sm:text-4xl">Global, rooms, and DMs.</h1>
           <div className="mt-4 grid grid-cols-3 gap-2">

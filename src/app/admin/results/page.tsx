@@ -42,6 +42,22 @@ function scoreSummaryLabel(value: string | null | undefined) {
   return value && value.trim().length ? value : "No score line supplied";
 }
 
+function dateTimeLabel(value: string | null | undefined) {
+  if (!value) return "Not set";
+  const time = new Date(value).getTime();
+  if (!Number.isFinite(time)) return value;
+  return new Date(value).toLocaleString("en-NG", {
+    dateStyle: "medium",
+    timeStyle: "short"
+  });
+}
+
+function responseWindowExpired(claim: MatchResultClaim) {
+  if (claim.opponent_response_overdue_at) return true;
+  const dueAt = claim.opponent_response_due_at ? new Date(claim.opponent_response_due_at).getTime() : Number.NaN;
+  return Number.isFinite(dueAt) && dueAt <= Date.now();
+}
+
 function playerName(participant?: MatchParticipant) {
   if (!participant) return "Unknown player";
   return participant.user_id.length > 16 ? `${participant.user_id.slice(0, 8)}...${participant.user_id.slice(-4)}` : participant.user_id;
@@ -126,7 +142,7 @@ const queueStatuses: Array<{
   {
     status: "submitted",
     title: "Submitted result claims",
-    description: "Fresh claims waiting for opponent response or team review.",
+    description: "Fresh claims waiting for the opponent to agree or dispute. Approval stays locked at this stage.",
     emptyTitle: "Submitted queue is clear",
     emptyDescription: "No newly submitted result claims are waiting right now."
   },
@@ -184,7 +200,7 @@ export default async function AdminResultsPage({ searchParams }: { searchParams:
         ) : null}
 
         <div className="grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <StatusPanel detail="Needs review" label="Submitted" tone="warning" value={countStatus(claims, "submitted")} />
+          <StatusPanel detail="Awaiting opponent" label="Submitted" tone="warning" value={countStatus(claims, "submitted")} />
           <StatusPanel detail="Opponent agrees" label="Agreed" tone="success" value={countStatus(claims, "opponent_agreed")} />
           <StatusPanel detail="Needs dispute review" label="Disputed" tone="danger" value={countStatus(claims, "opponent_disputed")} />
           <StatusPanel detail="All active reviews" label="Queue Total" tone="cyan" value={claims.length.toString()} />
@@ -230,6 +246,7 @@ export default async function AdminResultsPage({ searchParams }: { searchParams:
                       <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-2">
                           <Badge tone={claim.status === "opponent_disputed" ? "danger" : "warning"}>{displayLabel(claim.status)}</Badge>
+                          {claim.status === "submitted" && responseWindowExpired(claim) ? <Badge tone="danger">Response overdue</Badge> : null}
                           <span className="font-mono text-xs font-bold text-dim">{new Date(claim.submitted_at).toLocaleString("en-NG")}</span>
                         </div>
                         <h2 className="mt-3 text-lg font-black text-ink">{scoreSummaryLabel(claim.score_summary)}</h2>
@@ -270,6 +287,11 @@ export default async function AdminResultsPage({ searchParams }: { searchParams:
                         <dd className="mt-1 font-bold text-ink">{claim.note ?? "No note"}</dd>
                       </div>
                     </dl>
+                    {claim.status === "submitted" ? (
+                      <div className={["mt-4 rounded-md border p-3 text-sm font-bold leading-6", responseWindowExpired(claim) ? "border-danger bg-red-50 text-danger" : "border-amber-200 bg-amber-50 text-amber-900"].join(" ")}>
+                        Opponent response due: {dateTimeLabel(claim.opponent_response_due_at)}. {responseWindowExpired(claim) ? "The owner/admin may use no-response approval after checking the evidence and room history." : "Winner approval remains locked until the opponent agrees or the window expires."}
+                      </div>
+                    ) : null}
                     {card.evidence.length ? (
                       <div className="mt-4 grid gap-2 md:grid-cols-2">
                         {card.evidence.map((item) => (
@@ -309,8 +331,11 @@ export default async function AdminResultsPage({ searchParams }: { searchParams:
           <div className="grid h-fit gap-4 xl:sticky xl:top-24">
             <AdminStepUpPanel returnTo="/admin/results" />
             <Panel>
-              <PanelHeader eyebrow="Decision" title="Review result claim" description="Unlock first, then move a room toward settlement, dispute resolution, or void." />
+              <PanelHeader eyebrow="Decision" title="Review result claim" description="Approve only after the opponent agrees. Submitted claims can be disputed, rejected, voided, or left for the opponent response." />
               <form action={reviewResultClaimAction} className="grid gap-3 p-4">
+                <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm font-bold leading-6 text-amber-900">
+                  Winner approval is locked until the opponent accepts the claim. Use Mark disputed when the evidence needs team review before payout.
+                </div>
                 <label className="grid gap-2 text-sm font-bold text-ink">
                   Claim ID
                   <input className="min-h-11 rounded-md border border-line bg-white px-3 font-mono text-sm outline-none focus:border-action" name="claim_id" required />
@@ -321,6 +346,7 @@ export default async function AdminResultsPage({ searchParams }: { searchParams:
                 </label>
                 <div className="grid gap-2">
                   <FormActionButton idleLabel="Approve claim" name="decision" pendingLabel="Approving claim..." value="approve_claim" />
+                  <FormActionButton idleLabel="Approve no response" name="decision" pendingLabel="Approving after no response..." value="approve_no_response" variant="secondary" />
                   <FormActionButton idleLabel="Mark disputed" name="decision" pendingLabel="Marking disputed..." value="mark_disputed" variant="secondary" />
                   <FormActionButton idleLabel="Reject claim" name="decision" pendingLabel="Rejecting claim..." value="reject_claim" variant="danger" />
                   <FormActionButton idleLabel="Void match" name="decision" pendingLabel="Voiding match..." value="void_match" variant="danger" />
