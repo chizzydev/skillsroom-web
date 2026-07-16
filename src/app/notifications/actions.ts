@@ -1,6 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { safeNotificationRedirect } from "@/lib/notification-routing";
 import {
   ApiRequestError,
   markAllNotificationsRead,
@@ -26,6 +27,17 @@ export async function markNotificationReadAction(formData: FormData) {
     redirect(withError(error));
   }
   redirect("/notifications");
+}
+
+export async function openNotificationAction(formData: FormData) {
+  const notificationId = String(formData.get("notification_id") || "");
+  const target = safeNotificationRedirect(String(formData.get("target") || ""));
+  try {
+    if (notificationId) await markNotificationRead(notificationId);
+  } catch (error) {
+    redirect(withError(error));
+  }
+  redirect(target);
 }
 
 export async function markAllNotificationsReadAction() {

@@ -20,9 +20,11 @@ import {
   type RoomInvite,
   type UserNotification
 } from "@/lib/match-room-api";
+import { notificationAction } from "@/lib/notification-routing";
 import {
   markAllNotificationsReadAction,
   markNotificationReadAction,
+  openNotificationAction,
   respondToDmRequestAction,
   respondToRoomInviteAction,
   updateNotificationPreferencesAction
@@ -157,12 +159,24 @@ export default async function NotificationsPage({ searchParams }: { searchParams
                   {
                     key: "id",
                     label: "Action",
-                    render: (row) => (
-                      <form action={markNotificationReadAction}>
-                        <input name="notification_id" type="hidden" value={row.id} />
-                        <FormActionButton idleLabel="Read" pendingLabel="Marking read..." size="sm" variant="secondary" />
-                      </form>
-                    )
+                    render: (row) => {
+                      const action = notificationAction(row);
+                      return (
+                        <div className="flex flex-wrap gap-2">
+                          {action.href ? (
+                            <form action={openNotificationAction}>
+                              <input name="notification_id" type="hidden" value={row.id} />
+                              <input name="target" type="hidden" value={action.href} />
+                              <FormActionButton idleLabel={action.label} pendingLabel="Opening..." size="sm" />
+                            </form>
+                          ) : null}
+                          <form action={markNotificationReadAction}>
+                            <input name="notification_id" type="hidden" value={row.id} />
+                            <FormActionButton idleLabel="Read" pendingLabel="Marking read..." size="sm" variant="secondary" />
+                          </form>
+                        </div>
+                      );
+                    }
                   }
                 ]}
                 rows={notifications}

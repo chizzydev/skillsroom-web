@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { AccountMenu } from "@/components/layout/AccountMenu";
+import { NotificationBell } from "@/components/layout/NotificationBell";
 import { GlobalActionFeedback } from "@/components/ui/GlobalActionFeedback";
 import { getCurrentUser } from "@/lib/auth-bridge";
+import { listNotifications } from "@/lib/match-room-api";
 
 type AppShellProps = {
   active: "home" | "lobby" | "matches" | "tournaments" | "community" | "notifications" | "wallet" | "profile";
@@ -32,6 +34,14 @@ const footerLinks = [
 
 export async function AppShell({ active, children }: AppShellProps) {
   const user = await getCurrentUser();
+  let unreadNotificationCount = 0;
+  if (user) {
+    try {
+      unreadNotificationCount = (await listNotifications("unread")).notifications.length;
+    } catch {
+      unreadNotificationCount = 0;
+    }
+  }
 
   return (
     <main className="min-h-screen w-full max-w-full overflow-x-hidden bg-bg">
@@ -61,16 +71,7 @@ export async function AppShell({ active, children }: AppShellProps) {
               </Link>
             {user ? (
               <>
-                <Link
-                  aria-label="Open notifications"
-                  className="relative grid h-10 w-10 place-items-center rounded-full border border-line bg-white text-ink shadow-tight transition hover:bg-surfaceHigh"
-                  href="/notifications"
-                >
-                  <svg aria-hidden="true" className="h-5 w-5" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.4" viewBox="0 0 24 24">
-                    <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9" />
-                    <path d="M13.7 21a2 2 0 0 1-3.4 0" />
-                  </svg>
-                </Link>
+                <NotificationBell initialUnread={unreadNotificationCount} />
                 <AccountMenu compact user={user} />
               </>
             ) : (

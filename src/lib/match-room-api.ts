@@ -768,6 +768,7 @@ export type UserNotification = {
   action_url: string | null;
   notification_type: string;
   match_room_id: string | null;
+  metadata: Record<string, unknown>;
   created_at: string;
 };
 
