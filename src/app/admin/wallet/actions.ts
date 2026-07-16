@@ -1,14 +1,9 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { adminActionErrorMessage } from "@/lib/admin-action-errors";
 import { requireAdminStepUpToken } from "@/lib/admin-step-up-session";
-import { ApiRequestError, reviewWalletPayoutRequest, reviewWalletTopup } from "@/lib/match-room-api";
-
-function actionErrorMessage(error: unknown) {
-  if (error instanceof ApiRequestError) return error.message;
-  if (error instanceof Error) return error.message;
-  return "The wallet top-up review could not be completed.";
-}
+import { reviewWalletPayoutRequest, reviewWalletTopup } from "@/lib/match-room-api";
 
 function withSuccess(decision: "approve" | "reject") {
   return `/admin/wallet?success=${encodeURIComponent(
@@ -34,7 +29,7 @@ export async function reviewWalletTopupAction(formData: FormData) {
       stepUpToken
     });
   } catch (error) {
-    redirect(`/admin/wallet?error=${encodeURIComponent(actionErrorMessage(error))}`);
+    redirect(`/admin/wallet?error=${encodeURIComponent(await adminActionErrorMessage(error, "The wallet top-up review could not be completed."))}`);
   }
 
   redirect(withSuccess(decision));
@@ -53,7 +48,7 @@ export async function reviewWalletPayoutAction(formData: FormData) {
       stepUpToken
     });
   } catch (error) {
-    redirect(`/admin/wallet?error=${encodeURIComponent(actionErrorMessage(error))}`);
+    redirect(`/admin/wallet?error=${encodeURIComponent(await adminActionErrorMessage(error, "The payout review could not be completed."))}`);
   }
 
   redirect(payoutSuccess(decision));

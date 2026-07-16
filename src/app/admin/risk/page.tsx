@@ -9,6 +9,7 @@ import { DataTable } from "@/components/ui/DataTable";
 import { FormActionButton } from "@/components/ui/FormActionButton";
 import { Panel, PanelHeader } from "@/components/ui/Panel";
 import { StatusPanel } from "@/components/ui/StatusPanel";
+import { adminErrorMessageFromQuery } from "@/lib/admin-action-errors";
 import { canAccessAdmin, canUseAdminSection, getCurrentUser } from "@/lib/auth-bridge";
 import { listEvidenceRetentionReport } from "@/lib/evidence-storage";
 import {
@@ -233,7 +234,7 @@ export default async function AdminRiskPage({ searchParams }: { searchParams: Pr
 
         {(error || loadError) && (
           <div className="rounded-md border border-danger bg-red-50 p-4 text-sm font-bold text-danger">
-            {error ?? loadError}
+            {error ? adminErrorMessageFromQuery(error) : loadError}
           </div>
         )}
 

@@ -10,6 +10,7 @@ import { PendingLink } from "@/components/ui/PendingLink";
 import { Panel, PanelHeader } from "@/components/ui/Panel";
 import { StatusPanel } from "@/components/ui/StatusPanel";
 import { TransientStatusBanner } from "@/components/ui/TransientStatusBanner";
+import { adminErrorMessageFromQuery } from "@/lib/admin-action-errors";
 import { canAccessAdmin, canUseAdminSection, getCurrentUser } from "@/lib/auth-bridge";
 import {
   getMatchRoomTimeline,
@@ -193,7 +194,7 @@ export default async function AdminResultsPage({ searchParams }: { searchParams:
 
         <LiveUpdateStream eventTypePrefixes={["admin.queue.results.", "admin.queue.tournament_results.", "match.result.", "tournament.match.reviewed."]} label="Result updates" />
 
-        {error ? <TransientStatusBanner clearKeys={["error"]} durationMs={12000} message={error} /> : null}
+        {error ? <TransientStatusBanner clearKeys={["error"]} durationMs={12000} message={adminErrorMessageFromQuery(error)} /> : null}
         {success ? <TransientStatusBanner clearKeys={["success"]} durationMs={12000} message={success} tone="success" /> : null}
         {loadError ? (
           <div className="rounded-md border border-danger bg-red-50 p-4 text-sm font-bold text-danger">{loadError}</div>

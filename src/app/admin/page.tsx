@@ -10,6 +10,7 @@ import { FormActionButton } from "@/components/ui/FormActionButton";
 import { PendingLink } from "@/components/ui/PendingLink";
 import { Panel, PanelHeader } from "@/components/ui/Panel";
 import { TransientStatusBanner } from "@/components/ui/TransientStatusBanner";
+import { adminErrorMessageFromQuery } from "@/lib/admin-action-errors";
 import { canAccessAdmin, canUseAdminSection, getCurrentUser } from "@/lib/auth-bridge";
 import {
   formatEntryAmount,
@@ -284,7 +285,7 @@ export default async function AdminPage({
 
         <LiveUpdateStream eventTypePrefixes={["admin.queue.", "match.", "tournament.", "notification."]} label="Live updates" />
 
-        {error ? <TransientStatusBanner clearKeys={["error"]} durationMs={12000} message={error} /> : null}
+        {error ? <TransientStatusBanner clearKeys={["error"]} durationMs={12000} message={adminErrorMessageFromQuery(error)} /> : null}
         {announcementSaved ? <TransientStatusBanner clearKeys={["announcement_saved"]} durationMs={12000} message="Platform announcement saved." tone="success" /> : null}
         {announcementPublished ? <TransientStatusBanner clearKeys={["announcement_published"]} durationMs={12000} message="Announcement published." tone="success" /> : null}
         {announcementArchived ? <TransientStatusBanner clearKeys={["announcement_archived"]} durationMs={12000} message="Announcement archived." tone="success" /> : null}

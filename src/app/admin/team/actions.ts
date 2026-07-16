@@ -1,18 +1,13 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { adminActionErrorMessage } from "@/lib/admin-action-errors";
 import { requireAdminStepUpToken } from "@/lib/admin-step-up-session";
 import { canAccessAdmin, getCurrentUser } from "@/lib/auth-bridge";
-import { ApiRequestError, updateAdminTeamMemberRole, type TeamRole } from "@/lib/match-room-api";
+import { updateAdminTeamMemberRole, type TeamRole } from "@/lib/match-room-api";
 
-function actionErrorMessage(error: unknown) {
-  if (error instanceof ApiRequestError) return error.message;
-  if (error instanceof Error) return error.message;
-  return "Team role update could not be completed.";
-}
-
-function withError(error: unknown) {
-  return `/admin/team?error=${encodeURIComponent(actionErrorMessage(error))}`;
+async function withError(error: unknown) {
+  return `/admin/team?error=${encodeURIComponent(await adminActionErrorMessage(error, "Team role update could not be completed."))}`;
 }
 
 function assignableRole(value: FormDataEntryValue | null): Exclude<TeamRole, "owner"> {
@@ -36,7 +31,7 @@ export async function updateTeamRoleAction(formData: FormData) {
       stepUpToken
     });
   } catch (error) {
-    redirect(withError(error));
+    redirect(await withError(error));
   }
 
   redirect("/admin/team?role_updated=1");

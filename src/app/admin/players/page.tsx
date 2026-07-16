@@ -8,6 +8,7 @@ import { DataTable } from "@/components/ui/DataTable";
 import { FormActionButton } from "@/components/ui/FormActionButton";
 import { Panel, PanelHeader } from "@/components/ui/Panel";
 import { StatusPanel } from "@/components/ui/StatusPanel";
+import { adminErrorMessageFromQuery } from "@/lib/admin-action-errors";
 import { canAccessAdmin, canUseAdminSection, getCurrentUser } from "@/lib/auth-bridge";
 import { listAdminGameAccounts, listLeaderboard, type AdminGameAccount, type LeaderboardRow } from "@/lib/match-room-api";
 import { reviewGameAccountAction } from "./actions";
@@ -67,7 +68,7 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams?
           <div className="rounded-md border border-danger bg-red-50 p-4 text-sm font-bold text-danger">{loadError}</div>
         ) : null}
         {params?.error ? (
-          <div className="rounded-md border border-danger bg-red-50 p-4 text-sm font-bold text-danger">{params.error}</div>
+          <div className="rounded-md border border-danger bg-red-50 p-4 text-sm font-bold text-danger">{adminErrorMessageFromQuery(params.error)}</div>
         ) : null}
         {params?.game_account_reviewed ? (
           <div className="rounded-md border border-success bg-successSoft p-4 text-sm font-bold text-success">

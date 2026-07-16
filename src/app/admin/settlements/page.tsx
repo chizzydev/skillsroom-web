@@ -11,6 +11,7 @@ import { FormActionButton } from "@/components/ui/FormActionButton";
 import { Panel, PanelHeader } from "@/components/ui/Panel";
 import { StatusPanel } from "@/components/ui/StatusPanel";
 import { TransientStatusBanner } from "@/components/ui/TransientStatusBanner";
+import { adminErrorMessageFromQuery } from "@/lib/admin-action-errors";
 import { canAccessAdmin, canUseAdminSection, getCurrentUser } from "@/lib/auth-bridge";
 import {
   ApiRequestError,
@@ -219,7 +220,7 @@ export default async function AdminSettlementsPage({ searchParams }: { searchPar
 
         <LiveUpdateStream eventTypePrefixes={["admin.queue.settlements.", "admin.queue.refunds.", "admin.queue.tournament_settlements.", "admin.queue.tournament_refunds.", "match.settlement.", "match.payout.", "match.refund.", "tournament.settlement.", "tournament.payout.", "tournament.refund.", "tournament.refunds."]} label="Payment updates" />
 
-        {error ? <TransientStatusBanner clearKeys={["error"]} durationMs={12000} message={error} /> : null}
+        {error ? <TransientStatusBanner clearKeys={["error"]} durationMs={12000} message={adminErrorMessageFromQuery(error)} /> : null}
         {success ? <TransientStatusBanner clearKeys={["success"]} durationMs={12000} message={success} tone="success" /> : null}
         {loadErrors.length ? (
           <div className="grid gap-2 rounded-md border border-danger bg-red-50 p-4 text-sm font-bold text-danger">

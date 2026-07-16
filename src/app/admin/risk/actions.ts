@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { apiBaseUrl } from "@/lib/api";
+import { adminActionErrorMessage } from "@/lib/admin-action-errors";
 import { requireAdminStepUpToken } from "@/lib/admin-step-up-session";
 import { canAccessAdmin, getAccessToken, getCurrentUser } from "@/lib/auth-bridge";
 import {
@@ -13,7 +14,6 @@ import {
   setEvidenceLegalHold
 } from "@/lib/evidence-storage";
 import {
-  ApiRequestError,
   createModerationAction,
   createRiskFlag,
   createRoomHold,
@@ -27,14 +27,8 @@ import {
   type UserRiskFlag
 } from "@/lib/match-room-api";
 
-function actionErrorMessage(error: unknown) {
-  if (error instanceof ApiRequestError) return error.message;
-  if (error instanceof Error) return error.message;
-  return "The safety action could not be completed.";
-}
-
-function withError(error: unknown) {
-  return `/admin/risk?error=${encodeURIComponent(actionErrorMessage(error))}`;
+async function withError(error: unknown) {
+  return `/admin/risk?error=${encodeURIComponent(await adminActionErrorMessage(error, "The safety action could not be completed."))}`;
 }
 
 function appOrigin() {
@@ -113,7 +107,7 @@ export async function createRiskFlagAction(formData: FormData) {
       summary: String(formData.get("summary") || "").trim()
     });
   } catch (error) {
-    redirect(withError(error));
+    redirect(await withError(error));
   }
   redirect("/admin/risk");
 }
@@ -125,7 +119,7 @@ export async function updateRiskFlagStatusAction(formData: FormData) {
       String(formData.get("status") || "reviewing") as UserRiskFlag["status"]
     );
   } catch (error) {
-    redirect(withError(error));
+    redirect(await withError(error));
   }
   redirect("/admin/risk");
 }
@@ -142,7 +136,7 @@ export async function createModerationActionAction(formData: FormData) {
       stepUpToken
     });
   } catch (error) {
-    redirect(withError(error));
+    redirect(await withError(error));
   }
   redirect("/admin/risk");
 }
@@ -155,7 +149,7 @@ export async function createRoomHoldAction(formData: FormData) {
       reason: String(formData.get("reason") || "").trim()
     });
   } catch (error) {
-    redirect(withError(error));
+    redirect(await withError(error));
   }
   redirect("/admin/risk");
 }
@@ -167,7 +161,7 @@ export async function releaseRoomHoldAction(formData: FormData) {
       String(formData.get("release_note") || "").trim() || undefined
     );
   } catch (error) {
-    redirect(withError(error));
+    redirect(await withError(error));
   }
   redirect("/admin/risk");
 }
@@ -180,7 +174,7 @@ export async function hideChatMessageAction(formData: FormData) {
       { reason: String(formData.get("reason") || "").trim() || "Hidden from chat moderation queue." }
     );
   } catch (error) {
-    redirect(withError(error));
+    redirect(await withError(error));
   }
   redirect("/admin/risk");
 }
@@ -193,7 +187,7 @@ export async function deleteChatMessageAction(formData: FormData) {
       { reason: String(formData.get("reason") || "").trim() || "Deleted from chat moderation queue." }
     );
   } catch (error) {
-    redirect(withError(error));
+    redirect(await withError(error));
   }
   redirect("/admin/risk");
 }
@@ -209,7 +203,7 @@ export async function muteChatMemberAction(formData: FormData) {
       }
     );
   } catch (error) {
-    redirect(withError(error));
+    redirect(await withError(error));
   }
   redirect("/admin/risk");
 }
@@ -237,7 +231,7 @@ export async function updateEvidenceLegalHoldAction(formData: FormData) {
       result
     });
   } catch (error) {
-    redirect(withError(error));
+    redirect(await withError(error));
   }
   redirect("/admin/risk");
 }
@@ -269,7 +263,7 @@ export async function updateEvidenceQuarantineAction(formData: FormData) {
       result
     });
   } catch (error) {
-    redirect(withError(error));
+    redirect(await withError(error));
   }
   redirect("/admin/risk");
 }
@@ -319,7 +313,7 @@ export async function updateEvidenceDeletionAction(formData: FormData) {
       result
     });
   } catch (error) {
-    redirect(withError(error));
+    redirect(await withError(error));
   }
   redirect("/admin/risk");
 }

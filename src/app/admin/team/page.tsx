@@ -10,6 +10,7 @@ import { FormActionButton } from "@/components/ui/FormActionButton";
 import { Panel, PanelHeader } from "@/components/ui/Panel";
 import { StatusPanel } from "@/components/ui/StatusPanel";
 import { TransientStatusBanner } from "@/components/ui/TransientStatusBanner";
+import { adminErrorMessageFromQuery } from "@/lib/admin-action-errors";
 import { canAccessAdmin, getCurrentUser } from "@/lib/auth-bridge";
 import { listAdminTeamMembers, type AdminTeamMember, type TeamRole } from "@/lib/match-room-api";
 import { updateTeamRoleAction } from "./actions";
@@ -82,7 +83,7 @@ export default async function AdminTeamPage({
 
         <LiveUpdateStream eventTypePrefixes={["admin.team.", "admin.user.", "user.role."]} label="Team updates" />
 
-        {params?.error ? <TransientStatusBanner clearKeys={["error"]} durationMs={14000} message={params.error} tone="danger" /> : null}
+        {params?.error ? <TransientStatusBanner clearKeys={["error"]} durationMs={14000} message={adminErrorMessageFromQuery(params.error)} tone="danger" /> : null}
         {params?.role_updated ? <TransientStatusBanner clearKeys={["role_updated"]} durationMs={12000} message="Team role updated." tone="success" /> : null}
         {loadError ? <div className="rounded-md border border-danger bg-red-50 p-4 text-sm font-bold text-danger">{loadError}</div> : null}
 

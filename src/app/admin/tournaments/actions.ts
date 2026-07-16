@@ -1,9 +1,9 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { adminActionErrorMessage } from "@/lib/admin-action-errors";
 import { requireAdminStepUpToken } from "@/lib/admin-step-up-session";
 import {
-  ApiRequestError,
   applyTournamentCumulativeScores,
   createTournament,
   generateTournamentStructure,
@@ -25,10 +25,8 @@ import {
   type TournamentScoringMode
 } from "@/lib/match-room-api";
 
-function actionErrorMessage(error: unknown) {
-  if (error instanceof ApiRequestError) return error.message;
-  if (error instanceof Error) return error.message;
-  return "The tournament operation could not be completed.";
+async function actionErrorMessage(error: unknown) {
+  return adminActionErrorMessage(error, "The tournament operation could not be completed.");
 }
 
 function optionalString(formData: FormData, key: string) {
@@ -115,7 +113,7 @@ export async function createTournamentAction(formData: FormData) {
     });
     createdId = result.tournament.id;
   } catch (error) {
-    redirect(`/admin/tournaments?error=${encodeURIComponent(actionErrorMessage(error))}`);
+    redirect(`/admin/tournaments?error=${encodeURIComponent(await actionErrorMessage(error))}`);
   }
 
   redirect(`/admin/tournaments?created=${encodeURIComponent(createdId)}`);
@@ -130,7 +128,7 @@ export async function reviewTournamentContributionAction(formData: FormData) {
       stepUpToken
     });
   } catch (error) {
-    redirect(`/admin/tournaments?error=${encodeURIComponent(actionErrorMessage(error))}`);
+    redirect(`/admin/tournaments?error=${encodeURIComponent(await actionErrorMessage(error))}`);
   }
 
   redirect("/admin/tournaments");
@@ -156,7 +154,7 @@ export async function seedTournamentAction(formData: FormData) {
       reason: optionalString(formData, "reason") ?? "tournament_seeded"
     });
   } catch (error) {
-    redirect(`/admin/tournaments?error=${encodeURIComponent(actionErrorMessage(error))}`);
+    redirect(`/admin/tournaments?error=${encodeURIComponent(await actionErrorMessage(error))}`);
   }
 
   redirect(`/admin/tournaments?seeded=${encodeURIComponent(tournamentId)}`);
@@ -171,7 +169,7 @@ export async function generateTournamentStructureAction(formData: FormData) {
       reason: optionalString(formData, "reason") ?? "tournament_structure_generated"
     });
   } catch (error) {
-    redirect(`/admin/tournaments?error=${encodeURIComponent(actionErrorMessage(error))}`);
+    redirect(`/admin/tournaments?error=${encodeURIComponent(await actionErrorMessage(error))}`);
   }
 
   redirect(`/admin/tournaments?structured=${encodeURIComponent(tournamentId)}`);
@@ -189,7 +187,7 @@ export async function linkTournamentMatchRoomsAction(formData: FormData) {
       stepUpToken
     });
   } catch (error) {
-    redirect(`/admin/tournaments?error=${encodeURIComponent(actionErrorMessage(error))}`);
+    redirect(`/admin/tournaments?error=${encodeURIComponent(await actionErrorMessage(error))}`);
   }
 
   redirect(`/admin/tournaments?linked=${encodeURIComponent(tournamentId)}`);
@@ -209,7 +207,7 @@ export async function applyTournamentCumulativeScoresAction(formData: FormData) 
       stepUpToken
     });
   } catch (error) {
-    redirect(`/admin/tournaments?error=${encodeURIComponent(actionErrorMessage(error))}`);
+    redirect(`/admin/tournaments?error=${encodeURIComponent(await actionErrorMessage(error))}`);
   }
 
   redirect(`/admin/tournaments?scored=${encodeURIComponent(tournamentId)}`);
@@ -232,7 +230,7 @@ export async function reviewTournamentMatchResultAction(formData: FormData) {
       stepUpToken
     });
   } catch (error) {
-    redirect(`/admin/tournaments?error=${encodeURIComponent(actionErrorMessage(error))}`);
+    redirect(`/admin/tournaments?error=${encodeURIComponent(await actionErrorMessage(error))}`);
   }
 
   redirect(`/admin/tournaments?result_reviewed=${encodeURIComponent(tournamentId)}`);
@@ -248,7 +246,7 @@ export async function reserveTournamentSettlementAction(formData: FormData) {
       stepUpToken
     });
   } catch (error) {
-    redirect(`/admin/tournaments?error=${encodeURIComponent(actionErrorMessage(error))}`);
+    redirect(`/admin/tournaments?error=${encodeURIComponent(await actionErrorMessage(error))}`);
   }
 
   redirect(`/admin/tournaments?settlement_reserved=${encodeURIComponent(tournamentId)}`);
@@ -264,7 +262,7 @@ export async function reserveTournamentRefundsAction(formData: FormData) {
       stepUpToken
     });
   } catch (error) {
-    redirect(`/admin/tournaments?error=${encodeURIComponent(actionErrorMessage(error))}`);
+    redirect(`/admin/tournaments?error=${encodeURIComponent(await actionErrorMessage(error))}`);
   }
 
   redirect(`/admin/tournaments?refunds_reserved=${encodeURIComponent(tournamentId)}`);
@@ -290,7 +288,7 @@ export async function grantTournamentHostAction(formData: FormData) {
       stepUpToken
     });
   } catch (error) {
-    redirect(`/admin/tournaments?error=${encodeURIComponent(actionErrorMessage(error))}`);
+    redirect(`/admin/tournaments?error=${encodeURIComponent(await actionErrorMessage(error))}`);
   }
 
   redirect(`/admin/tournaments?host_granted=${encodeURIComponent(tournamentId)}`);
@@ -317,7 +315,7 @@ export async function updateTournamentHostEventAction(formData: FormData) {
       stepUpToken
     });
   } catch (error) {
-    redirect(`/admin/tournaments?error=${encodeURIComponent(actionErrorMessage(error))}`);
+    redirect(`/admin/tournaments?error=${encodeURIComponent(await actionErrorMessage(error))}`);
   }
 
   redirect(`/admin/tournaments?event_updated=${encodeURIComponent(tournamentId)}`);

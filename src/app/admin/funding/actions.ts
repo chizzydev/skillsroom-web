@@ -1,14 +1,9 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { adminActionErrorMessage } from "@/lib/admin-action-errors";
 import { requireAdminStepUpToken } from "@/lib/admin-step-up-session";
-import { ApiRequestError, reviewFundingSubmission } from "@/lib/match-room-api";
-
-function actionErrorMessage(error: unknown) {
-  if (error instanceof ApiRequestError) return error.message;
-  if (error instanceof Error) return error.message;
-  return "The funding review could not be completed.";
-}
+import { reviewFundingSubmission } from "@/lib/match-room-api";
 
 function withSuccess(decision: "approve" | "reject") {
   return `/admin/funding?success=${encodeURIComponent(
@@ -28,7 +23,7 @@ export async function reviewFundingSubmissionAction(formData: FormData) {
       stepUpToken
     });
   } catch (error) {
-    redirect(`/admin/funding?error=${encodeURIComponent(actionErrorMessage(error))}`);
+    redirect(`/admin/funding?error=${encodeURIComponent(await adminActionErrorMessage(error, "The funding review could not be completed."))}`);
   }
 
   redirect(withSuccess(decision));

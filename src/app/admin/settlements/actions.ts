@@ -1,11 +1,11 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { adminActionErrorMessage } from "@/lib/admin-action-errors";
 import { requireAdminStepUpToken } from "@/lib/admin-step-up-session";
 import { getCurrentUser } from "@/lib/auth-bridge";
 import { storeEvidenceFile } from "@/lib/evidence-storage";
 import {
-  ApiRequestError,
   completePayout,
   completeRefund,
   completeTournamentPayout,
@@ -18,16 +18,8 @@ import {
   updateTournamentRefundInstructions
 } from "@/lib/match-room-api";
 
-function actionErrorMessage(error: unknown) {
-  if (error instanceof ApiRequestError) {
-    return error.requestId ? `${error.message} Request ID: ${error.requestId}` : error.message;
-  }
-  if (error instanceof Error) return error.message;
-  return "The settlement action could not be completed.";
-}
-
-function withError(error: unknown) {
-  return `/admin/settlements?error=${encodeURIComponent(actionErrorMessage(error))}`;
+async function withError(error: unknown) {
+  return `/admin/settlements?error=${encodeURIComponent(await adminActionErrorMessage(error, "The settlement action could not be completed."))}`;
 }
 
 function withSuccess(message: string) {
@@ -74,7 +66,7 @@ export async function reserveSettlementAction(formData: FormData) {
       },
       error
     );
-    redirect(withError(error));
+    redirect(await withError(error));
   }
 
   redirect(withSuccess("Settlement reserved and payout queue created."));
@@ -118,7 +110,7 @@ export async function completePayoutAction(formData: FormData) {
       },
       error
     );
-    redirect(withError(error));
+    redirect(await withError(error));
   }
 
   redirect(withSuccess("Payout marked as completed."));
@@ -139,7 +131,7 @@ export async function updatePayoutInstructionsAction(formData: FormData) {
       stepUpToken
     });
   } catch (error) {
-    redirect(withError(error));
+    redirect(await withError(error));
   }
 
   redirect(withSuccess("Payout instructions saved."));
@@ -154,7 +146,7 @@ export async function reserveRefundsAction(formData: FormData) {
       stepUpToken
     });
   } catch (error) {
-    redirect(withError(error));
+    redirect(await withError(error));
   }
 
   redirect(withSuccess("Refund queue created."));
@@ -198,7 +190,7 @@ export async function completeRefundAction(formData: FormData) {
       },
       error
     );
-    redirect(withError(error));
+    redirect(await withError(error));
   }
 
   redirect(withSuccess("Refund marked as completed."));
@@ -219,7 +211,7 @@ export async function updateRefundInstructionsAction(formData: FormData) {
       stepUpToken
     });
   } catch (error) {
-    redirect(withError(error));
+    redirect(await withError(error));
   }
 
   redirect(withSuccess("Refund instructions saved."));
@@ -263,7 +255,7 @@ export async function completeTournamentPayoutAction(formData: FormData) {
       },
       error
     );
-    redirect(withError(error));
+    redirect(await withError(error));
   }
 
   redirect(withSuccess("Tournament payout marked as completed."));
@@ -284,7 +276,7 @@ export async function updateTournamentPayoutInstructionsAction(formData: FormDat
       stepUpToken
     });
   } catch (error) {
-    redirect(withError(error));
+    redirect(await withError(error));
   }
 
   redirect(withSuccess("Tournament payout instructions saved."));
@@ -328,7 +320,7 @@ export async function completeTournamentRefundAction(formData: FormData) {
       },
       error
     );
-    redirect(withError(error));
+    redirect(await withError(error));
   }
 
   redirect(withSuccess("Tournament refund marked as completed."));
@@ -349,7 +341,7 @@ export async function updateTournamentRefundInstructionsAction(formData: FormDat
       stepUpToken
     });
   } catch (error) {
-    redirect(withError(error));
+    redirect(await withError(error));
   }
 
   redirect(withSuccess("Tournament refund instructions saved."));

@@ -14,6 +14,7 @@ import { Panel, PanelHeader } from "@/components/ui/Panel";
 import { PendingLink } from "@/components/ui/PendingLink";
 import { StatusPanel } from "@/components/ui/StatusPanel";
 import { SubmitButton } from "@/components/ui/SubmitButton";
+import { adminErrorMessageFromQuery } from "@/lib/admin-action-errors";
 import { canAccessAdmin, canUseAdminSection, getCurrentUser } from "@/lib/auth-bridge";
 import {
   displayEnumLabel,
@@ -299,7 +300,7 @@ export default async function AdminTournamentsPage({
               error || loadError ? "border-danger bg-red-50 text-danger" : "border-success bg-emerald-50 text-success"
             ].join(" ")}
           >
-            {error ??
+            {(error ? adminErrorMessageFromQuery(error) : null) ??
               loadError ??
               (createdTournament
                 ? `Created ${createdTournament.title}.`
