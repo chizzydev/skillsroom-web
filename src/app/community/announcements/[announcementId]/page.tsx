@@ -44,8 +44,43 @@ export default async function CommunityAnnouncementDetailPage({
   params: Promise<{ announcementId: string }>;
 }) {
   const { announcementId } = await params;
-  const result = await getCommunityAnnouncement(announcementId);
-  const item = result.announcement;
+  let item: Awaited<ReturnType<typeof getCommunityAnnouncement>>["announcement"] | null = null;
+  try {
+    const result = await getCommunityAnnouncement(announcementId);
+    item = result.announcement;
+  } catch {
+    item = null;
+  }
+
+  if (!item) {
+    return (
+      <AppShell active="community">
+        <section className="grid gap-6">
+          <Panel>
+            <PanelHeader
+              eyebrow="Announcement"
+              title="This update could not load"
+              description="The announcement may have been moved, unpublished, or temporarily unavailable. You can still open the announcements feed to see the latest published updates."
+            />
+            <div className="flex flex-wrap gap-3 p-4">
+              <Link
+                className="inline-flex min-h-control items-center justify-center rounded-md bg-action px-4 text-sm font-black text-navy-950 shadow-action hover:bg-actionHover"
+                href="/community/announcements"
+              >
+                Open announcements
+              </Link>
+              <Link
+                className="inline-flex min-h-control items-center justify-center rounded-md border border-line bg-white px-4 text-sm font-black text-ink hover:bg-surfaceHigh"
+                href="/notifications"
+              >
+                Back to inbox
+              </Link>
+            </div>
+          </Panel>
+        </section>
+      </AppShell>
+    );
+  }
 
   return (
     <AppShell active="community">
