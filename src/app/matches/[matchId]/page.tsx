@@ -481,12 +481,32 @@ function FundingCard({
 }
 
 async function RoomHistoryPanel({ matchId }: { matchId: string }) {
-  const timeline = await getMatchRoomTimeline(matchId);
+  let timeline: MatchTimeline | null = null;
+  try {
+    timeline = await getMatchRoomTimeline(matchId);
+  } catch {
+    timeline = null;
+  }
+
   return (
     <Panel>
-      <PanelHeader eyebrow="Room History" title="Room progress" description="Important room updates are saved here so support can review what happened if there is a dispute." />
+      <PanelHeader
+        eyebrow="Room History"
+        title="Room progress"
+        description={
+          timeline
+            ? "Important room updates are saved here so support can review what happened if there is a dispute."
+            : "The room opened, but the saved progress timeline could not load right now."
+        }
+      />
       <div className="p-4">
-        <Timeline items={buildAuditTimeline(timeline)} />
+        {timeline ? (
+          <Timeline items={buildAuditTimeline(timeline)} />
+        ) : (
+          <div className="rounded-md border border-warning bg-amber-50 p-4 text-sm font-bold leading-6 text-amber-800">
+            Refresh this room in a moment if you need the full timeline. Funding, result, and player actions remain available above.
+          </div>
+        )}
       </div>
     </Panel>
   );
@@ -956,8 +976,12 @@ export default async function MatchDetailPage({
     data = { ...shell, events: [] };
     const tournamentId = metadataString(data.room.metadata, "tournament_id");
     if (tournamentId) {
-      const tournamentResult = await getTournamentDetail(tournamentId);
-      tournamentDetail = tournamentResult.tournament;
+      try {
+        const tournamentResult = await getTournamentDetail(tournamentId);
+        tournamentDetail = tournamentResult.tournament;
+      } catch {
+        loadError = "Room loaded, but tournament context could not load right now.";
+      }
     }
   } catch {
     loadError = "This room could not load. Check the room link and your session, then try again.";
