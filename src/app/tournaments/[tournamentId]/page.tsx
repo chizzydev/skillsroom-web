@@ -1290,7 +1290,9 @@ export default async function TournamentDetailPage({
 
           {updatesView === "full" ? (
             <Suspense fallback={<TournamentSectionFallback eyebrow="Announcements" title="Tournament updates" />}>
+              <section className="scroll-mt-32" id="announcements">
               <TournamentAnnouncementsSection tournamentId={detail.id} />
+              </section>
             </Suspense>
           ) : (
             <Panel>
@@ -1315,11 +1317,13 @@ export default async function TournamentDetailPage({
             <TournamentHostBroadcastSection tournamentId={detail.id} canAttemptManage={canManageAnnouncements} />
           </Suspense>
 
+          <section className="scroll-mt-32" id="host-controls">
           <Suspense fallback={<TournamentSectionFallback eyebrow="Host Controls" title="Post a tournament update" />}>
             <TournamentHostAnnouncementsSection tournamentId={detail.id} canAttemptManage={canManageAnnouncements} />
           </Suspense>
+          </section>
 
-          <Panel>
+          <Panel id="contribution">
             <PanelHeader eyebrow="Contribution" title="Submit prize or entry funding" />
             {canPayEntryWithBalance ? (
               <div className="grid gap-3 border-b border-line bg-surfaceWarm p-4">
@@ -1450,11 +1454,13 @@ export default async function TournamentDetailPage({
         </div>
 
         <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1fr)_24rem]">
+          <section className="scroll-mt-32" id="prizes">
           <Suspense fallback={<TournamentSectionFallback eyebrow="Prizes" title="Prize pool and allocations" />}>
             <TournamentFundingSection tournament={detail} view={fundingView} />
           </Suspense>
+          </section>
 
-          <Panel>
+          <Panel className="scroll-mt-32" id="registration">
             <PanelHeader eyebrow="Registration" title="Entry readiness" />
             <div className="grid gap-3 p-4">
               <div className="motion-flow-card rounded-md border border-line bg-white p-4">
@@ -1524,7 +1530,7 @@ export default async function TournamentDetailPage({
           </Panel>
         </div>
 
-        <Panel>
+        <Panel id="entrants">
           <PanelHeader
             description="Entrants are real registration records. Team member expansion and invites continue from the same roster model."
             eyebrow="Entrants"
@@ -1601,13 +1607,17 @@ export default async function TournamentDetailPage({
           ) : null}
         </Panel>
 
+        <section className="scroll-mt-32" id="competition">
         <Suspense fallback={<TournamentSectionFallback eyebrow="Competition" title="Bracket and standings" />}>
           <TournamentCompetitionSections tournament={detail} view={bracketView} />
         </Suspense>
+        </section>
 
+        <section className="scroll-mt-32" id="result-reviews">
         <Suspense fallback={<TournamentSectionFallback eyebrow="Reviews" title="Result reviews" />}>
           <TournamentResultReviewsSection tournamentId={detail.id} viewerHasSensitiveAuditAccess={viewerHasSensitiveAuditAccess} />
         </Suspense>
+        </section>
 
       </MotionSection>
     </AppShell>

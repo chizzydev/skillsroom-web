@@ -27,6 +27,24 @@ function labelForHref(href: string | null, notificationType: string) {
   return "Open";
 }
 
+function resultResponseHref(href: string) {
+  if (!href.startsWith("/matches/")) return href;
+  if (!href.includes("#result")) return href;
+  return href.replace(/#result$/, "#result-response");
+}
+
+function tournamentHref(notification: UserNotification, tournamentId: string) {
+  const href = `/tournaments/${encodeURIComponent(tournamentId)}`;
+  const type = notification.notification_type;
+
+  if (type === "tournament_registration" || type === "tournament_check_in") return `${href}#registration`;
+  if (type === "tournament_host_access_granted") return `${href}#host-controls`;
+  if (type.includes("result")) return `${href}#result-reviews`;
+  if (type.includes("payout") || type.includes("refund") || type.includes("wallet")) return `${href}#prizes`;
+  if (type.includes("announcement")) return `${href}#announcements`;
+  return href;
+}
+
 export function notificationAction(notification: UserNotification): NotificationAction {
   const announcementId = metadataString(notification, "announcement_id");
   if (notification.notification_type.includes("announcement") && announcementId) {
@@ -38,6 +56,20 @@ export function notificationAction(notification: UserNotification): Notification
 
   const actionUrl = internalHref(notification.action_url);
   if (actionUrl) {
+    if (notification.notification_type.startsWith("match_result_response")) {
+      const href = resultResponseHref(actionUrl);
+      return { href, label: "Review result" };
+    }
+    if (notification.notification_type === "tournament_match_ready" && notification.match_room_id) {
+      return { href: `/matches/${encodeURIComponent(notification.match_room_id)}#overview`, label: "Open match room" };
+    }
+    const tournamentId = metadataString(notification, "tournament_id");
+    if (notification.notification_type.startsWith("tournament_") && tournamentId && actionUrl.startsWith("/tournaments/")) {
+      return { href: tournamentHref(notification, tournamentId), label: labelForHref(actionUrl, notification.notification_type) };
+    }
+    if (actionUrl.startsWith("/profile#settlement-history")) {
+      return { href: "/profile?sections=full#settlement-history", label: labelForHref(actionUrl, notification.notification_type) };
+    }
     return { href: actionUrl, label: labelForHref(actionUrl, notification.notification_type) };
   }
 
@@ -48,7 +80,7 @@ export function notificationAction(notification: UserNotification): Notification
   if (channelSlug) return { href: `/chat?channel=${encodeURIComponent(channelSlug)}`, label: "Open chat" };
 
   const tournamentId = metadataString(notification, "tournament_id");
-  if (tournamentId) return { href: `/tournaments/${encodeURIComponent(tournamentId)}`, label: "Open tournament" };
+  if (tournamentId) return { href: tournamentHref(notification, tournamentId), label: "Open tournament" };
 
   if (announcementId) {
     return { href: `/community/announcements/${encodeURIComponent(announcementId)}`, label: "Open update" };

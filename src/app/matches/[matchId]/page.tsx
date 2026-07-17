@@ -1863,7 +1863,7 @@ export default async function MatchDetailPage({
         ) : null}
 
         {canViewSensitiveInternals && latestClaim && canRespondToLatestClaim ? (
-          <Panel>
+          <Panel className="scroll-mt-32 ring-1 ring-cyan/20" id="result-response">
             <PanelHeader eyebrow="Opponent Response" title="Respond to latest claim" description="Agree when the score is correct. Dispute only when evidence or rules need Skillsroom review." />
             <form action={respondToResultClaimAction} className="grid gap-3 p-4 md:grid-cols-[1fr_12rem_12rem]">
               <input name="match_room_id" type="hidden" value={room.id} />
