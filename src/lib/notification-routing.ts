@@ -28,6 +28,14 @@ function labelForHref(href: string | null, notificationType: string) {
 }
 
 export function notificationAction(notification: UserNotification): NotificationAction {
+  const announcementId = metadataString(notification, "announcement_id");
+  if (notification.notification_type.includes("announcement") && announcementId) {
+    return {
+      href: `/community/announcements/${encodeURIComponent(announcementId)}`,
+      label: "Open update"
+    };
+  }
+
   const actionUrl = internalHref(notification.action_url);
   if (actionUrl) {
     return { href: actionUrl, label: labelForHref(actionUrl, notification.notification_type) };
@@ -41,6 +49,10 @@ export function notificationAction(notification: UserNotification): Notification
 
   const tournamentId = metadataString(notification, "tournament_id");
   if (tournamentId) return { href: `/tournaments/${encodeURIComponent(tournamentId)}`, label: "Open tournament" };
+
+  if (announcementId) {
+    return { href: `/community/announcements/${encodeURIComponent(announcementId)}`, label: "Open update" };
+  }
 
   if (notification.notification_type.includes("wallet") || notification.notification_type.includes("payout")) {
     return { href: "/wallet", label: "Open wallet" };

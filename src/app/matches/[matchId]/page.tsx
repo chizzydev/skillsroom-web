@@ -763,7 +763,7 @@ async function RoomLivestreamIsland({
                     {streamingAccounts.length ? "Your saved stream channels" : "No connected channel yet"}
                   </h3>
                 </div>
-                <a className="inline-flex min-h-9 w-full items-center justify-center rounded-full border border-line bg-white px-3 py-2 text-xs font-black text-ink hover:border-action sm:w-auto" href="/profile#streaming-accounts">
+                <a className="inline-flex min-h-9 w-full items-center justify-center rounded-full border border-line bg-white px-3 py-2 text-xs font-black text-ink hover:border-action sm:w-auto" href="/profile?sections=full#streaming-accounts">
                   Manage
                 </a>
               </div>
@@ -782,7 +782,7 @@ async function RoomLivestreamIsland({
                   ))}
                 </div>
               ) : (
-                <a className="mt-3 inline-flex min-h-10 w-full items-center justify-center rounded-md border border-line bg-white px-4 text-sm font-black text-ink hover:bg-surfaceHigh sm:w-auto" href="/profile#streaming-accounts">
+                <a className="mt-3 inline-flex min-h-10 w-full items-center justify-center rounded-md border border-line bg-white px-4 text-sm font-black text-ink hover:bg-surfaceHigh sm:w-auto" href="/profile?sections=full#streaming-accounts">
                   Connect YouTube or Twitch
                 </a>
               )}

@@ -70,7 +70,7 @@ export default async function NewMatchPage({ searchParams }: { searchParams: Pro
             {error?.toLowerCase().includes("primary game account") || error?.toLowerCase().includes("complete your player profile") ? (
               <Link
                 className="inline-flex min-h-10 items-center justify-center rounded-md border border-danger bg-white px-4 text-sm font-black text-danger shadow-tight"
-                href="/profile#game-accounts"
+                href="/profile?sections=full#game-accounts"
               >
                 Add primary game account
               </Link>
@@ -117,7 +117,7 @@ export default async function NewMatchPage({ searchParams }: { searchParams: Pro
                 ) : (
                   <Link
                     className="inline-flex min-h-11 items-center justify-center rounded-md bg-action px-5 text-sm font-black text-navy-950 shadow-action hover:bg-actionHover"
-                    href="/profile#game-accounts"
+                    href="/profile?sections=full#game-accounts"
                   >
                     Open profile setup
                   </Link>
@@ -156,7 +156,7 @@ export default async function NewMatchPage({ searchParams }: { searchParams: Pro
               <div className="flex flex-wrap gap-2 md:col-span-2">
                 <SubmitButton disabled={!profileReady} idleLabel={profileReady ? "Create room" : "Finish profile setup first"} pendingLabel="Creating room..." />
                 {!profileReady ? (
-                  <Link className="inline-flex min-h-11 items-center justify-center rounded-md border border-line bg-white px-4 text-sm font-black text-ink hover:bg-surfaceHigh" href="/profile#game-accounts">
+                  <Link className="inline-flex min-h-11 items-center justify-center rounded-md border border-line bg-white px-4 text-sm font-black text-ink hover:bg-surfaceHigh" href="/profile?sections=full#game-accounts">
                     Open Profile
                   </Link>
                 ) : null}
