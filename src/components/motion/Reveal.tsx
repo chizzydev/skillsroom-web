@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type CSSProperties, type HTMLAttributes } from "react";
+import { type CSSProperties, type HTMLAttributes } from "react";
 
 type RevealTag = "div" | "section" | "article" | "header" | "footer" | "li" | "aside";
 type RevealVariant = "fade" | "up" | "down" | "left" | "right" | "scale" | "blur";
@@ -15,11 +15,6 @@ type RevealProps = HTMLAttributes<HTMLElement> & {
   variant?: RevealVariant;
 };
 
-function prefersReducedMotion() {
-  if (typeof window === "undefined") return false;
-  return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-}
-
 export function Reveal({
   as: Tag = "div",
   children,
@@ -27,47 +22,20 @@ export function Reveal({
   delayMs = 0,
   staggerIndex = 0,
   staggerMs = 75,
-  threshold = 0.16,
-  once = true,
+  threshold: _threshold = 0.16,
+  once: _once = true,
   variant = "up",
   style,
   ...props
 }: RevealProps) {
-  const ref = useRef<HTMLElement | null>(null);
-  const [isVisible, setIsVisible] = useState(false);
   const delay = delayMs + staggerIndex * staggerMs;
-
-  useEffect(() => {
-    const node = ref.current;
-    if (!node) return;
-
-    if (prefersReducedMotion() || !("IntersectionObserver" in window)) {
-      setIsVisible(true);
-      return;
-    }
-
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          window.requestAnimationFrame(() => setIsVisible(true));
-          if (once) observer.unobserve(entry.target);
-          return;
-        }
-
-        if (!once) window.requestAnimationFrame(() => setIsVisible(false));
-      },
-      { rootMargin: "140px 0px -4% 0px", threshold: Math.min(threshold, 0.08) }
-    );
-
-    observer.observe(node);
-    return () => observer.disconnect();
-  }, [once, threshold]);
+  void _threshold;
+  void _once;
 
   return (
     <Tag
-      className={["motion-reveal", isVisible ? "is-visible" : "", className].join(" ")}
+      className={["motion-reveal", "is-visible", className].join(" ")}
       data-motion-variant={variant}
-      ref={ref as never}
       style={
         {
           ...style,

@@ -7,14 +7,14 @@
   --font-geist: Arial, sans-serif;
   --font-space: Arial, sans-serif;
   --font-mono: Consolas, monospace;
-  --motion-fast: 160ms;
-  --motion-base: 360ms;
-  --motion-slow: 720ms;
+  --motion-fast: 110ms;
+  --motion-base: 180ms;
+  --motion-slow: 260ms;
   --motion-ease: cubic-bezier(0.22, 1, 0.36, 1);
   --motion-ease-pop: cubic-bezier(0.16, 1, 0.3, 1);
   --motion-distance-xs: 0.35rem;
   --motion-distance-sm: 0.75rem;
-  --motion-distance-md: 1.35rem;
+  --motion-distance-md: 0.7rem;
   --motion-glow-cyan: 0 0 0 1px rgba(36, 184, 232, 0.2), 0 0 32px rgba(36, 184, 232, 0.22);
   --motion-glow-green: 0 0 0 1px rgba(24, 197, 138, 0.18), 0 0 34px rgba(24, 197, 138, 0.24);
   --motion-delay: 0ms;
@@ -29,7 +29,7 @@ html {
   color: #07111f;
   min-width: 0;
   overflow-x: hidden;
-  text-rendering: geometricPrecision;
+  text-rendering: auto;
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
 }
@@ -260,31 +260,28 @@ video {
 .motion-page-enter,
 .motion-section-enter,
 .motion-hero-enter {
-  animation: motion-enter-up var(--motion-slow) var(--motion-ease-pop) both;
+  animation: motion-enter-up var(--motion-base) var(--motion-ease-pop) both;
   animation-delay: var(--motion-delay);
   transform-origin: center top;
 }
 
 .motion-section-enter {
-  animation-duration: var(--motion-base);
+  animation-duration: 160ms;
 }
 
 .motion-hero-enter {
   animation-name: motion-hero-rise;
-  animation-duration: 880ms;
+  animation-duration: 220ms;
 }
 
 .motion-reveal {
-  opacity: 0;
-  transform: translate3d(0, var(--motion-distance-md), 0) scale(0.985);
-  transition:
-    opacity var(--motion-slow) var(--motion-ease),
-    transform var(--motion-slow) var(--motion-ease-pop);
-  transition-delay: var(--motion-delay);
+  opacity: 1;
+  transform: none;
+  transition: none;
 }
 
 .motion-reveal:not(.is-visible) {
-  will-change: opacity, transform;
+  will-change: auto;
 }
 
 .motion-reveal[data-motion-variant="fade"] {
@@ -309,11 +306,9 @@ video {
 
 .motion-reveal[data-motion-variant="blur"] {
   transform: none;
-  filter: blur(16px);
-  transition:
-    opacity var(--motion-slow) var(--motion-ease),
-    filter var(--motion-slow) var(--motion-ease);
-  will-change: opacity, filter;
+  filter: none;
+  transition: none;
+  will-change: auto;
 }
 
 .motion-reveal.is-visible {
@@ -365,8 +360,7 @@ video {
 }
 
 .motion-flow-card {
-  animation: motion-flow-rise var(--motion-slow) var(--motion-ease-pop) both;
-  animation-delay: var(--motion-delay);
+  animation: none;
 }
 
 .motion-state-card {
@@ -389,7 +383,7 @@ video {
 }
 
 .motion-working {
-  animation: motion-status-breathe 2.6s var(--motion-ease) infinite;
+  animation: none;
 }
 
 .motion-busy-dot {
@@ -410,7 +404,7 @@ video {
 }
 
 .motion-checkpoint-marker[data-status="current"] {
-  animation: motion-live-pulse 1.9s var(--motion-ease) infinite;
+  box-shadow: var(--motion-glow-green);
 }
 
 .motion-checkpoint-marker[data-status="done"] {
@@ -418,11 +412,11 @@ video {
 }
 
 .motion-live {
-  animation: motion-live-pulse 1.9s var(--motion-ease) infinite;
+  box-shadow: var(--motion-glow-green);
 }
 
 .motion-glow {
-  animation: motion-soft-glow 4.2s var(--motion-ease) infinite;
+  box-shadow: var(--motion-glow-cyan);
 }
 
 .motion-sheen {
@@ -446,8 +440,7 @@ video {
 }
 
 .motion-admin-surface {
-  animation: motion-enter-up 620ms var(--motion-ease-pop) both;
-  animation-delay: var(--motion-delay);
+  animation: none;
 }
 
 .motion-admin-queue-card {
@@ -486,7 +479,7 @@ video {
 }
 
 .motion-admin-queue-card[data-has-work="true"] {
-  animation: motion-status-breathe 3.4s var(--motion-ease) infinite;
+  box-shadow: var(--motion-glow-cyan);
 }
 
 .motion-admin-live {
@@ -503,12 +496,11 @@ video {
   background: linear-gradient(110deg, transparent 10%, rgba(255, 255, 255, 0.52) 36%, transparent 62%);
   transform: translateX(-120%);
   opacity: 0.65;
-  animation: motion-sheen 3.8s var(--motion-ease) infinite;
+  animation: none;
 }
 
 .motion-admin-row {
-  animation: motion-flow-rise 520ms var(--motion-ease-pop) both;
-  animation-delay: var(--motion-delay);
+  animation: none;
 }
 
 .motion-admin-action {
@@ -538,8 +530,8 @@ video {
     radial-gradient(circle at 18% 18%, rgba(36, 184, 232, 0.28), transparent 24%),
     radial-gradient(circle at 82% 28%, rgba(24, 197, 138, 0.2), transparent 25%),
     radial-gradient(circle at 52% 96%, rgba(245, 158, 11, 0.12), transparent 24%);
-  filter: blur(18px);
-  animation: motion-atmosphere-drift 11s var(--motion-ease) infinite;
+  filter: none;
+  animation: none;
   pointer-events: none;
 }
 
@@ -571,8 +563,9 @@ video {
   position: absolute;
   inset: 0;
   background: linear-gradient(180deg, transparent, rgba(36, 184, 232, 0.85), rgba(24, 197, 138, 0.78), transparent);
-  transform: translateY(-110%);
-  animation: motion-flow-line 2.8s var(--motion-ease) infinite;
+  transform: none;
+  animation: none;
+  opacity: 0.38;
 }
 
 .motion-standby {
@@ -591,7 +584,7 @@ video {
     linear-gradient(90deg, rgba(24, 197, 138, 0.08) 1px, transparent 1px);
   background-size: 42px 28px;
   mask-image: radial-gradient(circle at center, black 0%, transparent 72%);
-  animation: motion-standby-grid 9s linear infinite;
+  animation: none;
   pointer-events: none;
 }
 
@@ -610,7 +603,7 @@ video {
   border-radius: 0.18rem;
   border: 2px solid rgba(24, 197, 138, 0.62);
   box-shadow: 0 -0.48rem 0 -0.18rem rgba(24, 197, 138, 0.62), 0 0 22px rgba(24, 197, 138, 0.28);
-  animation: motion-lock-click 4.8s var(--motion-ease) infinite;
+  animation: none;
 }
 
 .motion-bracket-reveal {
@@ -624,8 +617,53 @@ video {
   border-top: 1px solid rgba(36, 184, 232, 0.18);
   border-right: 1px solid rgba(36, 184, 232, 0.18);
   border-radius: 0 1rem 0 0;
-  animation: motion-bracket-draw 950ms var(--motion-ease-pop) both;
+  animation: none;
   pointer-events: none;
+}
+
+@media (hover: none), (pointer: coarse), (max-width: 767px) {
+  .motion-page-enter,
+  .motion-section-enter,
+  .motion-hero-enter,
+  .motion-reveal,
+  .motion-card,
+  .motion-flow-card,
+  .motion-working,
+  .motion-checkpoint-marker,
+  .motion-admin-surface,
+  .motion-admin-queue-card,
+  .motion-admin-live,
+  .motion-admin-row,
+  .motion-atmosphere,
+  .motion-premium-panel,
+  .motion-flow-line,
+  .motion-standby,
+  .motion-wallet-lock,
+  .motion-bracket-reveal {
+    opacity: 1 !important;
+    transform: none !important;
+    filter: none !important;
+    animation: none !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  .motion-card:hover,
+  .motion-admin-queue-card:hover,
+  .motion-tap:hover {
+    transform: none !important;
+  }
+
+  .motion-atmosphere::before,
+  .motion-premium-panel::after,
+  .motion-flow-line::after,
+  .motion-standby::before,
+  .motion-wallet-lock::after,
+  .motion-bracket-reveal::before,
+  .motion-admin-live::after {
+    filter: none !important;
+    animation: none !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -18,6 +18,20 @@ function internalHref(value: string | null | undefined) {
 
 function labelForHref(href: string | null, notificationType: string) {
   if (!href) return "Open";
+  if (notificationType === "platform_announcement" || notificationType === "tournament_announcement") return "Open update";
+  if (notificationType === "tournament_match_ready") return "Open match room";
+  if (notificationType.startsWith("tournament_result_")) return href.startsWith("/matches/") ? "Open match result" : "Open result reviews";
+  if (notificationType === "tournament_registration" || notificationType === "tournament_check_in") return "Open registration";
+  if (notificationType === "tournament_host_access_granted") return "Open host tools";
+  if (notificationType === "tournament_payout_queued" || notificationType === "tournament_refund_queued" || notificationType === "tournament_wallet_refund") return "Open prizes";
+  if (notificationType === "match_result_response_required" || notificationType === "match_result_response_reminder") return "Respond to result";
+  if (notificationType === "match_result_response_overdue") return "Review result";
+  if (notificationType.startsWith("match_result_")) return "Open result";
+  if (notificationType === "room_invite") return "Open invite";
+  if (notificationType.startsWith("room_invite_")) return "Open room";
+  if (notificationType === "chat_dm_request") return "Open DM request";
+  if (notificationType.startsWith("chat_dm_request_")) return href.startsWith("/chat") ? "Open DM" : "Open request";
+  if (notificationType === "match_payout_queued" || notificationType === "match_refund_queued") return "Open settlement";
   if (href.startsWith("/matches/") || href.startsWith("/rooms/") || notificationType.includes("match")) return "Open room";
   if (href.startsWith("/chat")) return "Open chat";
   if (href.startsWith("/wallet") || notificationType.includes("wallet") || notificationType.includes("payout")) return "Open wallet";
@@ -27,10 +41,15 @@ function labelForHref(href: string | null, notificationType: string) {
   return "Open";
 }
 
-function resultResponseHref(href: string) {
-  if (!href.startsWith("/matches/")) return href;
-  if (!href.includes("#result")) return href;
-  return href.replace(/#result$/, "#result-response");
+function roomHref(notification: UserNotification, fallbackActionUrl?: string | null, hash = "overview") {
+  const roomId = notification.match_room_id ?? metadataString(notification, "match_room_id");
+  if (roomId) return `/matches/${encodeURIComponent(roomId)}#${hash}`;
+
+  const actionUrl = internalHref(fallbackActionUrl);
+  const actionRoom = actionUrl?.match(/^\/(?:matches|rooms)\/([^/?#]+)/);
+  if (actionRoom?.[1]) return `/matches/${encodeURIComponent(decodeURIComponent(actionRoom[1]))}#${hash}`;
+
+  return actionUrl ?? null;
 }
 
 function tournamentHref(notification: UserNotification, tournamentId: string) {
@@ -45,7 +64,107 @@ function tournamentHref(notification: UserNotification, tournamentId: string) {
   return href;
 }
 
+function profileHref(notification: UserNotification) {
+  const type = notification.notification_type;
+  if (type === "match_payout_queued" || type === "match_refund_queued") {
+    return "/profile?sections=full#settlement-history";
+  }
+  if (type.includes("payout")) return "/profile?sections=full#payout-profile";
+  if (type.includes("stream")) return "/profile?sections=full#streaming-accounts";
+  if (type.includes("game_account") || type.includes("player_setup") || type.includes("profile")) return "/profile?sections=full#game-accounts";
+  return "/profile?sections=full";
+}
+
+function explicitTypedAction(notification: UserNotification): NotificationAction | null {
+  const type = notification.notification_type;
+
+  if (type === "platform_announcement") {
+    const announcementId = metadataString(notification, "announcement_id");
+    return {
+      href: announcementId ? `/community/announcements/${encodeURIComponent(announcementId)}` : internalHref(notification.action_url),
+      label: "Open update"
+    };
+  }
+
+  if (type === "tournament_announcement") {
+    const announcementId = metadataString(notification, "announcement_id");
+    const tournamentId = metadataString(notification, "tournament_id");
+    return {
+      href: announcementId
+        ? `/community/announcements/${encodeURIComponent(announcementId)}`
+        : tournamentId
+          ? tournamentHref(notification, tournamentId)
+          : internalHref(notification.action_url),
+      label: "Open update"
+    };
+  }
+
+  if (type === "tournament_match_ready") {
+    return { href: roomHref(notification, notification.action_url, "overview"), label: "Open match room" };
+  }
+
+  if (type.startsWith("tournament_result_")) {
+    const roomTarget = roomHref(notification, notification.action_url, "result");
+    const matchResultTarget = roomTarget?.startsWith("/matches/") ? roomTarget : null;
+    const tournamentId = metadataString(notification, "tournament_id");
+    return {
+      href: matchResultTarget ?? (tournamentId ? tournamentHref(notification, tournamentId) : internalHref(notification.action_url)),
+      label: matchResultTarget ? "Open match result" : "Open result reviews"
+    };
+  }
+
+  if (type === "tournament_registration" || type === "tournament_check_in" || type === "tournament_host_access_granted" || type === "tournament_payout_queued" || type === "tournament_refund_queued" || type === "tournament_wallet_refund") {
+    const tournamentId = metadataString(notification, "tournament_id");
+    return {
+      href: tournamentId ? tournamentHref(notification, tournamentId) : internalHref(notification.action_url),
+      label: labelForHref(internalHref(notification.action_url), type)
+    };
+  }
+
+  if (type === "match_result_response_required" || type === "match_result_response_reminder") {
+    return { href: roomHref(notification, notification.action_url, "result-response"), label: "Respond to result" };
+  }
+
+  if (type === "match_result_response_overdue") {
+    return { href: roomHref(notification, notification.action_url, "result-response"), label: "Review result" };
+  }
+
+  if (type === "match_result_accepted" || type === "match_result_disputed" || type.startsWith("match_result_review_")) {
+    return { href: roomHref(notification, notification.action_url, "result"), label: "Open result" };
+  }
+
+  if (type === "room_invite") {
+    return { href: "/notifications#invites", label: "Open invite" };
+  }
+
+  if (type.startsWith("room_invite_")) {
+    return { href: roomHref(notification, notification.action_url, "players"), label: "Open room" };
+  }
+
+  if (type === "match_payout_queued" || type === "match_refund_queued") {
+    return { href: profileHref(notification), label: "Open settlement" };
+  }
+
+  if (type === "chat_dm_request") {
+    return { href: "/notifications#dm-requests", label: "Open DM request" };
+  }
+
+  if (type === "chat_dm_request_accepted") {
+    const channelSlug = metadataString(notification, "channel_slug");
+    return { href: channelSlug ? `/chat?channel=${encodeURIComponent(channelSlug)}` : "/chat", label: "Open DM" };
+  }
+
+  if (type === "chat_dm_request_declined") {
+    return { href: "/notifications#dm-requests", label: "Open request" };
+  }
+
+  return null;
+}
+
 export function notificationAction(notification: UserNotification): NotificationAction {
+  const typedAction = explicitTypedAction(notification);
+  if (typedAction) return typedAction;
+
   const announcementId = metadataString(notification, "announcement_id");
   if (notification.notification_type.includes("announcement") && announcementId) {
     return {
@@ -56,10 +175,6 @@ export function notificationAction(notification: UserNotification): Notification
 
   const actionUrl = internalHref(notification.action_url);
   if (actionUrl) {
-    if (notification.notification_type.startsWith("match_result_response")) {
-      const href = resultResponseHref(actionUrl);
-      return { href, label: "Review result" };
-    }
     if (notification.notification_type === "tournament_match_ready" && notification.match_room_id) {
       return { href: `/matches/${encodeURIComponent(notification.match_room_id)}#overview`, label: "Open match room" };
     }
@@ -70,11 +185,14 @@ export function notificationAction(notification: UserNotification): Notification
     if (actionUrl.startsWith("/profile#settlement-history")) {
       return { href: "/profile?sections=full#settlement-history", label: labelForHref(actionUrl, notification.notification_type) };
     }
+    if (actionUrl.startsWith("/profile")) {
+      return { href: profileHref(notification), label: labelForHref(actionUrl, notification.notification_type) };
+    }
     return { href: actionUrl, label: labelForHref(actionUrl, notification.notification_type) };
   }
 
   const roomId = notification.match_room_id ?? metadataString(notification, "match_room_id");
-  if (roomId) return { href: `/matches/${encodeURIComponent(roomId)}`, label: "Open room" };
+  if (roomId) return { href: `/matches/${encodeURIComponent(roomId)}#overview`, label: "Open room" };
 
   const channelSlug = metadataString(notification, "channel_slug");
   if (channelSlug) return { href: `/chat?channel=${encodeURIComponent(channelSlug)}`, label: "Open chat" };
@@ -87,7 +205,7 @@ export function notificationAction(notification: UserNotification): Notification
   }
 
   if (notification.notification_type.includes("wallet") || notification.notification_type.includes("payout")) {
-    return { href: "/wallet", label: "Open wallet" };
+    return { href: profileHref(notification), label: labelForHref(profileHref(notification), notification.notification_type) };
   }
   if (notification.notification_type.includes("tournament")) {
     return { href: "/tournaments", label: "Open tournaments" };

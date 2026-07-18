@@ -209,7 +209,7 @@ export default async function NotificationsPage({ searchParams }: { searchParams
           </Panel>
         </div>
 
-        <Panel>
+        <Panel className="scroll-mt-32" id="dm-requests">
           <PanelHeader
             eyebrow="Messages"
             title="DM requests"
@@ -277,7 +277,7 @@ export default async function NotificationsPage({ searchParams }: { searchParams
           </div>
         </Panel>
 
-        <Panel>
+        <Panel className="scroll-mt-32" id="invites">
           <PanelHeader
             eyebrow="Invites"
             title="Pending room invites"
