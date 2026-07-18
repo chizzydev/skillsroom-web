@@ -7,7 +7,9 @@ import { storeEvidenceFile } from "@/lib/evidence-storage";
 import { manualCollectionAccount } from "@/lib/manual-payment";
 import { roomActionError, roomActionSuccess, type RoomActionState } from "@/lib/room-action-state";
 import {
+  acceptMatchChallenge,
   archiveCommunityLivestream,
+  createMatchChallenge,
   createMatchRoom,
   createCommunityLivestream,
   createRoomInvite,
@@ -19,7 +21,8 @@ import {
   submitManualFunding,
   submitResultClaim,
   respondToResultClaim,
-  ApiRequestError
+  ApiRequestError,
+  type MatchChallengeSkillLevel
 } from "@/lib/match-room-api";
 
 function actionErrorMessage(error: unknown) {
@@ -35,6 +38,13 @@ function withError(path: string, error: unknown) {
 function optionalString(formData: FormData, key: string) {
   const value = String(formData.get(key) || "").trim();
   return value || undefined;
+}
+
+function challengeSkillLevel(value: FormDataEntryValue | null): MatchChallengeSkillLevel {
+  const skillLevel = String(value || "any");
+  return ["beginner", "casual", "competitive", "expert", "any"].includes(skillLevel)
+    ? skillLevel as MatchChallengeSkillLevel
+    : "any";
 }
 
 function uploadedFile(formData: FormData, key: string) {
@@ -183,6 +193,60 @@ export async function createMatchRoomAction(formData: FormData) {
 
   if (!roomId) {
     redirect(withError("/matches/new", new Error("Room could not be created. Please try again.")));
+  }
+
+  redirect(`/matches/${roomId}`);
+}
+
+export async function createMatchChallengeAction(formData: FormData) {
+  let challengeId: string | null = null;
+
+  try {
+    const entryAmountNaira = Number(formData.get("entry_amount_naira") || 0);
+    const title = String(formData.get("title") || "").trim();
+    const gameSlug = String(formData.get("game_slug") || "").trim();
+    const rulesetSlug = String(formData.get("ruleset_slug") || "").trim();
+    const expiryHours = Number(formData.get("expiry_hours") || 24);
+    const expiresAt = new Date(Date.now() + Math.min(Math.max(expiryHours, 1), 168) * 60 * 60 * 1000).toISOString();
+
+    if (!gameSlug || !rulesetSlug) {
+      throw new Error("Choose a game and ruleset before creating the challenge.");
+    }
+
+    const result = await createMatchChallenge({
+      game_slug: gameSlug,
+      ruleset_slug: rulesetSlug,
+      entry_amount_minor: Math.round(entryAmountNaira * 100),
+      commission_bps: Number(formData.get("commission_bps") || 1000),
+      title: title || undefined,
+      visibility: String(formData.get("visibility") || "public") === "private" ? "private" : "public",
+      platform: String(formData.get("platform") || "").trim(),
+      region: String(formData.get("region") || "").trim(),
+      skill_level: challengeSkillLevel(formData.get("skill_level")),
+      expires_at: expiresAt
+    });
+
+    challengeId = result.challenge.id;
+    revalidatePath("/challenges");
+    revalidatePath("/");
+  } catch (error) {
+    redirect(withError("/challenges", error));
+  }
+
+  redirect(`/challenges?created=${encodeURIComponent(challengeId ?? "")}`);
+}
+
+export async function acceptMatchChallengeAction(formData: FormData) {
+  let roomId: string | null = null;
+
+  try {
+    const result = await acceptMatchChallenge(String(formData.get("challenge_id") || ""));
+    roomId = result.room.id;
+    revalidatePath("/challenges");
+    revalidatePath("/");
+    revalidateRoom(roomId);
+  } catch (error) {
+    redirect(withError("/challenges", error));
   }
 
   redirect(`/matches/${roomId}`);
@@ -356,9 +420,29 @@ export async function respondToResultClaimAction(formData: FormData) {
   const matchRoomId = String(formData.get("match_room_id") || "");
 
   try {
+    const user = await getCurrentUser();
+    if (!user) {
+      throw new Error("Please sign in before responding to the result.");
+    }
+    const response = String(formData.get("response")) === "dispute" ? "dispute" : "agree";
+    const evidenceFile = response === "dispute" ? uploadedFile(formData, "response_evidence_file") : null;
+    const storedEvidence = evidenceFile
+      ? await storeEvidenceFile({ file: evidenceFile, matchRoomId, userId: user.id })
+      : null;
     await respondToResultClaim(String(formData.get("result_claim_id") || ""), {
-      response: String(formData.get("response")) === "dispute" ? "dispute" : "agree",
-      note: String(formData.get("note") || "").trim() || undefined
+      response,
+      note: String(formData.get("note") || "").trim() || undefined,
+      evidence: storedEvidence
+        ? [
+            {
+              evidence_type: storedEvidence.evidenceType,
+              uri: storedEvidence.url,
+              title: optionalString(formData, "response_evidence_title")
+                ?? (storedEvidence.evidenceType === "video" ? "Dispute video proof" : "Dispute screenshot proof"),
+              notes: optionalString(formData, "response_evidence_notes")
+            }
+          ]
+        : undefined
     });
   } catch (error) {
     redirect(withError(`/matches/${matchRoomId}`, error));

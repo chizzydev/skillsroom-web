@@ -49,6 +49,80 @@ function intValue(formData: FormData, key: string, fallback: number) {
   return Number.isFinite(value) ? Math.trunc(value) : fallback;
 }
 
+function fieldValue(formData: FormData, key: string) {
+  return String(formData.get(key) || "").trim();
+}
+
+function tournamentEntryMode(formData: FormData): { entryType: TournamentEntryType; feeMode: TournamentFeeMode; teamMin: number; teamMax: number } {
+  const mode = fieldValue(formData, "entry_mode");
+  const fallbackEntryType = String(formData.get("entry_type") || "solo") as TournamentEntryType;
+  const fallbackFeeMode = String(formData.get("fee_mode") || "free") as TournamentFeeMode;
+  if (!mode) {
+    return {
+      entryType: fallbackEntryType,
+      feeMode: fallbackFeeMode,
+      teamMin: intValue(formData, "team_size_min", fallbackEntryType === "team" ? 2 : 1),
+      teamMax: intValue(formData, "team_size_max", fallbackEntryType === "team" ? 4 : 1)
+    };
+  }
+
+  const teamMode = mode.includes("team");
+  const feeMode: TournamentFeeMode = mode.includes("sponsored")
+    ? "sponsored"
+    : mode.includes("paid")
+      ? "paid"
+      : "free";
+
+  return {
+    entryType: teamMode ? "team" : "solo",
+    feeMode,
+    teamMin: teamMode ? intValue(formData, "team_size_min", 2) : 1,
+    teamMax: teamMode ? intValue(formData, "team_size_max", 4) : 1
+  };
+}
+
+function tournamentPrizeModel(formData: FormData): {
+  prizeDistributionMode: TournamentPrizeDistributionMode;
+  sponsoredPrizePoolMinor: number;
+  guaranteedPrizePoolMinor: number;
+} {
+  const model = fieldValue(formData, "prize_model");
+  const prizeDistributionMode = (fieldValue(formData, "prize_distribution_mode") || "winner_take_all") as TournamentPrizeDistributionMode;
+  if (!model) {
+    return {
+      prizeDistributionMode,
+      sponsoredPrizePoolMinor: nairaToMinor(formData, "sponsored_prize_pool_naira"),
+      guaranteedPrizePoolMinor: nairaToMinor(formData, "guaranteed_prize_pool_naira")
+    };
+  }
+
+  if (model === "no_prize" || model === "entry_prize") {
+    return { prizeDistributionMode, sponsoredPrizePoolMinor: 0, guaranteedPrizePoolMinor: 0 };
+  }
+
+  if (model === "sponsor_prize") {
+    return {
+      prizeDistributionMode,
+      sponsoredPrizePoolMinor: nairaToMinor(formData, "sponsored_prize_pool_naira"),
+      guaranteedPrizePoolMinor: 0
+    };
+  }
+
+  if (model === "guaranteed_prize") {
+    return {
+      prizeDistributionMode,
+      sponsoredPrizePoolMinor: 0,
+      guaranteedPrizePoolMinor: nairaToMinor(formData, "guaranteed_prize_pool_naira")
+    };
+  }
+
+  return {
+    prizeDistributionMode,
+    sponsoredPrizePoolMinor: nairaToMinor(formData, "sponsored_prize_pool_naira"),
+    guaranteedPrizePoolMinor: nairaToMinor(formData, "guaranteed_prize_pool_naira")
+  };
+}
+
 function optionalNumber(value: string) {
   const trimmed = value.trim();
   if (!trimmed) return undefined;
@@ -81,25 +155,27 @@ function parseCumulativeResults(value: string): TournamentCumulativeScoreResultI
 export async function createTournamentAction(formData: FormData) {
   let createdId: string;
   try {
+    const entry = tournamentEntryMode(formData);
+    const prize = tournamentPrizeModel(formData);
     const result = await createTournament({
       title: String(formData.get("title") || "").trim(),
       description: optionalString(formData, "description"),
       game_slug: String(formData.get("game_slug") || "").trim(),
       ruleset_slug: optionalString(formData, "ruleset_slug"),
       format: String(formData.get("format")) as TournamentFormat,
-      entry_type: String(formData.get("entry_type")) as TournamentEntryType,
-      fee_mode: String(formData.get("fee_mode")) as TournamentFeeMode,
+      entry_type: entry.entryType,
+      fee_mode: entry.feeMode,
       scoring_mode: String(formData.get("scoring_mode")) as TournamentScoringMode,
-      prize_distribution_mode: String(formData.get("prize_distribution_mode")) as TournamentPrizeDistributionMode,
+      prize_distribution_mode: prize.prizeDistributionMode,
       currency: String(formData.get("currency") || "NGN").trim().toUpperCase(),
-      entry_fee_amount_minor: nairaToMinor(formData, "entry_fee_amount_naira"),
-      sponsored_prize_pool_minor: nairaToMinor(formData, "sponsored_prize_pool_naira"),
-      guaranteed_prize_pool_minor: nairaToMinor(formData, "guaranteed_prize_pool_naira"),
+      entry_fee_amount_minor: entry.feeMode === "paid" || entry.feeMode === "hybrid" ? nairaToMinor(formData, "entry_fee_amount_naira") : 0,
+      sponsored_prize_pool_minor: prize.sponsoredPrizePoolMinor,
+      guaranteed_prize_pool_minor: prize.guaranteedPrizePoolMinor,
       commission_bps: intValue(formData, "commission_bps", 1000),
       min_entries: intValue(formData, "min_entries", 2),
       max_entries: intValue(formData, "max_entries", 16),
-      team_size_min: intValue(formData, "team_size_min", 1),
-      team_size_max: intValue(formData, "team_size_max", 1),
+      team_size_min: entry.teamMin,
+      team_size_max: entry.teamMax,
       registration_opens_at: optionalDateTime(formData, "registration_opens_at"),
       registration_closes_at: optionalDateTime(formData, "registration_closes_at"),
       starts_at: optionalDateTime(formData, "starts_at"),

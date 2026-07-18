@@ -14,9 +14,14 @@ import {
   getProfileMe,
   getPlayerHomeSummary,
   matchStatusLabel,
+  displayEnumLabel,
   type PlayerHomeRoomPreview,
+  type PlayerHomeReadiness,
   type PlayerHomeSummary,
-  type MatchRoomStatus
+  type PlayerLadderRow,
+  type PlayerMission,
+  type MatchRoomStatus,
+  type Tournament
 } from "@/lib/match-room-api";
 import { joinMatchRoomAction } from "./matches/actions";
 import { RoomCodeInput } from "@/components/matches/RoomCodeInput";
@@ -24,13 +29,6 @@ import { RoomCodeInput } from "@/components/matches/RoomCodeInput";
 type HomePageProps = {
   searchParams?: Promise<{ error?: string }>;
 };
-
-const roomSteps = [
-  ["Open", "Find an opponent or share the room code."],
-  ["Fund", "Both entries are checked before play starts."],
-  ["Play", "Run the match under the listed ruleset."],
-  ["Review", "Result evidence is checked before settlement."]
-] as const;
 
 const premiumArtwork = {
   hero: "/marketing/skillsroom-premium/hero-premium.jpg",
@@ -47,10 +45,6 @@ function statusTone(status: MatchRoomStatus) {
   return "cyan" as const;
 }
 
-function countStatuses(counts: PlayerHomeSummary["room_status_counts"], statuses: MatchRoomStatus[]) {
-  return statuses.reduce((sum, status) => sum + (counts[status] ?? 0), 0).toString();
-}
-
 function firstName(value?: string | null) {
   const trimmed = value?.trim();
   if (!trimmed) return "player";
@@ -62,9 +56,20 @@ function emailName(value?: string | null) {
 }
 
 function emptyHomeSummary(): PlayerHomeSummary {
+  const emptyReadiness: PlayerHomeReadiness = {
+    status: "needs_profile",
+    label: "Open setup",
+    detail: "Your home data could not load yet.",
+    missing: ["setup"]
+  };
+
   return {
     room_status_counts: {},
     active_room_previews: [],
+    open_room_previews: [],
+    recommended_room_previews: [],
+    active_review_previews: [],
+    open_tournament_previews: [],
     unread_notification_count: 0,
     wallet_mini_balance: {
       currency: "NGN",
@@ -73,58 +78,183 @@ function emptyHomeSummary(): PlayerHomeSummary {
       winnings_balance_minor: 0,
       status: null
     },
+    wallet_readiness: emptyReadiness,
+    profile_readiness: emptyReadiness,
+    play_now_counts: {
+      open_rooms: 0,
+      open_tournaments: 0,
+      recommended_matches: 0,
+      active_reviews: 0
+    },
+    daily_ladders: [],
+    weekly_ladders: [],
+    missions: [],
     active_tournament_preview_count: 0,
     community_highlights_preview: []
   };
 }
 
-function RoomCard({ room }: { room: PlayerHomeRoomPreview }) {
-  const playerCount = room.participant_count ?? 0;
-  const isJoinable = room.status === "open" && playerCount < room.max_participants;
-  const roomActivityLabel =
-    room.status === "completed"
-      ? "Completed and retained for activity history"
-      : isJoinable
-        ? "Ready for opponent"
-        : "Action in progress";
+function playerRoomStatusLabel(status: MatchRoomStatus) {
+  const labels: Partial<Record<MatchRoomStatus, string>> = {
+    draft: "Draft",
+    open: "Open",
+    awaiting_funding: "Waiting for payment",
+    funding_review: "Payment under review",
+    funded: "Ready to start",
+    active: "In play",
+    awaiting_results: "Result needed",
+    under_review: "Result under review",
+    disputed: "Dispute open",
+    settlement_pending: "Prize review ready",
+    completed: "Completed",
+    cancelled: "Cancelled",
+    refunded: "Refunded",
+    voided: "Voided"
+  };
 
+  return labels[status] ?? matchStatusLabel(status);
+}
+
+function compactDate(value: string | null) {
+  return value ? new Date(value).toLocaleString("en-NG", { dateStyle: "medium", timeStyle: "short" }) : "Date not set";
+}
+
+function projectedTournamentPrize(tournament: Tournament) {
+  return Math.max(
+    tournament.approved_prize_contribution_minor ?? 0,
+    tournament.sponsored_prize_pool_minor + tournament.guaranteed_prize_pool_minor
+  );
+}
+
+function missionPercent(mission: PlayerMission) {
+  if (mission.target <= 0) return mission.completed ? 100 : 0;
+  return Math.min(100, Math.round((mission.progress / mission.target) * 100));
+}
+
+function LadderMiniCard({ row }: { row: PlayerLadderRow }) {
+  return (
+    <article className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-md border border-line bg-white p-3">
+      <span className="grid h-10 w-10 place-items-center rounded-md bg-cyanSoft font-mono text-sm font-black text-cyan">#{row.rank}</span>
+      <div className="min-w-0">
+        <p className="truncate text-sm font-black text-ink">{row.display_name || row.username || "Skillsroom player"}</p>
+        <p className="mt-1 truncate text-xs font-bold text-muted">{row.game_name}{row.city ? ` / ${row.city}` : ""}</p>
+      </div>
+      <div className="text-right">
+        <p className="font-mono text-sm font-black text-ink">{row.score}</p>
+        <p className="text-xs font-bold text-muted">{row.wins} win{row.wins === 1 ? "" : "s"}</p>
+      </div>
+    </article>
+  );
+}
+
+function MissionCard({ mission }: { mission: PlayerMission }) {
+  const percent = missionPercent(mission);
+  return (
+    <article className="rounded-md border border-line bg-white p-4">
+      <div className="flex min-w-0 items-start justify-between gap-3">
+        <div className="min-w-0">
+          <Badge tone={mission.completed ? "success" : "cyan"}>{mission.completed ? "Done" : "Mission"}</Badge>
+          <h3 className="mt-3 text-base font-black text-ink">{mission.title}</h3>
+          <p className="mt-2 text-sm leading-6 text-muted">{mission.detail}</p>
+        </div>
+        <span className="shrink-0 rounded-md border border-line bg-surfaceHigh px-3 py-2 font-mono text-xs font-black text-ink">
+          {mission.progress}/{mission.target}
+        </span>
+      </div>
+      <div className="mt-4 h-2 overflow-hidden rounded-full bg-surfaceHigh">
+        <div className={["h-full rounded-full", mission.completed ? "bg-success" : "bg-cyan"].join(" ")} style={{ width: `${percent}%` }} />
+      </div>
+      {!mission.completed ? (
+        <PendingLink
+          className="mt-4 inline-flex min-h-10 items-center justify-center rounded-md border border-line bg-white px-4 text-sm font-black text-ink hover:bg-surfaceHigh"
+          href={mission.action_href}
+          pendingLabel="Opening..."
+        >
+          {mission.action_label}
+        </PendingLink>
+      ) : null}
+    </article>
+  );
+}
+
+function readinessTone(status: PlayerHomeReadiness["status"]) {
+  if (status === "ready") return "success" as const;
+  if (status === "blocked") return "danger" as const;
+  if (status === "needs_review") return "warning" as const;
+  return "cyan" as const;
+}
+
+function HomeRoomCard({ room, actionLabel = "Open room" }: { room: PlayerHomeRoomPreview; actionLabel?: string }) {
+  const playerCount = room.participant_count ?? 0;
   return (
     <article className="grid gap-4 border-b border-line p-4 last:border-b-0 md:grid-cols-[1fr_auto] md:items-center">
       <div className="min-w-0">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="rounded-md bg-surfaceHigh px-2 py-1 font-mono text-xs font-black text-ink">
-            {room.room_code}
-          </span>
-          <Badge tone={statusTone(room.status)}>{matchStatusLabel(room.status)}</Badge>
+          <Badge tone={statusTone(room.status)}>{playerRoomStatusLabel(room.status)}</Badge>
+          <span className="rounded-md bg-surfaceHigh px-2 py-1 font-mono text-xs font-black text-ink">{room.room_code}</span>
+          {room.game_name ? <Badge tone="neutral">{room.game_name}</Badge> : null}
         </div>
-        <PendingLink className="mt-3 block text-lg font-black text-ink hover:text-action" href={`/matches/${room.id}`} pendingLabel="Opening room...">
+        <PendingLink className="mt-3 block text-base font-black text-ink hover:text-action md:text-lg" href={`/matches/${room.id}`} pendingLabel="Opening room...">
           {room.title ?? "Private match room"}
         </PendingLink>
         <div className="mt-3 grid gap-2 text-sm font-bold text-muted sm:grid-cols-3">
           <span>{formatEntryAmount(room)} entry</span>
-          <span>
-            {playerCount}/{room.max_participants} players
-          </span>
-          <span>{roomActivityLabel}</span>
+          <span>{playerCount}/{room.max_participants} players</span>
+          <span>{room.ruleset_title ?? "Rules ready"}</span>
         </div>
       </div>
-      <div className="flex flex-wrap gap-2 md:justify-end">
-        <PendingLink
-          className="inline-flex min-h-10 items-center justify-center rounded-md border border-line bg-white px-4 text-sm font-black text-ink hover:bg-surfaceHigh"
-          href={`/matches/${room.id}`}
-          pendingLabel="Opening room..."
-        >
-          View room
-        </PendingLink>
-        {isJoinable ? (
-          <form action={joinMatchRoomAction}>
-            <input name="room_code" type="hidden" value={room.room_code} />
-            <input name="error_path" type="hidden" value="/" />
-            <SubmitButton idleLabel="Join" pendingLabel="Joining..." />
-          </form>
-        ) : null}
-      </div>
+      <PendingLink
+        className="inline-flex min-h-10 items-center justify-center rounded-md bg-action px-4 text-sm font-black text-navy-950 shadow-action hover:bg-actionHover"
+        href={`/matches/${room.id}`}
+        pendingLabel="Opening room..."
+      >
+        {actionLabel}
+      </PendingLink>
     </article>
+  );
+}
+
+function TournamentHomeCard({ tournament }: { tournament: Tournament }) {
+  return (
+    <article className="grid gap-4 border-b border-line p-4 last:border-b-0 md:grid-cols-[1fr_auto] md:items-center">
+      <div className="min-w-0">
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge tone="cyan">Open tournament</Badge>
+          <Badge tone="neutral">{displayEnumLabel(tournament.format)}</Badge>
+          {tournament.game_name ? <Badge tone="neutral">{tournament.game_name}</Badge> : null}
+        </div>
+        <PendingLink className="mt-3 block text-base font-black text-ink hover:text-action md:text-lg" href={`/tournaments/${tournament.id}`} pendingLabel="Opening tournament...">
+          {tournament.title}
+        </PendingLink>
+        <div className="mt-3 grid gap-2 text-sm font-bold text-muted sm:grid-cols-3">
+          <span>{formatMinorMoney(tournament.currency, tournament.entry_fee_amount_minor)} entry</span>
+          <span>{tournament.registered_entry_count}/{tournament.max_entries} entries</span>
+          <span>{compactDate(tournament.starts_at)}</span>
+        </div>
+      </div>
+      <PendingLink
+        className="inline-flex min-h-10 items-center justify-center rounded-md border border-line bg-white px-4 text-sm font-black text-ink hover:bg-surfaceHigh"
+        href={`/tournaments/${tournament.id}`}
+        pendingLabel="Opening tournament..."
+      >
+        View event
+      </PendingLink>
+    </article>
+  );
+}
+
+function ReadinessCard({ title, readiness, href, actionLabel }: { title: string; readiness: PlayerHomeReadiness; href: string; actionLabel: string }) {
+  return (
+    <div className="rounded-md border border-line bg-white p-4">
+      <div className="flex flex-wrap items-center gap-2">
+        <Badge tone={readinessTone(readiness.status)}>{readiness.label}</Badge>
+      </div>
+      <h3 className="mt-3 text-base font-black text-ink">{title}</h3>
+      <p className="mt-2 text-sm leading-6 text-muted">{readiness.detail}</p>
+      <PendingLink className="mt-4 inline-flex min-h-10 items-center justify-center rounded-md border border-line bg-white px-4 text-sm font-black text-ink hover:bg-surfaceHigh" href={href} pendingLabel="Opening...">
+        {actionLabel}
+      </PendingLink>
+    </div>
   );
 }
 
@@ -288,7 +418,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
               <PanelHeader
                 eyebrow="Product"
                 title="What players can do here"
-                description="Skillsroom is built for competitive gaming, not chance-based betting."
+                description="Skillsroom is built for competitive gaming, not chance-based play."
               />
               <div className="grid gap-4 bg-[#0b1622] p-4 xl:grid-cols-3">
                 <Reveal staggerIndex={0}>
@@ -369,21 +499,18 @@ export default async function HomePage({ searchParams }: HomePageProps) {
   const profileOverview = profileResult.status === "fulfilled" ? profileResult.value : null;
   const profile = profileOverview?.profile ?? null;
   const greetingName = firstName(profile?.display_name ?? profile?.username ?? emailName(user.email));
-  const missingProfileItems = profileOverview?.completion?.missing?.length ?? 0;
-  const readinessValue = profileOverview ? (missingProfileItems === 0 ? "Ready" : "Setup") : "Profile";
-  const readinessDetail = profileOverview
-    ? missingProfileItems === 0
-      ? "Ready for rooms, prizes, and tournaments."
-      : `${missingProfileItems} setup item${missingProfileItems === 1 ? "" : "s"} left.`
-    : "Open profile setup";
-
-  const roomStatusCounts = summary.room_status_counts ?? {};
-  const priorityRooms = summary.active_room_previews ?? [];
+  const actionRooms = summary.active_room_previews ?? [];
+  const recommendedRooms = summary.recommended_room_previews ?? [];
+  const openRooms = summary.open_room_previews ?? [];
+  const reviewRooms = summary.active_review_previews ?? [];
+  const openTournaments = summary.open_tournament_previews ?? [];
   const walletMiniBalance = summary.wallet_mini_balance;
   const walletBalanceLabel = walletMiniBalance
     ? formatMinorMoney(walletMiniBalance.currency, walletMiniBalance.available_balance_minor + walletMiniBalance.winnings_balance_minor)
     : formatMinorMoney("NGN", 0);
   const communityHighlights = summary.community_highlights_preview ?? [];
+  const playNowTotal = (summary.play_now_counts?.recommended_matches ?? recommendedRooms.length) + (summary.play_now_counts?.open_tournaments ?? openTournaments.length);
+  const topOpenTournamentPrize = openTournaments.reduce((max, tournament) => Math.max(max, projectedTournamentPrize(tournament)), 0);
 
   return (
     <AppShell active="home">
@@ -393,18 +520,32 @@ export default async function HomePage({ searchParams }: HomePageProps) {
             <div className="min-w-0">
               <Badge tone="cyan">Skillsroom</Badge>
               <h1 className="mt-4 max-w-4xl text-3xl font-black leading-tight sm:text-4xl lg:text-5xl">
-                Welcome back, {greetingName}.
+                What can you play now, {greetingName}?
               </h1>
               <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-300 md:text-base">
-                Find a fair room, confirm entry once, play under clear rules, and keep every result easy to prove.
+                Jump into open rooms, enter tournaments, finish matches that need you, or create a new challenge for another player.
               </p>
               <div className="mt-5 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
                 <PendingLink
                   className="inline-flex min-h-10 w-full items-center justify-center rounded-md bg-action px-4 text-sm font-black text-navy-950 shadow-action hover:bg-actionHover sm:w-auto"
-                  href="/matches/new"
+                  href="/challenges"
                   pendingLabel="Opening creator..."
                 >
-                  Create room
+                  Create challenge
+                </PendingLink>
+                <PendingLink
+                  className="inline-flex min-h-10 w-full items-center justify-center rounded-md border border-white/10 bg-white px-4 text-sm font-black text-ink hover:bg-surfaceHigh sm:w-auto"
+                  href="/challenges"
+                  pendingLabel="Opening challenges..."
+                >
+                  Find challenge
+                </PendingLink>
+                <PendingLink
+                  className="inline-flex min-h-10 w-full items-center justify-center rounded-md border border-white/10 bg-white px-4 text-sm font-black text-ink hover:bg-surfaceHigh sm:w-auto"
+                  href="/tournaments?filter=registration_open"
+                  pendingLabel="Opening tournaments..."
+                >
+                  Enter tournament
                 </PendingLink>
                 <PendingLink
                   className="inline-flex min-h-10 w-full items-center justify-center rounded-md border border-white/10 bg-white px-4 text-sm font-black text-ink hover:bg-surfaceHigh sm:w-auto"
@@ -424,7 +565,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
                 <SubmitButton idleLabel="Join" pendingLabel="Joining..." />
                 <PendingLink
                   className="inline-flex min-h-10 items-center justify-center rounded-md border border-white/10 bg-white px-4 text-sm font-black text-ink hover:bg-surfaceHigh"
-                  href="/matches/new"
+                  href="/challenges"
                   pendingLabel="Opening creator..."
                 >
                   Create
@@ -459,158 +600,277 @@ export default async function HomePage({ searchParams }: HomePageProps) {
         ) : null}
 
         <div className="grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <Reveal staggerIndex={0}><StatusPanel detail="Can be joined" label="Open" tone="cyan" value={countStatuses(roomStatusCounts, ["open"])} /></Reveal>
-          <Reveal staggerIndex={1}>
-          <StatusPanel
-            detail="Needs confirmation"
-            label="Entries"
-            tone="warning"
-            value={countStatuses(roomStatusCounts, ["awaiting_funding", "funding_review"])}
-          />
-          </Reveal>
-          <Reveal staggerIndex={2}><StatusPanel detail="Play or finish" label="Live" tone="success" value={countStatuses(roomStatusCounts, ["funded", "active", "awaiting_results", "under_review", "disputed", "settlement_pending"])} /></Reveal>
-          <Reveal staggerIndex={3}><StatusPanel detail="Chat signals" label="Unread" tone="danger" value={(summary.unread_notification_count ?? 0).toString()} /></Reveal>
+          <Reveal staggerIndex={0}><StatusPanel detail="Rooms and tournaments" label="Play Now" tone="cyan" value={playNowTotal.toString()} /></Reveal>
+          <Reveal staggerIndex={1}><StatusPanel detail="Rooms that fit your balance" label="Recommended" tone="success" value={(summary.play_now_counts?.recommended_matches ?? recommendedRooms.length).toString()} /></Reveal>
+          <Reveal staggerIndex={2}><StatusPanel detail="Your rooms needing review" label="Reviews" tone={reviewRooms.length ? "danger" : "success"} value={reviewRooms.length.toString()} /></Reveal>
+          <Reveal staggerIndex={3}><StatusPanel detail="Available for entry" label="Balance" tone="warning" value={walletBalanceLabel} /></Reveal>
         </div>
 
-        <div className="grid min-w-0 gap-3 sm:grid-cols-2">
-          <Reveal staggerIndex={0}><StatusPanel detail="Available for entry" label="Balance" tone="success" value={walletBalanceLabel} /></Reveal>
-          <Reveal staggerIndex={1}><StatusPanel detail={readinessDetail} label="Readiness" tone={missingProfileItems === 0 ? "cyan" : "warning"} value={readinessValue} /></Reveal>
+        <div className="grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <Reveal staggerIndex={0}><StatusPanel detail="Can be joined" label="Open Rooms" tone="cyan" value={(summary.play_now_counts?.open_rooms ?? openRooms.length).toString()} /></Reveal>
+          <Reveal staggerIndex={1}><StatusPanel detail="Taking entries" label="Open Events" tone="warning" value={(summary.play_now_counts?.open_tournaments ?? openTournaments.length).toString()} /></Reveal>
+          <Reveal staggerIndex={2}><StatusPanel detail="Prize pool to chase" label="Event Prize" tone="success" value={formatMinorMoney("NGN", topOpenTournamentPrize)} /></Reveal>
+          <Reveal staggerIndex={3}><StatusPanel detail="Messages and updates" label="Unread" tone="danger" value={(summary.unread_notification_count ?? 0).toString()} /></Reveal>
         </div>
 
-        <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1fr)_22rem]">
-          <Reveal>
-          <Panel>
-            <PanelHeader
-              action={
-                <PendingLink className="rounded-md border border-line bg-white px-3 py-2 text-sm font-black text-ink hover:bg-surfaceHigh" href="/matches" pendingLabel="Opening rooms...">
-                  View all rooms
-                </PendingLink>
-              }
-              eyebrow="Lobby"
-              title="Rooms needing players or action"
-              description="Open rooms appear first, followed by rooms waiting on funding, play, evidence, or review."
-            />
-            {priorityRooms.length ? (
-              <div>
-                {priorityRooms.map((room, index) => (
-                  <Reveal key={room.id} staggerIndex={index}>
-                    <RoomCard room={room} />
-                  </Reveal>
-                ))}
+        <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1fr)_24rem]">
+          <div className="grid gap-6">
+            <Reveal>
+            <Panel>
+              <PanelHeader
+                action={
+                  <PendingLink className="rounded-md border border-line bg-white px-3 py-2 text-sm font-black text-ink hover:bg-surfaceHigh" href="/challenges" pendingLabel="Opening challenges...">
+                    View challenges
+                  </PendingLink>
+                }
+                eyebrow="Play Now"
+                title="Recommended matches"
+                description="Rooms here are open and fit your current balance."
+              />
+              {recommendedRooms.length ? (
+                <div>
+                  {recommendedRooms.map((room, index) => (
+                    <Reveal key={room.id} staggerIndex={index}>
+                      <HomeRoomCard actionLabel="Join room" room={room} />
+                    </Reveal>
+                  ))}
+                </div>
+              ) : (
+                <div className="p-4">
+                  <div className="grid place-items-center rounded-md border border-dashed border-line bg-surfaceWarm p-8 text-center">
+                    <div className="max-w-md">
+                      <h3 className="text-lg font-black text-ink">No recommended rooms yet</h3>
+                      <p className="mt-2 text-sm leading-6 text-muted">
+                        Add funds, finish your profile, or create a challenge and share the room code.
+                      </p>
+                      <PendingLink
+                        className="mt-4 inline-flex min-h-10 items-center justify-center rounded-md bg-action px-4 text-sm font-black text-navy-950 shadow-action hover:bg-actionHover"
+                        href="/challenges"
+                        pendingLabel="Opening creator..."
+                      >
+                        Create challenge
+                      </PendingLink>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </Panel>
+            </Reveal>
+
+            <Reveal>
+            <Panel>
+              <PanelHeader
+                action={
+                  <PendingLink className="rounded-md border border-line bg-white px-3 py-2 text-sm font-black text-ink hover:bg-surfaceHigh" href="/tournaments?filter=registration_open" pendingLabel="Opening tournaments...">
+                    View all events
+                  </PendingLink>
+                }
+                eyebrow="Events"
+                title="Open tournaments"
+                description="Events taking entries right now."
+              />
+              {openTournaments.length ? (
+                <div>
+                  {openTournaments.map((tournament, index) => (
+                    <Reveal key={tournament.id} staggerIndex={index}>
+                      <TournamentHomeCard tournament={tournament} />
+                    </Reveal>
+                  ))}
+                </div>
+              ) : (
+                <div className="p-4">
+                  <div className="rounded-md border border-dashed border-line bg-surfaceWarm p-6 text-center">
+                    <h3 className="text-lg font-black text-ink">No open tournaments right now</h3>
+                    <p className="mt-2 text-sm leading-6 text-muted">Check the community page for recent winners and upcoming news.</p>
+                  </div>
+                </div>
+              )}
+            </Panel>
+            </Reveal>
+
+            <Reveal>
+            <Panel>
+              <PanelHeader
+                action={
+                  <PendingLink className="rounded-md border border-line bg-white px-3 py-2 text-sm font-black text-ink hover:bg-surfaceHigh" href="/matches" pendingLabel="Opening rooms...">
+                    View your rooms
+                  </PendingLink>
+                }
+                eyebrow="Your Action"
+                title="Rooms needing you"
+                description="These rooms are waiting for payment, play, proof, result, or review."
+              />
+              {actionRooms.length ? (
+                <div>
+                  {actionRooms.map((room, index) => (
+                    <Reveal key={room.id} staggerIndex={index}>
+                      <HomeRoomCard room={room} />
+                    </Reveal>
+                  ))}
+                </div>
+              ) : (
+                <div className="p-4">
+                  <div className="rounded-md border border-dashed border-line bg-surfaceWarm p-6 text-center">
+                    <h3 className="text-lg font-black text-ink">No room needs you right now</h3>
+                    <p className="mt-2 text-sm leading-6 text-muted">You are clear. Join an open room or create a new challenge.</p>
+                  </div>
+                </div>
+              )}
+            </Panel>
+            </Reveal>
+          </div>
+
+          <div className="grid gap-6">
+            <Reveal staggerIndex={0}>
+            <Panel>
+              <PanelHeader
+                eyebrow="Missions"
+                title="Small wins to chase"
+                description="Daily progress loops that help you build a real player record without waiting for a big tournament."
+              />
+              <div className="grid gap-3 p-4">
+                {(summary.missions ?? []).length ? (
+                  summary.missions.slice(0, 5).map((mission) => (
+                    <MissionCard key={mission.key} mission={mission} />
+                  ))
+                ) : (
+                  <div className="rounded-md border border-dashed border-line bg-surfaceWarm p-5 text-center">
+                    <h3 className="text-base font-black text-ink">Missions are loading</h3>
+                    <p className="mt-2 text-sm leading-6 text-muted">Complete your profile, finish matches, join events, and invite players to start filling this list.</p>
+                  </div>
+                )}
               </div>
-            ) : (
-              <div className="p-4">
-                <div className="grid place-items-center rounded-md border border-dashed border-line bg-surfaceWarm p-8 text-center">
-                  <div className="max-w-md">
-                    <h3 className="text-lg font-black text-ink">No active rooms yet</h3>
-                    <p className="mt-2 text-sm leading-6 text-muted">
-                      Create the first room for your game or share a room code from your community when one is ready.
-                    </p>
-                    <PendingLink
-                      className="mt-4 inline-flex min-h-10 items-center justify-center rounded-md bg-action px-4 text-sm font-black text-navy-950 shadow-action hover:bg-actionHover"
-                      href="/matches/new"
-                      pendingLabel="Opening creator..."
-                    >
-                      Create room
-                    </PendingLink>
+            </Panel>
+            </Reveal>
+
+            <Reveal staggerIndex={1}>
+            <Panel>
+              <PanelHeader
+                eyebrow="Ladders"
+                title="Today and this week"
+                description="City and game ladders are based on approved match wins."
+              />
+              <div className="grid gap-4 p-4">
+                <div>
+                  <div className="mb-2 flex items-center justify-between gap-2">
+                    <h3 className="text-sm font-black text-ink">Daily ladder</h3>
+                    <Badge tone="cyan">Today</Badge>
+                  </div>
+                  <div className="grid gap-2">
+                    {(summary.daily_ladders ?? []).length ? (
+                      summary.daily_ladders.slice(0, 4).map((row) => <LadderMiniCard key={`daily-${row.user_id}-${row.game_slug}`} row={row} />)
+                    ) : (
+                      <div className="rounded-md border border-dashed border-line bg-surfaceWarm p-4 text-sm font-bold text-muted">
+                        No approved match win on today&apos;s ladder yet.
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <div>
+                  <div className="mb-2 flex items-center justify-between gap-2">
+                    <h3 className="text-sm font-black text-ink">Weekly ladder</h3>
+                    <Badge tone="warning">This week</Badge>
+                  </div>
+                  <div className="grid gap-2">
+                    {(summary.weekly_ladders ?? []).length ? (
+                      summary.weekly_ladders.slice(0, 4).map((row) => <LadderMiniCard key={`weekly-${row.user_id}-${row.game_slug}`} row={row} />)
+                    ) : (
+                      <div className="rounded-md border border-dashed border-line bg-surfaceWarm p-4 text-sm font-bold text-muted">
+                        No approved match win on this week&apos;s ladder yet.
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
-            )}
-          </Panel>
-          </Reveal>
+            </Panel>
+            </Reveal>
 
-          <div className="grid gap-6">
             <Reveal staggerIndex={1}>
             <Panel>
-              <PanelHeader eyebrow="Room Flow" title="How every room moves" />
+              <PanelHeader eyebrow="Ready Check" title="Before you play" />
               <div className="grid gap-3 p-4">
-                {roomSteps.map(([label, detail], index) => (
-                  <div className="grid grid-cols-[2rem_1fr] gap-3" key={label}>
-                    <span className="grid h-8 w-8 place-items-center rounded-md bg-cyanSoft text-sm font-black text-cyan">
-                      {index + 1}
-                    </span>
-                    <div>
-                      <p className="text-sm font-black text-ink">{label}</p>
-                      <p className="mt-1 text-sm leading-6 text-muted">{detail}</p>
-                    </div>
-                  </div>
-                ))}
+                <ReadinessCard actionLabel="Open profile" href="/profile" readiness={summary.profile_readiness} title="Profile" />
+                <ReadinessCard actionLabel="Open wallet" href="/wallet" readiness={summary.wallet_readiness} title="Wallet" />
               </div>
             </Panel>
             </Reveal>
 
             <Reveal staggerIndex={2}>
             <Panel>
-              <PanelHeader
-                eyebrow="Community hub"
-                title="See what is happening around Skillsroom"
-                description="Find platform news, tournament updates, clans, player highlights, and winner posts without digging through menus."
-              />
-              <div className="grid gap-3 p-4">
-                <div className="overflow-hidden rounded-[1.25rem] border border-line bg-navy-900 text-white">
-                  <div className="relative min-h-48">
-                    <Image
-                      alt="Skillsroom community hub"
-                      className="object-cover"
-                      fill
-                      sizes="(min-width: 1280px) 22rem, 100vw"
-                      src={premiumArtwork.community}
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-[#07111d] via-[#07111d]/48 to-transparent" />
-                    <div className="absolute inset-x-4 bottom-4">
-                      <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Community</p>
-                      <h3 className="mt-2 text-xl font-black leading-tight">News, rankings, and player stories in one place.</h3>
-                    </div>
+              <PanelHeader eyebrow="Review" title="Active disputes and reviews" />
+              {reviewRooms.length ? (
+                <div>
+                  {reviewRooms.map((room, index) => (
+                    <Reveal key={room.id} staggerIndex={index}>
+                      <HomeRoomCard actionLabel="Review room" room={room} />
+                    </Reveal>
+                  ))}
+                </div>
+              ) : (
+                <div className="p-4">
+                  <div className="rounded-md border border-line bg-successSoft p-4">
+                    <p className="text-sm font-black text-success">No active dispute</p>
+                    <p className="mt-2 text-sm leading-6 text-muted">Your rooms have no open dispute or result review right now.</p>
                   </div>
                 </div>
-                {communityHighlights.length ? (
-                  <div className="grid gap-2">
-                    {communityHighlights.slice(0, 3).map((highlight) => (
-                      <PendingLink
-                        className="rounded-md border border-line bg-white p-3 text-sm hover:bg-surfaceHigh"
-                        href={`/community/winners/tournaments/${encodeURIComponent(highlight.tournament_id)}`}
-                        key={highlight.tournament_id}
-                        pendingLabel="Opening winner page..."
-                      >
-                        <p className="font-black text-ink">{highlight.title}</p>
-                        <p className="mt-1 text-xs font-bold uppercase tracking-[0.12em] text-muted">
-                          {highlight.game_name} / {highlight.champion_entry_name ?? "Winner confirmed"}
-                        </p>
-                      </PendingLink>
-                    ))}
-                  </div>
-                ) : null}
-                <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-1">
-                  <PendingLink
-                    className="inline-flex min-h-10 items-center justify-center rounded-md bg-action px-4 text-sm font-black text-navy-950 shadow-action hover:bg-actionHover"
-                    href="/community"
-                    pendingLabel="Opening community..."
-                  >
-                    Open Community hub
-                  </PendingLink>
-                  <PendingLink
-                    className="inline-flex min-h-10 items-center justify-center rounded-md border border-line bg-white px-4 text-sm font-black text-ink hover:bg-surfaceHigh"
-                    href="/community/highlights"
-                    pendingLabel="Opening highlights..."
-                  >
-                    View highlights
-                  </PendingLink>
-                </div>
-              </div>
+              )}
             </Panel>
             </Reveal>
 
             <Reveal staggerIndex={3}>
             <Panel>
-              <PanelHeader eyebrow="Trust" title="Before you play" />
-              <div className="grid gap-3 p-4 text-sm leading-6 text-muted">
-                <p className="rounded-md border border-line bg-surfaceWarm p-3">
-                  Match entries are checked before play. Results need evidence before settlement.
-                </p>
-                <p className="rounded-md border border-line bg-surfaceWarm p-3">
-                  Keep your in-game handle and screenshots clear so admins can review fast.
-                </p>
+              <PanelHeader eyebrow="Open Rooms" title="More rooms to join" />
+              {openRooms.length ? (
+                <div>
+                  {openRooms.slice(0, 3).map((room, index) => (
+                    <Reveal key={room.id} staggerIndex={index}>
+                      <HomeRoomCard actionLabel="View" room={room} />
+                    </Reveal>
+                  ))}
+                </div>
+              ) : (
+                <div className="p-4">
+                  <div className="rounded-md border border-dashed border-line bg-surfaceWarm p-5 text-center">
+                    <h3 className="text-base font-black text-ink">No open room is available</h3>
+                    <p className="mt-2 text-sm leading-6 text-muted">Create one and invite a player with your room code.</p>
+                  </div>
+                </div>
+              )}
+            </Panel>
+            </Reveal>
+
+            <Reveal staggerIndex={4}>
+            <Panel>
+              <PanelHeader
+                eyebrow="Community"
+                title="Recent winners"
+                action={
+                  <PendingLink className="rounded-md border border-line bg-white px-3 py-2 text-sm font-black text-ink hover:bg-surfaceHigh" href="/community" pendingLabel="Opening community...">
+                    Open community
+                  </PendingLink>
+                }
+              />
+              <div className="grid gap-3 p-4">
+                {communityHighlights.length ? (
+                  communityHighlights.slice(0, 3).map((highlight) => (
+                    <PendingLink
+                      className="rounded-md border border-line bg-white p-3 text-sm hover:bg-surfaceHigh"
+                      href={`/community/winners/tournaments/${encodeURIComponent(highlight.tournament_id)}`}
+                      key={highlight.tournament_id}
+                      pendingLabel="Opening winner page..."
+                    >
+                      <p className="font-black text-ink">{highlight.title}</p>
+                      <p className="mt-1 text-xs font-bold uppercase tracking-[0.12em] text-muted">
+                        {highlight.game_name} / {highlight.champion_entry_name ?? "Winner confirmed"}
+                      </p>
+                    </PendingLink>
+                  ))
+                ) : (
+                  <div className="rounded-md border border-dashed border-line bg-surfaceWarm p-5 text-center">
+                    <h3 className="text-base font-black text-ink">No winner posts yet</h3>
+                    <p className="mt-2 text-sm leading-6 text-muted">Completed events will appear here after results are approved.</p>
+                  </div>
+                )}
               </div>
             </Panel>
             </Reveal>

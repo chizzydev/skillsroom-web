@@ -68,6 +68,11 @@ export default async function CommunityClanDetailPage({ params }: ClanDetailPage
                   <span>Captain: {detail.captain?.label ?? "Visible captain"}</span>
                   <span>Created {new Date(clan.created_at).toLocaleDateString("en-NG")}</span>
                 </div>
+                <div className="mt-6 flex flex-wrap gap-3">
+                  <Link className="inline-flex min-h-control items-center justify-center rounded-md bg-action px-5 text-sm font-black text-white shadow-tight hover:bg-actionDark" href={`/community/organizers/${encodeURIComponent(clan.slug)}`}>
+                    Open organizer space
+                  </Link>
+                </div>
                 <div className="mt-8 grid gap-3 xl:max-w-2xl xl:grid-cols-3">
                   <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
                     <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Members</p>

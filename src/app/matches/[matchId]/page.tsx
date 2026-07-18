@@ -103,6 +103,62 @@ function responseWindowExpired(claim: MatchResultClaim) {
   return Number.isFinite(dueAt) && dueAt <= Date.now();
 }
 
+function timeRemainingLabel(value?: string | null) {
+  if (!value) return "No deadline set";
+  const ms = new Date(value).getTime() - Date.now();
+  if (!Number.isFinite(ms)) return "No deadline set";
+  if (ms <= 0) return "Deadline passed";
+  const minutes = Math.ceil(ms / 60_000);
+  if (minutes < 60) return `${minutes} min left`;
+  const hours = Math.ceil(minutes / 60);
+  if (hours < 48) return `${hours} hr left`;
+  return `${Math.ceil(hours / 24)} days left`;
+}
+
+function claimResponseStatus(claim: MatchResultClaim, responses: RoomResultOverview["responses"]) {
+  const response = responses.find((item) => item.result_claim_id === claim.id);
+  if (response?.response === "agree") {
+    return { label: "Opponent agreed", detail: "Both players accepted the result.", tone: "success" as const };
+  }
+  if (response?.response === "dispute") {
+    return { label: "Opponent disputed", detail: response.note ?? "Skillsroom review is needed before payout.", tone: "danger" as const };
+  }
+  if (responseWindowExpired(claim)) {
+    return { label: "Response overdue", detail: "Admin can review this under the no-response rule.", tone: "warning" as const };
+  }
+  return {
+    label: "Waiting for opponent",
+    detail: `${timeRemainingLabel(claim.opponent_response_due_at)} - due ${dateTimeLabel(claim.opponent_response_due_at)}`,
+    tone: "cyan" as const
+  };
+}
+
+function claimReviewStatus(claim: MatchResultClaim, reviews: RoomResultOverview["reviews"]) {
+  const review = reviews.find((item) => item.result_claim_id === claim.id) ?? null;
+  if (!review) {
+    if (claim.status === "opponent_disputed") return { label: "Admin review needed", detail: "Payout stays paused while Skillsroom checks the dispute.", tone: "danger" as const };
+    if (claim.status === "submitted") return { label: "Not ready for final decision", detail: "Waiting for the opponent response window.", tone: "warning" as const };
+    return { label: "Admin review pending", detail: "Skillsroom will check the room record before final payout.", tone: "warning" as const };
+  }
+
+  const decisionLabel =
+    review.decision === "approve_claim"
+      ? "Winner approved"
+      : review.decision === "approve_no_response"
+        ? "Winner approved after no response"
+        : review.decision === "reject_claim"
+          ? "Claim rejected"
+          : review.decision === "mark_disputed"
+            ? "Dispute kept open"
+            : "Room voided";
+
+  return {
+    label: decisionLabel,
+    detail: review.note ?? `Final decision saved on ${dateTimeLabel(review.created_at)}.`,
+    tone: review.decision === "approve_claim" || review.decision === "approve_no_response" ? "success" as const : review.decision === "mark_disputed" || review.decision === "void_match" ? "danger" as const : "warning" as const
+  };
+}
+
 function nextAction(room: MatchRoom, participantCount: number) {
   if (room.status === "draft") return ["Open this room", "Review the details, then publish the room so an opponent can join."] as const;
   if (room.status === "open") return participantCount < room.max_participants
@@ -1720,43 +1776,62 @@ export default async function MatchDetailPage({
             />
             <div className="grid gap-3 p-4">
               {results?.claims.length ? (
-                results.claims.map((claim) => (
-                  <div className="rounded-lg border border-line bg-surfaceWarm p-4" key={claim.id}>
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div>
-                        <p className="font-mono text-xs font-bold uppercase tracking-[0.12em] text-dim">Score claim</p>
-                        <p className="mt-2 text-xl font-black text-ink">{scoreSummaryLabel(claim.score_summary)}</p>
+                results.claims.map((claim) => {
+                  const responseStatus = claimResponseStatus(claim, results.responses);
+                  const reviewStatus = claimReviewStatus(claim, results.reviews);
+                  const claimEvidence = results.evidence_items.filter((item) => item.result_claim_id === claim.id);
+                  const claimedWinner = results.participants.find((item) => item.id === claim.claimed_winner_participant_id);
+
+                  return (
+                    <div className="rounded-lg border border-line bg-surfaceWarm p-4" key={claim.id}>
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div>
+                          <p className="font-mono text-xs font-bold uppercase tracking-[0.12em] text-dim">Submitted result</p>
+                          <p className="mt-2 text-xl font-black text-ink">{scoreSummaryLabel(claim.score_summary)}</p>
+                        </div>
+                        <Badge tone={resultTone(claim.status)}>{displayLabel(claim.status)}</Badge>
                       </div>
-                      <Badge tone={resultTone(claim.status)}>{displayLabel(claim.status)}</Badge>
-                    </div>
-                    <p className="mt-3 text-sm font-bold text-muted">
-                      Claimed winner: {playerDisplayName(
-                        results.participants.find((item) => item.id === claim.claimed_winner_participant_id),
-                        trustByUserId.get(results.participants.find((item) => item.id === claim.claimed_winner_participant_id)?.user_id ?? "")
-                      )}
-                    </p>
-                    {claim.note ? <p className="mt-2 text-sm leading-6 text-muted">{claim.note}</p> : null}
-                    {claim.status === "submitted" ? (
-                      <div className={`mt-3 rounded-lg border p-3 text-sm leading-6 ${
-                        responseWindowExpired(claim)
-                          ? "border-amber-300 bg-amber-50 text-amber-950"
-                          : "border-cyan/25 bg-cyan/10 text-ink"
-                      }`}>
-                        <p className="font-black">
-                          {responseWindowExpired(claim) ? "Opponent response is overdue" : `Opponent response due: ${dateTimeLabel(claim.opponent_response_due_at)}`}
-                        </p>
-                        <p className="mt-1 text-muted">
-                          {responseWindowExpired(claim)
-                            ? "The Skillsroom team can review this under the no-response policy after checking room history and evidence."
-                            : "The opponent can still agree or dispute this result before admin winner approval opens."}
+
+                      <div className="mt-4 grid gap-3 lg:grid-cols-3">
+                        <div className="rounded-md border border-line bg-white p-3">
+                          <p className="font-mono text-[0.65rem] font-black uppercase tracking-[0.12em] text-dim">Winner claimed</p>
+                          <p className="mt-2 text-sm font-black text-ink">
+                            {playerDisplayName(claimedWinner, trustByUserId.get(claimedWinner?.user_id ?? ""))}
+                          </p>
+                          <p className="mt-1 text-xs font-bold text-muted">Submitted {dateTimeLabel(claim.submitted_at)}</p>
+                        </div>
+                        <div className="rounded-md border border-line bg-white p-3">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="font-mono text-[0.65rem] font-black uppercase tracking-[0.12em] text-dim">Opponent response</p>
+                            <Badge tone={responseStatus.tone}>{responseStatus.label}</Badge>
+                          </div>
+                          <p className="mt-2 text-xs font-bold leading-5 text-muted">{responseStatus.detail}</p>
+                        </div>
+                        <div className="rounded-md border border-line bg-white p-3">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="font-mono text-[0.65rem] font-black uppercase tracking-[0.12em] text-dim">Final decision</p>
+                            <Badge tone={reviewStatus.tone}>{reviewStatus.label}</Badge>
+                          </div>
+                          <p className="mt-2 text-xs font-bold leading-5 text-muted">{reviewStatus.detail}</p>
+                        </div>
+                      </div>
+
+                      {claim.note ? (
+                        <div className="mt-3 rounded-md border border-line bg-white p-3 text-sm leading-6 text-muted">
+                          <strong className="text-ink">Player note:</strong> {claim.note}
+                        </div>
+                      ) : null}
+
+                      <div className="mt-4 rounded-md border border-cyan/20 bg-cyanSoft p-3">
+                        <p className="font-mono text-[0.65rem] font-black uppercase tracking-[0.12em] text-cyan">Proof attached</p>
+                        <p className="mt-1 text-sm font-bold text-ink">
+                          {claimEvidence.length} file{claimEvidence.length === 1 ? "" : "s"} saved for this result.
                         </p>
                       </div>
-                    ) : null}
-                    {results.evidence_items.filter((item) => item.result_claim_id === claim.id).length ? (
-                      <div className="mt-4 grid gap-2">
-                        {results.evidence_items
-                          .filter((item) => item.result_claim_id === claim.id)
-                          .map((item) => (
+
+                      {claimEvidence.length ? (
+                        <div className="mt-4 grid gap-2">
+                          {claimEvidence.map((item) => (
                             <EvidenceMediaDrawer
                               className="text-sm"
                               description={item.notes}
@@ -1769,10 +1844,11 @@ export default async function MatchDetailPage({
                               {item.notes ? <span className="mt-1 block text-xs leading-5 text-muted">{item.notes}</span> : null}
                             </EvidenceMediaDrawer>
                           ))}
-                      </div>
-                    ) : null}
-                  </div>
-                ))
+                        </div>
+                      ) : null}
+                    </div>
+                  );
+                })
               ) : (
                 <div className="rounded-lg border border-dashed border-line bg-surfaceWarm p-6">
                   <p className="text-lg font-black text-ink">No result claim yet</p>
@@ -1789,18 +1865,28 @@ export default async function MatchDetailPage({
             />
             <div className="border-b border-line p-4">
               <p className="font-mono text-xs font-black uppercase tracking-[0.12em] text-cyan">Evidence checklist</p>
-              <ul className="mt-3 grid gap-2 text-sm leading-6 text-muted">
-                <li>Pre-match lobby screenshot showing both player handles.</li>
-                <li>Final scoreboard screenshot or short screen recording.</li>
-                <li>Add a score line only when the game actually produces one.</li>
-                <li>Do not crop out usernames, room code, or final result.</li>
-              </ul>
+              <div className="mt-3 grid gap-2 text-sm leading-6 text-muted">
+                {[
+                  ["1", "Before play", "Screenshot the lobby or invite screen showing both game handles."],
+                  ["2", "After play", "Upload the final scoreboard screenshot or a short video showing the result."],
+                  ["3", "Keep names visible", "Do not crop out usernames, room code, final result, or match time."],
+                  ["4", "Explain anything unusual", "Use the note for disconnects, forfeit, overtime, lag, or rule issues."]
+                ].map(([step, title, detail]) => (
+                  <div className="grid grid-cols-[2rem_minmax(0,1fr)] gap-3 rounded-md border border-line bg-white p-3" key={step}>
+                    <span className="grid size-8 place-items-center rounded-full bg-cyan text-xs font-black text-white">{step}</span>
+                    <span>
+                      <strong className="block text-ink">{title}</strong>
+                      <span className="block text-muted">{detail}</span>
+                    </span>
+                  </div>
+                ))}
+              </div>
             </div>
             {canSubmitResult ? (
               <RoomActionForm action={submitResultClaimIslandAction} className="grid gap-3 p-4">
                 <input name="match_room_id" type="hidden" value={room.id} />
                 <label className="grid gap-2 text-sm font-bold text-ink">
-                  Result claim
+                  Winner
                   <input name="claimed_winner_participant_id" type="hidden" value={currentParticipant?.id ?? ""} />
                   <div className="rounded-md border border-line bg-surfaceWarm px-3 py-3 text-sm font-black text-ink">
                     You are submitting your own win claim as {playerOptionLabel(currentParticipant, currentParticipant ? trustByUserId.get(currentParticipant.user_id) : null)}.
@@ -1811,14 +1897,14 @@ export default async function MatchDetailPage({
                   <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="score_summary" placeholder="2-1, Booyah, placement result, forfeit" />
                 </label>
                 <label className="grid gap-2 text-sm font-bold text-ink">
-                  Evidence type
+                  Proof type
                   <select className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="evidence_type">
                     <option value="screenshot">Screenshot</option>
                     <option value="video">Video</option>
                   </select>
                 </label>
                 <label className="grid gap-2 text-sm font-bold text-ink">
-                  Upload evidence
+                  Required screenshot or video
                   <input
                     accept="image/png,image/jpeg,image/webp,video/mp4,video/webm,video/quicktime"
                     className="min-h-11 rounded-md border border-line bg-white px-3 py-2 text-sm outline-none file:mr-3 file:rounded-sm file:border-0 file:bg-surfaceHigh file:px-3 file:py-2 file:text-xs file:font-black file:text-ink focus:border-action"
@@ -1828,17 +1914,20 @@ export default async function MatchDetailPage({
                   />
                   <span className="text-xs leading-5 text-muted">Images up to 8MB. Videos up to 80MB.</span>
                 </label>
+                <div className="rounded-md border border-warning bg-amber-50 p-3 text-xs font-bold leading-5 text-amber-900">
+                  Result proof is required before review can begin. If the opponent disputes the result, this file becomes the first thing admin checks.
+                </div>
                 <label className="grid gap-2 text-sm font-bold text-ink">
-                  Claim note <span className="font-bold text-muted">(optional)</span>
+                  What should admin know? <span className="font-bold text-muted">(optional)</span>
                   <textarea className="min-h-24 rounded-md border border-line bg-white px-3 py-2 text-sm outline-none focus:border-action" name="note" placeholder="Short result context for review, for example overtime, disconnect, or forfeit." />
                 </label>
                 <label className="grid gap-2 text-sm font-bold text-ink">
-                  Evidence title <span className="font-bold text-muted">(optional)</span>
+                  Proof title <span className="font-bold text-muted">(optional)</span>
                   <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" defaultValue="Final scoreboard" name="evidence_title" />
                 </label>
                 <label className="grid gap-2 text-sm font-bold text-ink">
-                  Evidence notes
-                  <textarea className="min-h-24 rounded-md border border-line bg-white px-3 py-2 text-sm outline-none focus:border-action" name="evidence_notes" />
+                  Proof notes
+                  <textarea className="min-h-24 rounded-md border border-line bg-white px-3 py-2 text-sm outline-none focus:border-action" name="evidence_notes" placeholder="Point admin to the exact score, timestamp, winner name, or rule issue in the screenshot/video." />
                 </label>
                 <SubmitButton idleLabel="Submit result" pendingLabel="Submitting result..." />
               </RoomActionForm>
@@ -1864,13 +1953,62 @@ export default async function MatchDetailPage({
 
         {canViewSensitiveInternals && latestClaim && canRespondToLatestClaim ? (
           <Panel className="scroll-mt-32 ring-1 ring-cyan/20" id="result-response">
-            <PanelHeader eyebrow="Opponent Response" title="Respond to latest claim" description="Agree when the score is correct. Dispute only when evidence or rules need Skillsroom review." />
-            <form action={respondToResultClaimAction} className="grid gap-3 p-4 md:grid-cols-[1fr_12rem_12rem]">
+            <PanelHeader
+              eyebrow="Opponent Response"
+              title="Respond to latest claim"
+              description={`You have until ${dateTimeLabel(latestClaim.opponent_response_due_at)}. Agree when the result is correct. Dispute only when proof or rules need review.`}
+            />
+            <form action={respondToResultClaimAction} className="grid gap-4 p-4">
               <input name="match_room_id" type="hidden" value={room.id} />
               <input name="result_claim_id" type="hidden" value={latestClaim.id} />
-              <textarea className="min-h-11 rounded-md border border-line bg-white px-3 py-2 text-sm outline-none focus:border-action" name="note" placeholder="Response note" />
-              <SubmitButton idleLabel="Agree" name="response" pendingLabel="Submitting..." value="agree" />
-              <SubmitButton idleLabel="Dispute" name="response" pendingLabel="Submitting..." value="dispute" variant="danger" />
+              <div className="grid gap-3 lg:grid-cols-3">
+                <div className="rounded-md border border-line bg-surfaceWarm p-3">
+                  <p className="font-mono text-[0.65rem] font-black uppercase tracking-[0.12em] text-dim">Claimed score</p>
+                  <p className="mt-2 text-lg font-black text-ink">{scoreSummaryLabel(latestClaim.score_summary)}</p>
+                </div>
+                <div className="rounded-md border border-line bg-surfaceWarm p-3">
+                  <p className="font-mono text-[0.65rem] font-black uppercase tracking-[0.12em] text-dim">Deadline</p>
+                  <p className="mt-2 text-lg font-black text-ink">{timeRemainingLabel(latestClaim.opponent_response_due_at)}</p>
+                  <p className="mt-1 text-xs font-bold text-muted">{dateTimeLabel(latestClaim.opponent_response_due_at)}</p>
+                </div>
+                <div className="rounded-md border border-line bg-surfaceWarm p-3">
+                  <p className="font-mono text-[0.65rem] font-black uppercase tracking-[0.12em] text-dim">If you do nothing</p>
+                  <p className="mt-2 text-sm font-bold leading-5 text-muted">Admin can review the claim under the no-response rule after the deadline.</p>
+                </div>
+              </div>
+
+              <label className="grid gap-2 text-sm font-bold text-ink">
+                Response note
+                <textarea className="min-h-24 rounded-md border border-line bg-white px-3 py-2 text-sm outline-none focus:border-action" name="note" placeholder="If you dispute, explain what is wrong: score, player identity, missing proof, lag, disconnect, or rule issue." />
+              </label>
+
+              <details className="rounded-md border border-line bg-white">
+                <summary className="cursor-pointer px-4 py-3 text-sm font-black text-ink">Add dispute proof</summary>
+                <div className="grid gap-3 border-t border-line p-4">
+                  <label className="grid gap-2 text-sm font-bold text-ink">
+                    Screenshot or video <span className="font-bold text-muted">(only needed when disputing)</span>
+                    <input
+                      accept="image/png,image/jpeg,image/webp,video/mp4,video/webm,video/quicktime"
+                      className="min-h-11 rounded-md border border-line bg-white px-3 py-2 text-sm outline-none file:mr-3 file:rounded-sm file:border-0 file:bg-surfaceHigh file:px-3 file:py-2 file:text-xs file:font-black file:text-ink focus:border-action"
+                      name="response_evidence_file"
+                      type="file"
+                    />
+                  </label>
+                  <label className="grid gap-2 text-sm font-bold text-ink">
+                    Proof title
+                    <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" defaultValue="Dispute proof" name="response_evidence_title" />
+                  </label>
+                  <label className="grid gap-2 text-sm font-bold text-ink">
+                    Proof notes
+                    <textarea className="min-h-24 rounded-md border border-line bg-white px-3 py-2 text-sm outline-none focus:border-action" name="response_evidence_notes" placeholder="Tell admin where to look in the screenshot or video." />
+                  </label>
+                </div>
+              </details>
+
+              <div className="flex flex-wrap gap-3">
+                <SubmitButton idleLabel="Agree with result" name="response" pendingLabel="Submitting..." value="agree" />
+                <SubmitButton idleLabel="Dispute result" name="response" pendingLabel="Submitting..." value="dispute" variant="danger" />
+              </div>
             </form>
           </Panel>
         ) : null}

@@ -36,6 +36,55 @@ export type MatchRoom = {
   participant_count?: number;
 };
 
+export type MatchChallengeVisibility = "public" | "private";
+export type MatchChallengeStatus = "open" | "accepted" | "cancelled" | "expired";
+export type MatchChallengeSkillLevel = "beginner" | "casual" | "competitive" | "expert" | "any";
+
+export type MatchChallenge = {
+  id: string;
+  match_room_id: string;
+  creator_user_id: string;
+  visibility: MatchChallengeVisibility;
+  status: MatchChallengeStatus;
+  platform: string;
+  region: string;
+  skill_level: MatchChallengeSkillLevel;
+  creator_trust_score: number;
+  accepted_by_user_id: string | null;
+  accepted_at: string | null;
+  expires_at: string | null;
+  cancelled_at: string | null;
+  metadata?: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+};
+
+export type MatchChallengeListRow = MatchChallenge & {
+  room_code: string;
+  room_status: MatchRoomStatus;
+  currency: string;
+  entry_amount_minor: number;
+  commission_bps: number;
+  title: string | null;
+  game_slug: string;
+  game_name: string;
+  ruleset_slug: string | null;
+  ruleset_title: string | null;
+  creator_username: string | null;
+  creator_display_name: string | null;
+  creator_profile_verified: boolean;
+  creator_game_handle_verified: boolean;
+  creator_completed_matches: number;
+  creator_wins: number;
+  creator_losses: number;
+  creator_dispute_rate: number;
+  creator_no_show_rate: number;
+  creator_funding_reliability: number | null;
+  creator_evidence_quality: number | null;
+  creator_trust_warning: boolean;
+  participant_count: number;
+};
+
 export type MatchRoomListRow = Pick<
   MatchRoom,
   | "id"
@@ -339,6 +388,10 @@ export type PlayerHomeRoomPreview = Pick<
 export type PlayerHomeSummary = {
   room_status_counts: Partial<Record<MatchRoomStatus, number>>;
   active_room_previews: PlayerHomeRoomPreview[];
+  open_room_previews: PlayerHomeRoomPreview[];
+  recommended_room_previews: PlayerHomeRoomPreview[];
+  active_review_previews: PlayerHomeRoomPreview[];
+  open_tournament_previews: Tournament[];
   unread_notification_count: number;
   wallet_mini_balance: {
     currency: string;
@@ -347,8 +400,57 @@ export type PlayerHomeSummary = {
     winnings_balance_minor: number;
     status: WalletAccount["status"] | null;
   };
+  wallet_readiness: PlayerHomeReadiness;
+  profile_readiness: PlayerHomeReadiness;
+  play_now_counts: {
+    open_rooms: number;
+    open_tournaments: number;
+    recommended_matches: number;
+    active_reviews: number;
+  };
+  daily_ladders: PlayerLadderRow[];
+  weekly_ladders: PlayerLadderRow[];
+  missions: PlayerMission[];
   active_tournament_preview_count: number;
   community_highlights_preview: CommunityTournamentHighlightCard[];
+};
+
+export type PlayerLadderRow = {
+  rank: number;
+  user_id: string;
+  username: string | null;
+  display_name: string | null;
+  city: string | null;
+  region: string | null;
+  game_slug: string;
+  game_name: string;
+  wins: number;
+  matches_played: number;
+  score: number;
+};
+
+export type PlayerMission = {
+  key: string;
+  title: string;
+  detail: string;
+  progress: number;
+  target: number;
+  completed: boolean;
+  action_label: string;
+  action_href: string;
+};
+
+export type PlayerEngagementSummary = {
+  daily_ladders: PlayerLadderRow[];
+  weekly_ladders: PlayerLadderRow[];
+  missions: PlayerMission[];
+};
+
+export type PlayerHomeReadiness = {
+  status: "ready" | "needs_profile" | "needs_game" | "needs_review" | "blocked";
+  label: string;
+  detail: string;
+  missing: string[];
 };
 
 export type AdminWalletDashboard = {
@@ -671,13 +773,27 @@ export type PlayerTrustSummary = {
   disputes_opened: number;
   disputes_lost: number;
   no_shows: number;
+  dispute_rate: number;
+  no_show_rate: number;
+  funding_reliability: number | null;
+  evidence_quality: number | null;
   profile_complete: boolean;
   primary_game_handle: string | null;
   primary_game_external_uid: string | null;
   primary_game_status: UserGameAccount["status"] | null;
   moderation_status: "clear" | "watchlisted" | "restricted" | "suspended" | "banned" | "under_review";
+  public_trust_note?: string;
   open_risk_flags?: number;
+  trust_badges: PlayerTrustBadge[];
   trust_level: "ready" | "review" | "blocked" | "incomplete";
+};
+
+export type PlayerTrustBadge = {
+  key: string;
+  label: string;
+  value: string;
+  tone: "strong" | "good" | "watch" | "new";
+  public_note: string;
 };
 
 export type AdminGameAccount = UserGameAccount & {
@@ -1457,6 +1573,113 @@ export type CommunityClanDetailResponse = {
   members: CommunityClanMember[];
   tournament_history: CommunityClanTournamentHistoryItem[];
   share_path: string;
+};
+
+export type OrganizerKind = "clan" | "host";
+
+export type OrganizerBrand = {
+  id: string;
+  slug: string;
+  kind: OrganizerKind;
+  name: string;
+  tag: string | null;
+  description: string | null;
+  region: string | null;
+  city: string | null;
+  campus: string | null;
+  avatar_url: string | null;
+  banner_url: string | null;
+  reputation_score: number;
+  game_focus: string[];
+  captain_user_id: string | null;
+  captain_username: string | null;
+  captain_display_name: string | null;
+  created_at: string;
+  share_path: string;
+};
+
+export type OrganizerRecord = {
+  events_hosted: number;
+  completed_events: number;
+  tournament_wins: number;
+  podium_finishes: number;
+  match_wins: number;
+  match_losses: number;
+  match_draws: number;
+};
+
+export type OrganizerEvent = {
+  tournament_id: string;
+  tournament_slug: string;
+  title: string;
+  status: string;
+  format: string;
+  game_slug: string;
+  game_name: string;
+  currency: string;
+  entry_fee_amount_minor: number;
+  prize_pool_minor: number;
+  registered_entry_count: number;
+  starts_at: string | null;
+  ends_at: string | null;
+  role_label: string;
+};
+
+export type OrganizerMember = {
+  user_id: string;
+  role: string;
+  username: string | null;
+  display_name: string | null;
+  reputation_score: number | null;
+  city: string | null;
+  campus: string | null;
+  joined_at: string | null;
+};
+
+export type OrganizerLivestream = {
+  id: string;
+  tournament_id: string | null;
+  tournament_title: string | null;
+  tournament_slug: string | null;
+  provider: string;
+  title: string;
+  stream_url: string;
+  embed_url: string | null;
+  is_featured: boolean;
+  created_at: string;
+};
+
+export type OrganizerAnnouncement = {
+  id: string;
+  tournament_id: string | null;
+  tournament_title: string | null;
+  tournament_slug: string | null;
+  category: string;
+  priority: string;
+  title: string;
+  summary: string;
+  published_at: string | null;
+};
+
+export type OrganizerHighlight = {
+  tournament_id: string;
+  tournament_slug: string;
+  title: string;
+  game_name: string;
+  champion_entry_name: string | null;
+  completed_match_count: number;
+  projected_prize_minor: number;
+  ends_at: string | null;
+};
+
+export type OrganizerSpace = {
+  organizer: OrganizerBrand;
+  record: OrganizerRecord;
+  events: OrganizerEvent[];
+  members: OrganizerMember[];
+  livestreams: OrganizerLivestream[];
+  announcements: OrganizerAnnouncement[];
+  highlights: OrganizerHighlight[];
 };
 
 export type CommunityClanListResponse = {
@@ -2262,6 +2485,20 @@ export function listMatchRooms(input: { status?: MatchRoomStatus; cursor?: strin
   );
 }
 
+export function listMatchChallenges(input: {
+  game_slug?: string;
+  platform?: string;
+  region?: string;
+  skill_level?: MatchChallengeSkillLevel;
+  visibility?: MatchChallengeVisibility;
+  limit?: number;
+} = {}) {
+  return apiRequest<{ challenges: MatchChallengeListRow[] }>(
+    `/match-rooms/challenges${queryString(input)}`,
+    { timeoutMs: 8_000 }
+  );
+}
+
 export function getMatchRoomStatusCounts() {
   return apiRequest<{ counts: Partial<Record<MatchRoomStatus, number>> }>("/match-rooms/status-counts", { timeoutMs: 8_000 });
 }
@@ -2272,6 +2509,10 @@ export function getMatchRoomShell(matchRoomId: string) {
 
 export function getPlayerHomeSummary() {
   return apiRequest<PlayerHomeSummary>("/player/home-summary", { timeoutMs: 8_000 });
+}
+
+export function getPlayerEngagement(input: { game_slug?: string; city?: string } = {}) {
+  return apiRequest<PlayerEngagementSummary>(`/player/engagement${queryString(input)}`, { timeoutMs: 8_000 });
 }
 
 export function listGameCatalog() {
@@ -2842,6 +3083,36 @@ export function createMatchRoom(input: {
     body: JSON.stringify(input),
     timeoutMs: 15_000
   });
+}
+
+export function createMatchChallenge(input: {
+  game_slug: string;
+  ruleset_slug: string;
+  entry_amount_minor: number;
+  commission_bps: number;
+  title?: string;
+  visibility: MatchChallengeVisibility;
+  platform: string;
+  region: string;
+  skill_level: MatchChallengeSkillLevel;
+  expires_at?: string;
+}) {
+  return apiRequest<{ room: MatchRoom; challenge: MatchChallenge }>("/match-rooms/challenges", {
+    method: "POST",
+    body: JSON.stringify(input),
+    timeoutMs: 15_000
+  });
+}
+
+export function acceptMatchChallenge(challengeId: string) {
+  return apiRequest<{ room: MatchRoom; participant: MatchParticipant; challenge: MatchChallenge }>(
+    `/match-rooms/challenges/${encodeURIComponent(challengeId)}/accept`,
+    {
+      method: "POST",
+      body: JSON.stringify({}),
+      timeoutMs: 12_000
+    }
+  );
 }
 
 export function openMatchRoom(matchRoomId: string) {
@@ -3782,6 +4053,13 @@ export function getCommunityClan(clanIdOrSlug: string) {
   return publicApiRequest<CommunityClanDetailResponse>(
     `/community/clans/${encodeURIComponent(clanIdOrSlug)}`,
     { next: { revalidate: 300 } }
+  );
+}
+
+export function getOrganizerSpace(organizerIdOrSlug: string) {
+  return publicApiRequest<OrganizerSpace>(
+    `/community/organizers/${encodeURIComponent(organizerIdOrSlug)}`,
+    { next: { revalidate: 120 } }
   );
 }
 

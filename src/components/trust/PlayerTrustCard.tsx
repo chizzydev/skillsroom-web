@@ -1,5 +1,5 @@
 import { Badge, type BadgeTone } from "@/components/ui/Badge";
-import type { PlayerTrustSummary } from "@/lib/match-room-api";
+import type { PlayerTrustBadge, PlayerTrustSummary } from "@/lib/match-room-api";
 
 function trustTone(level: PlayerTrustSummary["trust_level"]): BadgeTone {
   if (level === "ready") return "success";
@@ -19,9 +19,44 @@ function playerLabel(trust: PlayerTrustSummary) {
   return trust.display_name || trust.username || `${trust.user_id.slice(0, 8)}...${trust.user_id.slice(-4)}`;
 }
 
+function badgeTone(tone: PlayerTrustBadge["tone"]): BadgeTone {
+  if (tone === "strong") return "success";
+  if (tone === "good") return "cyan";
+  if (tone === "watch") return "warning";
+  return "neutral";
+}
+
+function fallbackTrustBadges(trust: PlayerTrustSummary): PlayerTrustBadge[] {
+  return [
+    {
+      key: "verified_profile",
+      label: "Verified profile",
+      value: trust.profile_complete ? "Ready" : "Needs setup",
+      tone: trust.profile_complete ? "strong" : "watch",
+      public_note: trust.profile_complete ? "This player has finished the required player setup." : "This player still has profile steps to finish."
+    },
+    {
+      key: "verified_game_handle",
+      label: "Verified game handle",
+      value: trust.primary_game_status === "verified" ? "Verified" : trust.primary_game_status ? "Pending" : "Missing",
+      tone: trust.primary_game_status === "verified" ? "strong" : trust.primary_game_status ? "good" : "watch",
+      public_note: trust.primary_game_status === "verified" ? "This player has a checked primary game handle." : "This player has not completed game handle verification yet."
+    },
+    {
+      key: "completed_matches",
+      label: "Completed matches",
+      value: trust.completed_matches.toString(),
+      tone: trust.completed_matches >= 20 ? "strong" : trust.completed_matches >= 5 ? "good" : "new",
+      public_note: "This is the player's settled match history."
+    }
+  ];
+}
+
 export function PlayerTrustCard({ trust, compact = false }: { trust: PlayerTrustSummary; compact?: boolean }) {
   const totalGames = Math.max(trust.wins + trust.losses, 0);
   const winRate = totalGames > 0 ? Math.round((trust.wins / totalGames) * 100) : 0;
+  const badges = trust.trust_badges?.length ? trust.trust_badges : fallbackTrustBadges(trust);
+  const visibleBadges = compact ? badges.slice(0, 4) : badges;
 
   return (
     <article className="min-w-0 rounded-lg border border-line bg-white p-4 shadow-tight">
@@ -38,7 +73,7 @@ export function PlayerTrustCard({ trust, compact = false }: { trust: PlayerTrust
 
       <div className={["mt-4 grid gap-2", compact ? "grid-cols-2" : "grid-cols-2 sm:grid-cols-4"].join(" ")}>
         <div className="min-w-0 rounded-md border border-line bg-surfaceWarm p-3">
-          <span className="font-mono text-[11px] font-bold uppercase tracking-[0.12em] text-dim">Rep</span>
+          <span className="font-mono text-[11px] font-bold uppercase tracking-[0.12em] text-dim">Trust score</span>
           <strong className="mt-1 block text-xl font-black text-ink">{trust.reputation_score}</strong>
         </div>
         <div className="min-w-0 rounded-md border border-line bg-surfaceWarm p-3">
@@ -50,20 +85,27 @@ export function PlayerTrustCard({ trust, compact = false }: { trust: PlayerTrust
           <strong className="mt-1 block text-xl font-black text-success">{winRate}%</strong>
         </div>
         <div className="min-w-0 rounded-md border border-line bg-surfaceWarm p-3">
-          <span className="font-mono text-[11px] font-bold uppercase tracking-[0.12em] text-dim">Disputes</span>
-          <strong className="mt-1 block text-xl font-black text-warning">{trust.disputes_lost}</strong>
+          <span className="font-mono text-[11px] font-bold uppercase tracking-[0.12em] text-dim">Dispute rate</span>
+          <strong className="mt-1 block text-xl font-black text-warning">{trust.dispute_rate ?? 0}%</strong>
         </div>
       </div>
 
-      {!compact ? (
-        <div className="mt-4 flex flex-wrap gap-2">
-          <Badge tone={trust.profile_complete ? "success" : "warning"}>{trust.profile_complete ? "Profile complete" : "Profile incomplete"}</Badge>
-          <Badge tone={trust.primary_game_status === "verified" ? "success" : trust.primary_game_status ? "warning" : "neutral"}>
-            {trust.primary_game_status ? `${trust.primary_game_status} handle` : "No primary handle"}
-          </Badge>
-          <Badge tone={trust.moderation_status === "clear" ? "success" : "danger"}>{trust.moderation_status.replace("_", " ")}</Badge>
-          {typeof trust.open_risk_flags === "number" ? <Badge tone={trust.open_risk_flags > 0 ? "danger" : "success"}>{trust.open_risk_flags} flags</Badge> : null}
-        </div>
+      <div className="mt-4 grid gap-2 sm:grid-cols-2">
+        {visibleBadges.map((item) => (
+          <div className="rounded-md border border-line bg-surfaceHigh p-3" key={item.key}>
+            <div className="flex min-w-0 items-center justify-between gap-2">
+              <span className="min-w-0 truncate text-xs font-black uppercase tracking-[0.12em] text-muted">{item.label}</span>
+              <Badge tone={badgeTone(item.tone)}>{item.value}</Badge>
+            </div>
+            {!compact ? <p className="mt-2 text-xs leading-5 text-muted">{item.public_note}</p> : null}
+          </div>
+        ))}
+      </div>
+
+      {!compact && typeof trust.open_risk_flags === "number" ? (
+        <p className="mt-3 text-xs font-bold text-muted">
+          Admin view: {trust.open_risk_flags} open safety note{trust.open_risk_flags === 1 ? "" : "s"}.
+        </p>
       ) : null}
     </article>
   );

@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { AdminEmptyState } from "@/components/admin/AdminEmptyState";
 import { AdminStepUpPanel } from "@/components/admin/AdminStepUpPanel";
 import { TournamentResultReviewPanelClient } from "@/components/admin/TournamentResultReviewPanelClient";
-import { CatalogRulesetFields } from "@/components/catalog/CatalogRulesetFields";
+import { TournamentCreateFormClient } from "@/components/admin/TournamentCreateFormClient";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { AdminShell } from "@/components/layout/AdminShell";
 import { LiveUpdateStream } from "@/components/realtime/LiveUpdateStream";
@@ -887,165 +887,12 @@ export default async function AdminTournamentsPage({
         <div className="grid min-w-0 gap-6 2xl:grid-cols-[minmax(0,1fr)_440px]">
           <Panel>
             <PanelHeader
-              description="Set the game, format, entry fee, prize details, registration window, and rules for a new tournament."
+              description="Choose the game, format, entry mode, prize model, registration window, and rules. Extra controls stay tucked away until needed."
               eyebrow="Create"
               title="New tournament"
             />
             {selectedGame ? (
-              <form action={createTournamentAction} className="grid gap-5 p-4">
-                <div className="grid min-w-0 gap-4 lg:grid-cols-2">
-                  <label className="grid gap-2 text-sm font-bold text-ink">
-                    Title
-                    <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="title" placeholder="Friday Night Masters" required />
-                  </label>
-                  <CatalogRulesetFields
-                    flexibleLabel="No fixed ruleset"
-                    games={games}
-                    includeFlexibleOption
-                    initialGameSlug={selectedGame.slug}
-                    initialRulesetSlug=""
-                    rulesets={rulesets}
-                  />
-                  <label className="grid gap-2 text-sm font-bold text-ink">
-                    Format
-                    <select className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="format">
-                      {formatOptions.map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label} · {option.note}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                </div>
-
-                <label className="grid gap-2 text-sm font-bold text-ink">
-                  Description
-                  <textarea className="min-h-24 rounded-md border border-line bg-white px-3 py-2 text-sm outline-none focus:border-action" name="description" placeholder="Rules summary, contact path, device/platform expectations, and event notes." />
-                </label>
-
-                <div className="grid min-w-0 gap-4 lg:grid-cols-4">
-                  <label className="grid gap-2 text-sm font-bold text-ink">
-                    Entry type
-                    <select className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="entry_type">
-                      <option value="solo">Solo</option>
-                      <option value="team">Team</option>
-                    </select>
-                  </label>
-                  <label className="grid gap-2 text-sm font-bold text-ink">
-                    Fee mode
-                    <select className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="fee_mode">
-                      <option value="free">Free</option>
-                      <option value="paid">Paid entry</option>
-                      <option value="sponsored">Sponsored</option>
-                      <option value="hybrid">Hybrid</option>
-                    </select>
-                  </label>
-                  <label className="grid gap-2 text-sm font-bold text-ink">
-                    Scoring
-                    <select className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="scoring_mode">
-                      <option value="match_win_loss">Match win/loss</option>
-                      <option value="cumulative_score">Cumulative score</option>
-                      <option value="points">Points</option>
-                      <option value="placement">Placement</option>
-                    </select>
-                  </label>
-                  <label className="grid gap-2 text-sm font-bold text-ink">
-                    Prize split
-                    <select className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="prize_distribution_mode">
-                      <option value="winner_take_all">Winner takes all</option>
-                      <option value="top_2_split">Top 2 split</option>
-                      <option value="top_3_split">Top 3 split</option>
-                      <option value="custom_fixed">Custom fixed</option>
-                      <option value="custom_percentage">Custom percentage</option>
-                    </select>
-                  </label>
-                </div>
-
-                <div className="grid min-w-0 gap-4 lg:grid-cols-4">
-                  <label className="grid gap-2 text-sm font-bold text-ink">
-                    Currency
-                    <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm uppercase outline-none focus:border-action" defaultValue="NGN" maxLength={3} minLength={3} name="currency" required />
-                  </label>
-                  <label className="grid gap-2 text-sm font-bold text-ink">
-                    Entry fee
-                    <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" defaultValue="0" min="0" name="entry_fee_amount_naira" step="100" type="number" />
-                  </label>
-                  <label className="grid gap-2 text-sm font-bold text-ink">
-                    Sponsor pool
-                    <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" defaultValue="0" min="0" name="sponsored_prize_pool_naira" step="100" type="number" />
-                  </label>
-                  <label className="grid gap-2 text-sm font-bold text-ink">
-                    Guaranteed pool
-                    <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" defaultValue="0" min="0" name="guaranteed_prize_pool_naira" step="100" type="number" />
-                  </label>
-                </div>
-
-                <div className="grid min-w-0 gap-4 lg:grid-cols-5">
-                  <label className="grid gap-2 text-sm font-bold text-ink">
-                    Commission bps
-                    <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" defaultValue="1000" max="3000" min="0" name="commission_bps" type="number" />
-                  </label>
-                  <label className="grid gap-2 text-sm font-bold text-ink">
-                    Min entries
-                    <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" defaultValue="2" min="2" name="min_entries" type="number" />
-                  </label>
-                  <label className="grid gap-2 text-sm font-bold text-ink">
-                    Max entries
-                    <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" defaultValue="16" min="2" name="max_entries" required type="number" />
-                  </label>
-                  <label className="grid gap-2 text-sm font-bold text-ink">
-                    Team min
-                    <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" defaultValue="1" min="1" name="team_size_min" type="number" />
-                  </label>
-                  <label className="grid gap-2 text-sm font-bold text-ink">
-                    Team max
-                    <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" defaultValue="1" min="1" name="team_size_max" type="number" />
-                  </label>
-                </div>
-
-                <div className="grid min-w-0 gap-4 lg:grid-cols-4">
-                  <label className="grid gap-2 text-sm font-bold text-ink">
-                    Registration opens
-                    <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="registration_opens_at" type="datetime-local" />
-                  </label>
-                  <label className="grid gap-2 text-sm font-bold text-ink">
-                    Registration closes
-                    <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="registration_closes_at" type="datetime-local" />
-                  </label>
-                  <label className="grid gap-2 text-sm font-bold text-ink">
-                    Starts
-                    <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="starts_at" type="datetime-local" />
-                  </label>
-                  <label className="grid gap-2 text-sm font-bold text-ink">
-                    Ends
-                    <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="ends_at" type="datetime-local" />
-                  </label>
-                </div>
-
-                <div className="grid min-w-0 gap-4 lg:grid-cols-[1fr_1fr_1fr]">
-                  <label className="flex min-h-11 items-center gap-2 rounded-md border border-line bg-white px-3 text-sm font-bold text-ink">
-                    <input defaultChecked name="evidence_required" type="checkbox" />
-                    Evidence required
-                  </label>
-                  <label className="flex min-h-11 items-center gap-2 rounded-md border border-line bg-white px-3 text-sm font-bold text-ink">
-                    <input name="match_check_in_required" type="checkbox" />
-                    Match check-in
-                  </label>
-                  <label className="flex min-h-11 items-center gap-2 rounded-md border border-line bg-white px-3 text-sm font-bold text-ink">
-                    <input name="allow_waitlist" type="checkbox" />
-                    Waitlist
-                  </label>
-                </div>
-
-                <label className="grid gap-2 text-sm font-bold text-ink">
-                  Tie-breakers
-                  <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="tiebreakers" placeholder="buchholz, head_to_head, score_difference" />
-                </label>
-
-                <div className="flex flex-wrap gap-2">
-                  <SubmitButton idleLabel="Create draft tournament" pendingLabel="Creating draft tournament..." />
-                </div>
-              </form>
+              <TournamentCreateFormClient action={createTournamentAction} games={games} initialGameSlug={selectedGame.slug} rulesets={rulesets} />
             ) : (
               <div className="p-4">
                 <AdminEmptyState

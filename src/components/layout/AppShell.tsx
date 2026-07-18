@@ -6,7 +6,7 @@ import { getCurrentUser } from "@/lib/auth-bridge";
 import { listNotifications } from "@/lib/match-room-api";
 
 type AppShellProps = {
-  active: "home" | "lobby" | "matches" | "tournaments" | "community" | "notifications" | "wallet" | "profile";
+  active: "home" | "lobby" | "matches" | "challenges" | "tournaments" | "community" | "notifications" | "wallet" | "profile";
   children: React.ReactNode;
 };
 
@@ -14,6 +14,7 @@ const nav = [
   { key: "home", label: "Home", short: "Home", href: "/" },
   { key: "lobby", label: "Chat", short: "Chat", href: "/chat" },
   { key: "matches", label: "Rooms", short: "Rooms", href: "/matches" },
+  { key: "challenges", label: "Challenges", short: "Play", href: "/challenges" },
   { key: "tournaments", label: "Tournaments", short: "Tourney", href: "/tournaments" },
   { key: "wallet", label: "Wallet", short: "Wallet", href: "/wallet" },
   { key: "profile", label: "Profile", short: "Profile", href: "/profile" }
@@ -66,8 +67,8 @@ export async function AppShell({ active, children }: AppShellProps) {
             ))}
           </nav>
           <div className="ml-auto flex items-center gap-2">
-              <Link className="hidden min-h-control items-center rounded-md bg-action px-4 text-sm font-black text-navy-950 shadow-action hover:bg-actionHover sm:inline-flex" href="/matches/new">
-                Create room
+              <Link className="hidden min-h-control items-center rounded-md bg-action px-4 text-sm font-black text-navy-950 shadow-action hover:bg-actionHover sm:inline-flex" href="/challenges">
+                Create challenge
               </Link>
             {user ? (
               <>
@@ -105,7 +106,7 @@ export async function AppShell({ active, children }: AppShellProps) {
         </div>
       </footer>
       <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-white/95 px-2 pb-[max(env(safe-area-inset-bottom),0.65rem)] pt-2 shadow-[0_-18px_40px_rgba(15,23,42,0.08)] backdrop-blur md:hidden">
-        <div className="mx-auto grid max-w-md grid-cols-6 gap-1">
+        <div className="mx-auto grid max-w-md grid-cols-7 gap-1">
           {mobileNav.map((item) => (
             <Link
               className={[
