@@ -49,14 +49,14 @@ export function Reveal({
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
-          setIsVisible(true);
+          window.requestAnimationFrame(() => setIsVisible(true));
           if (once) observer.unobserve(entry.target);
           return;
         }
 
-        if (!once) setIsVisible(false);
+        if (!once) window.requestAnimationFrame(() => setIsVisible(false));
       },
-      { rootMargin: "0px 0px -8% 0px", threshold }
+      { rootMargin: "140px 0px -4% 0px", threshold: Math.min(threshold, 0.08) }
     );
 
     observer.observe(node);
