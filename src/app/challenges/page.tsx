@@ -26,6 +26,7 @@ import {
 import { acceptMatchChallengeAction, createMatchChallengeAction } from "../matches/actions";
 
 type ChallengeSearchParams = {
+  mode?: string;
   game_slug?: string;
   platform?: string;
   region?: string;
@@ -185,6 +186,15 @@ function missingSetupLabel(key: string) {
   return displayEnumLabel(key);
 }
 
+function modeLinkClass(active: boolean) {
+  return [
+    "inline-flex min-h-12 items-center justify-center rounded-md px-4 text-sm font-black transition",
+    active
+      ? "bg-action text-navy-950 shadow-action"
+      : "border border-line bg-white text-muted hover:bg-surfaceHigh hover:text-ink"
+  ].join(" ");
+}
+
 function ChallengeCard({
   challenge,
   currentUserId,
@@ -285,6 +295,7 @@ export default async function ChallengesPage({ searchParams }: { searchParams: P
   const selectedRegion = cleanFilter(params.region);
   const selectedSkillLevel = parseSkillLevel(params.skill_level);
   const selectedVisibility = parseVisibility(params.visibility);
+  const pageMode = params.mode === "create" ? "create" : "browse";
 
   let games: Game[] = [];
   let rulesets: MatchRuleset[] = [];
@@ -382,140 +393,151 @@ export default async function ChallengesPage({ searchParams }: { searchParams: P
           </Reveal>
         ) : null}
 
-        <div className="grid min-w-0 gap-6 xl:grid-cols-[420px_minmax(0,1fr)]">
+        <Reveal>
+          <nav aria-label="Challenge sections" className="grid min-w-0 gap-2 rounded-lg border border-line bg-white p-2 shadow-panel sm:grid-cols-2">
+            <Link className={modeLinkClass(pageMode === "browse")} href="/challenges">
+              Browse challenges
+            </Link>
+            <Link className={modeLinkClass(pageMode === "create")} href="/challenges?mode=create">
+              Post challenge
+            </Link>
+          </nav>
+        </Reveal>
+
+        {pageMode === "create" ? (
           <Reveal>
             <Panel>
-              <PanelHeader
-                eyebrow="Create"
-                title="Post a challenge"
-                description="Set the game, entry, platform, region, skill level, and how long players have to accept."
-              />
-              {selectedGame && selectedRuleset ? (
-                <form action={createMatchChallengeAction} className="grid gap-4 p-4">
-                  <input name="commission_bps" type="hidden" value="1000" />
-                  <CatalogRulesetFields
-                    games={games}
-                    initialGameSlug={selectedGame.slug}
-                    initialRulesetSlug={selectedRuleset.slug}
-                    rulesets={rulesets}
-                  />
-                  <label className="grid gap-2 text-sm font-bold text-ink">
-                    Entry amount (NGN)
-                    <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" defaultValue="2000" min="100" name="entry_amount_naira" required step="100" type="number" />
-                  </label>
-                  <label className="grid gap-2 text-sm font-bold text-ink">
-                    Title
-                    <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" maxLength={120} name="title" placeholder="Free Fire H2H tonight" />
-                  </label>
-                  <div className="grid gap-4 sm:grid-cols-2">
+                <PanelHeader
+                  eyebrow="Create"
+                  title="Post a challenge"
+                  description="Set the game, entry, platform, region, skill level, and how long players have to accept."
+                />
+                {selectedGame && selectedRuleset ? (
+                  <form action={createMatchChallengeAction} className="grid gap-4 p-4">
+                    <input name="commission_bps" type="hidden" value="1000" />
+                    <CatalogRulesetFields
+                      games={games}
+                      initialGameSlug={selectedGame.slug}
+                      initialRulesetSlug={selectedRuleset.slug}
+                      rulesets={rulesets}
+                    />
                     <label className="grid gap-2 text-sm font-bold text-ink">
-                      Visibility
-                      <select className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="visibility" defaultValue="public">
-                        {visibilityOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                      Entry amount (NGN)
+                      <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" defaultValue="2000" min="100" name="entry_amount_naira" required step="100" type="number" />
+                    </label>
+                    <label className="grid gap-2 text-sm font-bold text-ink">
+                      Title
+                      <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" maxLength={120} name="title" placeholder="Free Fire H2H tonight" />
+                    </label>
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <label className="grid gap-2 text-sm font-bold text-ink">
+                        Visibility
+                        <select className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="visibility" defaultValue="public">
+                          {visibilityOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                        </select>
+                      </label>
+                      <label className="grid gap-2 text-sm font-bold text-ink">
+                        Skill level
+                        <select className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="skill_level" defaultValue="any">
+                          {skillLevels.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                        </select>
+                      </label>
+                    </div>
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <label className="grid gap-2 text-sm font-bold text-ink">
+                        Platform
+                        <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" list="challenge-platforms" name="platform" placeholder="Mobile" required />
+                      </label>
+                      <label className="grid gap-2 text-sm font-bold text-ink">
+                        Region
+                        <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" list="challenge-regions" name="region" placeholder="Nigeria" required />
+                      </label>
+                    </div>
+                    <label className="grid gap-2 text-sm font-bold text-ink">
+                      Expiry
+                      <select className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="expiry_hours" defaultValue="24">
+                        <option value="1">1 hour</option>
+                        <option value="6">6 hours</option>
+                        <option value="12">12 hours</option>
+                        <option value="24">24 hours</option>
+                        <option value="72">3 days</option>
+                        <option value="168">7 days</option>
                       </select>
                     </label>
-                    <label className="grid gap-2 text-sm font-bold text-ink">
-                      Skill level
-                      <select className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="skill_level" defaultValue="any">
-                        {skillLevels.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-                      </select>
-                    </label>
-                  </div>
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <label className="grid gap-2 text-sm font-bold text-ink">
-                      Platform
-                      <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" list="challenge-platforms" name="platform" placeholder="Mobile" required />
-                    </label>
-                    <label className="grid gap-2 text-sm font-bold text-ink">
-                      Region
-                      <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" list="challenge-regions" name="region" placeholder="Nigeria" required />
-                    </label>
-                  </div>
-                  <label className="grid gap-2 text-sm font-bold text-ink">
-                    Expiry
-                    <select className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="expiry_hours" defaultValue="24">
-                      <option value="1">1 hour</option>
-                      <option value="6">6 hours</option>
-                      <option value="12">12 hours</option>
-                      <option value="24">24 hours</option>
-                      <option value="72">3 days</option>
-                      <option value="168">7 days</option>
-                    </select>
-                  </label>
-                  <datalist id="challenge-platforms">
-                    {defaultPlatforms.map((item) => <option key={item} value={item} />)}
-                  </datalist>
-                  <datalist id="challenge-regions">
-                    {defaultRegions.map((item) => <option key={item} value={item} />)}
-                  </datalist>
-                  <div className="rounded-md border border-cyan-200 bg-cyanSoft p-4">
-                    <p className="font-mono text-xs font-black uppercase tracking-[0.12em] text-cyan">Fair play rules</p>
-                    <p className="mt-2 text-sm font-bold leading-6 text-ink">
-                      Accepted challenges become rooms with rules for late opponents, no-shows, disconnects, timeouts, and unclear proof.
-                    </p>
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      {fallbackRoomIssueRules.map((rule) => (
-                        <span className="rounded-full border border-cyan/20 bg-white px-3 py-1 text-xs font-black text-cyan" key={rule.key}>{rule.title}</span>
-                      ))}
+                    <datalist id="challenge-platforms">
+                      {defaultPlatforms.map((item) => <option key={item} value={item} />)}
+                    </datalist>
+                    <datalist id="challenge-regions">
+                      {defaultRegions.map((item) => <option key={item} value={item} />)}
+                    </datalist>
+                    <div className="rounded-md border border-cyan-200 bg-cyanSoft p-4">
+                      <p className="font-mono text-xs font-black uppercase tracking-[0.12em] text-cyan">Fair play rules</p>
+                      <p className="mt-2 text-sm font-bold leading-6 text-ink">
+                        Accepted challenges become rooms with rules for late opponents, no-shows, disconnects, timeouts, and unclear proof.
+                      </p>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {fallbackRoomIssueRules.map((rule) => (
+                          <span className="rounded-full border border-cyan/20 bg-white px-3 py-1 text-xs font-black text-cyan" key={rule.key}>{rule.title}</span>
+                        ))}
+                      </div>
+                    </div>
+                    <SubmitButton disabled={!profileReady} idleLabel={profileReady ? "Post challenge" : "Finish profile first"} pendingLabel="Posting..." />
+                  </form>
+                ) : (
+                  <div className="p-4">
+                    <div className="rounded-md border border-dashed border-line bg-surfaceWarm p-6">
+                      <h2 className="text-lg font-black text-ink">No active game available</h2>
+                      <p className="mt-2 text-sm leading-6 text-muted">A challenge needs an active game and ruleset before it can be posted.</p>
                     </div>
                   </div>
-                  <SubmitButton disabled={!profileReady} idleLabel={profileReady ? "Post challenge" : "Finish profile first"} pendingLabel="Posting..." />
-                </form>
-              ) : (
-                <div className="p-4">
-                  <div className="rounded-md border border-dashed border-line bg-surfaceWarm p-6">
-                    <h2 className="text-lg font-black text-ink">No active game available</h2>
-                    <p className="mt-2 text-sm leading-6 text-muted">A challenge needs an active game and ruleset before it can be posted.</p>
-                  </div>
-                </div>
-              )}
-            </Panel>
-          </Reveal>
-
-          <Reveal staggerIndex={1}>
+                )}
+              </Panel>
+            </Reveal>
+        ) : (
+          <Reveal>
             <Panel id="open-challenges" className="scroll-mt-6">
-              <PanelHeader
-                eyebrow="Marketplace"
-                title="Find open challenges"
-                description="Use these filters to narrow the open challenge list below."
-              />
-              <ChallengeMarketplaceFilterForm
-                games={games}
-                selectedGameSlug={selectedGameSlug}
-                selectedPlatform={selectedPlatform}
-                selectedRegion={selectedRegion}
-                selectedSkillLevel={selectedSkillLevel}
-                skillLevels={skillLevels}
-                platforms={defaultPlatforms}
-                regions={defaultRegions}
-              />
-              <div id="challenge-results" className="flex min-w-0 scroll-mt-4 flex-col gap-2 border-b border-line bg-surfaceHigh px-4 py-3 text-sm text-muted sm:flex-row sm:items-center sm:justify-between">
-                <p className="font-bold text-ink">
-                  Showing {challenges.length.toLocaleString()} open {challenges.length === 1 ? "challenge" : "challenges"}
-                </p>
-                <p className="leading-6">
-                  {activeMarketplaceFilters.length ? `Filters: ${activeMarketplaceFilters.join(" / ")}` : "No filters selected"}
-                </p>
-              </div>
-              {challenges.length ? (
-                <div className="divide-y divide-line">
-                  {challenges.map((challenge) => (
-                    <ChallengeCard challenge={challenge} currentUserId={user.id} key={challenge.id} profileReady={profileReady} />
-                  ))}
+                <PanelHeader
+                  eyebrow="Marketplace"
+                  title="Open H2H challenges"
+                  description="Filter by the kind of match you want to play now."
+                />
+                <ChallengeMarketplaceFilterForm
+                  games={games}
+                  selectedGameSlug={selectedGameSlug}
+                  selectedPlatform={selectedPlatform}
+                  selectedRegion={selectedRegion}
+                  selectedSkillLevel={selectedSkillLevel}
+                  skillLevels={skillLevels}
+                  platforms={defaultPlatforms}
+                  regions={defaultRegions}
+                />
+                <div id="challenge-results" className="flex min-w-0 scroll-mt-4 flex-col gap-2 border-b border-line bg-surfaceHigh px-4 py-3 text-sm text-muted sm:flex-row sm:items-center sm:justify-between">
+                  <p className="font-bold text-ink">
+                    Showing {challenges.length.toLocaleString()} open {challenges.length === 1 ? "challenge" : "challenges"}
+                  </p>
+                  <p className="leading-6">
+                    {activeMarketplaceFilters.length ? `Filters: ${activeMarketplaceFilters.join(" / ")}` : "No filters selected"}
+                  </p>
                 </div>
-              ) : (
-                <div className="p-4">
-                  <div className="rounded-md border border-dashed border-line bg-surfaceWarm p-6">
-                    <h2 className="text-lg font-black text-ink">No open challenge found</h2>
-                    <p className="mt-2 text-sm leading-6 text-muted">
-                      Try clearing the filters or post a challenge with your preferred game, platform, region, and entry.
-                    </p>
+                {challenges.length ? (
+                  <div className="divide-y divide-line">
+                    {challenges.map((challenge) => (
+                      <ChallengeCard challenge={challenge} currentUserId={user.id} key={challenge.id} profileReady={profileReady} />
+                    ))}
                   </div>
-                </div>
-              )}
-            </Panel>
-          </Reveal>
-        </div>
+                ) : (
+                  <div className="p-4">
+                    <div className="rounded-md border border-dashed border-line bg-surfaceWarm p-6">
+                      <h2 className="text-lg font-black text-ink">No open challenge found</h2>
+                      <p className="mt-2 text-sm leading-6 text-muted">
+                        Try clearing the filters or post a challenge with your preferred game, platform, region, and entry.
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </Panel>
+            </Reveal>
+        )}
       </MotionSection>
     </AppShell>
   );

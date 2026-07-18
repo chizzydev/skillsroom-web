@@ -80,11 +80,6 @@ export function ChallengeMarketplaceFilterForm({
 
   return (
     <form className="grid gap-3 border-b border-line bg-white p-4 md:grid-cols-5" onSubmit={handleSubmit}>
-      <div className="min-w-0 md:col-span-5">
-        <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Marketplace</p>
-        <h3 className="mt-1 text-base font-black leading-tight text-ink">Open H2H challenges</h3>
-        <p className="mt-1 text-sm leading-6 text-muted">Filter by the kind of match you want to play now.</p>
-      </div>
       <label className="grid gap-2 text-xs font-black uppercase tracking-[0.12em] text-muted">
         Game
         <select className="min-h-11 rounded-md border border-line bg-white px-3 text-sm font-bold normal-case tracking-normal text-ink outline-none focus:border-action" name="game_slug" defaultValue={selectedGameSlug ?? ""}>

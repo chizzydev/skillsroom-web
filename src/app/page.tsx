@@ -528,7 +528,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
               <div className="mt-5 flex flex-wrap gap-2">
                 <PendingLink
                   className="inline-flex min-h-10 flex-1 items-center justify-center rounded-md bg-action px-4 text-sm font-black text-navy-950 shadow-action hover:bg-actionHover sm:flex-none"
-                  href="/challenges"
+                  href="/challenges?mode=create"
                   pendingLabel="Opening creator..."
                 >
                   Create challenge
@@ -552,7 +552,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
                 <SubmitButton idleLabel="Join" pendingLabel="Joining..." />
                 <PendingLink
                   className="inline-flex min-h-10 items-center justify-center rounded-md border border-white/10 bg-white px-4 text-sm font-black text-ink hover:bg-surfaceHigh"
-                  href="/challenges"
+                  href="/challenges?mode=create"
                   pendingLabel="Opening creator..."
                 >
                   Create
@@ -632,7 +632,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
                       </p>
                       <PendingLink
                         className="mt-4 inline-flex min-h-10 items-center justify-center rounded-md bg-action px-4 text-sm font-black text-navy-950 shadow-action hover:bg-actionHover"
-                        href="/challenges"
+                        href="/challenges?mode=create"
                         pendingLabel="Opening creator..."
                       >
                         Create challenge
