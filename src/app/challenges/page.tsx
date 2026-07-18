@@ -188,9 +188,9 @@ function missingSetupLabel(key: string) {
 
 function modeLinkClass(active: boolean) {
   return [
-    "inline-flex min-h-12 items-center justify-center rounded-md px-4 text-sm font-black transition",
+    "inline-flex min-h-12 min-w-0 items-center justify-center rounded-full px-3 text-sm font-black transition sm:px-4",
     active
-      ? "bg-action text-navy-950 shadow-action"
+      ? "bg-navy-950 text-white shadow-panel"
       : "border border-line bg-white text-muted hover:bg-surfaceHigh hover:text-ink"
   ].join(" ");
 }
@@ -341,29 +341,29 @@ export default async function ChallengesPage({ searchParams }: { searchParams: P
   return (
     <AppShell active="challenges">
       <MotionSection className="grid min-w-0 max-w-full gap-6 overflow-hidden" variant="page">
-        <MotionSection className="min-w-0 max-w-full overflow-hidden rounded-lg border border-line bg-white p-4 shadow-panel sm:p-5 md:p-7" variant="hero">
+        <MotionSection className="min-w-0 max-w-full overflow-hidden rounded-lg border border-navy-800 bg-navy-950 p-4 text-white shadow-panel sm:p-5 md:p-7" variant="hero">
           <div className="flex min-w-0 flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
             <div className="min-w-0">
-              <Badge tone="cyan">Challenge Marketplace</Badge>
-              <h1 className="mt-3 max-w-full text-2xl font-black leading-tight text-ink [overflow-wrap:anywhere] sm:text-4xl lg:text-5xl">
+              <Badge tone="cyan" className="border-cyan/30 bg-cyan/10 text-cyan">Challenge Marketplace</Badge>
+              <h1 className="mt-3 max-w-full text-3xl font-black leading-tight text-white [overflow-wrap:anywhere] sm:text-4xl lg:text-5xl">
                 Find a challenge to play now.
               </h1>
-              <p className="mt-3 max-w-3xl text-sm leading-6 text-muted [overflow-wrap:anywhere] md:text-base">
+              <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-300 [overflow-wrap:anywhere] md:text-base">
                 Browse H2H challenges by game, entry, platform, region, skill level, and player trust. Create one for everyone or keep it private for a player you invite.
               </p>
             </div>
-            <div className="grid w-full min-w-0 gap-2 sm:grid-cols-3 lg:w-auto lg:min-w-[28rem]">
-              <div className="rounded-md border border-line bg-surfaceHigh p-3">
-                <p className="text-xs font-black uppercase tracking-[0.12em] text-muted">Open</p>
-                <p className="mt-1 text-2xl font-black text-ink">{challenges.length}</p>
+            <div className="grid w-full min-w-0 grid-cols-3 gap-2 lg:w-auto lg:min-w-[28rem]">
+              <div className="min-w-0 rounded-md border border-white/10 bg-white/5 p-3">
+                <p className="truncate text-xs font-black uppercase tracking-[0.12em] text-slate-300">Open</p>
+                <p className="mt-1 truncate text-2xl font-black text-white">{challenges.length}</p>
               </div>
-              <div className="rounded-md border border-line bg-surfaceHigh p-3">
-                <p className="text-xs font-black uppercase tracking-[0.12em] text-muted">Public</p>
-                <p className="mt-1 text-2xl font-black text-ink">{publicOpenCount}</p>
+              <div className="min-w-0 rounded-md border border-white/10 bg-white/5 p-3">
+                <p className="truncate text-xs font-black uppercase tracking-[0.12em] text-slate-300">Public</p>
+                <p className="mt-1 truncate text-2xl font-black text-white">{publicOpenCount}</p>
               </div>
-              <div className="rounded-md border border-line bg-surfaceHigh p-3">
-                <p className="text-xs font-black uppercase tracking-[0.12em] text-muted">Yours</p>
-                <p className="mt-1 text-2xl font-black text-ink">{ownOpenCount}</p>
+              <div className="min-w-0 rounded-md border border-white/10 bg-white/5 p-3">
+                <p className="truncate text-xs font-black uppercase tracking-[0.12em] text-slate-300">Yours</p>
+                <p className="mt-1 truncate text-2xl font-black text-white">{ownOpenCount}</p>
               </div>
             </div>
           </div>
@@ -394,9 +394,9 @@ export default async function ChallengesPage({ searchParams }: { searchParams: P
         ) : null}
 
         <Reveal>
-          <nav aria-label="Challenge sections" className="grid min-w-0 gap-2 rounded-lg border border-line bg-white p-2 shadow-panel sm:grid-cols-2">
+          <nav aria-label="Challenge sections" className="grid min-w-0 grid-cols-2 gap-3">
             <Link className={modeLinkClass(pageMode === "browse")} href="/challenges">
-              Browse challenges
+              Browse
             </Link>
             <Link className={modeLinkClass(pageMode === "create")} href="/challenges?mode=create">
               Post challenge
