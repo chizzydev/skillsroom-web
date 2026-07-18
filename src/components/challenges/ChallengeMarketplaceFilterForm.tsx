@@ -11,12 +11,16 @@ type ChallengeMarketplaceFilterFormProps = {
   selectedRegion?: string;
   selectedSkillLevel?: MatchChallengeSkillLevel;
   skillLevels: { value: MatchChallengeSkillLevel; label: string }[];
+  platforms: string[];
+  regions: string[];
 };
 
 const marketplaceHash = "#open-challenges";
 
 function clean(value: FormDataEntryValue | null) {
   const next = typeof value === "string" ? value.trim() : "";
+  const normalized = next.toLowerCase();
+  if (normalized === "any" || normalized === "all" || normalized === "any region" || normalized === "all regions") return undefined;
   return next ? next : undefined;
 }
 
@@ -27,6 +31,10 @@ function marketplaceUrl(params: Record<string, string | undefined>) {
   }
   const query = next.toString();
   return query ? `/challenges?${query}${marketplaceHash}` : `/challenges${marketplaceHash}`;
+}
+
+function realOptions(values: string[]) {
+  return values.filter((value) => clean(value));
 }
 
 function scrollToMarketplace() {
@@ -41,9 +49,13 @@ export function ChallengeMarketplaceFilterForm({
   selectedPlatform,
   selectedRegion,
   selectedSkillLevel,
-  skillLevels
+  skillLevels,
+  platforms,
+  regions
 }: ChallengeMarketplaceFilterFormProps) {
   const router = useRouter();
+  const platformOptions = realOptions(platforms);
+  const regionOptions = realOptions(regions);
 
   useEffect(() => {
     if (window.location.hash === marketplaceHash) scrollToMarketplace();
@@ -77,11 +89,17 @@ export function ChallengeMarketplaceFilterForm({
       </label>
       <label className="grid gap-2 text-xs font-black uppercase tracking-[0.12em] text-muted">
         Platform
-        <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm font-bold normal-case tracking-normal text-ink outline-none focus:border-action" defaultValue={selectedPlatform ?? ""} name="platform" placeholder="Any" />
+        <select className="min-h-11 rounded-md border border-line bg-white px-3 text-sm font-bold normal-case tracking-normal text-ink outline-none focus:border-action" name="platform" defaultValue={selectedPlatform ?? ""}>
+          <option value="">Any platform</option>
+          {platformOptions.map((platform) => <option key={platform} value={platform}>{platform}</option>)}
+        </select>
       </label>
       <label className="grid gap-2 text-xs font-black uppercase tracking-[0.12em] text-muted">
         Region
-        <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm font-bold normal-case tracking-normal text-ink outline-none focus:border-action" defaultValue={selectedRegion ?? ""} name="region" placeholder="Any" />
+        <select className="min-h-11 rounded-md border border-line bg-white px-3 text-sm font-bold normal-case tracking-normal text-ink outline-none focus:border-action" name="region" defaultValue={selectedRegion ?? ""}>
+          <option value="">Any region</option>
+          {regionOptions.map((region) => <option key={region} value={region}>{region}</option>)}
+        </select>
       </label>
       <label className="grid gap-2 text-xs font-black uppercase tracking-[0.12em] text-muted">
         Skill

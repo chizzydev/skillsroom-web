@@ -53,6 +53,9 @@ const defaultRegions = ["Nigeria", "West Africa", "Africa", "Europe", "North Ame
 
 function cleanFilter(value: string | undefined) {
   const trimmed = value?.trim();
+  if (!trimmed) return undefined;
+  const normalized = trimmed.toLowerCase();
+  if (normalized === "any" || normalized === "all" || normalized === "any region" || normalized === "all regions") return undefined;
   return trimmed ? trimmed : undefined;
 }
 
@@ -317,6 +320,12 @@ export default async function ChallengesPage({ searchParams }: { searchParams: P
   const selectedRuleset = selectedRulesets[0] ?? null;
   const ownOpenCount = challenges.filter((challenge) => challenge.creator_user_id === user.id).length;
   const publicOpenCount = challenges.filter((challenge) => challenge.visibility === "public").length;
+  const activeMarketplaceFilters = [
+    selectedGameSlug ? games.find((game) => game.slug === selectedGameSlug)?.name ?? selectedGameSlug : null,
+    selectedPlatform,
+    selectedRegion,
+    selectedSkillLevel ? skillLevels.find((option) => option.value === selectedSkillLevel)?.label ?? displayEnumLabel(selectedSkillLevel) : null
+  ].filter(Boolean);
 
   return (
     <AppShell active="challenges">
@@ -477,7 +486,17 @@ export default async function ChallengesPage({ searchParams }: { searchParams: P
                 selectedRegion={selectedRegion}
                 selectedSkillLevel={selectedSkillLevel}
                 skillLevels={skillLevels}
+                platforms={defaultPlatforms}
+                regions={defaultRegions}
               />
+              <div className="flex min-w-0 flex-col gap-2 border-b border-line bg-surfaceHigh px-4 py-3 text-sm text-muted sm:flex-row sm:items-center sm:justify-between">
+                <p className="font-bold text-ink">
+                  Showing {challenges.length.toLocaleString()} open {challenges.length === 1 ? "challenge" : "challenges"}
+                </p>
+                <p className="leading-6">
+                  {activeMarketplaceFilters.length ? `Filters: ${activeMarketplaceFilters.join(" · ")}` : "No filters selected"}
+                </p>
+              </div>
               {challenges.length ? (
                 <div className="divide-y divide-line">
                   {challenges.map((challenge) => (
