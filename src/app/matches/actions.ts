@@ -276,10 +276,10 @@ export async function createRoomInviteAction(formData: FormData) {
       message: String(formData.get("message") || "").trim() || undefined
     });
   } catch (error) {
-    redirect(withError(`/matches/${matchRoomId}`, error));
+    redirect(`${withError(`/matches/${matchRoomId}`, error)}#invite-player`);
   }
 
-  redirect(`/matches/${matchRoomId}?invite_sent=1`);
+  redirect(`/matches/${matchRoomId}?invite_sent=1#invite-player`);
 }
 
 export async function openMatchRoomAction(formData: FormData) {

@@ -15,6 +15,7 @@ import { SubmitButton } from "@/components/ui/SubmitButton";
 import { Timeline } from "@/components/ui/Timeline";
 import { TransientStatusBanner } from "@/components/ui/TransientStatusBanner";
 import { getCurrentUser } from "@/lib/auth-bridge";
+import { roomIssueRulesFromRuleset } from "@/lib/room-issue-rules";
 import {
   formatEntryAmount,
   formatMinorMoney,
@@ -36,6 +37,7 @@ import {
   type MatchParticipant,
   type MatchResultClaim,
   type MatchRoom,
+  type MatchRoomShell,
   type MatchRoomStatus,
   type MatchTimeline,
   type RoomFundingOverview,
@@ -124,7 +126,7 @@ function claimResponseStatus(claim: MatchResultClaim, responses: RoomResultOverv
     return { label: "Opponent disputed", detail: response.note ?? "Skillsroom review is needed before payout.", tone: "danger" as const };
   }
   if (responseWindowExpired(claim)) {
-    return { label: "Response overdue", detail: "Admin can review this under the no-response rule.", tone: "warning" as const };
+    return { label: "Response overdue", detail: "Skillsroom can now review this under the no-response rule.", tone: "warning" as const };
   }
   return {
     label: "Waiting for opponent",
@@ -144,18 +146,20 @@ function claimReviewStatus(claim: MatchResultClaim, reviews: RoomResultOverview[
   const decisionLabel =
     review.decision === "approve_claim"
       ? "Winner approved"
-      : review.decision === "approve_no_response"
-        ? "Winner approved after no response"
+      : review.decision === "approve_no_response" || review.decision === "opponent_timeout_awarded"
+        ? "Winner awarded after no response"
         : review.decision === "reject_claim"
           ? "Claim rejected"
           : review.decision === "mark_disputed"
             ? "Dispute kept open"
-            : "Room voided";
+            : "Match voided, refunds queued";
 
   return {
     label: decisionLabel,
-    detail: review.note ?? `Final decision saved on ${dateTimeLabel(review.created_at)}.`,
-    tone: review.decision === "approve_claim" || review.decision === "approve_no_response" ? "success" as const : review.decision === "mark_disputed" || review.decision === "void_match" ? "danger" as const : "warning" as const
+    detail: review.decision === "void_match"
+      ? review.note ?? "No winner was confirmed. Entries are being returned."
+      : review.note ?? `Final decision saved on ${dateTimeLabel(review.created_at)}.`,
+    tone: review.decision === "approve_claim" || review.decision === "approve_no_response" || review.decision === "opponent_timeout_awarded" ? "success" as const : review.decision === "mark_disputed" || review.decision === "void_match" ? "danger" as const : "warning" as const
   };
 }
 
@@ -1019,7 +1023,7 @@ export default async function MatchDetailPage({
   const fullStreamsRequested = streams === "full";
   const fullTrustRequested = trust === "full";
 
-  let data: MatchTimeline | null = null;
+  let data: (MatchRoomShell & { events: MatchTimeline["events"] }) | null = null;
   let funding: RoomFundingOverview | null = null;
   let results: RoomResultOverview | null = null;
   let walletOverview: Awaited<ReturnType<typeof getWalletOverview>> | null = null;
@@ -1059,6 +1063,7 @@ export default async function MatchDetailPage({
   }
 
   const room = data.room;
+  const roomIssueRules = roomIssueRulesFromRuleset(room.ruleset_rules);
   const participants = data.participants;
   const tournamentId = metadataString(room.metadata, "tournament_id");
   const tournamentMatchId = metadataString(room.metadata, "tournament_match_id");
@@ -1141,6 +1146,13 @@ export default async function MatchDetailPage({
     Boolean(currentParticipant) &&
     !currentPlayerCheckedIn &&
     ["funded", "active", "awaiting_results", "under_review"].includes(room.status);
+  const canManageRoomInvites =
+    !isTournamentRoom &&
+    (room.created_by_user_id === user.id || ["moderator", "admin", "owner"].includes(user.role));
+  const canSendRoomInvite =
+    canManageRoomInvites &&
+    room.status === "open" &&
+    displayedParticipantCount < room.max_participants;
   const canManageLivestreams =
     user.role === "owner" ||
     user.role === "admin" ||
@@ -1304,6 +1316,49 @@ export default async function MatchDetailPage({
                 <p className="mt-2 text-2xl font-black text-cyan">{matchStatusLabel(room.status)}</p>
                 <p className="mt-2 text-sm font-bold text-muted">Room progress is saved</p>
               </Panel>
+              {canManageRoomInvites ? (
+                <Panel className="scroll-mt-32 p-4" id="invite-player">
+                  <p className="font-mono text-xs font-bold uppercase tracking-[0.12em] text-cyan">Invite</p>
+                  <h2 className="mt-2 text-xl font-black text-ink">Invite a player</h2>
+                  <p className="mt-2 text-sm leading-6 text-muted">
+                    Send a direct room invite by Skillsroom username. They can accept it from their inbox.
+                  </p>
+                  <form action={createRoomInviteAction} className="mt-4 grid gap-3">
+                    <input name="match_room_id" type="hidden" value={room.id} />
+                    <label className="grid gap-2 text-sm font-bold text-ink">
+                      Username
+                      <input
+                        className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action"
+                        disabled={!canSendRoomInvite}
+                        maxLength={24}
+                        minLength={3}
+                        name="invitee_username"
+                        pattern="[A-Za-z0-9_]+"
+                        placeholder="player_username"
+                        required
+                      />
+                    </label>
+                    <label className="grid gap-2 text-sm font-bold text-ink">
+                      Message
+                      <textarea
+                        className="min-h-20 rounded-md border border-line bg-white px-3 py-2 text-sm outline-none focus:border-action"
+                        disabled={!canSendRoomInvite}
+                        maxLength={240}
+                        name="message"
+                        placeholder={`Join ${room.room_code} on Skillsroom.`}
+                      />
+                    </label>
+                    <SubmitButton disabled={!canSendRoomInvite} idleLabel="Send invite" pendingLabel="Sending invite..." />
+                  </form>
+                  {room.status !== "open" ? (
+                    <p className="mt-3 text-xs font-bold leading-5 text-muted">Open the room before inviting another player.</p>
+                  ) : displayedParticipantCount >= room.max_participants ? (
+                    <p className="mt-3 text-xs font-bold leading-5 text-muted">This room already has all players.</p>
+                  ) : (
+                    <p className="mt-3 text-xs font-bold leading-5 text-muted">Room code sharing still works. Direct invite is best when you already know the player.</p>
+                  )}
+                </Panel>
+              ) : null}
             </div>
           </div>
         </section>
@@ -1717,37 +1772,23 @@ export default async function MatchDetailPage({
               </div>
             </Panel>
 
-            {!isTournamentRoom && canViewSensitiveInternals ? (
+            {!isTournamentRoom ? (
             <Panel>
-              <PanelHeader eyebrow="Invite" title="Invite by username" description="Open the room first, then invite a known player by Skillsroom username." />
-              <form action={createRoomInviteAction} className="grid gap-3 p-4">
-                <input name="match_room_id" type="hidden" value={room.id} />
-                <label className="grid gap-2 text-sm font-bold text-ink">
-                  Skillsroom username
-                  <input
-                    className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action"
-                    maxLength={24}
-                    minLength={3}
-                    name="invitee_username"
-                    pattern="[A-Za-z0-9_]+"
-                    placeholder="player_username"
-                    required
-                  />
-                </label>
-                <label className="grid gap-2 text-sm font-bold text-ink">
-                  Message
-                  <textarea
-                    className="min-h-24 rounded-md border border-line bg-white px-3 py-2 text-sm outline-none focus:border-action"
-                    maxLength={240}
-                    name="message"
-                    placeholder={`Join ${room.room_code} on Skillsroom.`}
-                  />
-                </label>
-                <SubmitButton disabled={room.status !== "open" || participants.length >= room.max_participants} idleLabel="Send invite" pendingLabel="Sending invite..." />
-                {room.status !== "open" ? (
-                  <p className="text-xs font-bold leading-5 text-muted">This room must be open before the invited player can accept and join.</p>
-                ) : null}
-              </form>
+              <PanelHeader eyebrow="Invite" title="Room invite options" description="Use the room code for quick sharing, or send a direct invite from the overview panel." />
+              <div className="grid gap-3 p-4">
+                <div className="rounded-md border border-line bg-surfaceWarm p-4">
+                  <p className="font-mono text-xs font-bold uppercase tracking-[0.12em] text-dim">Room code</p>
+                  <p className="mt-2 break-all text-2xl font-black text-ink">{room.room_code}</p>
+                  <p className="mt-2 text-sm leading-6 text-muted">Your opponent can paste this code from the Rooms page to join.</p>
+                </div>
+                {canManageRoomInvites ? (
+                  <a className="inline-flex min-h-10 items-center justify-center rounded-md bg-action px-4 text-sm font-black text-navy-950 shadow-action hover:bg-actionHover" href="#invite-player">
+                    Invite by username
+                  </a>
+                ) : (
+                  <p className="text-sm font-bold leading-6 text-muted">Only the room creator or Skillsroom team can send direct player invites.</p>
+                )}
+              </div>
             </Panel>
             ) : (
               <Panel>
@@ -1763,6 +1804,21 @@ export default async function MatchDetailPage({
                 </div>
               </Panel>
             )}
+          </div>
+          <div className="border-t border-line bg-white p-4">
+            <PanelHeader
+              eyebrow="Fair Play Rules"
+              title="When play does not go cleanly"
+              description="These room rules cover late opponents, no-shows, disconnects, timeouts, and proof that cannot be verified."
+            />
+            <div className="grid gap-3 pt-4 md:grid-cols-2 xl:grid-cols-5">
+              {roomIssueRules.map((rule) => (
+                <div className="rounded-md border border-line bg-surfaceWarm p-4" key={rule.key}>
+                  <h3 className="text-sm font-black text-ink">{rule.title}</h3>
+                  <p className="mt-2 text-xs font-bold leading-5 text-muted">{rule.body}</p>
+                </div>
+              ))}
+            </div>
           </div>
         </details>
 
@@ -1973,7 +2029,7 @@ export default async function MatchDetailPage({
                 </div>
                 <div className="rounded-md border border-line bg-surfaceWarm p-3">
                   <p className="font-mono text-[0.65rem] font-black uppercase tracking-[0.12em] text-dim">If you do nothing</p>
-                  <p className="mt-2 text-sm font-bold leading-5 text-muted">Admin can review the claim under the no-response rule after the deadline.</p>
+                  <p className="mt-2 text-sm font-bold leading-5 text-muted">Skillsroom can review the claim under the no-response rule after the deadline.</p>
                 </div>
               </div>
 

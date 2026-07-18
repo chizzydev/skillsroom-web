@@ -8,9 +8,10 @@ import { reviewResultClaim, type ResultReviewDecision } from "@/lib/match-room-a
 const resultSuccessMessages: Record<ResultReviewDecision, string> = {
   approve_claim: "Result claim approved.",
   approve_no_response: "Result approved after no opponent response.",
+  opponent_timeout_awarded: "Result awarded after no opponent response.",
   reject_claim: "Result claim rejected.",
   mark_disputed: "Result claim moved to dispute review.",
-  void_match: "Match was voided."
+  void_match: "Match closed without a winner. Refunds were queued."
 };
 
 export async function reviewResultClaimAction(formData: FormData) {

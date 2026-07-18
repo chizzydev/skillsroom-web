@@ -9,6 +9,7 @@ import { SubmitButton } from "@/components/ui/SubmitButton";
 import { Timeline } from "@/components/ui/Timeline";
 import { TransientStatusBanner } from "@/components/ui/TransientStatusBanner";
 import { getCurrentUser } from "@/lib/auth-bridge";
+import { fallbackRoomIssueRules } from "@/lib/room-issue-rules";
 import { getProfileMe, listGameCatalog, type Game, type MatchRuleset } from "@/lib/match-room-api";
 import { createMatchRoomAction } from "../actions";
 
@@ -160,6 +161,17 @@ export default async function NewMatchPage({ searchParams }: { searchParams: Pro
                     Open Profile
                   </Link>
                 ) : null}
+              </div>
+              <div className="rounded-md border border-cyan-200 bg-cyanSoft p-4 md:col-span-2">
+                <p className="font-mono text-xs font-black uppercase tracking-[0.12em] text-cyan">Fair play rules</p>
+                <p className="mt-2 text-sm font-bold leading-6 text-ink">
+                  Every room includes clear rules for late opponents, no-shows, disconnects, action timeouts, and proof that cannot be verified.
+                </p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {fallbackRoomIssueRules.map((rule) => (
+                    <span className="rounded-full border border-cyan/20 bg-white px-3 py-1 text-xs font-black text-cyan" key={rule.key}>{rule.title}</span>
+                  ))}
+                </div>
               </div>
             </form>
             ) : (

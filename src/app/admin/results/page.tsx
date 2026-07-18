@@ -290,7 +290,7 @@ export default async function AdminResultsPage({ searchParams }: { searchParams:
                     </dl>
                     {claim.status === "submitted" ? (
                       <div className={["mt-4 rounded-md border p-3 text-sm font-bold leading-6", responseWindowExpired(claim) ? "border-danger bg-red-50 text-danger" : "border-amber-200 bg-amber-50 text-amber-900"].join(" ")}>
-                        Opponent response due: {dateTimeLabel(claim.opponent_response_due_at)}. {responseWindowExpired(claim) ? "The owner/admin may use no-response approval after checking the evidence and room history." : "Winner approval remains locked until the opponent agrees or the window expires."}
+                        Opponent response due: {dateTimeLabel(claim.opponent_response_due_at)}. {responseWindowExpired(claim) ? "No-response approval is now available after checking the evidence, room history, and any support context." : "Winner approval remains locked until the opponent agrees or the window expires."}
                       </div>
                     ) : null}
                     {card.evidence.length ? (
@@ -332,10 +332,10 @@ export default async function AdminResultsPage({ searchParams }: { searchParams:
           <div className="grid h-fit gap-4 xl:sticky xl:top-24">
             <AdminStepUpPanel returnTo="/admin/results" />
             <Panel>
-              <PanelHeader eyebrow="Decision" title="Review result claim" description="Approve only after the opponent agrees. Submitted claims can be disputed, rejected, voided, or left for the opponent response." />
+              <PanelHeader eyebrow="Decision" title="Review result claim" description="Approve only after the opponent agrees. Submitted claims can be disputed, rejected, closed without a winner, or left for the opponent response." />
               <form action={reviewResultClaimAction} className="grid gap-3 p-4">
                 <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm font-bold leading-6 text-amber-900">
-                  Winner approval is locked until the opponent accepts the claim. Use Mark disputed when the evidence needs team review before payout.
+                  Winner approval is locked until the opponent accepts the result. Timeout award is available only after the response deadline has passed. Use Mark disputed when the evidence needs team review before payout.
                 </div>
                 <label className="grid gap-2 text-sm font-bold text-ink">
                   Claim ID
@@ -347,10 +347,10 @@ export default async function AdminResultsPage({ searchParams }: { searchParams:
                 </label>
                 <div className="grid gap-2">
                   <FormActionButton idleLabel="Approve claim" name="decision" pendingLabel="Approving claim..." value="approve_claim" />
-                  <FormActionButton idleLabel="Approve no response" name="decision" pendingLabel="Approving after no response..." value="approve_no_response" variant="secondary" />
+                  <FormActionButton idleLabel="Award after no response" name="decision" pendingLabel="Awarding after no response..." value="opponent_timeout_awarded" variant="secondary" />
                   <FormActionButton idleLabel="Mark disputed" name="decision" pendingLabel="Marking disputed..." value="mark_disputed" variant="secondary" />
                   <FormActionButton idleLabel="Reject claim" name="decision" pendingLabel="Rejecting claim..." value="reject_claim" variant="danger" />
-                  <FormActionButton idleLabel="Void match" name="decision" pendingLabel="Voiding match..." value="void_match" variant="danger" />
+                  <FormActionButton idleLabel="Void match and refund entries" name="decision" pendingLabel="Queuing refunds..." value="void_match" variant="danger" />
                 </div>
               </form>
             </Panel>

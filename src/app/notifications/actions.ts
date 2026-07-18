@@ -61,7 +61,7 @@ export async function respondToRoomInviteAction(formData: FormData) {
   } catch (error) {
     redirect(withError(error));
   }
-  redirect(response === "accepted" && matchRoomId ? `/matches/${matchRoomId}` : "/notifications");
+  redirect(response === "accepted" && matchRoomId ? `/matches/${matchRoomId}?invite_accepted=1#funding` : "/notifications?invite_declined=1#invites");
 }
 
 export async function respondToDmRequestAction(formData: FormData) {

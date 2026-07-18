@@ -495,7 +495,13 @@ export type ResultClaimStatus =
   | "admin_approved"
   | "admin_rejected"
   | "withdrawn";
-export type ResultReviewDecision = "approve_claim" | "approve_no_response" | "reject_claim" | "mark_disputed" | "void_match";
+export type ResultReviewDecision =
+  | "approve_claim"
+  | "approve_no_response"
+  | "opponent_timeout_awarded"
+  | "reject_claim"
+  | "mark_disputed"
+  | "void_match";
 export type SettlementStatus = "reserved" | "payout_pending" | "completed" | "cancelled";
 export type PayoutStatus = "queued" | "completed" | "failed" | "cancelled";
 export type RefundStatus = "queued" | "completed" | "failed" | "cancelled";
@@ -2251,6 +2257,7 @@ export type MatchRoomShell = {
     game_name: string | null;
     ruleset_slug: string | null;
     ruleset_title: string | null;
+    ruleset_rules: Record<string, unknown> | null;
   };
   participants: MatchParticipant[];
   tournament_match_check_ins?: TournamentMatchCheckIn[];

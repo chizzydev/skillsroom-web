@@ -525,33 +525,20 @@ export default async function HomePage({ searchParams }: HomePageProps) {
               <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-300 md:text-base">
                 Jump into open rooms, enter tournaments, finish matches that need you, or create a new challenge for another player.
               </p>
-              <div className="mt-5 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
+              <div className="mt-5 flex flex-wrap gap-2">
                 <PendingLink
-                  className="inline-flex min-h-10 w-full items-center justify-center rounded-md bg-action px-4 text-sm font-black text-navy-950 shadow-action hover:bg-actionHover sm:w-auto"
+                  className="inline-flex min-h-10 flex-1 items-center justify-center rounded-md bg-action px-4 text-sm font-black text-navy-950 shadow-action hover:bg-actionHover sm:flex-none"
                   href="/challenges"
                   pendingLabel="Opening creator..."
                 >
                   Create challenge
                 </PendingLink>
                 <PendingLink
-                  className="inline-flex min-h-10 w-full items-center justify-center rounded-md border border-white/10 bg-white px-4 text-sm font-black text-ink hover:bg-surfaceHigh sm:w-auto"
+                  className="inline-flex min-h-10 flex-1 items-center justify-center rounded-md border border-white/10 bg-white px-4 text-sm font-black text-ink hover:bg-surfaceHigh sm:flex-none"
                   href="/challenges"
                   pendingLabel="Opening challenges..."
                 >
                   Find challenge
-                </PendingLink>
-                <PendingLink
-                  className="inline-flex min-h-10 w-full items-center justify-center rounded-md border border-white/10 bg-white px-4 text-sm font-black text-ink hover:bg-surfaceHigh sm:w-auto"
-                  href="/tournaments?filter=registration_open"
-                  pendingLabel="Opening tournaments..."
-                >
-                  Enter tournament
-                </PendingLink>
-                <PendingLink
-                  className="inline-flex min-h-10 w-full items-center justify-center rounded-md border border-white/10 bg-white px-4 text-sm font-black text-ink hover:bg-surfaceHigh sm:w-auto"
-                  href="#join-room-code"
-                >
-                  Join code
                 </PendingLink>
               </div>
             </div>

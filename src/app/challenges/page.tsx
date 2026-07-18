@@ -8,6 +8,7 @@ import { Panel, PanelHeader } from "@/components/ui/Panel";
 import { SubmitButton } from "@/components/ui/SubmitButton";
 import { TransientStatusBanner } from "@/components/ui/TransientStatusBanner";
 import { getCurrentUser } from "@/lib/auth-bridge";
+import { fallbackRoomIssueRules } from "@/lib/room-issue-rules";
 import {
   displayEnumLabel,
   formatMinorMoney,
@@ -446,6 +447,17 @@ export default async function ChallengesPage({ searchParams }: { searchParams: P
                   <datalist id="challenge-regions">
                     {defaultRegions.map((item) => <option key={item} value={item} />)}
                   </datalist>
+                  <div className="rounded-md border border-cyan-200 bg-cyanSoft p-4">
+                    <p className="font-mono text-xs font-black uppercase tracking-[0.12em] text-cyan">Fair play rules</p>
+                    <p className="mt-2 text-sm font-bold leading-6 text-ink">
+                      Accepted challenges become rooms with rules for late opponents, no-shows, disconnects, timeouts, and unclear proof.
+                    </p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {fallbackRoomIssueRules.map((rule) => (
+                        <span className="rounded-full border border-cyan/20 bg-white px-3 py-1 text-xs font-black text-cyan" key={rule.key}>{rule.title}</span>
+                      ))}
+                    </div>
+                  </div>
                   <SubmitButton disabled={!profileReady} idleLabel={profileReady ? "Post challenge" : "Finish profile first"} pendingLabel="Posting..." />
                 </form>
               ) : (

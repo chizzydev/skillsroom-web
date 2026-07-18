@@ -19,6 +19,16 @@ const flagMessages: Record<string, Omit<FeedbackMessage, "key">> = {
     description: "The player will see it in their notifications.",
     tone: "success"
   },
+  invite_accepted: {
+    title: "Invite accepted",
+    description: "Complete the next room step when it is available.",
+    tone: "success"
+  },
+  invite_declined: {
+    title: "Invite declined",
+    description: "That room invite has been closed.",
+    tone: "success"
+  },
   checked_in: {
     title: "Check-in saved",
     description: "You are marked present for this match.",
