@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { AppShell } from "@/components/layout/AppShell";
 import { CatalogRulesetFields } from "@/components/catalog/CatalogRulesetFields";
+import { ChallengeMarketplaceFilterForm } from "@/components/challenges/ChallengeMarketplaceFilterForm";
 import { MotionSection, Reveal } from "@/components/motion";
 import { Badge } from "@/components/ui/Badge";
 import { Panel, PanelHeader } from "@/components/ui/Panel";
@@ -172,15 +173,6 @@ function creatorName(challenge: MatchChallengeListRow) {
 
 function rulesetName(challenge: MatchChallengeListRow) {
   return challenge.ruleset_title || "Standard rules";
-}
-
-function filterHref(params: Record<string, string | undefined>) {
-  const next = new URLSearchParams();
-  for (const [key, value] of Object.entries(params)) {
-    if (value?.trim()) next.set(key, value.trim());
-  }
-  const query = next.toString();
-  return query ? `/challenges?${query}#open-challenges` : "/challenges#open-challenges";
 }
 
 function missingSetupLabel(key: string) {
@@ -478,39 +470,14 @@ export default async function ChallengesPage({ searchParams }: { searchParams: P
                 title="Find open challenges"
                 description="Use these filters to narrow the open challenge list below."
               />
-              <form action="/challenges#open-challenges" className="grid gap-3 border-b border-line bg-white p-4 md:grid-cols-5" method="get">
-                <label className="grid gap-2 text-xs font-black uppercase tracking-[0.12em] text-muted">
-                  Game
-                  <select className="min-h-11 rounded-md border border-line bg-white px-3 text-sm font-bold normal-case tracking-normal text-ink outline-none focus:border-action" name="game_slug" defaultValue={selectedGameSlug ?? ""}>
-                    <option value="">All games</option>
-                    {games.map((game) => <option key={game.id} value={game.slug}>{game.name}</option>)}
-                  </select>
-                </label>
-                <label className="grid gap-2 text-xs font-black uppercase tracking-[0.12em] text-muted">
-                  Platform
-                  <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm font-bold normal-case tracking-normal text-ink outline-none focus:border-action" defaultValue={selectedPlatform ?? ""} name="platform" placeholder="Any" />
-                </label>
-                <label className="grid gap-2 text-xs font-black uppercase tracking-[0.12em] text-muted">
-                  Region
-                  <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm font-bold normal-case tracking-normal text-ink outline-none focus:border-action" defaultValue={selectedRegion ?? ""} name="region" placeholder="Any" />
-                </label>
-                <label className="grid gap-2 text-xs font-black uppercase tracking-[0.12em] text-muted">
-                  Skill
-                  <select className="min-h-11 rounded-md border border-line bg-white px-3 text-sm font-bold normal-case tracking-normal text-ink outline-none focus:border-action" name="skill_level" defaultValue={selectedSkillLevel ?? ""}>
-                    <option value="">All skills</option>
-                    {skillLevels.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-                  </select>
-                </label>
-                <div className="grid gap-2">
-                  <span className="text-xs font-black uppercase tracking-[0.12em] text-muted">Filters</span>
-                  <div className="grid gap-2 sm:grid-cols-2 md:grid-cols-1 lg:grid-cols-2">
-                    <button className="min-h-11 rounded-md bg-navy-900 px-3 text-sm font-black text-white hover:bg-navy-800" type="submit">Show matches</button>
-                    <Link className="inline-flex min-h-11 items-center justify-center rounded-md border border-line bg-white px-3 text-sm font-black text-muted hover:bg-surfaceHigh hover:text-ink" href={filterHref({})}>
-                      Clear
-                    </Link>
-                  </div>
-                </div>
-              </form>
+              <ChallengeMarketplaceFilterForm
+                games={games}
+                selectedGameSlug={selectedGameSlug}
+                selectedPlatform={selectedPlatform}
+                selectedRegion={selectedRegion}
+                selectedSkillLevel={selectedSkillLevel}
+                skillLevels={skillLevels}
+              />
               {challenges.length ? (
                 <div className="divide-y divide-line">
                   {challenges.map((challenge) => (
