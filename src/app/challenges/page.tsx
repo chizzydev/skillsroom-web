@@ -180,7 +180,7 @@ function filterHref(params: Record<string, string | undefined>) {
     if (value?.trim()) next.set(key, value.trim());
   }
   const query = next.toString();
-  return query ? `/challenges?${query}` : "/challenges";
+  return query ? `/challenges?${query}#open-challenges` : "/challenges#open-challenges";
 }
 
 function missingSetupLabel(key: string) {
@@ -472,13 +472,13 @@ export default async function ChallengesPage({ searchParams }: { searchParams: P
           </Reveal>
 
           <Reveal staggerIndex={1}>
-            <Panel>
+            <Panel id="open-challenges" className="scroll-mt-6">
               <PanelHeader
                 eyebrow="Marketplace"
-                title="Open H2H challenges"
-                description="Filter by the kind of match you want to play now."
+                title="Find open challenges"
+                description="Use these filters to narrow the open challenge list below."
               />
-              <form className="grid gap-3 border-b border-line bg-white p-4 md:grid-cols-5" method="get">
+              <form action="/challenges#open-challenges" className="grid gap-3 border-b border-line bg-white p-4 md:grid-cols-5" method="get">
                 <label className="grid gap-2 text-xs font-black uppercase tracking-[0.12em] text-muted">
                   Game
                   <select className="min-h-11 rounded-md border border-line bg-white px-3 text-sm font-bold normal-case tracking-normal text-ink outline-none focus:border-action" name="game_slug" defaultValue={selectedGameSlug ?? ""}>
@@ -502,9 +502,9 @@ export default async function ChallengesPage({ searchParams }: { searchParams: P
                   </select>
                 </label>
                 <div className="grid gap-2">
-                  <span className="text-xs font-black uppercase tracking-[0.12em] text-muted">Actions</span>
+                  <span className="text-xs font-black uppercase tracking-[0.12em] text-muted">Filters</span>
                   <div className="grid gap-2 sm:grid-cols-2 md:grid-cols-1 lg:grid-cols-2">
-                    <button className="min-h-11 rounded-md bg-navy-900 px-3 text-sm font-black text-white hover:bg-navy-800" type="submit">Apply</button>
+                    <button className="min-h-11 rounded-md bg-navy-900 px-3 text-sm font-black text-white hover:bg-navy-800" type="submit">Show matches</button>
                     <Link className="inline-flex min-h-11 items-center justify-center rounded-md border border-line bg-white px-3 text-sm font-black text-muted hover:bg-surfaceHigh hover:text-ink" href={filterHref({})}>
                       Clear
                     </Link>
