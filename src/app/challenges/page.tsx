@@ -489,12 +489,12 @@ export default async function ChallengesPage({ searchParams }: { searchParams: P
                 platforms={defaultPlatforms}
                 regions={defaultRegions}
               />
-              <div className="flex min-w-0 flex-col gap-2 border-b border-line bg-surfaceHigh px-4 py-3 text-sm text-muted sm:flex-row sm:items-center sm:justify-between">
+              <div id="challenge-results" className="flex min-w-0 scroll-mt-4 flex-col gap-2 border-b border-line bg-surfaceHigh px-4 py-3 text-sm text-muted sm:flex-row sm:items-center sm:justify-between">
                 <p className="font-bold text-ink">
                   Showing {challenges.length.toLocaleString()} open {challenges.length === 1 ? "challenge" : "challenges"}
                 </p>
                 <p className="leading-6">
-                  {activeMarketplaceFilters.length ? `Filters: ${activeMarketplaceFilters.join(" · ")}` : "No filters selected"}
+                  {activeMarketplaceFilters.length ? `Filters: ${activeMarketplaceFilters.join(" / ")}` : "No filters selected"}
                 </p>
               </div>
               {challenges.length ? (

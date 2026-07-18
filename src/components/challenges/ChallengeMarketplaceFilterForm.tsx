@@ -15,7 +15,7 @@ type ChallengeMarketplaceFilterFormProps = {
   regions: string[];
 };
 
-const marketplaceHash = "#open-challenges";
+const resultsHash = "#challenge-results";
 
 function clean(value: FormDataEntryValue | null) {
   const next = typeof value === "string" ? value.trim() : "";
@@ -30,16 +30,16 @@ function marketplaceUrl(params: Record<string, string | undefined>) {
     if (value) next.set(key, value);
   }
   const query = next.toString();
-  return query ? `/challenges?${query}${marketplaceHash}` : `/challenges${marketplaceHash}`;
+  return query ? `/challenges?${query}${resultsHash}` : `/challenges${resultsHash}`;
 }
 
 function realOptions(values: string[]) {
   return values.filter((value) => clean(value));
 }
 
-function scrollToMarketplace() {
+function scrollToResults() {
   window.requestAnimationFrame(() => {
-    document.getElementById("open-challenges")?.scrollIntoView({ block: "start" });
+    document.getElementById("challenge-results")?.scrollIntoView({ block: "start" });
   });
 }
 
@@ -58,7 +58,7 @@ export function ChallengeMarketplaceFilterForm({
   const regionOptions = realOptions(regions);
 
   useEffect(() => {
-    if (window.location.hash === marketplaceHash) scrollToMarketplace();
+    if (window.location.hash === resultsHash) scrollToResults();
   }, [selectedGameSlug, selectedPlatform, selectedRegion, selectedSkillLevel]);
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
@@ -70,12 +70,12 @@ export function ChallengeMarketplaceFilterForm({
       region: clean(formData.get("region")),
       skill_level: clean(formData.get("skill_level"))
     }));
-    scrollToMarketplace();
+    scrollToResults();
   };
 
   const handleClear = () => {
     router.push(marketplaceUrl({}));
-    scrollToMarketplace();
+    scrollToResults();
   };
 
   return (
