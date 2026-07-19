@@ -2498,6 +2498,7 @@ export function listMatchChallenges(input: {
   region?: string;
   skill_level?: MatchChallengeSkillLevel;
   visibility?: MatchChallengeVisibility;
+  scope?: "mine";
   limit?: number;
 } = {}) {
   return apiRequest<{ challenges: MatchChallengeListRow[] }>(

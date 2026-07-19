@@ -4,16 +4,26 @@ import { useRouter } from "next/navigation";
 import { type FormEvent, useEffect } from "react";
 import type { Game, MatchChallengeSkillLevel } from "@/lib/match-room-api";
 
+export type ChallengeVisibilityFilter = "" | "public" | "private" | "mine";
+
 type ChallengeMarketplaceFilterFormProps = {
   games: Game[];
   selectedGameSlug?: string;
   selectedPlatform?: string;
   selectedRegion?: string;
   selectedSkillLevel?: MatchChallengeSkillLevel;
+  selectedVisibility?: ChallengeVisibilityFilter;
   skillLevels: { value: MatchChallengeSkillLevel; label: string }[];
   platforms: string[];
   regions: string[];
 };
+
+const visibilityFilters: { value: ChallengeVisibilityFilter; label: string }[] = [
+  { value: "", label: "All visible" },
+  { value: "public", label: "Public" },
+  { value: "private", label: "Private" },
+  { value: "mine", label: "Mine" }
+];
 
 const resultsHash = "#challenge-results";
 
@@ -49,6 +59,7 @@ export function ChallengeMarketplaceFilterForm({
   selectedPlatform,
   selectedRegion,
   selectedSkillLevel,
+  selectedVisibility,
   skillLevels,
   platforms,
   regions
@@ -59,7 +70,7 @@ export function ChallengeMarketplaceFilterForm({
 
   useEffect(() => {
     if (window.location.hash === resultsHash) scrollToResults();
-  }, [selectedGameSlug, selectedPlatform, selectedRegion, selectedSkillLevel]);
+  }, [selectedGameSlug, selectedPlatform, selectedRegion, selectedSkillLevel, selectedVisibility]);
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -68,7 +79,8 @@ export function ChallengeMarketplaceFilterForm({
       game_slug: clean(formData.get("game_slug")),
       platform: clean(formData.get("platform")),
       region: clean(formData.get("region")),
-      skill_level: clean(formData.get("skill_level"))
+      skill_level: clean(formData.get("skill_level")),
+      visibility: clean(formData.get("visibility"))
     }));
     scrollToResults();
   };
@@ -79,7 +91,13 @@ export function ChallengeMarketplaceFilterForm({
   };
 
   return (
-    <form className="grid gap-3 border-b border-line bg-white p-4 md:grid-cols-5" onSubmit={handleSubmit}>
+    <form className="grid gap-3 border-b border-line bg-white p-4 md:grid-cols-6" onSubmit={handleSubmit}>
+      <label className="grid gap-2 text-xs font-black uppercase tracking-[0.12em] text-muted">
+        View
+        <select className="min-h-11 rounded-md border border-line bg-white px-3 text-sm font-bold normal-case tracking-normal text-ink outline-none focus:border-action" name="visibility" defaultValue={selectedVisibility ?? ""}>
+          {visibilityFilters.map((option) => <option key={option.value || "all"} value={option.value}>{option.label}</option>)}
+        </select>
+      </label>
       <label className="grid gap-2 text-xs font-black uppercase tracking-[0.12em] text-muted">
         Game
         <select className="min-h-11 rounded-md border border-line bg-white px-3 text-sm font-bold normal-case tracking-normal text-ink outline-none focus:border-action" name="game_slug" defaultValue={selectedGameSlug ?? ""}>

@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { AppShell } from "@/components/layout/AppShell";
 import { CatalogRulesetFields } from "@/components/catalog/CatalogRulesetFields";
-import { ChallengeMarketplaceFilterForm } from "@/components/challenges/ChallengeMarketplaceFilterForm";
+import { ChallengeMarketplaceFilterForm, type ChallengeVisibilityFilter } from "@/components/challenges/ChallengeMarketplaceFilterForm";
 import { MotionSection, Reveal } from "@/components/motion";
 import { Badge } from "@/components/ui/Badge";
 import { Panel, PanelHeader } from "@/components/ui/Panel";
@@ -66,6 +66,17 @@ function parseSkillLevel(value: string | undefined): MatchChallengeSkillLevel | 
 
 function parseVisibility(value: string | undefined): MatchChallengeVisibility | undefined {
   return visibilityOptions.some((item) => item.value === value) ? value as MatchChallengeVisibility : undefined;
+}
+
+function parseVisibilityFilter(value: string | undefined): ChallengeVisibilityFilter {
+  return value === "public" || value === "private" || value === "mine" ? value : "";
+}
+
+function visibilityFilterLabel(value: ChallengeVisibilityFilter) {
+  if (value === "mine") return "Mine";
+  if (value === "public") return "Public";
+  if (value === "private") return "Private";
+  return null;
 }
 
 function formatDateTime(value: string | null) {
@@ -294,7 +305,9 @@ export default async function ChallengesPage({ searchParams }: { searchParams: P
   const selectedPlatform = cleanFilter(params.platform);
   const selectedRegion = cleanFilter(params.region);
   const selectedSkillLevel = parseSkillLevel(params.skill_level);
-  const selectedVisibility = parseVisibility(params.visibility);
+  const selectedVisibilityFilter = parseVisibilityFilter(params.visibility);
+  const selectedVisibility = selectedVisibilityFilter === "mine" ? undefined : parseVisibility(selectedVisibilityFilter);
+  const selectedScope = selectedVisibilityFilter === "mine" ? "mine" : undefined;
   const pageMode = params.mode === "create" ? "create" : "browse";
 
   let games: Game[] = [];
@@ -314,6 +327,7 @@ export default async function ChallengesPage({ searchParams }: { searchParams: P
         region: selectedRegion,
         skill_level: selectedSkillLevel,
         visibility: selectedVisibility,
+        scope: selectedScope,
         limit: 36
       })
     ]);
@@ -332,6 +346,7 @@ export default async function ChallengesPage({ searchParams }: { searchParams: P
   const ownOpenCount = challenges.filter((challenge) => challenge.creator_user_id === user.id).length;
   const publicOpenCount = challenges.filter((challenge) => challenge.visibility === "public").length;
   const activeMarketplaceFilters = [
+    visibilityFilterLabel(selectedVisibilityFilter),
     selectedGameSlug ? games.find((game) => game.slug === selectedGameSlug)?.name ?? selectedGameSlug : null,
     selectedPlatform,
     selectedRegion,
@@ -507,6 +522,7 @@ export default async function ChallengesPage({ searchParams }: { searchParams: P
                   selectedPlatform={selectedPlatform}
                   selectedRegion={selectedRegion}
                   selectedSkillLevel={selectedSkillLevel}
+                  selectedVisibility={selectedVisibilityFilter}
                   skillLevels={skillLevels}
                   platforms={defaultPlatforms}
                   regions={defaultRegions}
