@@ -116,10 +116,10 @@ function trustBadgesForChallenge(challenge: MatchChallengeListRow): PlayerTrustB
     },
     {
       key: "verified_game_handle",
-      label: "Verified game handle",
-      value: challenge.creator_game_handle_verified ? "Verified" : "Pending",
+      label: "Game handle check",
+      value: challenge.creator_game_handle_verified ? "Verified" : "Saved",
       tone: challenge.creator_game_handle_verified ? "strong" : "good",
-      public_note: challenge.creator_game_handle_verified ? "This player has a checked game handle." : "This player has not completed handle verification yet."
+      public_note: challenge.creator_game_handle_verified ? "This player has a checked game handle." : "This player has a saved game handle. Skillsroom can check it during room review."
     },
     {
       key: "completed_matches",

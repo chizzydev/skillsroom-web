@@ -37,7 +37,23 @@ export function FormActionButton({
 }: FormActionButtonProps) {
   const { pending, data } = useFormStatus();
   const [clickedPending, setClickedPending] = useState(false);
-  const activePending = (pending && matchesPendingSubmitter(data, typeof name === "string" ? name : undefined, value)) || clickedPending;
+  const [stalledPending, setStalledPending] = useState(false);
+  const submitterPending = pending && matchesPendingSubmitter(data, typeof name === "string" ? name : undefined, value);
+  const activePending = (submitterPending && !stalledPending) || clickedPending;
+
+  useEffect(() => {
+    if (!pending) {
+      setStalledPending(false);
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      setClickedPending(false);
+      setStalledPending(true);
+    }, 22_000);
+
+    return () => window.clearTimeout(timer);
+  }, [pending]);
 
   useEffect(() => {
     if (pending) return;
@@ -51,6 +67,7 @@ export function FormActionButton({
     if (event.defaultPrevented || disabled) return;
     const form = event.currentTarget.form;
     if (form && !form.reportValidity()) return;
+    setStalledPending(false);
     setClickedPending(true);
   }
 
@@ -58,7 +75,7 @@ export function FormActionButton({
     <Button
       aria-busy={activePending}
       className={[activePending ? "motion-sheen motion-working" : "", className ?? ""].join(" ")}
-      disabled={disabled || pending}
+      disabled={disabled || (pending && !stalledPending)}
       fullWidth={fullWidth}
       onClick={handleClick}
       name={name}

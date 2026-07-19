@@ -26,7 +26,40 @@ function badgeTone(tone: PlayerTrustBadge["tone"]): BadgeTone {
   return "neutral";
 }
 
+function gameHandleBadge(status: PlayerTrustSummary["primary_game_status"]) {
+  if (status === "verified") {
+    return {
+      value: "Verified",
+      tone: "strong" as const,
+      public_note: "This player has a checked primary game handle."
+    };
+  }
+
+  if (status === "pending") {
+    return {
+      value: "Saved",
+      tone: "good" as const,
+      public_note: "This player has a saved primary game handle. Skillsroom can check it during room review."
+    };
+  }
+
+  if (status === "rejected") {
+    return {
+      value: "Needs update",
+      tone: "watch" as const,
+      public_note: "This player needs to update their primary game handle."
+    };
+  }
+
+  return {
+    value: "Missing",
+    tone: "watch" as const,
+    public_note: "This player has not added a primary game handle yet."
+  };
+}
+
 function fallbackTrustBadges(trust: PlayerTrustSummary): PlayerTrustBadge[] {
+  const primaryGameHandle = gameHandleBadge(trust.primary_game_status);
   return [
     {
       key: "verified_profile",
@@ -37,10 +70,10 @@ function fallbackTrustBadges(trust: PlayerTrustSummary): PlayerTrustBadge[] {
     },
     {
       key: "verified_game_handle",
-      label: "Verified game handle",
-      value: trust.primary_game_status === "verified" ? "Verified" : trust.primary_game_status ? "Pending" : "Missing",
-      tone: trust.primary_game_status === "verified" ? "strong" : trust.primary_game_status ? "good" : "watch",
-      public_note: trust.primary_game_status === "verified" ? "This player has a checked primary game handle." : "This player has not completed game handle verification yet."
+      label: "Game handle check",
+      value: primaryGameHandle.value,
+      tone: primaryGameHandle.tone,
+      public_note: primaryGameHandle.public_note
     },
     {
       key: "completed_matches",
