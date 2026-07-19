@@ -13,6 +13,7 @@ const nav: Array<{ key: AdminSection; label: string; href: string }> = [
   { key: "funding", label: "Funding", href: "/admin/funding" },
   { key: "wallet", label: "Wallet", href: "/admin/wallet" },
   { key: "paymentReadiness", label: "Payment readiness", href: "/admin/payment-readiness" },
+  { key: "ladders", label: "Ladders", href: "/admin/ladders" },
   { key: "results", label: "Results", href: "/admin/results" },
   { key: "settlements", label: "Payments", href: "/admin/settlements" },
   { key: "tournaments", label: "Tournaments", href: "/admin/tournaments" },

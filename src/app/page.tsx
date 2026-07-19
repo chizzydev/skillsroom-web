@@ -711,6 +711,11 @@ export default async function HomePage({ searchParams }: HomePageProps) {
             <Reveal staggerIndex={0}>
             <Panel>
               <PanelHeader
+                action={
+                  <PendingLink className="rounded-md border border-line bg-white px-3 py-2 text-sm font-black text-ink hover:bg-surfaceHigh" href="/ladders" pendingLabel="Opening ladders...">
+                    Open ladders
+                  </PendingLink>
+                }
                 eyebrow="Missions"
                 title="Small wins to chase"
                 description="Daily progress loops that help you build a real player record without waiting for a big tournament."
@@ -733,6 +738,11 @@ export default async function HomePage({ searchParams }: HomePageProps) {
             <Reveal staggerIndex={1}>
             <Panel>
               <PanelHeader
+                action={
+                  <PendingLink className="rounded-md border border-line bg-white px-3 py-2 text-sm font-black text-ink hover:bg-surfaceHigh" href="/ladders" pendingLabel="Opening ladders...">
+                    View all
+                  </PendingLink>
+                }
                 eyebrow="Ladders"
                 title="Today and this week"
                 description="City and game ladders are based on approved match wins."

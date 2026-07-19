@@ -123,6 +123,12 @@ function tournamentPrizeModel(formData: FormData): {
   };
 }
 
+function defaultTournamentScoringMode(format: TournamentFormat): TournamentScoringMode {
+  return ["free_for_all", "leaderboard", "race", "time_trial", "grand_prix"].includes(format)
+    ? "placement"
+    : "match_win_loss";
+}
+
 function optionalNumber(value: string) {
   const trimmed = value.trim();
   if (!trimmed) return undefined;
@@ -157,15 +163,16 @@ export async function createTournamentAction(formData: FormData) {
   try {
     const entry = tournamentEntryMode(formData);
     const prize = tournamentPrizeModel(formData);
+    const format = String(formData.get("format")) as TournamentFormat;
     const result = await createTournament({
       title: String(formData.get("title") || "").trim(),
       description: optionalString(formData, "description"),
       game_slug: String(formData.get("game_slug") || "").trim(),
       ruleset_slug: optionalString(formData, "ruleset_slug"),
-      format: String(formData.get("format")) as TournamentFormat,
+      format,
       entry_type: entry.entryType,
       fee_mode: entry.feeMode,
-      scoring_mode: String(formData.get("scoring_mode")) as TournamentScoringMode,
+      scoring_mode: (optionalString(formData, "scoring_mode") as TournamentScoringMode | undefined) ?? defaultTournamentScoringMode(format),
       prize_distribution_mode: prize.prizeDistributionMode,
       currency: String(formData.get("currency") || "NGN").trim().toUpperCase(),
       entry_fee_amount_minor: entry.feeMode === "paid" || entry.feeMode === "hybrid" ? nairaToMinor(formData, "entry_fee_amount_naira") : 0,
@@ -182,7 +189,7 @@ export async function createTournamentAction(formData: FormData) {
       ends_at: optionalDateTime(formData, "ends_at"),
       settings: {
         match_check_in_required: formData.get("match_check_in_required") === "on",
-        evidence_required: formData.get("evidence_required") !== "off",
+        evidence_required: formData.getAll("evidence_required").map(String).includes("on"),
         allow_waitlist: formData.get("allow_waitlist") === "on",
         tiebreakers: optionalString(formData, "tiebreakers") ?? ""
       }

@@ -163,6 +163,62 @@ function claimReviewStatus(claim: MatchResultClaim, reviews: RoomResultOverview[
   };
 }
 
+function finalDecisionSummary(claim: MatchResultClaim | null, reviews: RoomResultOverview["reviews"], room: MatchRoom) {
+  if (!claim) return "No final decision yet. A player must submit result proof first.";
+  const review = reviews.find((item) => item.result_claim_id === claim.id) ?? null;
+  if (review?.note) return review.note;
+  if (review?.decision === "approve_claim") return "Winner confirmed after proof and player responses were checked.";
+  if (review?.decision === "approve_no_response" || review?.decision === "opponent_timeout_awarded") {
+    return "Winner awarded after the opponent did not respond before the deadline.";
+  }
+  if (review?.decision === "reject_claim") return "The submitted result was not accepted after review.";
+  if (review?.decision === "mark_disputed") return "The dispute remains under Skillsroom review.";
+  if (review?.decision === "void_match") return "No winner was confirmed. Refund handling is the next step.";
+  if (claim.status === "admin_approved") return "Winner confirmed from the submitted proof.";
+  if (claim.status === "admin_rejected") return "The submitted result was rejected.";
+  if (room.status === "completed") return "Final decision is complete for this room.";
+  if (room.status === "settlement_pending") return "Final decision is ready for prize review.";
+  if (room.status === "voided") return "Match closed without a winner.";
+  return "No final decision yet.";
+}
+
+function evidencePathCards(input: {
+  claim: MatchResultClaim | null;
+  evidenceCount: number;
+  responses: RoomResultOverview["responses"];
+  reviews: RoomResultOverview["reviews"];
+  room: MatchRoom;
+}) {
+  const response = input.claim ? claimResponseStatus(input.claim, input.responses) : null;
+  const review = input.claim ? claimReviewStatus(input.claim, input.reviews) : null;
+  return [
+    {
+      label: "Required proof",
+      value: input.evidenceCount ? `${input.evidenceCount} file${input.evidenceCount === 1 ? "" : "s"} saved` : "Screenshot or video needed",
+      detail: input.evidenceCount ? "Admin can open the saved proof during review." : "Upload a final scoreboard screenshot or short result video.",
+      tone: input.evidenceCount ? "success" as const : "warning" as const
+    },
+    {
+      label: "Opponent response",
+      value: response?.label ?? "Starts after claim",
+      detail: response?.detail ?? "The other player gets a deadline to agree or dispute.",
+      tone: response?.tone ?? "neutral" as const
+    },
+    {
+      label: "Admin status",
+      value: review?.label ?? "Not ready",
+      detail: review?.detail ?? "Skillsroom review starts after proof and response status are clear.",
+      tone: review?.tone ?? "neutral" as const
+    },
+    {
+      label: "Final decision",
+      value: ["completed", "settlement_pending"].includes(input.room.status) ? "Decision saved" : "Pending",
+      detail: finalDecisionSummary(input.claim, input.reviews, input.room),
+      tone: ["completed", "settlement_pending"].includes(input.room.status) ? "success" as const : "warning" as const
+    }
+  ];
+}
+
 function nextAction(room: MatchRoom, participantCount: number) {
   if (room.status === "draft") return ["Open this room", "Review the details, then publish the room so an opponent can join."] as const;
   if (room.status === "open") return participantCount < room.max_participants
@@ -1828,9 +1884,27 @@ export default async function MatchDetailPage({
             <PanelHeader
               eyebrow="Result"
               title="Claims, responses, and evidence"
-              description="Result decisions stay attached to this room before settlement can proceed."
+              description="Proof, opponent response, dispute status, admin review, and final decision stay attached to this room."
             />
             <div className="grid gap-3 p-4">
+              <div className="grid gap-3 lg:grid-cols-4">
+                {evidencePathCards({
+                  claim: latestClaim,
+                  evidenceCount: results?.evidence_items.filter((item) => !latestClaim || item.result_claim_id === latestClaim.id).length ?? 0,
+                  responses: results?.responses ?? [],
+                  reviews: results?.reviews ?? [],
+                  room
+                }).map((card) => (
+                  <div className="rounded-md border border-line bg-white p-3" key={card.label}>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="font-mono text-[0.65rem] font-black uppercase tracking-[0.12em] text-dim">{card.label}</p>
+                      <Badge tone={card.tone}>{card.value}</Badge>
+                    </div>
+                    <p className="mt-2 text-xs font-bold leading-5 text-muted">{card.detail}</p>
+                  </div>
+                ))}
+              </div>
+
               {results?.claims.length ? (
                 results.claims.map((claim) => {
                   const responseStatus = claimResponseStatus(claim, results.responses);
@@ -2041,6 +2115,9 @@ export default async function MatchDetailPage({
               <details className="rounded-md border border-line bg-white">
                 <summary className="cursor-pointer px-4 py-3 text-sm font-black text-ink">Add dispute proof</summary>
                 <div className="grid gap-3 border-t border-line p-4">
+                  <div className="rounded-md border border-warning bg-amber-50 p-3 text-xs font-bold leading-5 text-amber-900">
+                    Dispute proof should show what is wrong: the final score, player identity, missing proof, disconnect, lag, no-show, or rule issue. If you dispute without a clear note or proof, admin may rely on the submitted result evidence.
+                  </div>
                   <label className="grid gap-2 text-sm font-bold text-ink">
                     Screenshot or video <span className="font-bold text-muted">(only needed when disputing)</span>
                     <input

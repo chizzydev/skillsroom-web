@@ -16,6 +16,7 @@ export type AdminSection =
   | "funding"
   | "wallet"
   | "paymentReadiness"
+  | "ladders"
   | "results"
   | "settlements"
   | "tournaments"
@@ -110,8 +111,8 @@ export function canUseAdminSection(user: CurrentUser | null, section: AdminSecti
   if (user?.role === "owner") return true;
 
   const sectionsByRole: Record<Exclude<CurrentUser["role"], "player" | "owner">, AdminSection[]> = {
-    admin: ["overview", "funding", "wallet", "paymentReadiness", "results", "settlements", "tournaments", "observability"],
-    moderator: ["overview", "results", "tournaments", "players", "risk", "observability"],
+    admin: ["overview", "funding", "wallet", "paymentReadiness", "ladders", "results", "settlements", "tournaments", "observability"],
+    moderator: ["overview", "ladders", "results", "tournaments", "players", "risk", "observability"],
     support: ["overview", "players", "risk", "observability"]
   };
 

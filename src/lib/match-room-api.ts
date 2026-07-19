@@ -446,6 +446,58 @@ export type PlayerEngagementSummary = {
   missions: PlayerMission[];
 };
 
+export type LadderPeriod = "daily" | "weekly";
+export type LadderSnapshotStatus = "draft" | "published" | "reset";
+export type LadderEntryReviewStatus = "visible" | "held" | "hidden";
+
+export type PlayerLadderSnapshot = {
+  id: string;
+  period: LadderPeriod;
+  game_id: string | null;
+  game_slug: string | null;
+  game_name: string | null;
+  city: string | null;
+  period_start: string;
+  period_end: string;
+  status: LadderSnapshotStatus;
+  generated_by_user_id: string | null;
+  generated_at: string;
+  published_by_user_id: string | null;
+  published_at: string | null;
+  reset_by_user_id: string | null;
+  reset_at: string | null;
+  admin_note: string | null;
+  entry_count: number;
+  visible_entry_count: number;
+  held_entry_count: number;
+  hidden_entry_count: number;
+  created_at: string;
+  updated_at: string;
+};
+
+export type PlayerLadderSnapshotEntry = {
+  id: string;
+  snapshot_id: string;
+  rank: number;
+  user_id: string;
+  username_snapshot: string | null;
+  display_name_snapshot: string | null;
+  city_snapshot: string | null;
+  region_snapshot: string | null;
+  game_slug_snapshot: string;
+  game_name_snapshot: string;
+  wins: number;
+  matches_played: number;
+  score: number;
+  source_settlement_ids: string[];
+  review_status: LadderEntryReviewStatus;
+  reviewed_by_user_id: string | null;
+  reviewed_at: string | null;
+  review_note: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 export type PlayerHomeReadiness = {
   status: "ready" | "needs_profile" | "needs_game" | "needs_review" | "blocked";
   label: string;
@@ -1817,6 +1869,8 @@ export type Tournament = {
   game_name?: string;
   ruleset_slug?: string | null;
   created_by_user_id: string;
+  created_by_username?: string | null;
+  created_by_display_name?: string | null;
   format: TournamentFormat;
   entry_type: TournamentEntryType;
   fee_mode: TournamentFeeMode;
@@ -2521,6 +2575,49 @@ export function getPlayerHomeSummary() {
 
 export function getPlayerEngagement(input: { game_slug?: string; city?: string } = {}) {
   return apiRequest<PlayerEngagementSummary>(`/player/engagement${queryString(input)}`, { timeoutMs: 8_000 });
+}
+
+export function listAdminLadderSnapshots(input: { period?: LadderPeriod; status?: LadderSnapshotStatus; limit?: number } = {}) {
+  return apiRequest<{ snapshots: PlayerLadderSnapshot[] }>(`/admin/ladders/snapshots${queryString(input)}`, { timeoutMs: 8_000 });
+}
+
+export function getAdminLadderSnapshot(snapshotId: string) {
+  return apiRequest<{ snapshot: PlayerLadderSnapshot; entries: PlayerLadderSnapshotEntry[] }>(
+    `/admin/ladders/snapshots/${encodeURIComponent(snapshotId)}`,
+    { timeoutMs: 8_000 }
+  );
+}
+
+export function refreshAdminLadderSnapshot(input: { period: LadderPeriod; game_slug?: string; city?: string; note?: string }) {
+  return apiRequest<{ snapshot: PlayerLadderSnapshot; entries: PlayerLadderSnapshotEntry[] }>("/admin/ladders/snapshots/refresh", {
+    method: "POST",
+    body: JSON.stringify(input),
+    timeoutMs: 15_000
+  });
+}
+
+export function publishAdminLadderSnapshot(snapshotId: string, input: { note?: string } = {}) {
+  return apiRequest<{ snapshot: PlayerLadderSnapshot }>(`/admin/ladders/snapshots/${encodeURIComponent(snapshotId)}/publish`, {
+    method: "POST",
+    body: JSON.stringify(input),
+    timeoutMs: 8_000
+  });
+}
+
+export function resetAdminLadderSnapshot(snapshotId: string, input: { reason: string }) {
+  return apiRequest<{ snapshot: PlayerLadderSnapshot }>(`/admin/ladders/snapshots/${encodeURIComponent(snapshotId)}/reset`, {
+    method: "POST",
+    body: JSON.stringify(input),
+    timeoutMs: 8_000
+  });
+}
+
+export function reviewAdminLadderEntry(entryId: string, input: { decision: "show" | "hold" | "hide"; note?: string }) {
+  return apiRequest<{ entry: PlayerLadderSnapshotEntry }>(`/admin/ladders/entries/${encodeURIComponent(entryId)}/review`, {
+    method: "POST",
+    body: JSON.stringify(input),
+    timeoutMs: 8_000
+  });
 }
 
 export function listGameCatalog() {

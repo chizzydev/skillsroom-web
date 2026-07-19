@@ -849,6 +849,15 @@ function hasEmbeddableLivestream(links: CommunityLivestreamLink[]) {
   return links.some((item) => Boolean(item.embed_url));
 }
 
+function tournamentHostSpace(tournament: TournamentDetail) {
+  if (!tournament.created_by_username && !tournament.created_by_display_name) return null;
+  const organizerIdOrSlug = tournament.created_by_username ?? tournament.created_by_user_id;
+  return {
+    href: `/community/organizers/${encodeURIComponent(organizerIdOrSlug)}`,
+    label: tournament.created_by_display_name ?? tournament.created_by_username ?? "Tournament host"
+  };
+}
+
 function standingSeed(standing: TournamentStanding) {
   const seed = standing.metadata.initial_seed ?? standing.metadata.seed;
   return typeof seed === "number" && Number.isFinite(seed) ? `Seed ${seed}` : "Seed pending";
@@ -1048,6 +1057,7 @@ export default async function TournamentDetailPage({
   const walletAvailableMinor = walletCurrencyMatches && walletOverview ? walletOverview.account.available_balance_minor : 0;
   const hasEnoughTournamentBalance = walletAvailableMinor >= detail.entry_fee_amount_minor;
   const canManageAnnouncements = canAccessAdmin(user) || canManageTournamentAnnouncements(user.id, detail.hosts) || detail.created_by_user_id === user.id;
+  const hostSpace = tournamentHostSpace(detail);
   const lifecycle = lifecycleStatus(detail.status, [
     "published",
     "registration_open",
@@ -1106,6 +1116,15 @@ export default async function TournamentDetailPage({
                   >
                     Manage
                   </PendingLink>
+                  ) : null}
+                  {hostSpace ? (
+                    <PendingLink
+                      className="inline-flex min-h-10 items-center justify-center rounded-md border border-white/10 bg-white/10 px-4 text-sm font-black text-white hover:bg-white/15"
+                      href={hostSpace.href}
+                      pendingLabel="Opening host space..."
+                    >
+                      Open host space
+                    </PendingLink>
                   ) : null}
                 </div>
                 <div className="mt-8 grid gap-3 xl:max-w-2xl xl:grid-cols-3">
@@ -1264,6 +1283,25 @@ export default async function TournamentDetailPage({
               <Timeline items={lifecycle} />
             </div>
           </Panel>
+
+          {hostSpace ? (
+            <Panel>
+              <PanelHeader
+                eyebrow="Host Space"
+                title={hostSpace.label}
+                description="See this host's public events, members, streams, announcements, and finished highlights."
+              />
+              <div className="p-4">
+                <PendingLink
+                  className="inline-flex min-h-10 items-center justify-center rounded-md border border-line bg-white px-4 text-sm font-black text-ink hover:bg-surfaceHigh"
+                  href={hostSpace.href}
+                  pendingLabel="Opening host space..."
+                >
+                  View host space
+                </PendingLink>
+              </div>
+            </Panel>
+          ) : null}
 
           {streamsView === "full" ? (
             <Suspense fallback={<TournamentSectionFallback eyebrow="Broadcast" title="Livestream and watch links" />}>
