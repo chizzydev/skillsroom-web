@@ -42,6 +42,12 @@ function isRoomActivityStatus(status: MatchRoomStatus): status is RoomActivitySt
   return roomActivityStatuses.includes(status as RoomActivityStatus);
 }
 
+function isExpiredOpenRoom(room: MatchRoomListRow) {
+  if (room.status !== "open" || !room.expires_at) return false;
+  const expiresAt = new Date(room.expires_at).getTime();
+  return Number.isFinite(expiresAt) && expiresAt <= Date.now();
+}
+
 function countStatus(counts: Partial<Record<MatchRoomStatus, number>>, status: MatchRoomStatus) {
   return (counts[status] ?? 0).toString();
 }
@@ -114,7 +120,14 @@ export default async function MatchesPage({ searchParams }: { searchParams: Prom
   let nextCursor: string | null = null;
   let counts: Partial<Record<MatchRoomStatus, number>> = {};
   let loadError: string | null = null;
-  const [roomPageResults, statusCountsResult] = await Promise.all([
+  const [activityPageResult, roomPageResults, statusCountsResult] = await Promise.all([
+    listMatchRooms({
+      cursor: selectedQueue === "expired" ? cursor : undefined,
+      limit: 50
+    }).then(
+      (value) => ({ status: "fulfilled" as const, value }),
+      (reason) => ({ status: "rejected" as const, reason })
+    ),
     Promise.allSettled(
       roomActivityStatuses.map(async (status) => ({
         status,
@@ -130,6 +143,14 @@ export default async function MatchesPage({ searchParams }: { searchParams: Prom
       (reason) => ({ status: "rejected" as const, reason })
     )
   ]);
+  const activityPage = activityPageResult.status === "fulfilled"
+    ? {
+        rooms: Array.isArray(activityPageResult.value.rooms)
+          ? activityPageResult.value.rooms.map(sanitizeRoom).filter((room): room is MatchRoomListRow => Boolean(room))
+          : [],
+        next_cursor: typeof activityPageResult.value.next_cursor === "string" ? activityPageResult.value.next_cursor : null
+      }
+    : { rooms: [], next_cursor: null };
   const roomPages = roomPageResults.flatMap((result) => {
     if (result.status !== "fulfilled") return [];
     const rows = Array.isArray(result.value.page?.rooms) ? result.value.page.rooms.map(sanitizeRoom).filter((room): room is MatchRoomListRow => Boolean(room)) : [];
@@ -141,14 +162,23 @@ export default async function MatchesPage({ searchParams }: { searchParams: Prom
       }
     }];
   });
-  rooms = roomPages.flatMap(({ page }) => page.rooms);
-  nextCursor = selectedQueueStatuses.length === 1 ? (roomPages.find((item) => item.status === selectedQueueStatuses[0])?.page.next_cursor ?? null) : null;
+  const roomsById = new Map<string, MatchRoomListRow>();
+  for (const room of roomPages.flatMap(({ page }) => page.rooms)) {
+    roomsById.set(room.id, room);
+  }
+  for (const room of activityPage.rooms.filter(isExpiredOpenRoom)) {
+    roomsById.set(room.id, room);
+  }
+  rooms = Array.from(roomsById.values());
+  nextCursor = selectedQueue === "expired"
+    ? activityPage.next_cursor
+    : selectedQueueStatuses.length === 1 ? (roomPages.find((item) => item.status === selectedQueueStatuses[0])?.page.next_cursor ?? null) : null;
   counts = statusCountsResult.status === "fulfilled"
     ? sanitizeCounts(statusCountsResult.value, rooms)
     : deriveCounts(rooms);
-  if (roomPageResults.every((result) => result.status === "rejected")) {
+  if (activityPageResult.status === "rejected" && roomPageResults.every((result) => result.status === "rejected")) {
     loadError = "Rooms are temporarily unavailable. Your account is still signed in; try this page again in a moment.";
-  } else if (roomPageResults.some((result) => result.status === "rejected") || statusCountsResult.status === "rejected" || roomPages.length < roomActivityStatuses.length) {
+  } else if (activityPageResult.status === "rejected" || roomPageResults.some((result) => result.status === "rejected") || statusCountsResult.status === "rejected" || roomPages.length < roomActivityStatuses.length) {
     loadError = "Some room data could not load. The rooms shown below are still safe to use.";
   }
 
@@ -159,10 +189,11 @@ export default async function MatchesPage({ searchParams }: { searchParams: Prom
       room_code: room.room_code,
       title: room.title,
       status: room.status as RoomActivityStatus,
-      status_label: matchStatusLabel(room.status),
+      status_label: isExpiredOpenRoom(room) ? "Expired" : matchStatusLabel(room.status),
       entry_label: formatEntryAmount(room),
       participant_count: room.participant_count ?? 0,
-      max_participants: room.max_participants
+      max_participants: room.max_participants,
+      is_expired_open: isExpiredOpenRoom(room)
     }));
   return (
     <AppShell active="matches">

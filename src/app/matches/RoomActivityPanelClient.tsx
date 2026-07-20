@@ -25,10 +25,11 @@ type RoomActivityRow = {
   entry_label: string;
   participant_count: number;
   max_participants: number;
+  is_expired_open: boolean;
 };
 
-function statusTone(status: RoomActivityStatus) {
-  if (status === "draft") return "neutral" as const;
+function statusTone(status: RoomActivityStatus, expired = false) {
+  if (expired) return "neutral" as const;
   if (status === "open") return "cyan" as const;
   if (["awaiting_funding", "funding_review", "funded"].includes(status)) return "warning" as const;
   if (["under_review", "disputed"].includes(status)) return "danger" as const;
@@ -36,8 +37,8 @@ function statusTone(status: RoomActivityStatus) {
   return "success" as const;
 }
 
-function queueActionLabel(status: RoomActivityStatus) {
-  if (status === "draft") return "Finish setup";
+function queueActionLabel(status: RoomActivityStatus, expired = false) {
+  if (expired) return "Open history";
   if (status === "open") return "Share or join";
   if (status === "awaiting_funding") return "Complete entry";
   if (status === "funding_review") return "Check funding";
@@ -49,6 +50,12 @@ function queueActionLabel(status: RoomActivityStatus) {
   return "Open room";
 }
 
+function queueForRoom(room: RoomActivityRow): RoomActivityQueue {
+  if (room.is_expired_open) return "expired";
+  const match = roomActivityQueues.find((queue) => roomActivityQueueStatuses[queue].includes(room.status));
+  return match ?? "open";
+}
+
 const RoomActivityMobileCard = memo(function RoomActivityMobileCard({ room }: { room: RoomActivityRow }) {
   return (
     <article className="grid min-w-0 gap-4 rounded-[1.15rem] border border-line bg-white p-4 shadow-[0_12px_30px_rgba(3,10,20,0.06)]">
@@ -57,7 +64,7 @@ const RoomActivityMobileCard = memo(function RoomActivityMobileCard({ room }: { 
           <p className="font-mono text-[0.65rem] font-black uppercase tracking-[0.14em] text-dim">Code</p>
           <p className="mt-1 break-all font-mono text-lg font-black text-ink">{room.room_code}</p>
         </div>
-        <Badge tone={statusTone(room.status)}>{room.status_label}</Badge>
+        <Badge tone={statusTone(room.status, room.is_expired_open)}>{room.is_expired_open ? "Expired" : room.status_label}</Badge>
       </div>
       <div className="min-w-0">
         <p className="font-mono text-[0.65rem] font-black uppercase tracking-[0.14em] text-dim">Room</p>
@@ -79,12 +86,17 @@ const RoomActivityMobileCard = memo(function RoomActivityMobileCard({ room }: { 
           <p className="mt-1 text-sm font-black text-ink">{room.participant_count ?? 0}/{room.max_participants}</p>
         </div>
       </div>
+      {room.is_expired_open ? (
+        <div className="rounded-md border border-line bg-surfaceWarm p-3 text-sm font-bold leading-6 text-muted">
+          This challenge window ended before another player accepted. Open it for history, or post a fresh challenge.
+        </div>
+      ) : null}
       <PendingLink
         className="inline-flex min-h-11 w-full items-center justify-center rounded-md border border-line bg-white px-4 text-sm font-black text-ink shadow-tight hover:bg-surfaceHigh"
         href={`/matches/${room.id}`}
         pendingLabel="Opening room..."
       >
-          {queueActionLabel(room.status)}
+          {queueActionLabel(room.status, room.is_expired_open)}
       </PendingLink>
     </article>
   );
@@ -108,7 +120,7 @@ const RoomActivityDesktopRow = memo(function RoomActivityDesktopRow({ room }: { 
         <span className="text-muted">{room.participant_count ?? 0}/{room.max_participants}</span>
       </div>
       <div className="px-4 py-4 leading-6">
-        <Badge tone={statusTone(room.status)}>{room.status_label}</Badge>
+        <Badge tone={statusTone(room.status, room.is_expired_open)}>{room.is_expired_open ? "Expired" : room.status_label}</Badge>
       </div>
       <div className="px-4 py-4 leading-6">
         <PendingLink
@@ -116,7 +128,7 @@ const RoomActivityDesktopRow = memo(function RoomActivityDesktopRow({ room }: { 
           href={`/matches/${room.id}`}
           pendingLabel="Opening room..."
         >
-          {queueActionLabel(room.status)}
+          {queueActionLabel(room.status, room.is_expired_open)}
         </PendingLink>
       </div>
     </div>
@@ -209,7 +221,7 @@ export function RoomActivityPanelClient({ rooms, initialQueue, nextCursor }: Roo
   }, [queues, selectedQueue]);
 
   const queuedRooms = useMemo(
-    () => rooms.filter((room) => roomActivityQueueStatuses[selectedQueue].includes(room.status)),
+    () => rooms.filter((room) => queueForRoom(room) === selectedQueue),
     [rooms, selectedQueue]
   );
 
@@ -228,7 +240,7 @@ export function RoomActivityPanelClient({ rooms, initialQueue, nextCursor }: Roo
   return (
     <Panel id="room-activity">
       <PanelHeader
-        description="Switch between room groups instantly. Rooms stay visible as they move from funding into play, result review, and payout."
+        description="Switch between every room stage, from open and funding through disputes, payout, done, and expired H2H challenges."
         eyebrow="Rooms"
         title="Room activity"
       />

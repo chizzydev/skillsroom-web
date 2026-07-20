@@ -70,7 +70,8 @@ function displayLabel(value: string) {
     .join(" ");
 }
 
-function statusTone(status: MatchRoomStatus) {
+function statusTone(status: MatchRoomStatus, expired = false) {
+  if (expired) return "neutral" as const;
   if (status === "open") return "cyan" as const;
   if (["awaiting_funding", "funding_review", "funded"].includes(status)) return "warning" as const;
   if (["under_review", "disputed", "voided"].includes(status)) return "danger" as const;
@@ -88,6 +89,14 @@ function resultTone(status: MatchResultClaim["status"]) {
   if (status === "admin_approved" || status === "opponent_agreed") return "success" as const;
   if (status === "opponent_disputed" || status === "admin_rejected") return "danger" as const;
   return "warning" as const;
+}
+
+function roomExpired(room: Pick<MatchRoom, "expires_at">) {
+  return Boolean(room.expires_at && new Date(room.expires_at).getTime() <= Date.now());
+}
+
+function roomDisplayStatusLabel(room: MatchRoom, expired = false) {
+  return expired ? "Expired" : matchStatusLabel(room.status);
 }
 
 function dateTimeLabel(value?: string | null) {
@@ -219,7 +228,8 @@ function evidencePathCards(input: {
   ];
 }
 
-function nextAction(room: MatchRoom, participantCount: number) {
+function nextAction(room: MatchRoom, participantCount: number, expired = false) {
+  if (expired) return ["Challenge expired", "This challenge window ended before another player accepted. Open it for history, or post a fresh challenge."] as const;
   if (room.status === "draft") return ["Open this room", "Review the details, then publish the room so an opponent can join."] as const;
   if (room.status === "open") return participantCount < room.max_participants
     ? (["Share the room code", "Send the code to an opponent or wait for a player to join from the lobby."] as const)
@@ -235,8 +245,8 @@ function nextAction(room: MatchRoom, participantCount: number) {
   return ["Room closed", "This room no longer accepts player actions."] as const;
 }
 
-function buildProcessTimeline(room: MatchRoom) {
-  const openDone = !["draft", "cancelled"].includes(room.status);
+function buildProcessTimeline(room: MatchRoom, expired = false) {
+  const openDone = !["draft", "cancelled"].includes(room.status) && !expired;
   const fundingDone = ["funded", "active", "awaiting_results", "under_review", "disputed", "settlement_pending", "completed", "refunded"].includes(room.status);
   const fundingCurrent = ["awaiting_funding", "funding_review"].includes(room.status);
   const playDone = ["awaiting_results", "under_review", "disputed", "settlement_pending", "completed", "refunded"].includes(room.status);
@@ -251,7 +261,11 @@ function buildProcessTimeline(room: MatchRoom) {
         : ("pending" as const);
 
   return [
-    { label: "Open", detail: "Room is visible or shareable by code.", status: openDone ? "done" as const : "current" as const },
+    {
+      label: expired ? "Expired" : "Open",
+      detail: expired ? "The join window ended before another player accepted." : "Room is visible or shareable by code.",
+      status: expired ? "current" as const : openDone ? "done" as const : "current" as const
+    },
     { label: "Fund", detail: "Both player entries must be approved before play.", status: fundingDone ? "done" as const : fundingCurrent ? "current" as const : "pending" as const },
     { label: "Play", detail: "Match starts only after funding is approved.", status: playDone ? "done" as const : playCurrent ? "current" as const : "pending" as const },
     { label: "Evidence", detail: "Winner claim, opponent response, and proof stay attached.", status: evidenceDone ? "done" as const : evidenceCurrent ? "current" as const : "pending" as const },
@@ -711,7 +725,7 @@ async function RoomPlayersIsland({
       <Panel className="scroll-mt-32" id="room-flow">
         <PanelHeader eyebrow="Flow" title="Room checkpoints" />
         <div className="p-4">
-          <Timeline items={buildProcessTimeline(room)} />
+          <Timeline items={buildProcessTimeline(room, room.status === "open" && roomExpired(room))} />
         </div>
       </Panel>
     </div>
@@ -742,7 +756,7 @@ function RoomPlayersFallback({ participants, room }: { participants: MatchPartic
       <Panel className="scroll-mt-32" id="room-flow">
         <PanelHeader eyebrow="Flow" title="Room checkpoints" />
         <div className="p-4">
-          <Timeline items={buildProcessTimeline(room)} />
+          <Timeline items={buildProcessTimeline(room, room.status === "open" && roomExpired(room))} />
         </div>
       </Panel>
     </div>
@@ -785,7 +799,7 @@ function RoomPlayersSummary({ participants, room }: { participants: MatchPartici
       <Panel className="scroll-mt-32" id="room-flow">
         <PanelHeader eyebrow="Flow" title="Room checkpoints" />
         <div className="p-4">
-          <Timeline items={buildProcessTimeline(room)} />
+          <Timeline items={buildProcessTimeline(room, room.status === "open" && roomExpired(room))} />
         </div>
       </Panel>
     </div>
@@ -1162,7 +1176,8 @@ export default async function MatchDetailPage({
   const resultCheckpoint = resultCheckpointSummary(room, latestClaim);
   const payoutCheckpoint = payoutCheckpointSummary(room, latestClaim);
   const displayedParticipantCount = Math.max(participants.length, room.participant_count ?? 0);
-  const [baseNextTitle, baseNextDetail] = nextAction(room, displayedParticipantCount);
+  const isExpiredOpenRoom = room.status === "open" && roomExpired(room);
+  const [baseNextTitle, baseNextDetail] = nextAction(room, displayedParticipantCount, isExpiredOpenRoom);
   const [nextTitle, nextDetail] =
     isTournamentRoom && !currentPlayerCheckedIn && currentParticipant
       ? (["Check in for this match", "Confirm you are present before playing or submitting result evidence."] as const)
@@ -1208,6 +1223,7 @@ export default async function MatchDetailPage({
   const canSendRoomInvite =
     canManageRoomInvites &&
     room.status === "open" &&
+    !isExpiredOpenRoom &&
     displayedParticipantCount < room.max_participants;
   const canManageLivestreams =
     user.role === "owner" ||
@@ -1255,7 +1271,7 @@ export default async function MatchDetailPage({
         <MotionSection className="motion-state-card rounded-lg border border-line bg-navy-900 p-5 text-white shadow-panel md:p-7" variant="hero">
           <div className="grid min-w-0 gap-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
             <div className="min-w-0">
-              <Badge tone={statusTone(room.status)}>{matchStatusLabel(room.status)}</Badge>
+              <Badge tone={statusTone(room.status, isExpiredOpenRoom)}>{roomDisplayStatusLabel(room, isExpiredOpenRoom)}</Badge>
               <h1 className="mt-4 max-w-4xl text-3xl font-black leading-tight md:text-5xl">
                 {room.title ?? "Private match room"}
               </h1>
@@ -1369,7 +1385,7 @@ export default async function MatchDetailPage({
               </Panel>
               <Panel className="p-4">
                 <p className="font-mono text-xs font-bold uppercase tracking-[0.12em] text-dim">Status</p>
-                <p className="mt-2 text-2xl font-black text-cyan">{matchStatusLabel(room.status)}</p>
+                <p className="mt-2 text-2xl font-black text-cyan">{roomDisplayStatusLabel(room, isExpiredOpenRoom)}</p>
                 <p className="mt-2 text-sm font-bold text-muted">Room progress is saved</p>
               </Panel>
               {canManageRoomInvites ? (
@@ -1379,6 +1395,11 @@ export default async function MatchDetailPage({
                   <p className="mt-2 text-sm leading-6 text-muted">
                     Send a direct room invite by Skillsroom username. They can accept it from their inbox.
                   </p>
+                  {isExpiredOpenRoom ? (
+                    <div className="mt-4 rounded-md border border-warning bg-amber-50 p-3 text-sm font-bold leading-6 text-amber-900">
+                      This challenge window has ended. Post a fresh challenge or create a new room before another player joins.
+                    </div>
+                  ) : null}
                   <form action={createRoomInviteAction} className="mt-4 grid gap-3">
                     <input name="match_room_id" type="hidden" value={room.id} />
                     <label className="grid gap-2 text-sm font-bold text-ink">
@@ -1406,7 +1427,9 @@ export default async function MatchDetailPage({
                     </label>
                     <SubmitButton disabled={!canSendRoomInvite} idleLabel="Send invite" pendingLabel="Sending invite..." />
                   </form>
-                  {room.status !== "open" ? (
+                  {isExpiredOpenRoom ? (
+                    <p className="mt-3 text-xs font-bold leading-5 text-muted">This challenge window has ended. Create a new room before inviting another player.</p>
+                  ) : room.status !== "open" ? (
                     <p className="mt-3 text-xs font-bold leading-5 text-muted">Open the room before inviting another player.</p>
                   ) : displayedParticipantCount >= room.max_participants ? (
                     <p className="mt-3 text-xs font-bold leading-5 text-muted">This room already has all players.</p>
@@ -1837,10 +1860,12 @@ export default async function MatchDetailPage({
                   <p className="mt-2 break-all text-2xl font-black text-ink">{room.room_code}</p>
                   <p className="mt-2 text-sm leading-6 text-muted">Your opponent can paste this code from the Rooms page to join.</p>
                 </div>
-                {canManageRoomInvites ? (
+                {canSendRoomInvite ? (
                   <a className="inline-flex min-h-10 items-center justify-center rounded-md bg-action px-4 text-sm font-black text-navy-950 shadow-action hover:bg-actionHover" href="#invite-player">
                     Invite by username
                   </a>
+                ) : isExpiredOpenRoom ? (
+                  <p className="text-sm font-bold leading-6 text-muted">This challenge window has ended. Create a new room before inviting another player.</p>
                 ) : (
                   <p className="text-sm font-bold leading-6 text-muted">Only the room creator or Skillsroom team can send direct player invites.</p>
                 )}

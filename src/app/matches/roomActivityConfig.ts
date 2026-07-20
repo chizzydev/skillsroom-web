@@ -2,7 +2,6 @@ import type { MatchRoomStatus } from "@/lib/match-room-api";
 
 export type RoomActivityStatus = Extract<
   MatchRoomStatus,
-  | "draft"
   | "open"
   | "awaiting_funding"
   | "funding_review"
@@ -19,7 +18,6 @@ export type RoomActivityStatus = Extract<
 >;
 
 export type RoomActivityQueue =
-  | "draft"
   | "open"
   | "funding"
   | "ready"
@@ -28,10 +26,10 @@ export type RoomActivityQueue =
   | "review"
   | "disputed"
   | "payout"
-  | "done";
+  | "done"
+  | "expired";
 
 export const roomActivityStatuses: RoomActivityStatus[] = [
-  "draft",
   "open",
   "awaiting_funding",
   "funding_review",
@@ -48,7 +46,6 @@ export const roomActivityStatuses: RoomActivityStatus[] = [
 ];
 
 export const roomActivityQueueStatuses: Record<RoomActivityQueue, RoomActivityStatus[]> = {
-  draft: ["draft"],
   open: ["open"],
   funding: ["awaiting_funding", "funding_review"],
   ready: ["funded"],
@@ -57,10 +54,11 @@ export const roomActivityQueueStatuses: Record<RoomActivityQueue, RoomActivitySt
   review: ["under_review"],
   disputed: ["disputed"],
   payout: ["settlement_pending"],
-  done: ["completed", "refunded", "voided", "cancelled"]
+  done: ["completed", "refunded", "voided", "cancelled"],
+  expired: []
 };
 
-export const roomActivityQueues = Object.keys(roomActivityQueueStatuses) as RoomActivityQueue[];
+export const roomActivityQueues: RoomActivityQueue[] = ["open", "funding", "ready", "live", "result", "review", "disputed", "payout", "done", "expired"];
 
 export function queueForRoomStatus(status: RoomActivityStatus): RoomActivityQueue {
   const match = roomActivityQueues.find((queue) => roomActivityQueueStatuses[queue].includes(status));
@@ -68,7 +66,6 @@ export function queueForRoomStatus(status: RoomActivityStatus): RoomActivityQueu
 }
 
 export function queueLabel(queue: RoomActivityQueue) {
-  if (queue === "draft") return "Drafts";
   if (queue === "open") return "Open";
   if (queue === "funding") return "Funding";
   if (queue === "ready") return "Ready";
@@ -77,6 +74,7 @@ export function queueLabel(queue: RoomActivityQueue) {
   if (queue === "review") return "Review";
   if (queue === "disputed") return "Disputed";
   if (queue === "payout") return "Payout";
+  if (queue === "expired") return "Expired";
   return "Done";
 }
 
@@ -89,12 +87,12 @@ export function queueDescription(queue: RoomActivityQueue) {
   if (queue === "disputed") return "Rooms where players disagree and Skillsroom must review.";
   if (queue === "payout") return "Rooms approved and waiting for payout or refund completion.";
   if (queue === "done") return "Completed, refunded, voided, or cancelled rooms.";
-  if (queue === "draft") return "Room drafts you started but have not opened.";
+  if (queue === "expired") return "H2H challenge rooms whose join window ended before another player accepted.";
   return "Open rooms that can still be joined.";
 }
 
 export function queuePanelTone(queue: RoomActivityQueue): "neutral" | "cyan" | "warning" | "danger" {
-  if (["draft", "done"].includes(queue)) return "neutral";
+  if (["done", "expired"].includes(queue)) return "neutral";
   if (["funding", "ready", "payout"].includes(queue)) return "warning";
   if (["review", "disputed"].includes(queue)) return "danger";
   return "cyan";
