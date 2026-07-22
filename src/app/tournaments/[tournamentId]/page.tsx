@@ -45,6 +45,7 @@ import {
   type TournamentStatus,
   type WalletOverview
 } from "@/lib/match-room-api";
+import { TournamentLiveIsland, type TournamentLiveSnapshot } from "./TournamentLiveIsland";
 import {
   archiveTournamentAnnouncementAction,
   archiveTournamentLivestreamAction,
@@ -1078,6 +1079,19 @@ export default async function TournamentDetailPage({
       if (!(error instanceof ApiRequestError && error.status === 404)) throw error;
     }
   }
+  const liveSnapshot: TournamentLiveSnapshot = {
+    detail,
+    events: [],
+    funding: null,
+    result_reviews: detail.result_reviews,
+    wallet: walletOverview,
+    current_user_id: user.id,
+    current_user_role: user.role,
+    viewer_entry_ids: myEntry ? [myEntry.id] : [],
+    viewer_is_host: viewerIsHost,
+    can_view_sensitive: viewerHasSensitiveAuditAccess,
+    loaded_at: new Date().toISOString()
+  };
 
   return (
     <AppShell active="tournaments">
@@ -1162,6 +1176,8 @@ export default async function TournamentDetailPage({
           <RealtimePatchStatus label="Funding" targets={["tournament-funding", "wallet"]} />
           <RealtimePatchStatus label="Results" targets={["tournament-result"]} />
         </div>
+
+        <TournamentLiveIsland initialSnapshot={liveSnapshot} />
 
         <div className="grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <Reveal staggerIndex={0}><StatusPanel detail={registrationDetail} label="Registration" tone="cyan" value={registrationTitle} /></Reveal>

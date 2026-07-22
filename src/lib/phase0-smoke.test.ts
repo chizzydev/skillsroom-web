@@ -1,5 +1,7 @@
 import { apiBaseUrl } from "./api";
+import { queryKeysForRealtimeEvent, webQueryKeys } from "@/components/realtime/webRealtimeInvalidation";
 import { notificationAction, safeNotificationRedirect } from "./notification-routing";
+import type { RealtimeEvent } from "@/components/realtime/realtimeEventPresentation";
 import type { UserNotification } from "./match-room-api";
 
 if (!apiBaseUrl().startsWith("http")) {
@@ -26,6 +28,32 @@ function notification(overrides: Partial<UserNotification>): UserNotification {
 function expectHref(name: string, value: string | null, expected: string) {
   if (value !== expected) {
     throw new Error(`${name}: expected ${expected}, received ${value ?? "null"}.`);
+  }
+}
+
+function realtimeEvent(overrides: Partial<RealtimeEvent>): RealtimeEvent {
+  return {
+    id: "event-test",
+    actor_user_id: null,
+    event_type: "notification.created",
+    entity_type: null,
+    entity_id: null,
+    match_room_id: null,
+    tournament_id: null,
+    notification_id: null,
+    payload: {},
+    created_at: new Date(0).toISOString(),
+    ...overrides
+  };
+}
+
+function expectQueryKeys(name: string, event: RealtimeEvent, expectedKeys: ReadonlyArray<readonly unknown[]>) {
+  const actual = queryKeysForRealtimeEvent(event).map((key) => JSON.stringify(key));
+  const expected = expectedKeys.map((key) => JSON.stringify(key));
+  for (const key of expected) {
+    if (!actual.includes(key)) {
+      throw new Error(`${name}: missing query key ${key}. Received ${actual.join(", ")}.`);
+    }
   }
 }
 
@@ -173,5 +201,110 @@ expectHref(
 );
 
 expectHref("external notification redirects stay inside the app", safeNotificationRedirect("https://example.com"), "/notifications");
+
+expectQueryKeys(
+  "match funding approval invalidates room, funding, wallet, and home caches",
+  realtimeEvent({
+    id: "event-room-funding",
+    event_type: "match.funding.approved",
+    match_room_id: "room-1",
+    payload: { amount_minor: 10000 }
+  }),
+  [webQueryKeys.rooms, webQueryKeys.home, webQueryKeys.room("room-1"), webQueryKeys.roomFunding("room-1"), webQueryKeys.wallet]
+);
+
+expectQueryKeys(
+  "notification event invalidates notification count",
+  realtimeEvent({
+    id: "event-notification",
+    event_type: "room.invite.created",
+    match_room_id: "room-2"
+  }),
+  [webQueryKeys.notifications, webQueryKeys.notificationCount, webQueryKeys.home, webQueryKeys.room("room-2")]
+);
+
+expectQueryKeys(
+  "room activity event invalidates rooms and home lobby",
+  realtimeEvent({
+    id: "event-room-activity",
+    event_type: "match.participant.joined",
+    match_room_id: "room-3"
+  }),
+  [webQueryKeys.rooms, webQueryKeys.home, webQueryKeys.room("room-3")]
+);
+
+expectQueryKeys(
+  "money review event invalidates admin queues",
+  realtimeEvent({
+    id: "event-admin-money",
+    event_type: "wallet.topup.approved",
+    payload: { user_id: "user-1" }
+  }),
+  [webQueryKeys.wallet, webQueryKeys.admin]
+);
+
+expectQueryKeys(
+  "result review event invalidates admin queues",
+  realtimeEvent({
+    id: "event-admin-result",
+    event_type: "match.result.reviewed.approve_claim",
+    match_room_id: "room-4"
+  }),
+  [webQueryKeys.rooms, webQueryKeys.room("room-4"), webQueryKeys.roomResults("room-4"), webQueryKeys.admin]
+);
+
+expectQueryKeys(
+  "tournament result review invalidates tournament result caches",
+  realtimeEvent({
+    id: "event-tournament-result",
+    event_type: "tournament.match.reviewed.approve_claim",
+    tournament_id: "tournament-1"
+  }),
+  [webQueryKeys.tournaments, webQueryKeys.home, webQueryKeys.tournament("tournament-1"), webQueryKeys.tournamentResults("tournament-1")]
+);
+
+expectQueryKeys(
+  "tournament contribution event invalidates funding and admin tournament queues",
+  realtimeEvent({
+    id: "event-tournament-funding",
+    event_type: "tournament.contribution.approved",
+    tournament_id: "tournament-2",
+    payload: { amount_minor: 50000 }
+  }),
+  [
+    webQueryKeys.tournaments,
+    webQueryKeys.home,
+    webQueryKeys.tournament("tournament-2"),
+    webQueryKeys.tournamentFunding("tournament-2"),
+    webQueryKeys.admin
+  ]
+);
+
+expectQueryKeys(
+  "tournament bracket event invalidates tournament detail and lobby surfaces",
+  realtimeEvent({
+    id: "event-tournament-bracket",
+    event_type: "tournament.match_rooms.linked",
+    tournament_id: "tournament-3"
+  }),
+  [webQueryKeys.tournaments, webQueryKeys.home, webQueryKeys.tournament("tournament-3")]
+);
+
+expectQueryKeys(
+  "tournament announcement invalidates organizer-facing tournament surfaces",
+  realtimeEvent({
+    id: "event-tournament-announcement",
+    event_type: "community.announcement.published",
+    tournament_id: "tournament-4",
+    payload: { announcement_id: "announcement-4" }
+  }),
+  [
+    webQueryKeys.home,
+    webQueryKeys.tournaments,
+    webQueryKeys.notifications,
+    webQueryKeys.notificationCount,
+    webQueryKeys.tournament("tournament-4")
+  ]
+);
 
 console.log("Phase 0 web smoke test passed.");

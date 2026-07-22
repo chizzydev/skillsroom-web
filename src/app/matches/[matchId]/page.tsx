@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import { AppShell } from "@/components/layout/AppShell";
 import { EvidenceMediaDrawer } from "@/components/evidence/EvidenceMediaDrawer";
 import { RoomActionForm } from "@/components/matches/RoomActionForm";
+import { RoomLiveSnapshotIsland } from "@/components/matches/RoomLiveSnapshotIsland";
 import { ManualPaymentPanel } from "@/components/payments/ManualPaymentPanel";
 import { MotionSection, Reveal } from "@/components/motion";
 import { LiveUpdateStream } from "@/components/realtime/LiveUpdateStream";
@@ -672,6 +673,29 @@ async function loadTrustByUserId(participants: MatchParticipant[]) {
   return new Map<string, PlayerTrustSummary | null>(trustResults);
 }
 
+function mergeLatestFundingParticipants(shellParticipants: MatchParticipant[], fundingParticipants?: MatchParticipant[]) {
+  if (!fundingParticipants?.length) return shellParticipants;
+
+  const shellById = new Map(shellParticipants.map((participant) => [participant.id, participant]));
+  const mergedById = new Map<string, MatchParticipant>();
+
+  for (const participant of fundingParticipants) {
+    mergedById.set(participant.id, {
+      ...shellById.get(participant.id),
+      ...participant
+    });
+  }
+
+  for (const participant of shellParticipants) {
+    if (!mergedById.has(participant.id)) mergedById.set(participant.id, participant);
+  }
+
+  return Array.from(mergedById.values()).sort((a, b) => {
+    const slotOrder = { player_a: 0, player_b: 1 } as const;
+    return slotOrder[a.slot] - slotOrder[b.slot];
+  });
+}
+
 async function RoomPlayersIsland({
   participants,
   room
@@ -1132,9 +1156,29 @@ export default async function MatchDetailPage({
     );
   }
 
-  const room = data.room;
+  const shellRoom = data.room;
+  const shellParticipants = data.participants;
+  const preliminaryCurrentParticipant = shellParticipants.find((participant) => participant.user_id === user.id);
+  const canViewSensitiveInternals =
+    Boolean(preliminaryCurrentParticipant) || ["moderator", "admin", "owner", "support"].includes(user.role);
+
+  if (canViewSensitiveInternals) {
+    try {
+      [funding, results, walletOverview] = await Promise.all([getRoomFunding(matchId), getRoomResults(matchId), getWalletOverview()]);
+    } catch {
+      loadError = loadError ?? "Room summary loaded, but detailed funding or result records could not be loaded right now.";
+    }
+  } else if (["settlement_pending", "completed"].includes(shellRoom.status)) {
+    try {
+      publicWinnerPage = await getMatchWinnerPage(matchId);
+    } catch {
+      publicWinnerPage = null;
+    }
+  }
+
+  const room = funding?.room ? { ...shellRoom, ...funding.room, participant_count: shellRoom.participant_count } : shellRoom;
   const roomIssueRules = roomIssueRulesFromRuleset(room.ruleset_rules);
-  const participants = data.participants;
+  const participants = mergeLatestFundingParticipants(shellParticipants, funding?.participants);
   const tournamentId = metadataString(room.metadata, "tournament_id");
   const tournamentMatchId = metadataString(room.metadata, "tournament_match_id");
   const isTournamentRoom = Boolean(tournamentId && tournamentMatchId);
@@ -1143,8 +1187,6 @@ export default async function MatchDetailPage({
   const tournamentCheckIns = data.tournament_match_check_ins ?? [];
   const startConfirmations = data.start_confirmations ?? [];
   const currentParticipant = participants.find((participant) => participant.user_id === user.id);
-  const canViewSensitiveInternals =
-    Boolean(currentParticipant) || ["moderator", "admin", "owner", "support"].includes(user.role);
   const allJoinedParticipantsApproved =
     participants.length > 0 && participants.every((participant) => participant.funding_status === "approved");
   const gameName = tournamentDetail?.game_name ?? "the game";
@@ -1154,20 +1196,6 @@ export default async function MatchDetailPage({
   const currentPlayerStartConfirmed = currentParticipant
     ? startConfirmations.some((confirmation) => confirmation.participant_id === currentParticipant.id)
     : false;
-
-  if (canViewSensitiveInternals) {
-    try {
-      [funding, results, walletOverview] = await Promise.all([getRoomFunding(matchId), getRoomResults(matchId), getWalletOverview()]);
-    } catch {
-      loadError = loadError ?? "Room summary loaded, but detailed funding or result records could not be loaded right now.";
-    }
-  } else if (["settlement_pending", "completed"].includes(room.status)) {
-    try {
-      publicWinnerPage = await getMatchWinnerPage(matchId);
-    } catch {
-      publicWinnerPage = null;
-    }
-  }
 
   const trustByUserId = new Map<string, PlayerTrustSummary | null>();
   const latestClaim = results?.claims[0] ?? null;
@@ -1267,6 +1295,18 @@ export default async function MatchDetailPage({
             : canManageLivestreams
               ? { href: "#live", label: "Add livestream" }
               : { href: "#players", label: displayedParticipantCount < room.max_participants ? "Check players" : "View players" };
+  const initialLiveSnapshot = {
+    room,
+    participants,
+    funding,
+    results,
+    wallet: walletOverview,
+    tournament_match_check_ins: tournamentCheckIns,
+    start_confirmations: startConfirmations,
+    current_user_id: user.id,
+    current_user_role: user.role,
+    loaded_at: new Date().toISOString()
+  };
 
   return (
     <AppShell active="matches">
@@ -1326,6 +1366,7 @@ export default async function MatchDetailPage({
           <RealtimePatchStatus label="Funding" targets={["room-funding", "wallet"]} />
           <RealtimePatchStatus label="Results" targets={["room-result"]} />
         </div>
+        <RoomLiveSnapshotIsland initialSnapshot={initialLiveSnapshot} />
 
         {error ? <TransientStatusBanner clearKeys={["error"]} durationMs={10000} message={error} /> : null}
         {inviteSent ? <TransientStatusBanner clearKeys={["invite_sent"]} durationMs={12000} message="Invite sent. The player will see it in their notifications." tone="success" /> : null}
@@ -1336,7 +1377,7 @@ export default async function MatchDetailPage({
         {playConfirmed ? <TransientStatusBanner clearKeys={["play_confirmed"]} durationMs={10000} message="Ready confirmed. Waiting for the other player before the match goes live." tone="success" /> : null}
         {balanceFunded ? <TransientStatusBanner clearKeys={["balance_funded"]} durationMs={10000} message="Entry paid from Skillsroom Balance. Your funds are locked for this room." tone="success" /> : null}
 
-        <section className="scroll-mt-28" id="current-step">
+        <section className="scroll-mt-28" id="current-step-actions">
           <Panel className="overflow-hidden border-cyan/40 shadow-[0_24px_70px_rgba(24,197,138,0.12)]">
             <div className="grid gap-4 border-b border-line bg-gradient-to-r from-cyanSoft via-white to-green-50 p-4 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
               <div className="min-w-0">

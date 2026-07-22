@@ -24,6 +24,7 @@ import {
   type WalletTopup
 } from "@/lib/match-room-api";
 import { reviewWalletPayoutAction, reviewWalletTopupAction } from "./actions";
+import { AdminWalletLiveQueues, type AdminWalletSnapshot } from "./AdminWalletLiveQueues";
 
 export const dynamic = "force-dynamic";
 
@@ -82,6 +83,12 @@ export default async function AdminWalletPage({ searchParams }: { searchParams: 
   const suspiciousDuplicates = dashboard?.suspicious_duplicates ?? [];
   const ledgerEntries = dashboard?.recent_ledger_entries ?? [];
   const financeTimeline = dashboard ? timelineRows(dashboard) : [];
+  const walletSnapshot: AdminWalletSnapshot = {
+    topups,
+    payout_requests: payoutRequests,
+    dashboard,
+    loaded_at: new Date().toISOString()
+  };
 
   return (
     <AdminShell active="wallet">
@@ -99,7 +106,7 @@ export default async function AdminWalletPage({ searchParams }: { searchParams: 
         {success ? <TransientStatusBanner clearKeys={["success"]} durationMs={12000} message={success} tone="success" /> : null}
         {loadError ? <div className="rounded-md border border-danger bg-red-50 p-4 text-sm font-bold text-danger">{loadError}</div> : null}
 
-        <div className="grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="hidden min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <StatusPanel detail="Needs bank check" label="Submitted" tone="warning" value={countStatus(topups, "submitted")} />
           <StatusPanel detail="Visible in this queue" label="Queue total" tone="cyan" value={formatMinorMoney("NGN", totalAmount(topups))} />
           <StatusPanel detail="Manual bank payout" label="Cash-outs" tone="danger" value={formatMinorMoney("NGN", totalPayoutAmount(payoutRequests))} />
@@ -122,7 +129,57 @@ export default async function AdminWalletPage({ searchParams }: { searchParams: 
           </form>
         </Panel>
 
+        <AdminWalletLiveQueues
+          initialSnapshot={walletSnapshot}
+          search={{ userId, matchRoomId, tournamentId }}
+        />
+
         <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1fr)_420px]">
+          <div className="hidden xl:block" />
+          <div className="grid h-fit gap-4 xl:sticky xl:top-24">
+            <AdminStepUpPanel returnTo="/admin/wallet" />
+            <Panel>
+              <PanelHeader eyebrow="Decision" title="Approve or reject top-up" description="Approval records the payment and credits the player's spendable balance. Rejection leaves the balance unchanged." />
+              <form action={reviewWalletTopupAction} className="grid gap-3 p-4">
+                <label className="grid gap-2 text-sm font-bold text-ink">
+                  Top-up ID
+                  <input className="min-h-11 rounded-md border border-line bg-white px-3 font-mono text-sm outline-none focus:border-action" name="topup_id" required />
+                </label>
+                <label className="grid gap-2 text-sm font-bold text-ink">
+                  Review note
+                  <textarea className="min-h-28 rounded-md border border-line bg-white px-3 py-2 text-sm outline-none focus:border-action" name="note" placeholder="Required for rejection. Helpful for approvals too." />
+                </label>
+                <div className="grid gap-2">
+                  <FormActionButton idleLabel="Approve and credit wallet" name="decision" pendingLabel="Crediting wallet..." value="approve" />
+                  <FormActionButton idleLabel="Reject top-up" name="decision" pendingLabel="Rejecting top-up..." value="reject" variant="danger" />
+                </div>
+              </form>
+            </Panel>
+            <Panel>
+              <PanelHeader eyebrow="Payout" title="Mark payout paid" description="This confirms the manual bank payment is done. Rejection returns the reserved winnings." />
+              <form action={reviewWalletPayoutAction} className="grid gap-3 p-4">
+                <label className="grid gap-2 text-sm font-bold text-ink">
+                  Payout request ID
+                  <input className="min-h-11 rounded-md border border-line bg-white px-3 font-mono text-sm outline-none focus:border-action" name="payout_request_id" required />
+                </label>
+                <label className="grid gap-2 text-sm font-bold text-ink">
+                  Bank transfer reference
+                  <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="payment_reference" placeholder="Required when marking paid" />
+                </label>
+                <label className="grid gap-2 text-sm font-bold text-ink">
+                  Review note
+                  <textarea className="min-h-24 rounded-md border border-line bg-white px-3 py-2 text-sm outline-none focus:border-action" name="note" placeholder="Required for rejection. Optional for paid payout." />
+                </label>
+                <div className="grid gap-2">
+                  <FormActionButton idleLabel="Mark payout paid" name="decision" pendingLabel="Marking paid..." value="mark_paid" />
+                  <FormActionButton idleLabel="Reject and return winnings" name="decision" pendingLabel="Rejecting payout..." value="reject" variant="danger" />
+                </div>
+              </form>
+            </Panel>
+          </div>
+        </div>
+
+        <div className="hidden min-w-0 gap-6 xl:grid-cols-[minmax(0,1fr)_420px]">
           <div className="grid min-w-0 gap-6">
             <Panel>
               <PanelHeader eyebrow="Warnings" title="Suspicious duplicates" description="Same proof files or transfer references across active top-ups should be checked before approval." />

@@ -1,26 +1,15 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { usePathname, useRouter } from "next/navigation";
 import type { RealtimeEvent } from "./realtimeEventPresentation";
 import { classifyRealtimePatch, dispatchRealtimePatch, type RealtimePatchTarget } from "./realtimePatches";
+import { invalidateQueriesForRealtimeEvent, realtimeEventRoomId, realtimeEventTournamentId } from "./webRealtimeInvalidation";
 
 type GlobalRealtimeBridgeProps = {
   enabled: boolean;
 };
-
-function payloadString(payload: Record<string, unknown> | undefined, key: string) {
-  const value = payload?.[key];
-  return typeof value === "string" && value.length > 0 ? value : null;
-}
-
-function eventRoomId(event: RealtimeEvent) {
-  return event.match_room_id ?? payloadString(event.payload, "match_room_id") ?? payloadString(event.payload, "matchRoomId");
-}
-
-function eventTournamentId(event: RealtimeEvent) {
-  return event.tournament_id ?? payloadString(event.payload, "tournament_id") ?? payloadString(event.payload, "tournamentId");
-}
 
 function pathRoomId(pathname: string) {
   return pathname.match(/^\/matches\/([^/?#]+)/)?.[1] ?? null;
@@ -35,6 +24,14 @@ function activeElementIsEditable() {
   if (!(element instanceof HTMLElement)) return false;
   const tagName = element.tagName.toLowerCase();
   return tagName === "input" || tagName === "textarea" || tagName === "select" || element.isContentEditable;
+}
+
+function isRoomPatchTarget(target: RealtimePatchTarget) {
+  return target === "room" || target === "room-funding" || target === "room-result";
+}
+
+function isTournamentPatchTarget(target: RealtimePatchTarget) {
+  return target === "tournament" || target === "tournament-funding" || target === "tournament-result";
 }
 
 function routeShouldRefresh(pathname: string, event: RealtimeEvent, target: RealtimePatchTarget) {
@@ -55,8 +52,8 @@ function routeShouldRefresh(pathname: string, event: RealtimeEvent, target: Real
 
   const currentRoomId = pathRoomId(pathname);
   if (currentRoomId) {
-    const roomId = eventRoomId(event);
-    return Boolean(roomId && roomId === currentRoomId) || target === "notifications";
+    const roomId = realtimeEventRoomId(event);
+    return Boolean(roomId ? roomId === currentRoomId : isRoomPatchTarget(target)) || target === "notifications";
   }
 
   if (pathname.startsWith("/challenges")) {
@@ -69,8 +66,8 @@ function routeShouldRefresh(pathname: string, event: RealtimeEvent, target: Real
 
   const currentTournamentId = pathTournamentId(pathname);
   if (currentTournamentId) {
-    const tournamentId = eventTournamentId(event);
-    return Boolean(tournamentId && tournamentId === currentTournamentId) || target === "notifications";
+    const tournamentId = realtimeEventTournamentId(event);
+    return Boolean(tournamentId ? tournamentId === currentTournamentId : isTournamentPatchTarget(target)) || target === "notifications";
   }
 
   if (pathname.startsWith("/chat")) {
@@ -86,8 +83,10 @@ function routeShouldRefresh(pathname: string, event: RealtimeEvent, target: Real
 
 export function GlobalRealtimeBridge({ enabled }: GlobalRealtimeBridgeProps) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const pathname = usePathname() ?? "/";
   const pathnameRef = useRef(pathname);
+  const cursorRef = useRef<string | null>(null);
   const seenEventIdsRef = useRef<Set<string>>(new Set());
   const refreshTimerRef = useRef<number | null>(null);
   const dirtyWhileHiddenOrEditingRef = useRef(false);
@@ -118,14 +117,16 @@ export function GlobalRealtimeBridge({ enabled }: GlobalRealtimeBridgeProps) {
 
   const handleRealtimeEvent = useCallback((event: RealtimeEvent) => {
     if (!event.id || !event.event_type) return;
+    cursorRef.current = event.id;
     const eventKey = `${event.id}:${event.event_type}`;
     if (seenEventIdsRef.current.has(eventKey)) return;
     seenEventIdsRef.current.add(eventKey);
 
     const detail = dispatchRealtimePatch(event);
+    invalidateQueriesForRealtimeEvent(queryClient, event);
     const target = detail.target ?? classifyRealtimePatch(event);
     if (routeShouldRefresh(pathnameRef.current, event, target)) refreshSoon();
-  }, [refreshSoon]);
+  }, [queryClient, refreshSoon]);
 
   const listeners = useMemo(() => ({
     visibility: flushDeferredRefresh,
@@ -142,7 +143,9 @@ export function GlobalRealtimeBridge({ enabled }: GlobalRealtimeBridgeProps) {
 
     const connect = () => {
       source?.close();
-      source = new EventSource("/api/community/realtime/stream");
+      const url = new URL("/api/community/realtime/stream", window.location.origin);
+      if (cursorRef.current) url.searchParams.set("cursor", cursorRef.current);
+      source = new EventSource(`${url.pathname}${url.search}`);
       source.addEventListener("realtime-event", (message) => {
         try {
           handleRealtimeEvent(JSON.parse((message as MessageEvent).data) as RealtimeEvent);

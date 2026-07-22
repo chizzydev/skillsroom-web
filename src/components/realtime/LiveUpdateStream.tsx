@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Toast } from "@/components/ui/Toast";
 import { describeRealtimeEvent, type RealtimeEvent, type RealtimeToastTone } from "./realtimeEventPresentation";
 import { dispatchRealtimePatch, type RealtimePatchTarget } from "./realtimePatches";
+import { realtimeEventRoomId, realtimeEventTournamentId } from "./webRealtimeInvalidation";
 
 type LiveUpdateStreamProps = {
   autoConnect?: boolean;
@@ -49,8 +50,7 @@ function eventBelongsToRoom(event: RealtimeEvent, matchRoomId?: string) {
   if (!matchRoomId) return true;
   if (event.match_room_id === matchRoomId) return true;
 
-  const payloadRoomId = payloadString(event.payload, "match_room_id") ?? payloadString(event.payload, "matchRoomId");
-  if (payloadRoomId === matchRoomId) return true;
+  if (realtimeEventRoomId(event) === matchRoomId) return true;
 
   const actionUrl = payloadString(event.payload, "action_url") ?? payloadString(event.payload, "actionUrl");
   return Boolean(actionUrl?.includes(`/matches/${matchRoomId}`));
@@ -60,8 +60,7 @@ function eventBelongsToTournament(event: RealtimeEvent, tournamentId?: string) {
   if (!tournamentId) return true;
   if (event.tournament_id === tournamentId) return true;
 
-  const payloadTournamentId = payloadString(event.payload, "tournament_id") ?? payloadString(event.payload, "tournamentId");
-  if (payloadTournamentId === tournamentId) return true;
+  if (realtimeEventTournamentId(event) === tournamentId) return true;
 
   const actionUrl = payloadString(event.payload, "action_url") ?? payloadString(event.payload, "actionUrl");
   return Boolean(actionUrl?.includes(`/tournaments/${tournamentId}`));
@@ -130,6 +129,7 @@ export function LiveUpdateStream({
   const fallbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const clearNoticeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const connectedOnceRef = useRef(false);
+  const cursorRef = useRef<string | null>(null);
   const seenEventIdsRef = useRef<Set<string>>(new Set());
   const toastTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
@@ -226,7 +226,9 @@ export function LiveUpdateStream({
 
     document.addEventListener("visibilitychange", onVisibilityChange);
 
-    const source = new EventSource("/api/community/realtime/stream");
+    const url = new URL("/api/community/realtime/stream", window.location.origin);
+    if (cursorRef.current) url.searchParams.set("cursor", cursorRef.current);
+    const source = new EventSource(`${url.pathname}${url.search}`);
     fallbackTimerRef.current = setTimeout(() => {
       if (!connectedOnceRef.current) setShowRefreshFallback(true);
     }, 7000);
@@ -246,6 +248,7 @@ export function LiveUpdateStream({
     source.addEventListener("realtime-event", (event) => {
       try {
         const payload = JSON.parse((event as MessageEvent).data) as RealtimeEvent;
+        if (payload.id) cursorRef.current = payload.id;
         if (seenEventIdsRef.current.has(payload.id)) return;
         seenEventIdsRef.current.add(payload.id);
         if (!matchesPrefix(payload.event_type, prefixes)) return;

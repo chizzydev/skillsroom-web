@@ -9,11 +9,9 @@ import { LiveUpdateStream } from "@/components/realtime/LiveUpdateStream";
 import { Badge, type BadgeTone } from "@/components/ui/Badge";
 import { CopyTextButton } from "@/components/ui/CopyTextButton";
 import { DataTable } from "@/components/ui/DataTable";
-import { FormActionButton } from "@/components/ui/FormActionButton";
 import { Panel, PanelHeader } from "@/components/ui/Panel";
 import { PendingLink } from "@/components/ui/PendingLink";
 import { StatusPanel } from "@/components/ui/StatusPanel";
-import { SubmitButton } from "@/components/ui/SubmitButton";
 import { adminErrorMessageFromQuery } from "@/lib/admin-action-errors";
 import { canAccessAdmin, canUseAdminSection, getCurrentUser } from "@/lib/auth-bridge";
 import {
@@ -33,19 +31,9 @@ import {
   type TournamentStanding,
   type TournamentStateEvent
 } from "@/lib/match-room-api";
-import {
-  applyTournamentCumulativeScoresAction,
-  createTournamentAction,
-  generateTournamentStructureAction,
-  grantTournamentHostAction,
-  linkTournamentMatchRoomsAction,
-  reserveTournamentRefundsAction,
-  reserveTournamentSettlementAction,
-  reviewTournamentMatchResultAction,
-  reviewTournamentContributionAction,
-  seedTournamentAction,
-  updateTournamentHostEventAction
-} from "./actions";
+import { createTournamentAction } from "./actions";
+import { AdminTournamentMutationButton, AdminTournamentMutationForm } from "./AdminTournamentMutationForm";
+import { AdminTournamentsLiveDashboard, type AdminTournamentsSnapshot } from "./AdminTournamentsLiveDashboard";
 
 export const dynamic = "force-dynamic";
 
@@ -280,6 +268,13 @@ export default async function AdminTournamentsPage({
       ),
     0
   );
+  const tournamentsSnapshot: AdminTournamentsSnapshot = {
+    tournaments,
+    contributions,
+    command_details: commandDetails,
+    command_events: commandEvents,
+    loaded_at: new Date().toISOString()
+  };
 
   return (
     <AdminShell active="tournaments">
@@ -324,7 +319,9 @@ export default async function AdminTournamentsPage({
           </div>
         )}
 
-        <div className="grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <AdminTournamentsLiveDashboard initialSnapshot={tournamentsSnapshot} />
+
+        <div className="hidden min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <StatusPanel detail="Registration open" label="Open" tone="cyan" value={openCount.toString()} />
           <StatusPanel detail="Needs publishing" label="Drafts" tone="warning" value={draftCount.toString()} />
           <StatusPanel detail="Setup, live, review" label="Active" tone="danger" value={liveCount.toString()} />
@@ -333,7 +330,7 @@ export default async function AdminTournamentsPage({
 
         <AdminStepUpPanel returnTo="/admin/tournaments" description="Confirm your current Skillsroom password once before approving contributions, linking rooms, applying result decisions, or reserving tournament money actions." />
 
-        <Panel>
+        <Panel className="hidden">
           <PanelHeader
             description="See active tournaments, checked-in players, rounds, linked match rooms, disputes, and results that need attention."
             eyebrow="Active Events"
@@ -486,7 +483,7 @@ export default async function AdminTournamentsPage({
           />
           <div className="grid gap-4 p-4 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
             <div className="grid gap-4">
-              <form action={grantTournamentHostAction} className="grid gap-3 rounded-md border border-line bg-white p-4">
+              <AdminTournamentMutationForm command="grant_host" className="grid gap-3 rounded-md border border-line bg-white p-4" successMessage="Host access has been updated.">
                 <div>
                   <p className="font-mono text-[0.65rem] font-black uppercase tracking-[0.12em] text-dim">Access grant</p>
                   <h2 className="mt-1 text-lg font-black text-ink">Trusted host</h2>
@@ -517,10 +514,10 @@ export default async function AdminTournamentsPage({
                   <label className="flex items-center gap-2"><input name="view_finances" type="checkbox" defaultChecked /> View finances</label>
                 </div>
                 <textarea className="min-h-20 rounded-md border border-line bg-white px-3 py-2 text-sm outline-none focus:border-action" name="notes" placeholder="Internal approval note" />
-                <SubmitButton idleLabel="Grant access" pendingLabel="Granting access..." />
-              </form>
+                <AdminTournamentMutationButton idleLabel="Grant access" pendingLabel="Granting access..." />
+              </AdminTournamentMutationForm>
 
-              <form action={updateTournamentHostEventAction} className="grid gap-3 rounded-md border border-line bg-white p-4">
+              <AdminTournamentMutationForm command="update_event" className="grid gap-3 rounded-md border border-line bg-white p-4" successMessage="Tournament public details have been updated.">
                 <div>
                   <p className="font-mono text-[0.65rem] font-black uppercase tracking-[0.12em] text-dim">Event details</p>
                   <h2 className="mt-1 text-lg font-black text-ink">Update public tournament info</h2>
@@ -574,8 +571,8 @@ export default async function AdminTournamentsPage({
                   <textarea className="min-h-20 rounded-md border border-line bg-white px-3 py-2 text-sm outline-none focus:border-action" name="creator_notes" placeholder="Optional note from the host or sponsor" />
                 </label>
                 <label className="flex items-center gap-2 text-sm font-bold text-ink"><input name="featured" type="checkbox" /> Feature this event</label>
-                <SubmitButton idleLabel="Update event" pendingLabel="Updating event..." />
-              </form>
+                <AdminTournamentMutationButton idleLabel="Update event" pendingLabel="Updating event..." />
+              </AdminTournamentMutationForm>
             </div>
 
             <div className="grid gap-4">
@@ -638,14 +635,14 @@ export default async function AdminTournamentsPage({
                   key: "review",
                   label: "Review",
                   render: (row) => (
-                    <form action={reviewTournamentContributionAction} className="grid min-w-56 gap-2">
+                    <AdminTournamentMutationForm command="review_contribution" className="grid min-w-56 gap-2" successMessage="Contribution review saved.">
                       <input name="contribution_id" type="hidden" value={row.id} />
                       <input className="min-h-9 rounded-md border border-line bg-white px-2 text-xs outline-none focus:border-action" name="note" placeholder="Review note" />
                       <div className="grid grid-cols-2 gap-2">
-                        <FormActionButton className="border-0 bg-success text-xs text-white hover:bg-success/90" idleLabel="Approve" name="decision" pendingLabel="Approving..." size="sm" value="approve" />
-                        <FormActionButton className="border-0 bg-danger text-xs text-white hover:bg-red-700" idleLabel="Reject" name="decision" pendingLabel="Rejecting..." size="sm" value="reject" />
+                        <AdminTournamentMutationButton className="border-0 bg-success text-xs text-white hover:bg-success/90" idleLabel="Approve" name="decision" pendingLabel="Approving..." size="sm" value="approve" />
+                        <AdminTournamentMutationButton className="border-0 bg-danger text-xs text-white hover:bg-red-700" idleLabel="Reject" name="decision" pendingLabel="Rejecting..." size="sm" value="reject" />
                       </div>
-                    </form>
+                    </AdminTournamentMutationForm>
                   )
                 }
               ]}
@@ -664,7 +661,7 @@ export default async function AdminTournamentsPage({
             eyebrow="Player Setup"
             title="Arrange tournament players"
           />
-          <form action={seedTournamentAction} className="grid gap-4 p-4">
+          <AdminTournamentMutationForm command="seed" className="grid gap-4 p-4" successMessage="Player order saved.">
             <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1.2fr)_220px_minmax(0,1fr)]">
               <label className="grid gap-2 text-sm font-bold text-ink">
                 Tournament
@@ -699,12 +696,12 @@ export default async function AdminTournamentsPage({
               />
             </label>
             <div className="flex flex-wrap items-center gap-3">
-              <SubmitButton idleLabel="Save player order" pendingLabel="Saving player order..." />
+              <AdminTournamentMutationButton idleLabel="Save player order" pendingLabel="Saving player order..." />
               <p className="text-xs font-bold text-muted">
                 Manual order must include every checked-in player exactly once.
               </p>
             </div>
-          </form>
+          </AdminTournamentMutationForm>
         </Panel>
 
         <Panel>
@@ -713,7 +710,7 @@ export default async function AdminTournamentsPage({
             eyebrow="Structure"
             title="Create tournament matches"
           />
-          <form action={generateTournamentStructureAction} className="grid gap-4 p-4">
+          <AdminTournamentMutationForm command="generate_structure" className="grid gap-4 p-4" successMessage="Tournament matches generated.">
             <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
               <label className="grid gap-2 text-sm font-bold text-ink">
                 Tournament
@@ -735,12 +732,12 @@ export default async function AdminTournamentsPage({
               Regenerate existing structure
             </label>
             <div className="flex flex-wrap items-center gap-3">
-              <SubmitButton idleLabel="Generate stages" pendingLabel="Generating stages..." />
+              <AdminTournamentMutationButton idleLabel="Generate stages" pendingLabel="Generating stages..." />
               <p className="text-xs font-bold text-muted">
                 Use this after the tournament has enough checked-in players.
               </p>
             </div>
-          </form>
+          </AdminTournamentMutationForm>
         </Panel>
 
         <Panel>
@@ -749,7 +746,7 @@ export default async function AdminTournamentsPage({
             eyebrow="Rooms"
             title="Match room linker"
           />
-          <form action={linkTournamentMatchRoomsAction} className="grid gap-4 p-4">
+          <AdminTournamentMutationForm command="link_match_rooms" className="grid gap-4 p-4" successMessage="Match rooms linked.">
             <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
               <label className="grid gap-2 text-sm font-bold text-ink">
                 Tournament
@@ -777,12 +774,12 @@ export default async function AdminTournamentsPage({
               </label>
             </div>
             <div className="flex flex-wrap items-center gap-3">
-              <SubmitButton idleLabel="Link match rooms" pendingLabel="Linking match rooms..." />
+              <AdminTournamentMutationButton idleLabel="Link match rooms" pendingLabel="Linking match rooms..." />
               <p className="text-xs font-bold text-muted">
                 Linked rooms open as active zero-fee tournament rooms with entrants already attached. Specific match retries safely return existing links.
               </p>
             </div>
-          </form>
+          </AdminTournamentMutationForm>
         </Panel>
 
         <Panel>
@@ -791,7 +788,7 @@ export default async function AdminTournamentsPage({
             eyebrow="Result Review"
             title="Tournament result decisions"
           />
-          <TournamentResultReviewPanelClient action={reviewTournamentMatchResultAction} tournaments={commandDetails} />
+          <TournamentResultReviewPanelClient tournaments={commandDetails} />
         </Panel>
         <Panel>
           <PanelHeader
@@ -800,7 +797,7 @@ export default async function AdminTournamentsPage({
             title="Tournament payouts and refunds"
           />
           <div className="grid gap-5 p-4 xl:grid-cols-2">
-            <form action={reserveTournamentSettlementAction} className="grid gap-3 rounded-md border border-line bg-white p-4">
+            <AdminTournamentMutationForm command="reserve_settlement" className="grid gap-3 rounded-md border border-line bg-white p-4" successMessage="Prize payouts have been reserved.">
               <label className="grid gap-2 text-sm font-bold text-ink">
                 Tournament
                 <select className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="tournament_id" required>
@@ -815,9 +812,9 @@ export default async function AdminTournamentsPage({
                 Notes
                 <textarea className="min-h-24 rounded-md border border-line bg-white px-3 py-2 text-sm outline-none focus:border-action" name="notes" placeholder="Prize allocation, commission, or payout note" />
               </label>
-              <SubmitButton idleLabel="Reserve prize payouts" pendingLabel="Reserving prize payouts..." />
-            </form>
-            <form action={reserveTournamentRefundsAction} className="grid gap-3 rounded-md border border-line bg-white p-4">
+              <AdminTournamentMutationButton idleLabel="Reserve prize payouts" pendingLabel="Reserving prize payouts..." />
+            </AdminTournamentMutationForm>
+            <AdminTournamentMutationForm command="reserve_refunds" className="grid gap-3 rounded-md border border-line bg-white p-4" successMessage="Entry refunds have been reserved.">
               <label className="grid gap-2 text-sm font-bold text-ink">
                 Tournament
                 <select className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="tournament_id" required>
@@ -832,8 +829,8 @@ export default async function AdminTournamentsPage({
                 Refund reason
                 <textarea className="min-h-24 rounded-md border border-line bg-white px-3 py-2 text-sm outline-none focus:border-action" defaultValue="tournament_refund_reserved" name="reason" required />
               </label>
-              <SubmitButton idleLabel="Reserve entry refunds" pendingLabel="Reserving entry refunds..." variant="danger" />
-            </form>
+              <AdminTournamentMutationButton idleLabel="Reserve entry refunds" pendingLabel="Reserving entry refunds..." variant="danger" />
+            </AdminTournamentMutationForm>
           </div>
         </Panel>
 
@@ -843,7 +840,7 @@ export default async function AdminTournamentsPage({
             eyebrow="Scoring"
             title="Add tournament scores"
           />
-          <form action={applyTournamentCumulativeScoresAction} className="grid gap-4 p-4">
+          <AdminTournamentMutationForm command="apply_scores" className="grid gap-4 p-4" successMessage="Tournament scores have been applied.">
             <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
               <label className="grid gap-2 text-sm font-bold text-ink">
                 Tournament
@@ -876,12 +873,12 @@ export default async function AdminTournamentsPage({
               />
             </label>
             <div className="flex flex-wrap items-center gap-3">
-              <SubmitButton idleLabel="Apply scores" pendingLabel="Applying scores..." />
+              <AdminTournamentMutationButton idleLabel="Apply scores" pendingLabel="Applying scores..." />
               <p className="text-xs font-bold text-muted">
                 Include every player or team in the match. Duplicate, missing, or already-scored entries will be rejected.
               </p>
             </div>
-          </form>
+          </AdminTournamentMutationForm>
         </Panel>
 
         <div className="grid min-w-0 gap-6 2xl:grid-cols-[minmax(0,1fr)_440px]">

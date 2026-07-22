@@ -25,6 +25,7 @@ import {
   type ResultClaimStatus
 } from "@/lib/match-room-api";
 import { reviewResultClaimAction } from "./actions";
+import { AdminResultsLiveQueue, type AdminResultsSnapshot } from "./AdminResultsLiveQueue";
 
 export const dynamic = "force-dynamic";
 
@@ -182,6 +183,10 @@ export default async function AdminResultsPage({ searchParams }: { searchParams:
   const cardsByStatus = new Map<ResultClaimStatus, AdminResultQueueCard[]>(
     queueStatuses.map(({ status }) => [status, queueCards.filter((card) => card.claim.status === status)])
   );
+  const resultsSnapshot: AdminResultsSnapshot = {
+    claims,
+    loaded_at: new Date().toISOString()
+  };
 
   return (
     <AdminShell active="results">
@@ -200,14 +205,46 @@ export default async function AdminResultsPage({ searchParams }: { searchParams:
           <div className="rounded-md border border-danger bg-red-50 p-4 text-sm font-bold text-danger">{loadError}</div>
         ) : null}
 
-        <div className="grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <AdminResultsLiveQueue initialSnapshot={resultsSnapshot} />
+
+        <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1fr)_420px]">
+          <div className="hidden xl:block" />
+          <div className="grid h-fit gap-4 xl:sticky xl:top-24">
+            <AdminStepUpPanel returnTo="/admin/results" />
+            <Panel>
+              <PanelHeader eyebrow="Decision" title="Review result claim" description="Approve only after the opponent agrees. Submitted claims can be disputed, rejected, closed without a winner, or left for the opponent response." />
+              <form action={reviewResultClaimAction} className="grid gap-3 p-4">
+                <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm font-bold leading-6 text-amber-900">
+                  Winner approval is locked until the opponent accepts the result. Timeout award is available only after the response deadline has passed. Use Mark disputed when the evidence needs team review before payout.
+                </div>
+                <label className="grid gap-2 text-sm font-bold text-ink">
+                  Claim ID
+                  <input className="min-h-11 rounded-md border border-line bg-white px-3 font-mono text-sm outline-none focus:border-action" name="claim_id" required />
+                </label>
+                <label className="grid gap-2 text-sm font-bold text-ink">
+                  Review note
+                  <textarea className="min-h-28 rounded-md border border-line bg-white px-3 py-2 text-sm outline-none focus:border-action" name="note" />
+                </label>
+                <div className="grid gap-2">
+                  <FormActionButton idleLabel="Approve claim" name="decision" pendingLabel="Approving claim..." value="approve_claim" />
+                  <FormActionButton idleLabel="Award after no response" name="decision" pendingLabel="Awarding after no response..." value="opponent_timeout_awarded" variant="secondary" />
+                  <FormActionButton idleLabel="Mark disputed" name="decision" pendingLabel="Marking disputed..." value="mark_disputed" variant="secondary" />
+                  <FormActionButton idleLabel="Reject claim" name="decision" pendingLabel="Rejecting claim..." value="reject_claim" variant="danger" />
+                  <FormActionButton idleLabel="Void match and refund entries" name="decision" pendingLabel="Queuing refunds..." value="void_match" variant="danger" />
+                </div>
+              </form>
+            </Panel>
+          </div>
+        </div>
+
+        <div className="hidden min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <StatusPanel detail="Awaiting opponent" label="Submitted" tone="warning" value={countStatus(claims, "submitted")} />
           <StatusPanel detail="Opponent agrees" label="Agreed" tone="success" value={countStatus(claims, "opponent_agreed")} />
           <StatusPanel detail="Needs dispute review" label="Disputed" tone="danger" value={countStatus(claims, "opponent_disputed")} />
           <StatusPanel detail="All active reviews" label="Queue Total" tone="cyan" value={claims.length.toString()} />
         </div>
 
-        <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1fr)_420px]">
+        <div className="hidden min-w-0 gap-6 xl:grid-cols-[minmax(0,1fr)_420px]">
           <Panel>
             <PanelHeader eyebrow="Queue" title="Result review queue" description="Review evidence and copy the claim ID into the decision panel when you are ready to rule." />
             <div className="grid gap-3 p-4">

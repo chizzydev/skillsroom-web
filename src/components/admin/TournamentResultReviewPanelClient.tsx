@@ -2,9 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Badge } from "@/components/ui/Badge";
-import { SubmitButton } from "@/components/ui/SubmitButton";
-
-type ReviewAction = (formData: FormData) => void | Promise<void>;
+import { AdminTournamentMutationButton, AdminTournamentMutationForm } from "@/app/admin/tournaments/AdminTournamentMutationForm";
 
 type TournamentFormat =
   | "single_elimination"
@@ -76,7 +74,6 @@ type TournamentDetail = {
 };
 
 type Props = {
-  action: ReviewAction;
   tournaments: TournamentDetail[];
 };
 
@@ -132,7 +129,7 @@ function reviewsForMatch(reviews: TournamentMatchResultReview[], matchId: string
     .slice(0, 4);
 }
 
-export function TournamentResultReviewPanelClient({ action, tournaments }: Props) {
+export function TournamentResultReviewPanelClient({ tournaments }: Props) {
   const actionableTournaments = useMemo(
     () =>
       tournaments.filter((tournament) =>
@@ -220,7 +217,7 @@ export function TournamentResultReviewPanelClient({ action, tournaments }: Props
   const recentReviews = reviewsForMatch(selectedTournament.result_reviews, selectedMatch.id);
 
   return (
-    <form action={action} className="grid gap-4 p-4">
+    <AdminTournamentMutationForm command="review_match_result" className="grid gap-4 p-4" successMessage="Result decision saved.">
       <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
         <label className="grid gap-2 text-sm font-bold text-ink">
           Tournament
@@ -376,11 +373,11 @@ export function TournamentResultReviewPanelClient({ action, tournaments }: Props
       ) : null}
 
       <div className="flex flex-wrap items-center gap-3">
-        <SubmitButton idleLabel="Save result decision" pendingLabel="Saving result decision..." />
+        <AdminTournamentMutationButton idleLabel="Save result decision" pendingLabel="Saving result decision..." />
         <p className="text-xs font-bold text-muted">
           Review history, winner identity, and linked room context stay visible so the team can confirm the right action before updating the bracket.
         </p>
       </div>
-    </form>
+    </AdminTournamentMutationForm>
   );
 }

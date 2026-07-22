@@ -1,11 +1,14 @@
 "use client";
 
 import { memo, useCallback, useEffect, useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { PendingLink } from "@/components/ui/PendingLink";
 import { Panel, PanelHeader } from "@/components/ui/Panel";
 import { VirtualList } from "@/components/ui/VirtualList";
+import { webQueryKeys } from "@/components/realtime/webRealtimeInvalidation";
+import type { RoomActivitySnapshot } from "./roomActivityData";
 import {
   queueDescription,
   queueLabel,
@@ -16,17 +19,7 @@ import {
   type RoomActivityStatus
 } from "./roomActivityConfig";
 
-type RoomActivityRow = {
-  id: string;
-  room_code: string;
-  title: string | null;
-  status: RoomActivityStatus;
-  status_label: string;
-  entry_label: string;
-  participant_count: number;
-  max_participants: number;
-  is_expired_open: boolean;
-};
+type RoomActivityRow = RoomActivitySnapshot["rooms"][number];
 
 function statusTone(status: RoomActivityStatus, expired = false) {
   if (expired) return "neutral" as const;
@@ -201,18 +194,37 @@ function RoomQueueTabs({ queues, selectedQueue, onSelect }: RoomQueueTabsProps) 
 }
 
 type RoomActivityPanelClientProps = {
-  rooms: RoomActivityRow[];
-  initialQueue: RoomActivityQueue;
-  nextCursor: string | null;
+  initialSnapshot: RoomActivitySnapshot;
 };
 
-export function RoomActivityPanelClient({ rooms, initialQueue, nextCursor }: RoomActivityPanelClientProps) {
-  const [selectedQueue, setSelectedQueue] = useState<RoomActivityQueue>(initialQueue);
+async function fetchRoomActivitySnapshot(selectedQueue: RoomActivityQueue) {
+  const params = new URLSearchParams();
+  if (selectedQueue !== "open") params.set("queue", selectedQueue);
+  const response = await fetch(`/api/matches/activity?${params.toString()}`, {
+    credentials: "same-origin",
+    headers: { Accept: "application/json" }
+  });
+  if (!response.ok) throw new Error("ROOM_ACTIVITY_UNAVAILABLE");
+  const payload = await response.json() as { ok?: boolean; data?: RoomActivitySnapshot };
+  if (!payload.ok || !payload.data) throw new Error("ROOM_ACTIVITY_UNAVAILABLE");
+  return payload.data;
+}
+
+export function RoomActivityPanelClient({ initialSnapshot }: RoomActivityPanelClientProps) {
+  const [selectedQueue, setSelectedQueue] = useState<RoomActivityQueue>(initialSnapshot.selectedQueue);
   const queues = useMemo<RoomActivityQueue[]>(() => roomActivityQueues, []);
 
+  const { data: snapshot = initialSnapshot, isFetching, isError } = useQuery({
+    queryKey: [...webQueryKeys.rooms, "activity", selectedQueue],
+    queryFn: () => fetchRoomActivitySnapshot(selectedQueue),
+    initialData: initialSnapshot,
+    refetchOnMount: false,
+    staleTime: 10_000
+  });
+
   useEffect(() => {
-    setSelectedQueue(initialQueue);
-  }, [initialQueue]);
+    setSelectedQueue(initialSnapshot.selectedQueue);
+  }, [initialSnapshot.selectedQueue]);
 
   useEffect(() => {
     if (!queues.includes(selectedQueue)) {
@@ -221,8 +233,8 @@ export function RoomActivityPanelClient({ rooms, initialQueue, nextCursor }: Roo
   }, [queues, selectedQueue]);
 
   const queuedRooms = useMemo(
-    () => rooms.filter((room) => queueForRoom(room) === selectedQueue),
-    [rooms, selectedQueue]
+    () => snapshot.rooms.filter((room) => queueForRoom(room) === selectedQueue),
+    [snapshot.rooms, selectedQueue]
   );
 
   const handleQueueChange = (nextQueue: RoomActivityQueue) => {
@@ -240,10 +252,15 @@ export function RoomActivityPanelClient({ rooms, initialQueue, nextCursor }: Roo
   return (
     <Panel id="room-activity">
       <PanelHeader
-        description="Switch between every room stage, from open and funding through disputes, payout, done, and expired H2H challenges."
+        description={isFetching ? "Refreshing room activity..." : "Switch between every room stage, from open and funding through disputes, payout, done, and expired H2H challenges."}
         eyebrow="Rooms"
         title="Room activity"
       />
+      {isError || snapshot.loadError ? (
+        <div className="border-b border-line bg-amber-50 px-4 py-3 text-sm font-bold text-amber-800">
+          {snapshot.loadError ?? "Room activity could not refresh. The current list is still available."}
+        </div>
+      ) : null}
       <RoomQueueTabs queues={queues} selectedQueue={selectedQueue} onSelect={handleQueueChange} />
       {queuedRooms.length ? (
         <>
@@ -259,13 +276,13 @@ export function RoomActivityPanelClient({ rooms, initialQueue, nextCursor }: Roo
           />
         </div>
       )}
-      {nextCursor ? (
+      {snapshot.nextCursor ? (
         <div className="border-t border-line bg-white p-4">
           <PendingLink
             className="inline-flex min-h-10 items-center justify-center rounded-md border border-line bg-white px-4 text-sm font-black text-ink hover:bg-surfaceHigh"
             href={`/matches?${new URLSearchParams({
               ...(selectedQueue === "open" ? {} : { queue: selectedQueue }),
-              cursor: nextCursor
+              cursor: snapshot.nextCursor
             }).toString()}`}
             pendingLabel="Loading more rooms..."
           >

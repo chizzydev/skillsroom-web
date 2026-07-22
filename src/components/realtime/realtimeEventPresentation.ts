@@ -133,6 +133,10 @@ export function describeRealtimeEvent(event: RealtimeEvent): RealtimeToastMessag
       return { title: "Tournament contribution approved", description: "That money now counts toward the event pool.", tone: "success" };
     case "tournament.contribution.rejected":
       return { title: "Tournament contribution rejected", description: "That contribution will need correction or resubmission.", tone: "danger" };
+    case "tournament.host.granted":
+      return { title: "Tournament host access updated", description: "Host permissions changed for this event.", tone: "success" };
+    case "tournament.host.event_updated":
+      return { title: "Tournament details updated", description: "The public event details changed.", tone: "success" };
     case "tournament.seeded":
       return { title: "Tournament seeded", description: "Entries now have live competitive order.", tone: "success" };
     case "tournament.structure.generated":

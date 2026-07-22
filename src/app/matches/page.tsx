@@ -8,193 +8,20 @@ import { Panel, PanelHeader } from "@/components/ui/Panel";
 import { StatusPanel } from "@/components/ui/StatusPanel";
 import { TransientStatusBanner } from "@/components/ui/TransientStatusBanner";
 import { getCurrentUser } from "@/lib/auth-bridge";
-import {
-  formatEntryAmount,
-  getMatchRoomStatusCounts,
-  listMatchRooms,
-  matchStatusLabel,
-  type MatchRoomListRow,
-  type MatchRoomStatus
-} from "@/lib/match-room-api";
+import type { MatchRoomStatus } from "@/lib/match-room-api";
 import { joinMatchRoomAction } from "./actions";
-import {
-  queueForRoomStatus,
-  roomActivityQueueStatuses,
-  roomActivityQueues,
-  roomActivityStatuses,
-  type RoomActivityQueue,
-  type RoomActivityStatus
-} from "./roomActivityConfig";
+import { loadRoomActivitySnapshot } from "./roomActivityData";
 import { RoomActivityPanelClient } from "./RoomActivityPanelClient";
-
-function parseRoomQueue(value: string | undefined): RoomActivityQueue {
-  if (value && roomActivityQueues.includes(value as RoomActivityQueue)) {
-    return value as RoomActivityQueue;
-  }
-  if (value && roomActivityStatuses.includes(value as RoomActivityStatus)) {
-    return queueForRoomStatus(value as RoomActivityStatus);
-  }
-
-  return "open";
-}
-
-function isRoomActivityStatus(status: MatchRoomStatus): status is RoomActivityStatus {
-  return roomActivityStatuses.includes(status as RoomActivityStatus);
-}
-
-function isExpiredOpenRoom(room: MatchRoomListRow) {
-  if (room.status !== "open" || !room.expires_at) return false;
-  const expiresAt = new Date(room.expires_at).getTime();
-  return Number.isFinite(expiresAt) && expiresAt <= Date.now();
-}
 
 function countStatus(counts: Partial<Record<MatchRoomStatus, number>>, status: MatchRoomStatus) {
   return (counts[status] ?? 0).toString();
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return Boolean(value && typeof value === "object" && !Array.isArray(value));
-}
-
-const roomStatusSet = new Set<MatchRoomStatus>(roomActivityStatuses);
-
-function toFiniteNumber(value: unknown, fallback: number) {
-  return typeof value === "number" && Number.isFinite(value) ? value : fallback;
-}
-
-function sanitizeRoom(row: unknown): MatchRoomListRow | null {
-  if (!isRecord(row)) return null;
-  if (typeof row.id !== "string" || typeof row.room_code !== "string") return null;
-  if (typeof row.status !== "string" || !roomStatusSet.has(row.status as MatchRoomStatus)) return null;
-
-  return {
-    id: row.id,
-    game_id: typeof row.game_id === "string" ? row.game_id : undefined,
-    ruleset_id: typeof row.ruleset_id === "string" ? row.ruleset_id : undefined,
-    room_code: row.room_code,
-    status: row.status as MatchRoomStatus,
-    currency: typeof row.currency === "string" && row.currency.trim() ? row.currency : "NGN",
-    entry_amount_minor: toFiniteNumber(row.entry_amount_minor, 0),
-    commission_bps: toFiniteNumber(row.commission_bps, 0),
-    max_participants: Math.max(1, toFiniteNumber(row.max_participants, 2)),
-    title: typeof row.title === "string" ? row.title : null,
-    created_by_user_id: typeof row.created_by_user_id === "string" ? row.created_by_user_id : "",
-    created_at: typeof row.created_at === "string" ? row.created_at : "",
-    updated_at: typeof row.updated_at === "string" ? row.updated_at : "",
-    expires_at: typeof row.expires_at === "string" ? row.expires_at : null,
-    participant_count: Math.max(0, toFiniteNumber(row.participant_count, 0)),
-    game_slug: typeof row.game_slug === "string" ? row.game_slug : null,
-    game_name: typeof row.game_name === "string" ? row.game_name : null,
-    ruleset_slug: typeof row.ruleset_slug === "string" ? row.ruleset_slug : null,
-    ruleset_title: typeof row.ruleset_title === "string" ? row.ruleset_title : null
-  };
-}
-
-function deriveCounts(rooms: MatchRoomListRow[]) {
-  return rooms.reduce<Partial<Record<MatchRoomStatus, number>>>((current, room) => ({
-    ...current,
-    [room.status]: (current[room.status] ?? 0) + 1
-  }), {});
-}
-
-function sanitizeCounts(value: unknown, fallbackRooms: MatchRoomListRow[]) {
-  if (!isRecord(value)) return deriveCounts(fallbackRooms);
-  const source = isRecord(value.counts) ? value.counts : value;
-  return roomActivityStatuses.reduce<Partial<Record<MatchRoomStatus, number>>>((current, status) => {
-    const count = source[status];
-    if (typeof count === "number" && Number.isFinite(count) && count >= 0) {
-      current[status] = count;
-    }
-    return current;
-  }, deriveCounts(fallbackRooms));
 }
 
 export default async function MatchesPage({ searchParams }: { searchParams: Promise<{ error?: string; queue?: string; cursor?: string }> }) {
   const user = await getCurrentUser();
   if (!user) redirect("/sign-in?redirect=/matches");
   const { error, queue, cursor } = await searchParams;
-  const selectedQueue = parseRoomQueue(queue);
-  const selectedQueueStatuses = roomActivityQueueStatuses[selectedQueue];
-
-  let rooms: MatchRoomListRow[] = [];
-  let nextCursor: string | null = null;
-  let counts: Partial<Record<MatchRoomStatus, number>> = {};
-  let loadError: string | null = null;
-  const [activityPageResult, roomPageResults, statusCountsResult] = await Promise.all([
-    listMatchRooms({
-      cursor: selectedQueue === "expired" ? cursor : undefined,
-      limit: 50
-    }).then(
-      (value) => ({ status: "fulfilled" as const, value }),
-      (reason) => ({ status: "rejected" as const, reason })
-    ),
-    Promise.allSettled(
-      roomActivityStatuses.map(async (status) => ({
-        status,
-        page: await listMatchRooms({
-          status,
-          cursor: selectedQueueStatuses.length === 1 && status === selectedQueueStatuses[0] ? cursor : undefined,
-          limit: 24
-        })
-      }))
-    ),
-    getMatchRoomStatusCounts().then(
-      (value) => ({ status: "fulfilled" as const, value }),
-      (reason) => ({ status: "rejected" as const, reason })
-    )
-  ]);
-  const activityPage = activityPageResult.status === "fulfilled"
-    ? {
-        rooms: Array.isArray(activityPageResult.value.rooms)
-          ? activityPageResult.value.rooms.map(sanitizeRoom).filter((room): room is MatchRoomListRow => Boolean(room))
-          : [],
-        next_cursor: typeof activityPageResult.value.next_cursor === "string" ? activityPageResult.value.next_cursor : null
-      }
-    : { rooms: [], next_cursor: null };
-  const roomPages = roomPageResults.flatMap((result) => {
-    if (result.status !== "fulfilled") return [];
-    const rows = Array.isArray(result.value.page?.rooms) ? result.value.page.rooms.map(sanitizeRoom).filter((room): room is MatchRoomListRow => Boolean(room)) : [];
-    return [{
-      status: result.value.status,
-      page: {
-        rooms: rows,
-        next_cursor: typeof result.value.page?.next_cursor === "string" ? result.value.page.next_cursor : null
-      }
-    }];
-  });
-  const roomsById = new Map<string, MatchRoomListRow>();
-  for (const room of roomPages.flatMap(({ page }) => page.rooms)) {
-    roomsById.set(room.id, room);
-  }
-  for (const room of activityPage.rooms.filter(isExpiredOpenRoom)) {
-    roomsById.set(room.id, room);
-  }
-  rooms = Array.from(roomsById.values());
-  nextCursor = selectedQueue === "expired"
-    ? activityPage.next_cursor
-    : selectedQueueStatuses.length === 1 ? (roomPages.find((item) => item.status === selectedQueueStatuses[0])?.page.next_cursor ?? null) : null;
-  counts = statusCountsResult.status === "fulfilled"
-    ? sanitizeCounts(statusCountsResult.value, rooms)
-    : deriveCounts(rooms);
-  if (activityPageResult.status === "rejected" && roomPageResults.every((result) => result.status === "rejected")) {
-    loadError = "Rooms are temporarily unavailable. Your account is still signed in; try this page again in a moment.";
-  } else if (activityPageResult.status === "rejected" || roomPageResults.some((result) => result.status === "rejected") || statusCountsResult.status === "rejected" || roomPages.length < roomActivityStatuses.length) {
-    loadError = "Some room data could not load. The rooms shown below are still safe to use.";
-  }
-
-  const roomActivityRows = rooms
-    .filter((room) => isRoomActivityStatus(room.status))
-    .map((room) => ({
-      id: room.id,
-      room_code: room.room_code,
-      title: room.title,
-      status: room.status as RoomActivityStatus,
-      status_label: isExpiredOpenRoom(room) ? "Expired" : matchStatusLabel(room.status),
-      entry_label: formatEntryAmount(room),
-      participant_count: room.participant_count ?? 0,
-      max_participants: room.max_participants,
-      is_expired_open: isExpiredOpenRoom(room)
-    }));
+  const activitySnapshot = await loadRoomActivitySnapshot({ queue, cursor });
   return (
     <AppShell active="matches">
       <MotionSection className="grid min-w-0 max-w-full gap-6 overflow-hidden" variant="page">
@@ -218,17 +45,17 @@ export default async function MatchesPage({ searchParams }: { searchParams: Prom
           </div>
         </MotionSection>
 
-        {(error || loadError) ? <TransientStatusBanner clearKeys={["error"]} durationMs={12000} message={error ?? loadError ?? ""} /> : null}
+        {(error || activitySnapshot.loadError) ? <TransientStatusBanner clearKeys={["error"]} durationMs={12000} message={error ?? activitySnapshot.loadError ?? ""} /> : null}
 
         <div className="grid min-w-0 max-w-full gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <Reveal staggerIndex={0}><StatusPanel detail="Visible to lobby" label="Open" tone="cyan" value={countStatus(counts, "open")} /></Reveal>
-          <Reveal staggerIndex={1}><StatusPanel detail="Manual transfer next" label="Awaiting Funding" tone="warning" value={countStatus(counts, "awaiting_funding")} /></Reveal>
-          <Reveal staggerIndex={2}><StatusPanel detail="Payment proof check" label="Funding Review" tone="danger" value={countStatus(counts, "funding_review")} /></Reveal>
-          <Reveal staggerIndex={3}><StatusPanel detail="Visible rooms" label="Tracked" tone="success" value={Object.values(counts).reduce((sum, value) => sum + (value ?? 0), 0).toString()} /></Reveal>
+          <Reveal staggerIndex={0}><StatusPanel detail="Visible to lobby" label="Open" tone="cyan" value={countStatus(activitySnapshot.counts, "open")} /></Reveal>
+          <Reveal staggerIndex={1}><StatusPanel detail="Manual transfer next" label="Awaiting Funding" tone="warning" value={countStatus(activitySnapshot.counts, "awaiting_funding")} /></Reveal>
+          <Reveal staggerIndex={2}><StatusPanel detail="Payment proof check" label="Funding Review" tone="danger" value={countStatus(activitySnapshot.counts, "funding_review")} /></Reveal>
+          <Reveal staggerIndex={3}><StatusPanel detail="Visible rooms" label="Tracked" tone="success" value={Object.values(activitySnapshot.counts).reduce((sum, value) => sum + (value ?? 0), 0).toString()} /></Reveal>
         </div>
 
         <Reveal>
-          <RoomActivityPanelClient initialQueue={selectedQueue} nextCursor={nextCursor} rooms={roomActivityRows} />
+          <RoomActivityPanelClient initialSnapshot={activitySnapshot} />
         </Reveal>
 
         <Reveal>

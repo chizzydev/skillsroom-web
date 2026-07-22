@@ -41,6 +41,7 @@ import {
   updateTournamentPayoutInstructionsAction,
   updateTournamentRefundInstructionsAction
 } from "./actions";
+import { AdminSettlementsLiveQueues, type AdminSettlementsSnapshot } from "./AdminSettlementsLiveQueues";
 
 export const dynamic = "force-dynamic";
 
@@ -207,6 +208,15 @@ export default async function AdminSettlementsPage({ searchParams }: { searchPar
   const completedTournamentPayouts = tournamentPayouts.filter((row) => row.status === "completed").slice(0, 12);
   const queuedTournamentRefunds = tournamentRefunds.filter((row) => row.status === "queued");
   const completedTournamentRefunds = tournamentRefunds.filter((row) => row.status === "completed").slice(0, 12);
+  const settlementsSnapshot: AdminSettlementsSnapshot = {
+    settlements,
+    payouts,
+    refunds,
+    tournament_settlements: tournamentSettlements,
+    tournament_payouts: tournamentPayouts,
+    tournament_refunds: tournamentRefunds,
+    loaded_at: new Date().toISOString()
+  };
 
   return (
     <AdminShell active="settlements">
@@ -230,7 +240,9 @@ export default async function AdminSettlementsPage({ searchParams }: { searchPar
           </div>
         ) : null}
 
-        <div className="grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <AdminSettlementsLiveQueues initialSnapshot={settlementsSnapshot} />
+
+        <div className="hidden min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <StatusPanel detail="Match + tournament" label="Settlements" tone="success" value={(queuedSettlements.length + queuedTournamentSettlements.length).toString()} />
           <StatusPanel detail="Manual transfer" label="Payout Queue" tone="warning" value={(queuedPayouts.length + queuedTournamentPayouts.length).toString()} />
           <StatusPanel detail="Manual return" label="Refund Queue" tone="danger" value={(queuedRefunds.length + queuedTournamentRefunds.length).toString()} />

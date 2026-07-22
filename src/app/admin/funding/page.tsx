@@ -1,28 +1,18 @@
 import { redirect } from "next/navigation";
-import { AdminEmptyState } from "@/components/admin/AdminEmptyState";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { AdminStepUpPanel } from "@/components/admin/AdminStepUpPanel";
 import { AdminShell } from "@/components/layout/AdminShell";
 import { LiveUpdateStream } from "@/components/realtime/LiveUpdateStream";
-import { Badge } from "@/components/ui/Badge";
 import { FormActionButton } from "@/components/ui/FormActionButton";
 import { Panel, PanelHeader } from "@/components/ui/Panel";
-import { StatusPanel } from "@/components/ui/StatusPanel";
 import { TransientStatusBanner } from "@/components/ui/TransientStatusBanner";
 import { adminErrorMessageFromQuery } from "@/lib/admin-action-errors";
 import { canAccessAdmin, canUseAdminSection, getCurrentUser } from "@/lib/auth-bridge";
-import { formatEntryAmount, listFundingSubmissions, type ManualFundingSubmission } from "@/lib/match-room-api";
+import { listFundingSubmissions, type ManualFundingSubmission } from "@/lib/match-room-api";
 import { reviewFundingSubmissionAction } from "./actions";
+import { AdminFundingLiveQueue } from "./AdminFundingLiveQueue";
 
 export const dynamic = "force-dynamic";
-
-function countStatus(rows: ManualFundingSubmission[], status: ManualFundingSubmission["status"]) {
-  return rows.filter((row) => row.status === status).length.toString();
-}
-
-function amountLabel(row: ManualFundingSubmission) {
-  return formatEntryAmount({ currency: row.currency, entry_amount_minor: row.amount_minor });
-}
 
 export default async function AdminFundingPage({ searchParams }: { searchParams: Promise<{ error?: string; success?: string }> }) {
   const user = await getCurrentUser();
@@ -56,61 +46,10 @@ export default async function AdminFundingPage({ searchParams }: { searchParams:
           <div className="rounded-md border border-danger bg-red-50 p-4 text-sm font-bold text-danger">{loadError}</div>
         ) : null}
 
-        <div className="grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <StatusPanel detail="Needs review" label="Submitted" tone="warning" value={countStatus(submissions, "submitted")} />
-          <StatusPanel detail="Current filter" label="Approved" tone="success" value={countStatus(submissions, "approved")} />
-          <StatusPanel detail="Current filter" label="Rejected" tone="danger" value={countStatus(submissions, "rejected")} />
-          <StatusPanel detail="Ledger on approval" label="Queue Total" tone="cyan" value={submissions.length.toString()} />
-        </div>
+        <AdminFundingLiveQueue initialSnapshot={{ submissions, loaded_at: new Date().toISOString() }} />
 
         <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1fr)_420px]">
-          <Panel>
-            <PanelHeader eyebrow="Queue" title="Submitted transfers" description="Copy the submission ID into the review panel after checking bank records and proof." />
-            <div className="grid gap-3 p-4">
-              {submissions.length ? (
-                submissions.map((submission) => (
-                  <article className="rounded-md border border-line bg-white p-4" key={submission.id}>
-                    <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                      <div className="min-w-0">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <Badge tone="warning">{submission.status}</Badge>
-                          <span className="font-mono text-xs font-bold text-dim">{new Date(submission.submitted_at).toLocaleString("en-NG")}</span>
-                        </div>
-                        <h2 className="mt-3 text-lg font-black text-ink">{amountLabel(submission)}</h2>
-                        <p className="mt-1 font-mono text-xs font-bold text-muted">Room {submission.match_room_id}</p>
-                      </div>
-                      <div className="rounded-md border border-line bg-surfaceWarm p-3">
-                        <span className="block font-mono text-[11px] font-bold uppercase tracking-[0.12em] text-dim">Submission ID</span>
-                        <strong className="mt-1 block break-all font-mono text-xs text-ink">{submission.id}</strong>
-                      </div>
-                    </div>
-                    <dl className="mt-4 grid gap-3 text-sm md:grid-cols-3">
-                      <div>
-                        <dt className="font-mono text-[11px] font-bold uppercase tracking-[0.12em] text-dim">Player</dt>
-                        <dd className="mt-1 break-all font-bold text-ink">{submission.user_id}</dd>
-                      </div>
-                      <div>
-                        <dt className="font-mono text-[11px] font-bold uppercase tracking-[0.12em] text-dim">Reference</dt>
-                        <dd className="mt-1 break-all font-bold text-ink">{submission.transfer_reference}</dd>
-                      </div>
-                      <div>
-                        <dt className="font-mono text-[11px] font-bold uppercase tracking-[0.12em] text-dim">Bank</dt>
-                        <dd className="mt-1 font-bold text-ink">{submission.sender_bank_name ?? "Not provided"}</dd>
-                      </div>
-                    </dl>
-                    {submission.proof_url ? (
-                      <a className="mt-4 inline-flex text-sm font-black text-cyan hover:text-action" href={submission.proof_url} rel="noreferrer" target="_blank">
-                        Open proof
-                      </a>
-                    ) : null}
-                  </article>
-                ))
-              ) : (
-                <AdminEmptyState description="No manual funding submissions are waiting for approval." title="Funding queue is clear" />
-              )}
-            </div>
-          </Panel>
-
+          <div className="hidden xl:block" />
           <div className="grid h-fit gap-4 xl:sticky xl:top-24">
             <AdminStepUpPanel returnTo="/admin/funding" />
             <Panel>

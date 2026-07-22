@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { WebQueryProvider } from "@/components/providers/WebQueryProvider";
 import "./globals.css";
 
 const metadataBase = new URL(process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3100");
@@ -43,7 +44,9 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html data-scroll-behavior="smooth" lang="en">
-      <body className="font-ui">{children}</body>
+      <body className="font-ui">
+        <WebQueryProvider>{children}</WebQueryProvider>
+      </body>
     </html>
   );
 }

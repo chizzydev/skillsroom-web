@@ -8,6 +8,7 @@ import { Panel, PanelHeader } from "@/components/ui/Panel";
 import { StatusPanel } from "@/components/ui/StatusPanel";
 import { SubmitButton } from "@/components/ui/SubmitButton";
 import { getCurrentUser } from "@/lib/auth-bridge";
+import { HomeLiveLobbyIsland } from "./HomeLiveLobbyIsland";
 import {
   formatEntryAmount,
   formatMinorMoney,
@@ -585,6 +586,8 @@ export default async function HomePage({ searchParams }: HomePageProps) {
             {params.error}
           </Reveal>
         ) : null}
+
+        <HomeLiveLobbyIsland initialSummary={summary} />
 
         <div className="grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <Reveal staggerIndex={0}><StatusPanel detail="Rooms and tournaments" label="Play Now" tone="cyan" value={playNowTotal.toString()} /></Reveal>
