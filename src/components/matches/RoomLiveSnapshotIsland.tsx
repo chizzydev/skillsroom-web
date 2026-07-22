@@ -8,7 +8,8 @@ import { Badge, type BadgeTone } from "@/components/ui/Badge";
 import { Panel, PanelHeader } from "@/components/ui/Panel";
 import { SubmitButton } from "@/components/ui/SubmitButton";
 import { webQueryKeys } from "@/components/realtime/webRealtimeInvalidation";
-import { formatMinorMoney, matchStatusLabel, type ManualFundingSubmission, type MatchParticipant, type MatchResultClaim, type MatchRoom, type MatchRoomStatus, type RoomFundingOverview } from "@/lib/match-room-api";
+import { formatMinorMoney, matchStatusLabel } from "@/lib/display-format";
+import type { ManualFundingSubmission, MatchParticipant, MatchResultClaim, MatchRoom, MatchRoomStatus, RoomFundingOverview } from "@/lib/match-room-api";
 import { startMatchPlayIslandAction } from "@/app/matches/actions";
 
 type RoomLiveSnapshotIslandProps = {

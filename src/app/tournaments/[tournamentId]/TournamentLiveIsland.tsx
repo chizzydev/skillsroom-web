@@ -7,15 +7,14 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { Panel, PanelHeader } from "@/components/ui/Panel";
 import { PendingLink } from "@/components/ui/PendingLink";
 import { StatusPanel } from "@/components/ui/StatusPanel";
-import {
-  displayEnumLabel,
-  formatMinorMoney,
-  type TournamentActivityPayload,
-  type TournamentDetail,
-  type TournamentFundingPayload,
-  type TournamentMatch,
-  type TournamentResultReviewsPayload,
-  type WalletOverview
+import { displayEnumLabel, formatMinorMoney } from "@/lib/display-format";
+import type {
+  TournamentActivityPayload,
+  TournamentDetail,
+  TournamentFundingPayload,
+  TournamentMatch,
+  TournamentResultReviewsPayload,
+  WalletOverview
 } from "@/lib/match-room-api";
 
 export type TournamentLiveSnapshot = {

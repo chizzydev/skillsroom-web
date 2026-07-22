@@ -8,15 +8,8 @@ import { CopyTextButton } from "@/components/ui/CopyTextButton";
 import { DataTable } from "@/components/ui/DataTable";
 import { Panel, PanelHeader } from "@/components/ui/Panel";
 import { StatusPanel } from "@/components/ui/StatusPanel";
-import {
-  formatEntryAmount,
-  type MatchPayout,
-  type MatchRefund,
-  type MatchSettlement,
-  type TournamentPayout,
-  type TournamentRefund,
-  type TournamentSettlement
-} from "@/lib/match-room-api";
+import { formatEntryAmount } from "@/lib/display-format";
+import type { MatchPayout, MatchRefund, MatchSettlement, TournamentPayout, TournamentRefund, TournamentSettlement } from "@/lib/match-room-api";
 
 export type AdminSettlementsSnapshot = {
   settlements: MatchSettlement[];

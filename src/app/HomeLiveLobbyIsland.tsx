@@ -7,16 +7,8 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { PendingLink } from "@/components/ui/PendingLink";
 import { Panel, PanelHeader } from "@/components/ui/Panel";
 import { StatusPanel } from "@/components/ui/StatusPanel";
-import {
-  displayEnumLabel,
-  formatEntryAmount,
-  formatMinorMoney,
-  matchStatusLabel,
-  type MatchRoomStatus,
-  type PlayerHomeRoomPreview,
-  type PlayerHomeSummary,
-  type Tournament
-} from "@/lib/match-room-api";
+import { displayEnumLabel, formatEntryAmount, formatMinorMoney, matchStatusLabel } from "@/lib/display-format";
+import type { MatchRoomStatus, PlayerHomeRoomPreview, PlayerHomeSummary, Tournament } from "@/lib/match-room-api";
 
 function statusTone(status: MatchRoomStatus) {
   if (status === "open") return "cyan" as const;

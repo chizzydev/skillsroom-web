@@ -6,7 +6,8 @@ import { webQueryKeys } from "@/components/realtime/webRealtimeInvalidation";
 import { Badge } from "@/components/ui/Badge";
 import { Panel, PanelHeader } from "@/components/ui/Panel";
 import { StatusPanel } from "@/components/ui/StatusPanel";
-import { formatEntryAmount, type ManualFundingSubmission } from "@/lib/match-room-api";
+import { formatEntryAmount } from "@/lib/display-format";
+import type { ManualFundingSubmission } from "@/lib/match-room-api";
 
 export type AdminFundingSnapshot = {
   submissions: ManualFundingSubmission[];

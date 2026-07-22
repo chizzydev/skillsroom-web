@@ -8,13 +8,8 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { FormActionButton } from "@/components/ui/FormActionButton";
 import { Panel, PanelHeader } from "@/components/ui/Panel";
 import { StatusPanel } from "@/components/ui/StatusPanel";
-import {
-  formatEntryAmount,
-  type ChatDmRequest,
-  type NotificationPreference,
-  type RoomInvite,
-  type UserNotification
-} from "@/lib/match-room-api";
+import { formatEntryAmount } from "@/lib/display-format";
+import type { ChatDmRequest, NotificationPreference, RoomInvite, UserNotification } from "@/lib/match-room-api";
 import { notificationAction } from "@/lib/notification-routing";
 import {
   markAllNotificationsReadAction,

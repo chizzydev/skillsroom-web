@@ -8,15 +8,8 @@ import { DataTable } from "@/components/ui/DataTable";
 import { Panel, PanelHeader } from "@/components/ui/Panel";
 import { PendingLink } from "@/components/ui/PendingLink";
 import { StatusPanel } from "@/components/ui/StatusPanel";
-import {
-  displayEnumLabel,
-  formatMinorMoney,
-  type Tournament,
-  type TournamentDetail,
-  type TournamentMatch,
-  type TournamentPrizeContribution,
-  type TournamentStateEvent
-} from "@/lib/match-room-api";
+import { displayEnumLabel, formatMinorMoney } from "@/lib/display-format";
+import type { Tournament, TournamentDetail, TournamentMatch, TournamentPrizeContribution, TournamentStateEvent } from "@/lib/match-room-api";
 
 export type AdminTournamentsSnapshot = {
   tournaments: Tournament[];

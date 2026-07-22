@@ -5,13 +5,8 @@ import { webQueryKeys } from "@/components/realtime/webRealtimeInvalidation";
 import { Badge } from "@/components/ui/Badge";
 import { Panel, PanelHeader } from "@/components/ui/Panel";
 import { StatusPanel } from "@/components/ui/StatusPanel";
-import {
-  formatMinorMoney,
-  type WalletLedgerEntry,
-  type WalletOverview,
-  type WalletPayoutRequest,
-  type WalletTopup
-} from "@/lib/match-room-api";
+import { formatMinorMoney } from "@/lib/display-format";
+import type { WalletLedgerEntry, WalletOverview, WalletPayoutRequest, WalletTopup } from "@/lib/match-room-api";
 
 export type WalletLiveSnapshot = {
   wallet: WalletOverview | null;

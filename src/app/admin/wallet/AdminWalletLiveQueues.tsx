@@ -7,14 +7,14 @@ import { webQueryKeys } from "@/components/realtime/webRealtimeInvalidation";
 import { Badge } from "@/components/ui/Badge";
 import { Panel, PanelHeader } from "@/components/ui/Panel";
 import { StatusPanel } from "@/components/ui/StatusPanel";
-import {
-  formatMinorMoney,
-  type AdminWalletDashboard,
-  type SuspiciousWalletTopupGroup,
-  type WalletFinancialTimelineItem,
-  type WalletHold,
-  type WalletPayoutRequest,
-  type WalletTopup
+import { formatMinorMoney } from "@/lib/display-format";
+import type {
+  AdminWalletDashboard,
+  SuspiciousWalletTopupGroup,
+  WalletFinancialTimelineItem,
+  WalletHold,
+  WalletPayoutRequest,
+  WalletTopup
 } from "@/lib/match-room-api";
 
 export type AdminWalletSnapshot = {
