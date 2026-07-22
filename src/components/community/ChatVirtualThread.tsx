@@ -168,7 +168,7 @@ export const ChatVirtualThread = memo(function ChatVirtualThread({
     );
   }, [isLoadingOlder, onLoadOlder, pageInfoHasOlder, presence.active, presence.online_count]);
 
-  const Footer = useCallback(() => <div className={fullLayout ? "h-4" : "h-2"} />, [fullLayout]);
+  const Footer = useCallback(() => <div className={showJumpLatest || isContextView ? "h-16" : fullLayout ? "h-4" : "h-2"} />, [fullLayout, isContextView, showJumpLatest]);
 
   const itemContent = useCallback((_: number, message: ChatMessage) => {
     const index = messageIndexById.get(message.id) ?? 0;
@@ -272,7 +272,7 @@ export const ChatVirtualThread = memo(function ChatVirtualThread({
           style={{ height: "100%" }}
         />
       </div>
-      {showJumpLatest || isContextView ? <button className="absolute bottom-5 right-5 z-10 min-h-10 rounded-full bg-sky-500 px-4 text-xs font-black text-white shadow-panel hover:bg-sky-400" data-testid="chat-jump-latest" onClick={() => void onJumpLatest()} type="button">Jump to latest</button> : null}
+      {(isContextView || (showJumpLatest && messages[messages.length - 1]?.sender_user_id !== currentUserId)) ? <button className="absolute bottom-3 right-3 z-10 min-h-9 rounded-full bg-sky-500 px-3 text-[0.68rem] font-black text-white shadow-panel hover:bg-sky-400 sm:bottom-5 sm:right-5 sm:min-h-10 sm:px-4 sm:text-xs" data-testid="chat-jump-latest" onClick={() => void onJumpLatest()} type="button">Jump to latest</button> : null}
     </div>
   );
 });

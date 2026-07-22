@@ -1244,6 +1244,7 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
     const attachments = readyAttachments.map((attachment) => attachment.previewUrl ? { ...attachment.attachment!, client_preview_url: attachment.previewUrl } : attachment.attachment!);
     const nextMessage = pendingMessage(activeChannel.id, currentUserId, trimmed, clientMessageId, replyTo, attachments);
     shouldStickLatestRef.current = true;
+    setShowJumpLatest(false);
     setError(null);
     setBody("");
     setPendingAttachments([]);

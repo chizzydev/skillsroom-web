@@ -183,18 +183,19 @@ type ReactionBarProps = {
 
 const ReactionBar = memo(function ReactionBar({ message, mine, reactionOptions, onReactToMessage }: ReactionBarProps) {
   const reactionByKey = useMemo(() => new Map((message.reactions ?? []).map((item) => [item.reaction, item])), [message.reactions]);
+  const primaryReactions = useMemo(() => reactionOptions.slice(0, 6), [reactionOptions]);
 
   if (message.status === "deleted" || message.client_delivery_state) return null;
 
   return (
-    <div className="mt-1.5 flex flex-wrap gap-1.5">
-      {reactionOptions.map((reaction) => {
+    <div className="mt-1.5 flex flex-nowrap gap-1.5 overflow-x-auto overflow-y-hidden pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      {primaryReactions.map((reaction) => {
         const summary = reactionByKey.get(reaction.key);
         return (
           <button
             className={[
-              "rounded-full border px-2.5 py-1 text-xs font-black",
-              summary?.reacted_by_me ? "border-sky-300 bg-sky-100 text-ink" : mine ? "border-white bg-white/80 text-muted hover:bg-white" : "border-white/10 bg-white/10 text-slate-200 hover:bg-white/20"
+              "grid h-8 min-w-8 shrink-0 place-items-center rounded-full border px-2 text-xs font-black",
+              summary?.reacted_by_me ? "border-sky-300 bg-sky-300/20 text-white" : mine ? "border-white/10 bg-white/10 text-slate-200 hover:bg-white/20" : "border-white/10 bg-white/10 text-slate-200 hover:bg-white/20"
             ].join(" ")}
             key={reaction.key}
             onClick={() => onReactToMessage(message, reaction.key)}
@@ -241,17 +242,17 @@ const MessageActionControls = memo(function MessageActionControls({
 }: MessageActionControlsProps) {
   return (
     <>
-      {!message.client_delivery_state ? <button aria-label="Open message actions" className={["grid h-7 w-7 place-items-center rounded-full text-base font-black", mine && !deleted ? "text-muted hover:bg-white" : "text-slate-300 hover:bg-white/10"].join(" ")} onClick={() => onOpenMessageActions(message)} title="Message actions" type="button">...</button> : null}
+      {!message.client_delivery_state ? <button aria-label="Open message actions" className="grid h-7 w-7 place-items-center rounded-full text-base font-black text-slate-300 hover:bg-white/10" onClick={() => onOpenMessageActions(message)} title="Message actions" type="button">...</button> : null}
       {!deleted && !message.client_delivery_state ? <span className="flex flex-wrap gap-1 opacity-100 sm:opacity-0 sm:transition sm:group-hover:opacity-100">
         <button
-          className={["rounded-full px-2 py-1 text-[0.68rem] font-black uppercase tracking-[0.12em]", mine ? "text-muted hover:bg-white" : "text-slate-300 hover:bg-white/10"].join(" ")}
+          className="rounded-full px-2 py-1 text-[0.68rem] font-black uppercase tracking-[0.12em] text-slate-300 hover:bg-white/10"
           onClick={() => onReplyToMessage(message)}
           type="button"
         >
           Reply
         </button>
         <button
-          className={["rounded-full px-2 py-1 text-[0.68rem] font-black uppercase tracking-[0.12em]", mine ? "text-muted hover:bg-white" : "text-slate-300 hover:bg-white/10"].join(" ")}
+          className="rounded-full px-2 py-1 text-[0.68rem] font-black uppercase tracking-[0.12em] text-slate-300 hover:bg-white/10"
           onClick={() => void onOpenThread(message)}
           type="button"
         >
@@ -259,7 +260,7 @@ const MessageActionControls = memo(function MessageActionControls({
         </button>
         {(mine || canManageAnyPin) && !isPinned ? (
           <button
-            className={["rounded-full px-2 py-1 text-[0.68rem] font-black uppercase tracking-[0.12em]", mine ? "text-muted hover:bg-white" : "text-slate-300 hover:bg-white/10"].join(" ")}
+            className="rounded-full px-2 py-1 text-[0.68rem] font-black uppercase tracking-[0.12em] text-slate-300 hover:bg-white/10"
             onClick={() => onStartPin(message)}
             type="button"
           >
@@ -341,8 +342,8 @@ export const ChatMessageRow = memo(function ChatMessageRow({
     <article
       id={`chat-message-${message.id}`}
       className={[
-        "group grid max-w-[min(92%,38rem)] select-none gap-1.5 rounded-2xl border px-3 py-2 shadow-tight",
-        deleted ? (mine ? "ml-auto border-dashed border-white/15 bg-[#1d2b38] text-slate-400" : "mr-auto border-dashed border-white/15 bg-[#1d2b38] text-slate-400") : system ? "mx-auto border-action/30 bg-amber-50" : mine ? "ml-auto rounded-br-md border-emerald-300/20 bg-[#d7f9df]" : "mr-auto rounded-bl-md border-white/10 bg-[#26394b] text-white"
+        "group grid max-w-[min(96%,38rem)] select-none gap-2 rounded-2xl border px-3 py-3 shadow-tight",
+        deleted ? "mr-auto border-dashed border-white/15 bg-[#1d2b38] text-slate-400" : system ? "mx-auto border-action/30 bg-amber-50" : mine ? "mr-auto border-[#2e5f6d] bg-[#1c2b3a] text-white" : "mr-auto border-white/10 bg-[#26394b] text-white"
       ].join(" ")}
       data-testid="chat-message-row"
       onContextMenu={(event) => { event.preventDefault(); if (!message.client_delivery_state) onOpenMessageActions(message); }}
@@ -352,65 +353,69 @@ export const ChatMessageRow = memo(function ChatMessageRow({
       onPointerUp={onClearLongPress}
     >
       <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
-        {!mine && !system ? <button aria-label={`Open ${message.sender_label} profile`} className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-navy-900 text-xs font-black text-white hover:ring-2 hover:ring-sky-300" disabled={!canOpenSenderProfile} onClick={() => onOpenMessageUserProfile(message)} type="button">{initials(message.sender_label)}</button> : null}
+        {!system ? (
+          mine
+            ? <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-navy-900 text-[0.62rem] font-black text-sky-300">YOU</span>
+            : <button aria-label={`Open ${message.sender_label} profile`} className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-navy-900 text-xs font-black text-white hover:ring-2 hover:ring-sky-300" disabled={!canOpenSenderProfile} onClick={() => onOpenMessageUserProfile(message)} type="button">{initials(message.sender_label)}</button>
+        ) : null}
         {canOpenSenderProfile ? (
-          <button className={["break-words text-left text-sm font-black [overflow-wrap:anywhere]", mine ? "text-ink hover:text-cyan" : "text-sky-300 hover:text-sky-200"].join(" ")} onClick={() => onOpenMessageUserProfile(message)} type="button">{mine ? "You" : message.sender_label}</button>
+          <button className={["break-words text-left text-sm font-black [overflow-wrap:anywhere]", mine ? "text-white hover:text-sky-200" : "text-sky-300 hover:text-sky-200"].join(" ")} onClick={() => onOpenMessageUserProfile(message)} type="button">{mine ? "You" : message.sender_label}</button>
         ) : (
-          <strong className={["break-words text-sm font-black [overflow-wrap:anywhere]", mine || system ? "text-ink" : "text-sky-300"].join(" ")}>{system ? "Skillsroom" : mine ? "You" : message.sender_label}</strong>
+          <strong className={["break-words text-sm font-black [overflow-wrap:anywhere]", system ? "text-ink" : mine ? "text-white" : "text-sky-300"].join(" ")}>{system ? "Skillsroom" : mine ? "You" : message.sender_label}</strong>
         )}
         {!mine && !system ? <button className="text-xs font-bold text-slate-300 hover:text-white" onClick={() => onOpenMessageUserProfile(message)} type="button">{displayHandle(message)}</button> : null}
-        <span className={["font-mono text-[0.68rem] font-bold uppercase tracking-[0.12em]", mine || system ? "text-muted" : "text-slate-400"].join(" ")}>{messageTime(message.created_at)}</span>
-        {message.edited_at && !deleted ? <span className={["text-[0.68rem] font-bold", mine || system ? "text-muted" : "text-slate-400"].join(" ")}>edited</span> : null}
+        <span className={["font-mono text-[0.68rem] font-bold uppercase tracking-[0.12em]", system ? "text-muted" : "text-slate-400"].join(" ")}>{messageTime(message.created_at)}</span>
+        {message.edited_at && !deleted ? <span className={["text-[0.68rem] font-bold", system ? "text-muted" : "text-slate-400"].join(" ")}>edited</span> : null}
         {isPinned ? <span className="rounded-sm bg-action/20 px-2 py-1 text-[0.68rem] font-black uppercase tracking-[0.12em] text-ink">Pinned</span> : null}
-        {message.bookmarked_by_me ? <span className={["text-[0.68rem] font-black uppercase tracking-[0.12em]", mine ? "text-muted" : "text-slate-300"].join(" ")}>Saved</span> : null}
+        {message.bookmarked_by_me ? <span className="text-[0.68rem] font-black uppercase tracking-[0.12em] text-slate-300">Saved</span> : null}
         <MessageActionControls canManageAnyPin={canManageAnyPin} deleted={deleted} isPinned={isPinned} isReporting={isReporting} message={message} mine={mine} onBlockUser={onBlockUser} onOpenMessageActions={onOpenMessageActions} onOpenThread={onOpenThread} onReplyToMessage={onReplyToMessage} onReportMessage={onReportMessage} onReportUser={onReportUser} onStartPin={onStartPin} />
       </div>
-      <ReplyPreview message={message} mine={mine} onJumpToMessage={onJumpToMessage} />
+      <ReplyPreview message={message} mine={false} onJumpToMessage={onJumpToMessage} />
       {message.forwarded_from_message_id ? (
-        <p className={["text-[0.68rem] font-black uppercase tracking-[0.14em]", mine ? "text-muted" : "text-slate-400"].join(" ")}>Forwarded message</p>
+        <p className="text-[0.68rem] font-black uppercase tracking-[0.14em] text-slate-400">Forwarded message</p>
       ) : null}
       <MessageAttachmentGrid activeChannelSlug={activeChannelSlug} currentUserId={currentUserId} isDirectMessage={isDirectMessage} message={message} mine={mine} onOpenImage={onOpenImage} />
       {!deleted && !hasAttachmentsDetail && attachmentCount > 0 ? (
         <button
-          className={["mt-1 flex min-w-0 items-center gap-3 rounded-md border p-3 text-left transition", mine ? "border-emerald-300/40 bg-white/70 hover:bg-white" : "border-white/10 bg-white/10 hover:bg-white/15"].join(" ")}
+          className="mt-1 flex min-w-0 items-center gap-3 rounded-md border border-white/10 bg-white/10 p-3 text-left transition hover:bg-white/15"
           disabled={hydrating}
           onClick={() => void onHydrateMessage(message, "attachments")}
           type="button"
         >
-          <span className={["grid h-11 w-11 shrink-0 place-items-center rounded-md text-xs font-black uppercase", mine ? "bg-emerald-100 text-emerald-700" : "bg-sky-400/15 text-sky-200"].join(" ")}>{attachmentSummary.type === "document" ? "File" : "Media"}</span>
+          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-md bg-sky-400/15 text-xs font-black uppercase text-sky-200">{attachmentSummary.type === "document" ? "File" : "Media"}</span>
           <span className="min-w-0">
-            <span className={["block truncate text-sm font-black", mine ? "text-ink" : "text-white"].join(" ")}>{attachmentSummary.name}</span>
-            <span className={["mt-1 block text-xs font-bold", mine ? "text-muted" : "text-slate-300"].join(" ")}>
+            <span className="block truncate text-sm font-black text-white">{attachmentSummary.name}</span>
+            <span className="mt-1 block text-xs font-bold text-slate-300">
               {hydrating ? "Loading details..." : `${attachmentCount} attachment${attachmentCount === 1 ? "" : "s"}${attachmentSummary.size ? ` - ${attachmentSummary.size}` : ""}`}
             </span>
           </span>
         </button>
       ) : null}
-      <PollCard isVotingPoll={isVotingPoll} message={message} mine={mine} onVotePoll={onVotePoll} />
+      <PollCard isVotingPoll={isVotingPoll} message={message} mine={false} onVotePoll={onVotePoll} />
       {!deleted && !hasPollDetail && pollSummary ? (
         <button
-          className={["mt-2 grid w-full gap-1 rounded-lg border p-3 text-left transition", mine ? "border-emerald-300/40 bg-white/70 hover:bg-white" : "border-white/10 bg-white/10 hover:bg-white/15"].join(" ")}
+          className="mt-2 grid w-full gap-1 rounded-lg border border-white/10 bg-white/10 p-3 text-left transition hover:bg-white/15"
           disabled={hydrating}
           onClick={() => void onHydrateMessage(message, "poll")}
           type="button"
         >
-          <span className={["text-[0.68rem] font-black uppercase tracking-[0.12em]", mine ? "text-muted" : "text-slate-400"].join(" ")}>{pollSummary.allow_multiple ? "Multi-choice poll" : "Poll"}</span>
-          <span className={["text-sm font-black", mine ? "text-ink" : "text-white"].join(" ")}>{pollSummary.question ?? "Poll"}</span>
-          <span className={["text-xs font-bold", mine ? "text-muted" : "text-slate-300"].join(" ")}>{hydrating ? "Loading poll..." : `${pollSummary.total_votes ?? 0} vote${pollSummary.total_votes === 1 ? "" : "s"} - open details`}</span>
+          <span className="text-[0.68rem] font-black uppercase tracking-[0.12em] text-slate-400">{pollSummary.allow_multiple ? "Multi-choice poll" : "Poll"}</span>
+          <span className="text-sm font-black text-white">{pollSummary.question ?? "Poll"}</span>
+          <span className="text-xs font-bold text-slate-300">{hydrating ? "Loading poll..." : `${pollSummary.total_votes ?? 0} vote${pollSummary.total_votes === 1 ? "" : "s"} - open details`}</span>
         </button>
       ) : null}
-      {deleted || message.body ? <p className={["mt-1 whitespace-pre-wrap break-words text-[0.98rem] leading-6 [overflow-wrap:anywhere]", deleted ? "italic text-slate-400" : mine || system ? "text-ink" : "text-white"].join(" ")}>{deleted ? "This message was deleted." : renderMessageBody(message.body)}</p> : null}
+      {deleted || message.body ? <p className={["mt-1 whitespace-pre-wrap break-words text-[0.98rem] leading-6 [overflow-wrap:anywhere]", deleted ? "italic text-slate-400" : system ? "text-ink" : "text-white"].join(" ")}>{deleted ? "This message was deleted." : renderMessageBody(message.body)}</p> : null}
       {message.client_delivery_state ? (
-        <div className="mt-2 flex flex-wrap items-center gap-2 border-t border-red-300/40 pt-2 text-xs font-bold text-red-700">
+        <div className={["mt-2 flex flex-wrap items-center gap-2 border-t pt-2 text-xs font-bold", message.client_delivery_state === "sending" ? "border-white/10 text-slate-300" : "border-red-300/40 text-red-200"].join(" ")}>
           <span>{message.client_delivery_state === "sending" ? "Sending..." : message.client_error ?? "Message failed to send."}</span>
           {message.client_delivery_state === "failed" ? <button className="rounded-full bg-red-700 px-3 py-1 font-black text-white disabled:opacity-60" disabled={isRetrying} onClick={() => void onRetryMessage(message)} type="button">{isRetrying ? "Retrying..." : "Retry"}</button> : null}
           {message.client_delivery_state === "failed" ? <button className="rounded-full border border-red-300 px-3 py-1 font-black" onClick={() => onDismissFailedMessage(message)} type="button">Discard</button> : null}
         </div>
       ) : null}
       {!deleted && message.link_preview?.url && message.link_preview.host ? (
-        <a className={["mt-2 block rounded-md border p-3 text-sm", mine ? "border-line bg-white hover:bg-surfaceHigh" : "border-white/10 bg-white/10 hover:bg-white/15"].join(" ")} href={message.link_preview.url} rel="noreferrer" target="_blank">
-          <span className={["block font-black", mine ? "text-ink" : "text-white"].join(" ")}>{message.link_preview.title ?? message.link_preview.host}</span>
-          <span className={["mt-1 block break-all text-xs font-bold", mine ? "text-muted" : "text-slate-300"].join(" ")}>{message.link_preview.host}</span>
+        <a className="mt-2 block rounded-md border border-white/10 bg-white/10 p-3 text-sm hover:bg-white/15" href={message.link_preview.url} rel="noreferrer" target="_blank">
+          <span className="block font-black text-white">{message.link_preview.title ?? message.link_preview.host}</span>
+          <span className="mt-1 block break-all text-xs font-bold text-slate-300">{message.link_preview.host}</span>
         </a>
       ) : null}
       <ReactionBar message={message} mine={mine} onReactToMessage={onReactToMessage} reactionOptions={reactionOptions} />
