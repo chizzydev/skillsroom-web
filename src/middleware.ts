@@ -6,6 +6,16 @@ import { clearAuthCookies, setAuthCookies } from "./lib/auth-session";
 const mutatingMethods = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 const refreshBeforeExpirySeconds = 120;
 const refreshedAccessTokenHeader = "x-skill-rooms-refreshed-access-token";
+type RefreshSessionResult =
+  | {
+      access_token: string;
+      refresh_token: string;
+      access_token_expires_at: string;
+      refresh_token_expires_at: string;
+    }
+  | "invalid"
+  | "unavailable"
+  | null;
 
 function accessTokenCookie(request: NextRequest) {
   return request.cookies.getAll().find((cookie) => accessTokenCookieNames().includes(cookie.name) && Boolean(cookie.value))?.value ?? null;
@@ -63,22 +73,27 @@ function isAllowedMutationOrigin(request: NextRequest) {
   }
 }
 
-async function refreshSession(request: NextRequest) {
+async function refreshSession(request: NextRequest): Promise<RefreshSessionResult> {
   const refreshToken = refreshTokenCookie(request);
   if (!refreshToken) return null;
 
-  const response = await fetch(`${apiBaseUrl()}/auth/refresh`, {
-    method: "POST",
-    headers: {
-      accept: "application/json",
-      "content-type": "application/json",
-      origin: requestOrigin(request),
-      "user-agent": request.headers.get("user-agent") ?? ""
-    },
-    body: JSON.stringify({ refresh_token: refreshToken })
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${apiBaseUrl()}/auth/refresh`, {
+      method: "POST",
+      headers: {
+        accept: "application/json",
+        "content-type": "application/json",
+        origin: requestOrigin(request),
+        "user-agent": request.headers.get("user-agent") ?? ""
+      },
+      body: JSON.stringify({ refresh_token: refreshToken })
+    });
+  } catch {
+    return "unavailable";
+  }
 
-  if (!response.ok) return "failed" as const;
+  if (!response.ok) return response.status === 401 || response.status === 403 ? "invalid" : "unavailable";
 
   const payload = (await response.json().catch(() => null)) as {
     ok?: boolean;
@@ -90,11 +105,11 @@ async function refreshSession(request: NextRequest) {
     };
   } | null;
 
-  return payload?.ok === true && payload.data ? payload.data : "failed";
+  return payload?.ok === true && payload.data ? payload.data : "unavailable";
 }
 
 function nextWithSession(request: NextRequest, refreshedSession: Awaited<ReturnType<typeof refreshSession>>) {
-  if (!refreshedSession || refreshedSession === "failed") return NextResponse.next();
+  if (!refreshedSession || refreshedSession === "invalid" || refreshedSession === "unavailable") return NextResponse.next();
 
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set(refreshedAccessTokenHeader, refreshedSession.access_token);
@@ -105,7 +120,7 @@ export async function middleware(request: NextRequest) {
   const token = accessTokenCookie(request);
   const needsRefresh = accessTokenNeedsRefresh(token);
   const refreshedSession = needsRefresh ? await refreshSession(request) : null;
-  const authenticated = refreshedSession === "failed"
+  const authenticated = refreshedSession === "invalid"
     ? false
     : Boolean(token) || Boolean(refreshedSession);
 
@@ -113,15 +128,15 @@ export async function middleware(request: NextRequest) {
     const signInUrl = new URL("/sign-in", request.url);
     signInUrl.searchParams.set("redirect", `${request.nextUrl.pathname}${request.nextUrl.search}`);
     const response = NextResponse.redirect(signInUrl);
-    if (refreshedSession === "failed") clearAuthCookies(response);
+    if (refreshedSession === "invalid") clearAuthCookies(response);
     return response;
   }
 
   if (!mutatingMethods.has(request.method)) {
     const response = nextWithSession(request, refreshedSession);
-    if (refreshedSession && refreshedSession !== "failed") {
+    if (refreshedSession && refreshedSession !== "invalid" && refreshedSession !== "unavailable") {
       setAuthCookies(response, refreshedSession);
-    } else if (refreshedSession === "failed") {
+    } else if (refreshedSession === "invalid") {
       clearAuthCookies(response);
     }
     if (request.nextUrl.pathname.startsWith("/admin") || request.nextUrl.pathname === "/sign-in") {
@@ -135,9 +150,9 @@ export async function middleware(request: NextRequest) {
   }
 
   const response = nextWithSession(request, refreshedSession);
-  if (refreshedSession && refreshedSession !== "failed") {
+  if (refreshedSession && refreshedSession !== "invalid" && refreshedSession !== "unavailable") {
     setAuthCookies(response, refreshedSession);
-  } else if (refreshedSession === "failed") {
+  } else if (refreshedSession === "invalid") {
     clearAuthCookies(response);
   }
   return response;
