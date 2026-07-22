@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { realtimePatchEventName, type RealtimePatchDetail } from "@/components/realtime/realtimePatches";
 import type { RealtimeEvent } from "@/components/realtime/realtimeEventPresentation";
 
@@ -14,13 +14,54 @@ function displayCount(count: number) {
   return count.toString();
 }
 
+function notificationEventMayChangeCount(eventType: string) {
+  return eventType.startsWith("notification.") || eventType.startsWith("room.invite.") || eventType.startsWith("chat.dm.request.");
+}
+
 export function NotificationBell({ initialUnread }: NotificationBellProps) {
   const [unread, setUnread] = useState(Math.max(0, initialUnread));
   const seenEvents = useRef<Set<string>>(new Set());
+  const refreshInFlight = useRef(false);
+
+  const refreshUnread = useCallback(async () => {
+    if (refreshInFlight.current) return;
+    refreshInFlight.current = true;
+    try {
+      const response = await fetch("/api/community/notifications/count", {
+        headers: { accept: "application/json" },
+        cache: "no-store"
+      });
+      const payload = await response.json().catch(() => null) as { ok?: boolean; data?: { count?: number } } | null;
+      const count = payload?.ok === true && typeof payload.data?.count === "number" ? payload.data.count : null;
+      if (count !== null && Number.isFinite(count)) setUnread(Math.max(0, count));
+    } finally {
+      refreshInFlight.current = false;
+    }
+  }, []);
 
   useEffect(() => {
     setUnread(Math.max(0, initialUnread));
   }, [initialUnread]);
+
+  useEffect(() => {
+    void refreshUnread();
+
+    const onFocus = () => {
+      void refreshUnread();
+    };
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") void refreshUnread();
+    };
+    const interval = window.setInterval(() => void refreshUnread(), 15_000);
+
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
+  }, [refreshUnread]);
 
   useEffect(() => {
     const applyEvent = (event: RealtimeEvent) => {
@@ -28,11 +69,14 @@ export function NotificationBell({ initialUnread }: NotificationBellProps) {
       if (seenEvents.current.has(eventKey)) return;
       seenEvents.current.add(eventKey);
 
-      if (event.event_type === "notification.created") {
+      if (event.event_type === "notification.created" || event.event_type === "room.invite.created" || event.event_type === "chat.dm.request.created") {
         setUnread((current) => current + 1);
-      }
-      if (event.event_type === "notification.read") {
+      } else if (event.event_type === "notification.read" || event.event_type === "room.invite.responded" || event.event_type === "chat.dm.request.responded") {
         setUnread((current) => Math.max(0, current - 1));
+      }
+
+      if (notificationEventMayChangeCount(event.event_type)) {
+        void refreshUnread();
       }
     };
 
@@ -41,21 +85,8 @@ export function NotificationBell({ initialUnread }: NotificationBellProps) {
     };
 
     window.addEventListener(realtimePatchEventName, onPatch);
-
-    const source = new EventSource("/api/community/realtime/stream");
-    source.addEventListener("realtime-event", (event) => {
-      try {
-        applyEvent(JSON.parse((event as MessageEvent).data) as RealtimeEvent);
-      } catch {
-        // Realtime badge updates are best effort; the server count refreshes on navigation.
-      }
-    });
-
-    return () => {
-      window.removeEventListener(realtimePatchEventName, onPatch);
-      source.close();
-    };
-  }, []);
+    return () => window.removeEventListener(realtimePatchEventName, onPatch);
+  }, [refreshUnread]);
 
   return (
     <Link

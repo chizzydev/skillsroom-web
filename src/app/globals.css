@@ -69,6 +69,30 @@ textarea {
   textarea {
     font-size: 16px !important;
   }
+
+  html[data-keyboard-open="true"] {
+    scroll-padding-bottom: 45vh;
+  }
+
+  input:focus,
+  select:focus,
+  textarea:focus,
+  [contenteditable="true"]:focus {
+    scroll-margin-bottom: 45vh;
+  }
+
+  .mobile-bottom-nav {
+    transform: translate3d(0, 0, 0);
+    transition:
+      opacity var(--motion-fast) var(--motion-ease),
+      transform var(--motion-fast) var(--motion-ease);
+  }
+
+  html[data-keyboard-open="true"] .mobile-bottom-nav {
+    opacity: 0;
+    pointer-events: none;
+    transform: translate3d(0, calc(100% + env(safe-area-inset-bottom) + 1rem), 0);
+  }
 }
 
 button {

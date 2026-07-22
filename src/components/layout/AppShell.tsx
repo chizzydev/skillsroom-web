@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { AccountMenu } from "@/components/layout/AccountMenu";
+import { KeyboardViewportBridge } from "@/components/layout/KeyboardViewportBridge";
 import { NotificationBell } from "@/components/layout/NotificationBell";
+import { GlobalRealtimeBridge } from "@/components/realtime/GlobalRealtimeBridge";
 import { GlobalActionFeedback } from "@/components/ui/GlobalActionFeedback";
 import { getCurrentUser } from "@/lib/auth-bridge";
-import { listNotifications } from "@/lib/match-room-api";
+import { getNotificationBootstrap } from "@/lib/match-room-api";
 
 type AppShellProps = {
   active: "home" | "lobby" | "matches" | "challenges" | "tournaments" | "community" | "notifications" | "wallet" | "profile";
@@ -38,7 +40,9 @@ export async function AppShell({ active, children }: AppShellProps) {
   let unreadNotificationCount = 0;
   if (user) {
     try {
-      unreadNotificationCount = (await listNotifications("unread")).notifications.length;
+      const bootstrap = await getNotificationBootstrap();
+      const pendingDmRequests = bootstrap.requests.filter((request) => request.status === "pending" && request.recipient_user_id === user.id).length;
+      unreadNotificationCount = Math.max(bootstrap.notifications.length, bootstrap.invites.length + pendingDmRequests);
     } catch {
       unreadNotificationCount = 0;
     }
@@ -46,6 +50,8 @@ export async function AppShell({ active, children }: AppShellProps) {
 
   return (
     <main className="min-h-screen w-full max-w-full overflow-x-hidden bg-bg">
+      <KeyboardViewportBridge />
+      <GlobalRealtimeBridge enabled={Boolean(user)} />
       <header className="sticky top-0 z-40 border-b border-line bg-white/95 backdrop-blur">
         <div className="mx-auto flex h-16 w-full max-w-7xl items-center gap-3 px-page">
           <Link className="flex min-w-0 items-center gap-3 text-lg font-black text-ink" href="/">
@@ -105,7 +111,7 @@ export async function AppShell({ active, children }: AppShellProps) {
           </nav>
         </div>
       </footer>
-      <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-white/95 px-2 pb-[max(env(safe-area-inset-bottom),0.65rem)] pt-2 shadow-[0_-18px_40px_rgba(15,23,42,0.08)] backdrop-blur md:hidden">
+      <nav className="mobile-bottom-nav fixed inset-x-0 bottom-0 z-40 border-t border-line bg-white/95 px-2 pb-[max(env(safe-area-inset-bottom),0.65rem)] pt-2 shadow-[0_-18px_40px_rgba(15,23,42,0.08)] backdrop-blur md:hidden">
         <div className="mx-auto grid max-w-md grid-cols-7 gap-1">
           {mobileNav.map((item) => (
             <Link
