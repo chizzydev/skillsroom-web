@@ -1431,6 +1431,7 @@ export default async function MatchDetailPage({
                 </div>
                 <RoomActionForm action={submitManualFundingIslandAction} className="grid gap-3 rounded-lg border border-line bg-white p-4 shadow-tight">
                   <input name="match_room_id" type="hidden" value={room.id} />
+                  <input name="amount_naira" type="hidden" value={room.entry_amount_minor / 100} />
                   <p className="font-mono text-xs font-black uppercase tracking-[0.14em] text-cyan">Transfer proof</p>
                   {!currentParticipant ? (
                     <div className="rounded-md border border-line bg-surfaceWarm p-3 text-sm font-bold text-muted">Join this room first before submitting your own payment proof.</div>
