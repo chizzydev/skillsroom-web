@@ -2047,10 +2047,6 @@ export default async function MatchDetailPage({
                 <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" disabled={!canSubmitFunding} name="sender_bank_name" placeholder="OPay, GTBank, Moniepoint..." required />
               </label>
               <label className="grid gap-2 text-sm font-bold text-ink">
-                Transfer reference <span className="font-bold text-muted">(optional)</span>
-                <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" disabled={!canSubmitFunding} name="transfer_reference" placeholder={`Narration or receipt reference for ${room.room_code}`} />
-              </label>
-              <label className="grid gap-2 text-sm font-bold text-ink">
                 Account name
                 <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" disabled={!canSubmitFunding} name="sender_account_name" placeholder="Name shown on the transfer" required />
               </label>
@@ -2069,14 +2065,23 @@ export default async function MatchDetailPage({
                 />
                 <span className="text-xs leading-5 text-muted">Upload the bank/fintech receipt screenshot. Images up to 8MB.</span>
               </label>
-              <label className="grid gap-2 text-sm font-bold text-ink">
-                Proof link <span className="font-bold text-muted">(optional)</span>
-                <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" disabled={!canSubmitFunding} name="proof_url" placeholder="Use if the screenshot is hosted elsewhere" type="url" />
-              </label>
-              <label className="grid gap-2 text-sm font-bold text-ink">
-                Note <span className="font-bold text-muted">(optional)</span>
-                <textarea className="min-h-24 rounded-md border border-line bg-white px-3 py-2 text-sm outline-none focus:border-action" disabled={!canSubmitFunding} name="proof_note" placeholder="Anything admin should know" />
-              </label>
+              <details className="rounded-md border border-line bg-surfaceWarm">
+                <summary className="cursor-pointer px-3 py-2 text-sm font-black text-ink">Optional transfer details</summary>
+                <div className="grid gap-3 border-t border-line p-3">
+                  <label className="grid gap-2 text-sm font-bold text-ink">
+                    Transfer reference
+                    <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" disabled={!canSubmitFunding} name="transfer_reference" placeholder={`Narration or receipt reference for ${room.room_code}`} />
+                  </label>
+                  <label className="grid gap-2 text-sm font-bold text-ink">
+                    Proof link
+                    <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" disabled={!canSubmitFunding} name="proof_url" placeholder="Use if the screenshot is hosted elsewhere" type="url" />
+                  </label>
+                  <label className="grid gap-2 text-sm font-bold text-ink">
+                    Note
+                    <textarea className="min-h-24 rounded-md border border-line bg-white px-3 py-2 text-sm outline-none focus:border-action" disabled={!canSubmitFunding} name="proof_note" placeholder="Anything Skillsroom should know" />
+                  </label>
+                </div>
+              </details>
               <SubmitButton disabled={!canSubmitFunding} idleLabel="Submit funding" pendingLabel="Submitting funding..." />
               {!canSubmitFunding && currentFundingStatus === "approved" ? (
                 <p className="text-xs font-bold leading-5 text-muted">
@@ -2350,20 +2355,25 @@ export default async function MatchDetailPage({
                   <span className="text-xs leading-5 text-muted">Images up to 8MB. Videos up to 80MB.</span>
                 </label>
                 <div className="rounded-md border border-warning bg-amber-50 p-3 text-xs font-bold leading-5 text-amber-900">
-                  Result proof is required before review can begin. If the opponent disputes the result, this file becomes the first thing admin checks.
+                  Result proof is required before review can begin. If the opponent disputes the result, this file becomes the first thing the Skillsroom team checks.
                 </div>
-                <label className="grid gap-2 text-sm font-bold text-ink">
-                  What should admin know? <span className="font-bold text-muted">(optional)</span>
-                  <textarea className="min-h-24 rounded-md border border-line bg-white px-3 py-2 text-sm outline-none focus:border-action" name="note" placeholder="Short result context for review, for example overtime, disconnect, or forfeit." />
-                </label>
-                <label className="grid gap-2 text-sm font-bold text-ink">
-                  Proof title <span className="font-bold text-muted">(optional)</span>
-                  <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" defaultValue="Final scoreboard" name="evidence_title" />
-                </label>
-                <label className="grid gap-2 text-sm font-bold text-ink">
-                  Proof notes
-                  <textarea className="min-h-24 rounded-md border border-line bg-white px-3 py-2 text-sm outline-none focus:border-action" name="evidence_notes" placeholder="Point admin to the exact score, timestamp, winner name, or rule issue in the screenshot/video." />
-                </label>
+                <details className="rounded-md border border-line bg-surfaceWarm">
+                  <summary className="cursor-pointer px-3 py-2 text-sm font-black text-ink">Optional result details</summary>
+                  <div className="grid gap-3 border-t border-line p-3">
+                    <label className="grid gap-2 text-sm font-bold text-ink">
+                      What should Skillsroom know?
+                      <textarea className="min-h-24 rounded-md border border-line bg-white px-3 py-2 text-sm outline-none focus:border-action" name="note" placeholder="Short result context for review, for example overtime, disconnect, or forfeit." />
+                    </label>
+                    <label className="grid gap-2 text-sm font-bold text-ink">
+                      Proof title
+                      <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" defaultValue="Final scoreboard" name="evidence_title" />
+                    </label>
+                    <label className="grid gap-2 text-sm font-bold text-ink">
+                      Proof notes
+                      <textarea className="min-h-24 rounded-md border border-line bg-white px-3 py-2 text-sm outline-none focus:border-action" name="evidence_notes" placeholder="Point the team to the exact score, timestamp, winner name, or rule issue in the screenshot/video." />
+                    </label>
+                  </div>
+                </details>
                 <SubmitButton idleLabel="Submit result" pendingLabel="Submitting result..." />
               </RoomActionForm>
             ) : (

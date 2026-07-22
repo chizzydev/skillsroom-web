@@ -180,15 +180,11 @@ export default async function WalletPage({ searchParams }: { searchParams: Promi
                     <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" inputMode="decimal" min="100" name="amount_naira" placeholder="5000" required type="number" />
                   </label>
                   <label className="grid gap-2 text-sm font-bold text-ink">
-                    Transfer reference
-                    <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="transfer_reference" placeholder="Receipt or narration reference" />
-                  </label>
-                </div>
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <label className="grid gap-2 text-sm font-bold text-ink">
                     Sender account name
                     <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="sender_account_name" placeholder="Name on your bank transfer" />
                   </label>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2">
                   <label className="grid gap-2 text-sm font-bold text-ink">
                     Sender bank
                     <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="sender_bank_name" placeholder="OPay, GTBank, Moniepoint..." />
@@ -198,10 +194,19 @@ export default async function WalletPage({ searchParams }: { searchParams: Promi
                   Payment screenshot
                   <input accept="image/png,image/jpeg,image/webp" className="min-h-11 rounded-md border border-line bg-white px-3 py-2 text-sm outline-none file:mr-3 file:rounded-md file:border-0 file:bg-navy-900 file:px-3 file:py-2 file:text-sm file:font-black file:text-white focus:border-action" name="proof_file" required type="file" />
                 </label>
-                <label className="grid gap-2 text-sm font-bold text-ink">
-                  Note for review
-                  <textarea className="min-h-24 rounded-md border border-line bg-white px-3 py-2 text-sm outline-none focus:border-action" name="proof_note" placeholder="Anything that helps us match the transfer." />
-                </label>
+                <details className="rounded-md border border-line bg-surfaceWarm">
+                  <summary className="cursor-pointer px-3 py-2 text-sm font-black text-ink">Optional transfer details</summary>
+                  <div className="grid gap-3 border-t border-line p-3">
+                    <label className="grid gap-2 text-sm font-bold text-ink">
+                      Transfer reference
+                      <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="transfer_reference" placeholder="Receipt or narration reference" />
+                    </label>
+                    <label className="grid gap-2 text-sm font-bold text-ink">
+                      Note for review
+                      <textarea className="min-h-24 rounded-md border border-line bg-white px-3 py-2 text-sm outline-none focus:border-action" name="proof_note" placeholder="Anything that helps us match the transfer." />
+                    </label>
+                  </div>
+                </details>
                 <FormActionButton idleLabel="Submit top-up" pendingLabel="Submitting top-up..." />
               </form>
               <form action={requestWalletPayoutAction} className="motion-atmosphere motion-state-card motion-flow-card grid gap-3 rounded-lg border border-line bg-navy-900 p-4 text-white">
@@ -232,10 +237,15 @@ export default async function WalletPage({ searchParams }: { searchParams: Promi
                     <input className="min-h-11 rounded-md border border-white/15 bg-white/10 px-3 text-sm text-white outline-none placeholder:text-slate-400 focus:border-cyan" inputMode="numeric" name="payout_account_number" placeholder="10 digit account number" required />
                   </label>
                 </div>
-                <label className="grid gap-2 text-sm font-bold text-white">
-                  Note
-                  <textarea className="min-h-20 rounded-md border border-white/15 bg-white/10 px-3 py-2 text-sm text-white outline-none placeholder:text-slate-400 focus:border-cyan" name="payout_note" placeholder="Optional note for payout review." />
-                </label>
+                <details className="rounded-md border border-white/15 bg-white/5">
+                  <summary className="cursor-pointer px-3 py-2 text-sm font-black text-white">Optional payout note</summary>
+                  <div className="border-t border-white/10 p-3">
+                    <label className="grid gap-2 text-sm font-bold text-white">
+                      Note
+                      <textarea className="min-h-20 rounded-md border border-white/15 bg-white/10 px-3 py-2 text-sm text-white outline-none placeholder:text-slate-400 focus:border-cyan" name="payout_note" placeholder="Anything that helps the team review this payout." />
+                    </label>
+                  </div>
+                </details>
                 <FormActionButton idleLabel="Request payout" pendingLabel="Submitting payout..." />
               </form>
             </div>

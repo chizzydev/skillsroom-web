@@ -1424,17 +1424,26 @@ export default async function TournamentDetailPage({
                 <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" defaultValue={detail.entry_fee_amount_minor / 100} min="0" name="amount_naira" required step="100" type="number" />
               </label>
               <label className="grid gap-2 text-sm font-bold text-ink">
-                Reference
-                <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="external_reference" placeholder="Transfer reference" />
-              </label>
-              <label className="grid gap-2 text-sm font-bold text-ink">
                 Proof screenshot
                 <input accept="image/png,image/jpeg,image/webp" className="min-h-11 rounded-md border border-line bg-white px-3 py-2 text-sm outline-none file:mr-3 file:rounded-sm file:border-0 file:bg-surfaceHigh file:px-3 file:py-2 file:text-xs file:font-black file:text-ink focus:border-action" name="proof_file" type="file" />
               </label>
-              <label className="grid gap-2 text-sm font-bold text-ink">
-                Proof link
-                <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="proof_url" placeholder="Use if proof is hosted elsewhere" type="url" />
-              </label>
+              <details className="rounded-md border border-line bg-surfaceWarm">
+                <summary className="cursor-pointer px-3 py-2 text-sm font-black text-ink">Optional transfer details</summary>
+                <div className="grid gap-3 border-t border-line p-3">
+                  <label className="grid gap-2 text-sm font-bold text-ink">
+                    Reference
+                    <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="external_reference" placeholder="Transfer reference" />
+                  </label>
+                  <label className="grid gap-2 text-sm font-bold text-ink">
+                    Proof link
+                    <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="proof_url" placeholder="Use if proof is hosted elsewhere" type="url" />
+                  </label>
+                  <label className="grid gap-2 text-sm font-bold text-ink">
+                    Notes
+                    <textarea className="min-h-20 rounded-md border border-line bg-white px-3 py-2 text-sm outline-none focus:border-action" name="notes" placeholder="Anything that helps the team match this transfer." />
+                  </label>
+                </div>
+              </details>
               <div className="rounded-md border border-cyan/40 bg-cyan-50 p-4 text-sm leading-6 text-muted">
                 <p className="font-black text-ink">Winner payout details</p>
                 <p className="mt-1">
@@ -1466,26 +1475,27 @@ export default async function TournamentDetailPage({
                   placeholder="Destination account number"
                 />
               </label>
-              <label className="grid gap-2 text-sm font-bold text-ink">
-                Payout bank code <span className="font-bold text-muted">(optional)</span>
-                <input
-                  className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action"
-                  name="payout_bank_code"
-                  placeholder="Optional settlement rail code"
-                />
-              </label>
-              <label className="grid gap-2 text-sm font-bold text-ink">
-                Payout note <span className="font-bold text-muted">(optional)</span>
-                <textarea
-                  className="min-h-20 rounded-md border border-line bg-white px-3 py-2 text-sm outline-none focus:border-action"
-                  name="payout_note"
-                  placeholder="Anything the team should know about this payout account"
-                />
-              </label>
-              <label className="grid gap-2 text-sm font-bold text-ink">
-                Notes
-                <textarea className="min-h-20 rounded-md border border-line bg-white px-3 py-2 text-sm outline-none focus:border-action" name="notes" />
-              </label>
+              <details className="rounded-md border border-line bg-surfaceWarm">
+                <summary className="cursor-pointer px-3 py-2 text-sm font-black text-ink">Optional payout details</summary>
+                <div className="grid gap-3 border-t border-line p-3">
+                  <label className="grid gap-2 text-sm font-bold text-ink">
+                    Payout bank code
+                    <input
+                      className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action"
+                      name="payout_bank_code"
+                      placeholder="Settlement rail code, if your bank uses one"
+                    />
+                  </label>
+                  <label className="grid gap-2 text-sm font-bold text-ink">
+                    Payout note
+                    <textarea
+                      className="min-h-20 rounded-md border border-line bg-white px-3 py-2 text-sm outline-none focus:border-action"
+                      name="payout_note"
+                      placeholder="Anything the team should know about this payout account"
+                    />
+                  </label>
+                </div>
+              </details>
               <SubmitButton idleLabel="Submit contribution" pendingLabel="Submitting contribution..." />
             </form>
           </Panel>

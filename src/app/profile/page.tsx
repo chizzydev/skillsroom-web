@@ -563,16 +563,6 @@ export default async function ProfilePage({ searchParams }: ProfilePageProps) {
                 />
               </label>
               <label className="grid gap-2 text-sm font-bold text-ink">
-                Bank code
-                <input
-                  className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action"
-                  defaultValue={payoutProfile?.bank_code ?? ""}
-                  maxLength={40}
-                  name="bank_code"
-                  placeholder="Optional routing or bank code"
-                />
-              </label>
-              <label className="grid gap-2 text-sm font-bold text-ink">
                 Currency
                 <input
                   className="min-h-11 rounded-md border border-line bg-white px-3 text-sm uppercase outline-none focus:border-action"
@@ -582,16 +572,31 @@ export default async function ProfilePage({ searchParams }: ProfilePageProps) {
                   required
                 />
               </label>
-              <label className="grid gap-2 text-sm font-bold text-ink md:col-span-2">
-                Payout note
-                <textarea
-                  className="min-h-24 rounded-md border border-line bg-white px-3 py-3 text-sm outline-none focus:border-action"
-                  defaultValue={payoutProfile?.payout_note ?? ""}
-                  maxLength={240}
-                  name="payout_note"
-                  placeholder="Optional note, like your preferred account label."
-                />
-              </label>
+              <details className="rounded-md border border-line bg-surfaceWarm md:col-span-2">
+                <summary className="cursor-pointer px-3 py-2 text-sm font-black text-ink">Optional payout details</summary>
+                <div className="grid gap-3 border-t border-line p-3 md:grid-cols-2">
+                  <label className="grid gap-2 text-sm font-bold text-ink">
+                    Bank code
+                    <input
+                      className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action"
+                      defaultValue={payoutProfile?.bank_code ?? ""}
+                      maxLength={40}
+                      name="bank_code"
+                      placeholder="Routing or bank code, if needed"
+                    />
+                  </label>
+                  <label className="grid gap-2 text-sm font-bold text-ink">
+                    Payout note
+                    <textarea
+                      className="min-h-24 rounded-md border border-line bg-white px-3 py-3 text-sm outline-none focus:border-action"
+                      defaultValue={payoutProfile?.payout_note ?? ""}
+                      maxLength={240}
+                      name="payout_note"
+                      placeholder="Preferred account label or extra payout context"
+                    />
+                  </label>
+                </div>
+              </details>
               <div className="rounded-md border border-cyan bg-cyanSoft p-4 text-sm leading-6 text-muted md:col-span-2">
                 New payouts use the bank details saved here. Older payouts keep the details that were saved at the time.
               </div>
@@ -990,10 +995,15 @@ export default async function ProfilePage({ searchParams }: ProfilePageProps) {
               Channel link
               <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" maxLength={500} name="channel_url" placeholder="https://www.youtube.com/@..." required type="url" />
             </label>
-            <label className="grid gap-2 text-sm font-bold text-ink">
-              Channel handle
-              <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" maxLength={120} name="provider_login" placeholder="Optional, useful for Twitch embeds" />
-            </label>
+            <details className="rounded-md border border-line bg-surfaceWarm md:col-span-2">
+              <summary className="cursor-pointer px-3 py-2 text-sm font-black text-ink">Optional stream details</summary>
+              <div className="border-t border-line p-3">
+                <label className="grid gap-2 text-sm font-bold text-ink">
+                  Channel handle
+                  <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" maxLength={120} name="provider_login" placeholder="Useful for Twitch embeds" />
+                </label>
+              </div>
+            </details>
             <div className="md:col-span-2">
               <SubmitButton idleLabel="Save manual stream channel" pendingLabel="Saving stream channel..." />
             </div>
@@ -1072,15 +1082,6 @@ export default async function ProfilePage({ searchParams }: ProfilePageProps) {
               <span className="text-xs leading-5 text-muted">This is not your email or Skillsroom username.</span>
             </label>
             <label className="grid gap-2 text-sm font-bold text-ink">
-              External player ID
-              <input
-                className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action"
-                maxLength={120}
-                name="external_uid"
-                placeholder="Optional, but best for verification"
-              />
-            </label>
-            <label className="grid gap-2 text-sm font-bold text-ink">
               Region
               <input
                 className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action"
@@ -1090,6 +1091,20 @@ export default async function ProfilePage({ searchParams }: ProfilePageProps) {
                 required
               />
             </label>
+            <details className="rounded-md border border-line bg-surfaceWarm md:col-span-2">
+              <summary className="cursor-pointer px-3 py-2 text-sm font-black text-ink">Optional game details</summary>
+              <div className="border-t border-line p-3">
+                <label className="grid gap-2 text-sm font-bold text-ink">
+                  External player ID
+                  <input
+                    className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action"
+                    maxLength={120}
+                    name="external_uid"
+                    placeholder="Best for verification when your game supports UID or player ID"
+                  />
+                </label>
+              </div>
+            </details>
             <div className="rounded-md border border-cyan bg-cyanSoft p-4 text-sm leading-6 text-muted">
               <span className="font-black text-ink">Primary account:</span> this handle will be used for room matching,
               opponent checks, screenshots, and admin evidence review in the selected game.
