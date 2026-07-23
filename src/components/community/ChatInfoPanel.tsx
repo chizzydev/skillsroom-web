@@ -247,7 +247,10 @@ export function ChatInfoPanel({
                       </label>
                     ) : null}
                     <label className="flex min-h-12 items-center justify-between gap-4 rounded-md border border-white/10 bg-white/5 p-3 text-sm font-black">
-                      Browser/mobile push
+                      <span className="grid gap-1">
+                        <span>Browser notifications</span>
+                        <span className="text-xs font-bold text-slate-400">Mobile alerts are managed in the app.</span>
+                      </span>
                       <input checked={pushEnabled} className="h-5 w-5 accent-sky-400" onChange={(event) => onSetPushEnabled(event.target.checked)} type="checkbox" />
                     </label>
                     <button className="min-h-11 rounded-md bg-sky-500 px-4 text-sm font-black text-white hover:bg-sky-400 disabled:opacity-60" disabled={isSavingControls} onClick={() => void onSaveNotificationControls()} type="button">

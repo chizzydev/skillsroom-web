@@ -2068,7 +2068,7 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
       setChannelControls(payload.data.controls);
       setNotificationLevel(payload.data.controls.notification_level);
       setDmNotificationLevel(payload.data.controls.dm_notification_level);
-      setPushEnabled(payload.data.controls.push_enabled);
+      setPushEnabled(payload.data.controls.browser_push_enabled ?? payload.data.controls.push_enabled);
       setSlowModeSeconds(payload.data.controls.slow_mode_seconds);
       setActiveChannel(payload.data.channel);
       patchChannel(payload.data.channel);
@@ -2117,10 +2117,10 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
         body: JSON.stringify({
           notification_level: notificationLevel,
           dm_notification_level: dmNotificationLevel,
-          push_enabled: pushEnabled
+          browser_push_enabled: pushEnabled
         })
       });
-      const payload = await response.json() as ApiEnvelope<{ membership: { notification_level: ChatNotificationLevel; dm_notification_level: ChatNotificationLevel; push_enabled: boolean } }>;
+      const payload = await response.json() as ApiEnvelope<{ membership: { notification_level: ChatNotificationLevel; dm_notification_level: ChatNotificationLevel; browser_push_enabled?: boolean; push_enabled: boolean } }>;
       if (!response.ok || payload.ok !== true) throw new Error(payload.ok === false ? payload.error?.message ?? "Notification settings could not be saved." : "Notification settings could not be saved.");
       showNotice("Notification settings saved.");
     } catch (controlError) {
