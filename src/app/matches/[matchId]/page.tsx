@@ -3,11 +3,9 @@ import { Suspense } from "react";
 import { AppShell } from "@/components/layout/AppShell";
 import { EvidenceMediaDrawer } from "@/components/evidence/EvidenceMediaDrawer";
 import { RoomActionForm } from "@/components/matches/RoomActionForm";
-import { RoomLiveSnapshotIsland } from "@/components/matches/RoomLiveSnapshotIsland";
 import { ManualPaymentPanel } from "@/components/payments/ManualPaymentPanel";
 import { MotionSection, Reveal } from "@/components/motion";
 import { LiveUpdateStream } from "@/components/realtime/LiveUpdateStream";
-import { RealtimePatchStatus } from "@/components/realtime/RealtimePatchStatus";
 import { PlayerTrustCard } from "@/components/trust/PlayerTrustCard";
 import { Badge } from "@/components/ui/Badge";
 import { PendingLink } from "@/components/ui/PendingLink";
@@ -1232,7 +1230,7 @@ export default async function MatchDetailPage({
     allJoinedParticipantsApproved &&
     Boolean(currentParticipant) &&
     !currentPlayerStartConfirmed;
-  const canSubmitResult = Boolean(currentParticipant) && ["active", "awaiting_results", "under_review", "disputed"].includes(room.status);
+  const canSubmitResult = Boolean(currentParticipant) && ["active", "awaiting_results"].includes(room.status);
   const canRespondToLatestClaim =
     Boolean(currentParticipant) &&
     Boolean(latestClaim) &&
@@ -1268,7 +1266,12 @@ export default async function MatchDetailPage({
             ((typeof host.permissions?.manage_event === "boolean" && host.permissions.manage_event) || host.role !== "sponsor")
         )
       ));
-  const fundingSectionVisible = !isTournamentRoom && canViewSensitiveInternals;
+  const entryFlowStillMatters = ["open", "awaiting_funding", "funding_review", "funded"].includes(room.status);
+  const entryPrimaryStillMatters = ["open", "awaiting_funding", "funding_review"].includes(room.status);
+  const showEntryPrimary =
+    entryPrimaryStillMatters &&
+    (canSubmitFunding || roomAllowsFundingSubmission || currentFundingStatus === "submitted" || currentFundingStatus === "approved");
+  const fundingSectionVisible = !isTournamentRoom && canViewSensitiveInternals && entryFlowStillMatters;
   const resultSectionVisible =
     canSubmitResult ||
     Boolean(latestClaim) ||
@@ -1295,19 +1298,6 @@ export default async function MatchDetailPage({
             : canManageLivestreams
               ? { href: "#live", label: "Add livestream" }
               : { href: "#players", label: displayedParticipantCount < room.max_participants ? "Check players" : "View players" };
-  const initialLiveSnapshot = {
-    room,
-    participants,
-    funding,
-    results,
-    wallet: walletOverview,
-    tournament_match_check_ins: tournamentCheckIns,
-    start_confirmations: startConfirmations,
-    current_user_id: user.id,
-    current_user_role: user.role,
-    loaded_at: new Date().toISOString()
-  };
-
   return (
     <AppShell active="matches">
       <MotionSection className="grid max-w-full gap-5 overflow-x-hidden md:gap-6" variant="page">
@@ -1358,15 +1348,10 @@ export default async function MatchDetailPage({
           eventTypePrefixes={["match.", "notification.", "room.invite."]}
           label="Room live"
           matchRoomId={room.id}
+          quiet
           refreshOnPatch
           tournamentId={tournamentId ?? undefined}
         />
-        <div className="grid gap-2 sm:grid-cols-3">
-          <RealtimePatchStatus label="Room state" targets={["room"]} />
-          <RealtimePatchStatus label="Funding" targets={["room-funding", "wallet"]} />
-          <RealtimePatchStatus label="Results" targets={["room-result"]} />
-        </div>
-        <RoomLiveSnapshotIsland initialSnapshot={initialLiveSnapshot} />
 
         {error ? <TransientStatusBanner clearKeys={["error"]} durationMs={10000} message={error} /> : null}
         {inviteSent ? <TransientStatusBanner clearKeys={["invite_sent"]} durationMs={12000} message="Invite sent. The player will see it in their notifications." tone="success" /> : null}
@@ -1423,7 +1408,7 @@ export default async function MatchDetailPage({
                   <SubmitButton idleLabel="Open room" pendingLabel="Opening room..." />
                 </form>
               </div>
-            ) : canSubmitFunding || currentFundingStatus === "submitted" || currentFundingStatus === "approved" || roomAllowsFundingSubmission ? (
+            ) : showEntryPrimary ? (
               <div className="grid gap-4 p-4 xl:grid-cols-[minmax(0,1fr)_24rem]">
                 <div className="grid gap-3">
                   <div className="rounded-md border border-line bg-white p-4">
@@ -1916,7 +1901,7 @@ export default async function MatchDetailPage({
         </Reveal>
 
 
-        {canViewSensitiveInternals ? (
+        {fundingSectionVisible ? (
           <Reveal>
           <Panel>
             <PanelHeader
@@ -1980,28 +1965,7 @@ export default async function MatchDetailPage({
           </Reveal>
         ) : null}
 
-        {canConfirmStart ? (
-          <Reveal>
-          <Panel>
-            <PanelHeader
-              eyebrow="Play"
-              title="Start live play"
-              description="Funding is complete. Start the match when both players are ready so the room enters live play and result evidence opens at the correct checkpoint."
-            />
-            <div className="grid gap-4 p-4 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
-              <p className="text-sm leading-6 text-muted">
-                This lets both players see that the match has started and opens result evidence when the match ends.
-              </p>
-              <RoomActionForm action={startMatchPlayIslandAction} className="grid gap-3" refreshOnSuccess>
-                <input name="match_room_id" type="hidden" value={room.id} />
-                <SubmitButton idleLabel="Confirm ready" pendingLabel="Confirming..." />
-              </RoomActionForm>
-            </div>
-          </Panel>
-          </Reveal>
-        ) : null}
-
-        {!isTournamentRoom && canViewSensitiveInternals ? (
+        {fundingSectionVisible ? (
         <div className="grid min-w-0 gap-6 scroll-mt-32 xl:grid-cols-[minmax(0,1fr)_24rem]" id="funding">
           <Panel>
             <PanelHeader
@@ -2339,85 +2303,31 @@ export default async function MatchDetailPage({
             </div>
           </Panel>
 
-          <Panel>
-            <PanelHeader
-              eyebrow={canSubmitResult ? "Submit Result" : "Result Gate"}
-              title={canSubmitResult ? "Winner claim" : "Result evidence will open after play starts"}
-            />
-            <div className="border-b border-line p-4">
-              <p className="font-mono text-xs font-black uppercase tracking-[0.12em] text-cyan">Evidence checklist</p>
-              <div className="mt-3 grid gap-2 text-sm leading-6 text-muted">
-                {[
-                  ["1", "Before play", "Screenshot the lobby or invite screen showing both game handles."],
-                  ["2", "After play", "Upload the final scoreboard screenshot or a short video showing the result."],
-                  ["3", "Keep names visible", "Do not crop out usernames, room code, final result, or match time."],
-                  ["4", "Explain anything unusual", "Use the note for disconnects, forfeit, overtime, lag, or rule issues."]
-                ].map(([step, title, detail]) => (
-                  <div className="grid grid-cols-[2rem_minmax(0,1fr)] gap-3 rounded-md border border-line bg-white p-3" key={step}>
-                    <span className="grid size-8 place-items-center rounded-full bg-cyan text-xs font-black text-white">{step}</span>
-                    <span>
-                      <strong className="block text-ink">{title}</strong>
-                      <span className="block text-muted">{detail}</span>
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-            {canSubmitResult ? (
-              <RoomActionForm action={submitResultClaimIslandAction} className="grid gap-3 p-4">
-                <input name="match_room_id" type="hidden" value={room.id} />
-                <label className="grid gap-2 text-sm font-bold text-ink">
-                  Winner
-                  <input name="claimed_winner_participant_id" type="hidden" value={currentParticipant?.id ?? ""} />
-                  <div className="rounded-md border border-line bg-surfaceWarm px-3 py-3 text-sm font-black text-ink">
-                    You are submitting your own win claim as {playerOptionLabel(currentParticipant, currentParticipant ? trustByUserId.get(currentParticipant.user_id) : null)}.
-                  </div>
-                </label>
-                <label className="grid gap-2 text-sm font-bold text-ink">
-                  Score summary <span className="font-bold text-muted">(optional)</span>
-                  <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="score_summary" placeholder="2-1, Booyah, placement result, forfeit" />
-                </label>
-                <label className="grid gap-2 text-sm font-bold text-ink">
-                  Proof type
-                  <select className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="evidence_type">
-                    <option value="screenshot">Screenshot</option>
-                    <option value="video">Video</option>
-                  </select>
-                </label>
-                <label className="grid gap-2 text-sm font-bold text-ink">
-                  Required screenshot or video
-                  <input
-                    accept="image/png,image/jpeg,image/webp,video/mp4,video/webm,video/quicktime"
-                    className="min-h-11 rounded-md border border-line bg-white px-3 py-2 text-sm outline-none file:mr-3 file:rounded-sm file:border-0 file:bg-surfaceHigh file:px-3 file:py-2 file:text-xs file:font-black file:text-ink focus:border-action"
-                    name="evidence_file"
-                    required
-                    type="file"
-                  />
-                  <span className="text-xs leading-5 text-muted">Images up to 8MB. Videos up to 80MB.</span>
-                </label>
-                <div className="rounded-md border border-warning bg-amber-50 p-3 text-xs font-bold leading-5 text-amber-900">
-                  Result proof is required before review can begin. If the opponent disputes the result, this file becomes the first thing the Skillsroom team checks.
+          {!canSubmitResult ? (
+            <Panel>
+              <PanelHeader
+                eyebrow="Result Gate"
+                title="Result evidence will open after play starts"
+              />
+              <div className="border-b border-line p-4">
+                <p className="font-mono text-xs font-black uppercase tracking-[0.12em] text-cyan">Evidence checklist</p>
+                <div className="mt-3 grid gap-2 text-sm leading-6 text-muted">
+                  {[
+                    ["1", "Before play", "Screenshot the lobby or invite screen showing both game handles."],
+                    ["2", "After play", "Upload the final scoreboard screenshot or a short video showing the result."],
+                    ["3", "Keep names visible", "Do not crop out usernames, room code, final result, or match time."],
+                    ["4", "Explain anything unusual", "Use the note for disconnects, forfeit, overtime, lag, or rule issues."]
+                  ].map(([step, title, detail]) => (
+                    <div className="grid grid-cols-[2rem_minmax(0,1fr)] gap-3 rounded-md border border-line bg-white p-3" key={step}>
+                      <span className="grid size-8 place-items-center rounded-full bg-cyan text-xs font-black text-white">{step}</span>
+                      <span>
+                        <strong className="block text-ink">{title}</strong>
+                        <span className="block text-muted">{detail}</span>
+                      </span>
+                    </div>
+                  ))}
                 </div>
-                <details className="rounded-md border border-line bg-surfaceWarm">
-                  <summary className="cursor-pointer px-3 py-2 text-sm font-black text-ink">Optional result details</summary>
-                  <div className="grid gap-3 border-t border-line p-3">
-                    <label className="grid gap-2 text-sm font-bold text-ink">
-                      What should Skillsroom know?
-                      <textarea className="min-h-24 rounded-md border border-line bg-white px-3 py-2 text-sm outline-none focus:border-action" name="note" placeholder="Short result context for review, for example overtime, disconnect, or forfeit." />
-                    </label>
-                    <label className="grid gap-2 text-sm font-bold text-ink">
-                      Proof title
-                      <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" defaultValue="Final scoreboard" name="evidence_title" />
-                    </label>
-                    <label className="grid gap-2 text-sm font-bold text-ink">
-                      Proof notes
-                      <textarea className="min-h-24 rounded-md border border-line bg-white px-3 py-2 text-sm outline-none focus:border-action" name="evidence_notes" placeholder="Point the team to the exact score, timestamp, winner name, or rule issue in the screenshot/video." />
-                    </label>
-                  </div>
-                </details>
-                <SubmitButton idleLabel="Submit result" pendingLabel="Submitting result..." />
-              </RoomActionForm>
-            ) : (
+              </div>
               <div className="grid gap-4 p-4">
                 <div className="rounded-md border border-cyan-200 bg-cyanSoft p-4 text-sm font-bold text-cyan">
                   {resultReadinessMessage(room, canConfirmStart)}
@@ -2432,8 +2342,8 @@ export default async function MatchDetailPage({
                   Score summaries stay optional because some games resolve through placement, eliminations, survival, forfeit, or other non-scoreline outcomes.
                 </p>
               </div>
-            )}
-          </Panel>
+            </Panel>
+          ) : null}
         </div>
         ) : null}
 

@@ -68,6 +68,17 @@ function documentIsVisible() {
   return typeof document === "undefined" || document.visibilityState === "visible";
 }
 
+function browserPushSettingsMessage(error: unknown) {
+  const message = error instanceof Error ? error.message : "";
+  if (/push service error|registration failed/i.test(message)) {
+    return "Browser notifications could not be enabled on this browser. You can keep using live in-app updates.";
+  }
+  if (/permission/i.test(message)) {
+    return message;
+  }
+  return message || "Browser notifications could not be enabled.";
+}
+
 function mergeAttachmentsById(current: ChatAttachment[], next: ChatAttachment[]) {
   const seen = new Set(current.map((attachment) => attachment.id));
   return [...current, ...next.filter((attachment) => !seen.has(attachment.id))];
@@ -125,6 +136,7 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
   const [deleteTarget, setDeleteTarget] = useState<ChatMessage | null>(null);
   const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
   const [notice, setNotice] = useState<ChatActionNotice | null>(null);
+  const [settingsNotice, setSettingsNotice] = useState<{ tone: "success" | "danger" | "warning"; message: string } | null>(null);
   const [streamStatus, setStreamStatus] = useState<"starting" | "live" | "reconnecting">("starting");
   const [streamReconnectKey, setStreamReconnectKey] = useState(0);
   const [showChannelInfo, setShowChannelInfo] = useState(false);
@@ -368,6 +380,13 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
       description: options?.description,
       tone: options?.tone ?? "success"
     });
+  }, []);
+
+  const showSettingsNotice = useCallback((message: string, tone: "success" | "danger" | "warning" = "success") => {
+    setSettingsNotice({ message, tone });
+    window.setTimeout(() => {
+      setSettingsNotice((current) => current?.message === message && current.tone === tone ? null : current);
+    }, tone === "success" ? 5000 : 8000);
   }, []);
 
   useEffect(() => {
@@ -2086,10 +2105,10 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
       const configPayload = await configResponse.json() as ApiEnvelope<{ public_key: string | null }>;
       if (configResponse.ok && configPayload.ok === true) publicKey = configPayload.data.public_key ?? undefined;
     }
-    if (!publicKey) throw new Error("Push notifications are not configured on this deployment yet.");
-    if (!("serviceWorker" in navigator) || !("PushManager" in window)) throw new Error("This browser does not support push notifications.");
+    if (!publicKey) throw new Error("Browser notifications are not available on this deployment yet.");
+    if (!("serviceWorker" in navigator) || !("PushManager" in window)) throw new Error("This browser does not support browser notifications.");
     const permission = await Notification.requestPermission();
-    if (permission !== "granted") throw new Error("Notification permission was not granted.");
+    if (permission !== "granted") throw new Error("Browser notification permission was not granted.");
     const registration = await navigator.serviceWorker.register("/chat-push-sw.js");
     const subscription = await registration.pushManager.getSubscription() ?? await registration.pushManager.subscribe({
       userVisibleOnly: true,
@@ -2108,24 +2127,32 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
   async function saveNotificationControls() {
     setIsSavingControls(true);
     setControlAction("notifications");
+    setSettingsNotice(null);
     setError(null);
+    const requestedBrowserPushEnabled = pushEnabled;
     try {
-      if (pushEnabled) await ensurePushSubscription();
+      if (requestedBrowserPushEnabled) await ensurePushSubscription();
       const response = await fetch(`/api/community/channels/${encodeURIComponent(activeChannel.slug)}/controls/notifications`, {
         method: "PATCH",
         headers: { "content-type": "application/json", accept: "application/json" },
         body: JSON.stringify({
           notification_level: notificationLevel,
           dm_notification_level: dmNotificationLevel,
-          browser_push_enabled: pushEnabled
+          browser_push_enabled: requestedBrowserPushEnabled,
+          push_enabled: requestedBrowserPushEnabled
         })
       });
       const payload = await response.json() as ApiEnvelope<{ membership: { notification_level: ChatNotificationLevel; dm_notification_level: ChatNotificationLevel; browser_push_enabled?: boolean; push_enabled: boolean } }>;
       if (!response.ok || payload.ok !== true) throw new Error(payload.ok === false ? payload.error?.message ?? "Notification settings could not be saved." : "Notification settings could not be saved.");
-      showNotice("Notification settings saved.");
+      const savedBrowserPushEnabled = payload.data.membership.browser_push_enabled ?? payload.data.membership.push_enabled ?? requestedBrowserPushEnabled;
+      setPushEnabled(savedBrowserPushEnabled);
+      showSettingsNotice(savedBrowserPushEnabled === requestedBrowserPushEnabled
+        ? "Notification settings saved."
+        : "Notification settings saved, but browser alerts are still off.", savedBrowserPushEnabled === requestedBrowserPushEnabled ? "success" : "warning");
     } catch (controlError) {
       setPushEnabled(false);
-      setError(controlError instanceof Error ? controlError.message : "Notification settings could not be saved.");
+      setError(null);
+      showSettingsNotice(browserPushSettingsMessage(controlError), "danger");
     } finally {
       setIsSavingControls(false);
       setControlAction(null);
@@ -2357,6 +2384,7 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
           notificationLevel={notificationLevel}
           pinnedMessages={pinnedMessages}
           pushEnabled={pushEnabled}
+          settingsNotice={settingsNotice}
           slowModeSeconds={slowModeSeconds}
           unblockingIds={unblockingIds}
           unpinningIds={unpinningIds}

@@ -13,6 +13,7 @@ type LiveUpdateStreamProps = {
   eventTypePrefixes?: string[];
   label?: string;
   matchRoomId?: string;
+  quiet?: boolean;
   refreshOnPatch?: boolean;
   refreshTargetLabel?: string;
   tournamentId?: string;
@@ -110,6 +111,7 @@ export function LiveUpdateStream({
   eventTypePrefixes = [],
   label = "Live updates on",
   matchRoomId,
+  quiet = false,
   refreshOnPatch = false,
   refreshTargetLabel,
   tournamentId
@@ -278,6 +280,39 @@ export function LiveUpdateStream({
       ? "Listening for updates"
       : "Connect when live refresh matters";
   const needsManualRefresh = showRefreshFallback;
+  const toastLayer = toasts.length ? (
+    <div className="pointer-events-none fixed inset-x-3 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-[70] grid gap-2 md:inset-x-auto md:right-6 md:top-20 md:bottom-auto md:w-[22rem]">
+      {toasts.map((toast) => (
+        <div className="pointer-events-auto" key={toast.id}>
+          <Toast
+            title={toast.title}
+            description={toast.description}
+            tone={toast.tone}
+          >
+            <button
+              aria-label="Dismiss live update"
+              className="rounded-sm px-2 py-1 text-xs font-black text-muted hover:bg-white/60 hover:text-ink"
+              onClick={() => {
+                const timer = toastTimersRef.current.get(toast.id);
+                if (timer) {
+                  clearTimeout(timer);
+                  toastTimersRef.current.delete(toast.id);
+                }
+                setToasts((current) => current.filter((item) => item.id !== toast.id));
+              }}
+              type="button"
+            >
+              Close
+            </button>
+          </Toast>
+        </div>
+      ))}
+    </div>
+  ) : null;
+
+  if (quiet) {
+    return toastLayer;
+  }
 
   return (
     <>
@@ -336,35 +371,7 @@ export function LiveUpdateStream({
           </div>
         </div>
       ) : null}
-      {toasts.length ? (
-        <div className="pointer-events-none fixed inset-x-3 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-[70] grid gap-2 md:inset-x-auto md:right-6 md:top-20 md:bottom-auto md:w-[22rem]">
-          {toasts.map((toast) => (
-            <div className="pointer-events-auto" key={toast.id}>
-              <Toast
-                title={toast.title}
-                description={toast.description}
-                tone={toast.tone}
-              >
-                <button
-                  aria-label="Dismiss live update"
-                  className="rounded-sm px-2 py-1 text-xs font-black text-muted hover:bg-white/60 hover:text-ink"
-                  onClick={() => {
-                    const timer = toastTimersRef.current.get(toast.id);
-                    if (timer) {
-                      clearTimeout(timer);
-                      toastTimersRef.current.delete(toast.id);
-                    }
-                    setToasts((current) => current.filter((item) => item.id !== toast.id));
-                  }}
-                  type="button"
-                >
-                  Close
-                </button>
-              </Toast>
-            </div>
-          ))}
-        </div>
-      ) : null}
+      {toastLayer}
     </>
   );
 }

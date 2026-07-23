@@ -44,6 +44,7 @@ type ChatInfoPanelProps = {
   notificationLevel: ChatNotificationLevel;
   pinnedMessages: ChatPinnedMessage[];
   pushEnabled: boolean;
+  settingsNotice: { tone: "success" | "danger" | "warning"; message: string } | null;
   slowModeSeconds: number;
   unblockingIds: Set<string>;
   unpinningIds: Set<string>;
@@ -92,6 +93,7 @@ export function ChatInfoPanel({
   notificationLevel,
   pinnedMessages,
   pushEnabled,
+  settingsNotice,
   slowModeSeconds,
   unblockingIds,
   unpinningIds,
@@ -253,6 +255,18 @@ export function ChatInfoPanel({
                       </span>
                       <input checked={pushEnabled} className="h-5 w-5 accent-sky-400" onChange={(event) => onSetPushEnabled(event.target.checked)} type="checkbox" />
                     </label>
+                    {settingsNotice ? (
+                      <p className={[
+                        "rounded-md border p-3 text-sm font-bold",
+                        settingsNotice.tone === "success"
+                          ? "border-emerald-300/30 bg-emerald-400/10 text-emerald-100"
+                          : settingsNotice.tone === "warning"
+                            ? "border-amber-300/30 bg-amber-400/10 text-amber-100"
+                            : "border-rose-300/30 bg-rose-400/10 text-rose-100"
+                      ].join(" ")}>
+                        {settingsNotice.message}
+                      </p>
+                    ) : null}
                     <button className="min-h-11 rounded-md bg-sky-500 px-4 text-sm font-black text-white hover:bg-sky-400 disabled:opacity-60" disabled={isSavingControls} onClick={() => void onSaveNotificationControls()} type="button">
                       {controlAction === "notifications" ? "Saving..." : "Save notifications"}
                     </button>
