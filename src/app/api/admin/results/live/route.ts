@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { canAccessAdmin, canUseAdminSection, getCurrentUser } from "@/lib/auth-bridge";
-import { listResultClaims, type ResultClaimStatus } from "@/lib/match-room-api";
+import { getRoomResults, listResultClaims, type MatchEvidenceItem, type ResultClaimStatus } from "@/lib/match-room-api";
 
 export const dynamic = "force-dynamic";
 
@@ -14,10 +14,29 @@ export async function GET() {
 
   try {
     const groups = await Promise.all(statuses.map(async (status) => ({ status, rows: (await listResultClaims(status)).claims })));
+    const claims = groups.flatMap((group) => group.rows);
+    const roomIds = Array.from(new Set(claims.map((claim) => claim.match_room_id)));
+    const roomResultEntries = await Promise.all(
+      roomIds.map(async (roomId) => {
+        try {
+          return [roomId, await getRoomResults(roomId)] as const;
+        } catch {
+          return [roomId, null] as const;
+        }
+      })
+    );
+    const roomResultsById = new Map(roomResultEntries);
+    const evidenceByClaimId = claims.reduce<Record<string, MatchEvidenceItem[]>>((next, claim) => {
+      const roomResults = roomResultsById.get(claim.match_room_id);
+      next[claim.id] = roomResults?.evidence_items.filter((item) => item.result_claim_id === claim.id) ?? [];
+      return next;
+    }, {});
+
     return NextResponse.json({
       ok: true,
       data: {
-        claims: groups.flatMap((group) => group.rows),
+        claims,
+        evidence_by_claim_id: evidenceByClaimId,
         loaded_at: new Date().toISOString()
       }
     });

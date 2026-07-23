@@ -2,6 +2,7 @@
 /* eslint-disable @next/next/no-img-element -- evidence media is private and served through access-audited routes */
 
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
 type EvidenceMediaDrawerProps = {
   url: string | null | undefined;
@@ -35,6 +36,7 @@ function evidenceViewerUrl(url: string, title: string) {
 export function EvidenceMediaDrawer({ url, title, description, className, compact, children }: EvidenceMediaDrawerProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [hasStartedVideo, setHasStartedVideo] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const viewerRef = useRef<HTMLDivElement | null>(null);
   const videoRef = useRef<FullscreenVideoElement | null>(null);
   const openUrl = url ? evidenceViewerUrl(url, title) : "";
@@ -44,6 +46,10 @@ export function EvidenceMediaDrawer({ url, title, description, className, compac
     if (isVideoUrl(url)) return "video";
     return "link";
   }, [url]);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -116,10 +122,10 @@ export function EvidenceMediaDrawer({ url, title, description, className, compac
         )}
       </button>
 
-      {isOpen ? (
-        <div className="fixed inset-0 z-50 grid h-[100dvh] w-screen overflow-hidden bg-ink" role="dialog" aria-modal="true" aria-label={title}>
-          <div className="grid h-[100dvh] min-h-0 w-full grid-rows-[auto_minmax(0,1fr)] overflow-hidden bg-ink [padding-bottom:env(safe-area-inset-bottom)] [padding-left:env(safe-area-inset-left)] [padding-right:env(safe-area-inset-right)] [padding-top:env(safe-area-inset-top)]">
-            <div className="z-10 flex min-h-14 items-center justify-between gap-2 border-b border-white/10 bg-ink/95 px-3 py-2 text-white shadow-[0_10px_30px_rgba(0,0,0,0.35)] backdrop-blur sm:px-4">
+      {isOpen && mounted ? createPortal(
+        <div className="fixed inset-0 z-[90] grid h-[100dvh] w-screen overflow-hidden bg-[#07111f]" role="dialog" aria-modal="true" aria-label={title}>
+          <div className="grid h-[100dvh] min-h-0 w-full grid-rows-[auto_minmax(0,1fr)] overflow-hidden bg-[#07111f] [padding-bottom:env(safe-area-inset-bottom)] [padding-left:env(safe-area-inset-left)] [padding-right:env(safe-area-inset-right)] [padding-top:env(safe-area-inset-top)]">
+            <div className="z-10 flex min-h-14 items-center justify-between gap-2 border-b border-white/10 bg-ink/95 px-3 py-2 text-white shadow-[0_10px_30px_rgba(0,0,0,0.35)] backdrop-blur sm:px-5">
               <div className="min-w-0">
                 <p className="truncate text-sm font-black text-white">{title}</p>
                 {description ? <p className="mt-0.5 line-clamp-1 text-xs font-bold text-white/65">{description}</p> : null}
@@ -143,14 +149,16 @@ export function EvidenceMediaDrawer({ url, title, description, className, compac
                 </button>
               </div>
             </div>
-            <div ref={viewerRef} className="grid min-h-0 place-items-center overflow-hidden bg-ink p-0">
+            <div ref={viewerRef} className="grid min-h-0 place-items-center overflow-auto bg-[#07111f] p-3 sm:p-6">
               {mediaKind === "image" ? (
-                <img alt={title} className="block h-full max-h-full w-full max-w-full object-contain" loading="eager" src={url} />
+                <div className="grid h-full min-h-0 w-full place-items-center rounded-lg border border-white/10 bg-black/45 p-2 shadow-[0_24px_80px_rgba(0,0,0,0.35)] sm:p-4">
+                  <img alt={title} className="block max-h-[calc(100dvh-7rem)] max-w-full rounded-md object-contain shadow-[0_12px_50px_rgba(0,0,0,0.35)] xl:max-w-[72rem]" loading="eager" src={url} />
+                </div>
               ) : mediaKind === "video" ? (
-                <div className="relative grid h-full w-full place-items-center overflow-hidden bg-black">
+                <div className="relative grid h-full min-h-0 w-full place-items-center overflow-hidden rounded-lg border border-white/10 bg-black shadow-[0_24px_80px_rgba(0,0,0,0.35)]">
                   <video
                     ref={videoRef}
-                    className="block h-full max-h-full w-full max-w-full bg-black object-contain"
+                    className="block max-h-[calc(100dvh-7rem)] max-w-full bg-black object-contain xl:max-w-[72rem]"
                     controls={hasStartedVideo}
                     onPlay={() => setHasStartedVideo(true)}
                     playsInline
@@ -175,7 +183,8 @@ export function EvidenceMediaDrawer({ url, title, description, className, compac
               )}
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       ) : null}
     </>
   );

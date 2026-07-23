@@ -60,11 +60,11 @@ export function EvidenceFileViewerClient({ fileName, title, url }: EvidenceFileV
   }
 
   return (
-    <main className="grid h-[100dvh] min-h-0 grid-rows-[auto_minmax(0,1fr)] overflow-hidden bg-ink text-white [padding-bottom:env(safe-area-inset-bottom)] [padding-left:env(safe-area-inset-left)] [padding-right:env(safe-area-inset-right)] [padding-top:env(safe-area-inset-top)]">
-      <header className="z-10 flex min-h-14 items-center justify-between gap-2 border-b border-white/10 bg-ink/95 px-3 py-2 shadow-[0_10px_30px_rgba(0,0,0,0.35)] backdrop-blur sm:px-4">
+    <main className="grid h-[100dvh] min-h-0 grid-rows-[auto_minmax(0,1fr)] overflow-hidden bg-[#07111f] text-white [padding-bottom:env(safe-area-inset-bottom)] [padding-left:env(safe-area-inset-left)] [padding-right:env(safe-area-inset-right)] [padding-top:env(safe-area-inset-top)]">
+      <header className="z-10 flex min-h-14 items-center justify-between gap-2 border-b border-white/10 bg-ink/95 px-3 py-2 shadow-[0_10px_30px_rgba(0,0,0,0.35)] backdrop-blur sm:px-5">
         <div className="min-w-0">
           <h1 className="truncate text-sm font-black">{title}</h1>
-          <p className="mt-0.5 truncate font-mono text-[0.68rem] font-bold text-white/60">{fileName}</p>
+          <p className="mt-0.5 hidden truncate font-mono text-[0.68rem] font-bold text-white/60 sm:block">{fileName}</p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
           {kind === "video" ? (
@@ -78,14 +78,16 @@ export function EvidenceFileViewerClient({ fileName, title, url }: EvidenceFileV
         </div>
       </header>
 
-      <section ref={viewerRef} className="grid min-h-0 place-items-center overflow-hidden bg-black">
+      <section ref={viewerRef} className="grid min-h-0 place-items-center overflow-auto bg-[#07111f] p-3 sm:p-6">
         {kind === "image" ? (
-          <img alt={title} className="block h-full max-h-full w-full max-w-full object-contain" src={url} />
+          <div className="grid h-full min-h-0 w-full place-items-center rounded-lg border border-white/10 bg-black/45 p-2 shadow-[0_24px_80px_rgba(0,0,0,0.35)] sm:p-4">
+            <img alt={title} className="block max-h-[calc(100dvh-7rem)] max-w-full rounded-md object-contain shadow-[0_12px_50px_rgba(0,0,0,0.35)] xl:max-w-[72rem]" src={url} />
+          </div>
         ) : kind === "video" ? (
-          <div className="relative grid h-full w-full place-items-center overflow-hidden bg-black">
+          <div className="relative grid h-full min-h-0 w-full place-items-center overflow-hidden rounded-lg border border-white/10 bg-black shadow-[0_24px_80px_rgba(0,0,0,0.35)]">
             <video
               ref={videoRef}
-              className="block h-full max-h-full w-full max-w-full bg-black object-contain"
+              className="block max-h-[calc(100dvh-7rem)] max-w-full bg-black object-contain xl:max-w-[72rem]"
               controls={hasStartedVideo}
               onError={() => setLoadError(true)}
               onPlay={() => setHasStartedVideo(true)}

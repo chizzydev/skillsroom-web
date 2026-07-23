@@ -52,6 +52,7 @@ import {
   checkInTournamentMatchRoomAction,
   createMatchLivestreamIslandAction,
   createRoomInviteAction,
+  joinMatchRoomAction,
   openMatchRoomAction,
   payRoomWithBalanceIslandAction,
   startMatchPlayIslandAction,
@@ -76,12 +77,6 @@ function statusTone(status: MatchRoomStatus, expired = false) {
   if (["under_review", "disputed", "voided"].includes(status)) return "danger" as const;
   if (["active", "awaiting_results", "settlement_pending", "completed"].includes(status)) return "success" as const;
   return "neutral" as const;
-}
-
-function fundingTone(status: ManualFundingSubmission["status"]) {
-  if (status === "approved") return "success" as const;
-  if (status === "rejected" || status === "cancelled") return "danger" as const;
-  return "warning" as const;
 }
 
 function resultTone(status: MatchResultClaim["status"]) {
@@ -233,10 +228,11 @@ function nextAction(room: MatchRoom, participantCount: number, expired = false) 
   if (room.status === "open") return participantCount < room.max_participants
     ? (["Share the room code", "Send the code to an opponent or wait for a player to join from the lobby."] as const)
     : (["Confirm funding", "Both players are in. Funding proof is the next checkpoint."] as const);
-  if (["awaiting_funding", "funding_review"].includes(room.status)) return ["Submit or wait for funding review", "Both entries must be approved before the match starts."] as const;
-  if (room.status === "funded") return ["Start the match", "Funding is approved. Start live play when both players are ready, then submit evidence after the match ends."] as const;
-  if (room.status === "active") return ["Match is live", "Play is active. Submit result evidence when the match is done."] as const;
-  if (room.status === "awaiting_results") return ["Result evidence needed", "A player should submit the final score and scoreboard proof."] as const;
+  if (room.status === "awaiting_funding") return ["Complete your entry", "Use Skillsroom Balance or submit transfer proof. The room updates when your entry is confirmed."] as const;
+  if (room.status === "funding_review") return ["Entry review", "Transfer proof or balance payment is being checked before play opens."] as const;
+  if (room.status === "funded") return ["Confirm you are ready", "Both entries are confirmed. The match goes live after both players confirm."] as const;
+  if (room.status === "active") return ["Submit result evidence", "After the match, submit the winner and proof for review."] as const;
+  if (room.status === "awaiting_results") return ["Result needed", "A player should submit the winner and match proof."] as const;
   if (room.status === "under_review") return ["Review in progress", "Evidence and responses are being checked before payout."] as const;
   if (room.status === "disputed") return ["Dispute review", "Payout is paused while the Skillsroom team checks the issue."] as const;
   if (room.status === "settlement_pending") return ["Payout pending", "The winner is approved and payment is the next step."] as const;
@@ -398,56 +394,6 @@ function fundingMethodSummary(funding: RoomFundingOverview | null, participant: 
   };
 }
 
-function resultCheckpointSummary(room: MatchRoom, latestClaim: MatchResultClaim | null) {
-  if (!latestClaim) {
-    return {
-      label: "No result yet",
-      detail: ["active", "awaiting_results", "under_review", "disputed"].includes(room.status)
-        ? "Players can submit winner evidence after play."
-        : "Result evidence opens after funding and live play.",
-      tone: "neutral" as const
-    };
-  }
-
-  return {
-    label: displayLabel(latestClaim.status),
-    detail: scoreSummaryLabel(latestClaim.score_summary),
-    tone: resultTone(latestClaim.status)
-  };
-}
-
-function payoutCheckpointSummary(room: MatchRoom, latestClaim: MatchResultClaim | null) {
-  if (room.status === "completed") {
-    return {
-      label: "Paid / completed",
-      detail: "Payout is complete and saved in this room history.",
-      tone: "success" as const
-    };
-  }
-
-  if (room.status === "settlement_pending") {
-    return {
-      label: "Payout pending",
-      detail: "Winner is approved. Payout or wallet credit is the next step.",
-      tone: "warning" as const
-    };
-  }
-
-  if (latestClaim && ["admin_approved", "opponent_agreed"].includes(latestClaim.status)) {
-    return {
-      label: "Ready for payout",
-      detail: "The result is accepted and can move to payout.",
-      tone: "warning" as const
-    };
-  }
-
-  return {
-    label: "Not ready",
-    detail: "Payout stays locked until funding, play, and result review are complete.",
-    tone: "neutral" as const
-  };
-}
-
 function resultReadinessMessage(room: MatchRoom, canConfirmStart: boolean) {
   if (room.status === "funded") {
     return canConfirmStart
@@ -551,62 +497,6 @@ function tournamentMatchContext(detail: TournamentDetail | null, tournamentMatch
 function entryLabel(entry: TournamentEntry | undefined) {
   if (!entry) return "TBD";
   return entry.team_name || entry.display_name;
-}
-
-function FundingCard({
-  room,
-  participant,
-  submission,
-  trust
-}: {
-  room: MatchRoom;
-  participant?: MatchParticipant;
-  submission?: ManualFundingSubmission;
-  trust?: PlayerTrustSummary | null;
-}) {
-  const playerLabel = playerDisplayName(participant, trust);
-  const isApproved = submission?.status === "approved";
-  const proofDetailsVisible = Boolean(submission?.sender_account_name || submission?.sender_bank_name || submission?.transfer_reference || submission?.proof_url);
-
-  return (
-    <div className="motion-flow-card rounded-lg border border-line bg-surfaceWarm p-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <p className="font-mono text-xs font-bold uppercase tracking-[0.12em] text-dim">{participant?.slot.replace("_", " ") ?? "Open slot"}</p>
-          <p className="mt-2 text-base font-black text-ink">{playerLabel}</p>
-        </div>
-        <Badge tone={submission ? fundingTone(submission.status) : "neutral"}>
-          {submission ? displayLabel(submission.status) : "No proof"}
-        </Badge>
-      </div>
-      <p className="mt-3 text-sm font-bold text-muted">{formatEntryAmount(room)} required</p>
-      {submission ? (
-        <div className="motion-state-card mt-3 rounded-md border border-line bg-white p-3 text-sm">
-          {proofDetailsVisible ? (
-            <>
-              {submission.sender_account_name ? <p className="font-bold text-ink">{submission.sender_account_name}</p> : null}
-              {submission.sender_bank_name ? <p className="mt-1 text-muted">{submission.sender_bank_name}</p> : null}
-              {submission.transfer_reference ? <p className="mt-1 font-mono text-xs font-bold text-dim">Ref: {submission.transfer_reference}</p> : null}
-            </>
-          ) : (
-            <p className="font-bold text-ink">
-              {isApproved ? "Payment proof approved for this room." : "Payment proof submitted for review."}
-            </p>
-          )}
-          {isApproved && !proofDetailsVisible ? (
-            <p className="mt-1 text-muted">Sensitive receipt fields are intentionally hidden here after approval so the card stays clear without exposing unnecessary banking details.</p>
-          ) : null}
-          {submission.proof_url ? (
-            <EvidenceMediaDrawer compact title="View screenshot" url={submission.proof_url} />
-          ) : isApproved ? (
-            <p className="mt-2 text-xs font-bold leading-5 text-muted">Approval is recorded even when a screenshot is not available on this room card.</p>
-          ) : null}
-        </div>
-      ) : (
-        <p className="mt-3 text-sm leading-6 text-muted">Waiting for bank, account name, and transfer screenshot.</p>
-      )}
-    </div>
-  );
 }
 
 async function RoomHistoryPanel({ matchId }: { matchId: string }) {
@@ -1197,10 +1087,6 @@ export default async function MatchDetailPage({
 
   const trustByUserId = new Map<string, PlayerTrustSummary | null>();
   const latestClaim = results?.claims[0] ?? null;
-  const fundedParticipants = participants.filter((participant) => participant.funding_status === "approved");
-  const fundsLockedMinor = fundedParticipants.length * room.entry_amount_minor;
-  const resultCheckpoint = resultCheckpointSummary(room, latestClaim);
-  const payoutCheckpoint = payoutCheckpointSummary(room, latestClaim);
   const displayedParticipantCount = Math.max(participants.length, room.participant_count ?? 0);
   const isExpiredOpenRoom = room.status === "open" && roomExpired(room);
   const [baseNextTitle, baseNextDetail] = nextAction(room, displayedParticipantCount, isExpiredOpenRoom);
@@ -1211,6 +1097,9 @@ export default async function MatchDetailPage({
   const canOpen = room.status === "draft" && room.created_by_user_id === user.id;
   const roomAllowsFundingSubmission = ["awaiting_funding", "funding_review"].includes(room.status);
   const currentFundingStatus = currentParticipant?.funding_status ?? null;
+  const currentEntryApproved = currentFundingStatus === "approved";
+  const currentEntrySubmitted = currentFundingStatus === "submitted";
+  const confirmedEntryCount = participants.filter((participant) => participant.funding_status === "approved").length;
   const canSubmitFunding =
     roomAllowsFundingSubmission &&
     Boolean(currentParticipant) &&
@@ -1219,11 +1108,12 @@ export default async function MatchDetailPage({
   const canPayWithBalance = canSubmitFunding && availableBalanceMinor >= room.entry_amount_minor;
   const joinedParticipants = participants.filter((participant) => participant.participant_status === "joined");
   const startConfirmationsRequired = joinedParticipants.length;
+  const startConfirmationsCount = startConfirmations.length;
   const waitingForOpponentStart =
     room.status === "funded" &&
     Boolean(currentParticipant) &&
     currentPlayerStartConfirmed &&
-    startConfirmations.length < startConfirmationsRequired;
+    startConfirmationsCount < startConfirmationsRequired;
   const canConfirmStart =
     room.status === "funded" &&
     joinedParticipants.length === room.max_participants &&
@@ -1231,6 +1121,13 @@ export default async function MatchDetailPage({
     Boolean(currentParticipant) &&
     !currentPlayerStartConfirmed;
   const canSubmitResult = Boolean(currentParticipant) && ["active", "awaiting_results"].includes(room.status);
+  const canSubmitNewResult = canSubmitResult && !latestClaim;
+  const reviewInProgress = ["under_review", "disputed"].includes(room.status);
+  const finalStage = ["settlement_pending", "completed", "refunded", "voided"].includes(room.status);
+  const finalWinnerParticipant = latestClaim
+    ? results?.participants.find((participant) => participant.id === latestClaim.claimed_winner_participant_id)
+      ?? participants.find((participant) => participant.id === latestClaim.claimed_winner_participant_id)
+    : null;
   const canRespondToLatestClaim =
     Boolean(currentParticipant) &&
     Boolean(latestClaim) &&
@@ -1266,35 +1163,54 @@ export default async function MatchDetailPage({
             ((typeof host.permissions?.manage_event === "boolean" && host.permissions.manage_event) || host.role !== "sponsor")
         )
       ));
-  const entryFlowStillMatters = ["open", "awaiting_funding", "funding_review", "funded"].includes(room.status);
-  const entryPrimaryStillMatters = ["open", "awaiting_funding", "funding_review"].includes(room.status);
+  const canJoinOpenRoom =
+    !isTournamentRoom &&
+    room.status === "open" &&
+    !isExpiredOpenRoom &&
+    !currentParticipant &&
+    displayedParticipantCount < room.max_participants;
+  const entryPrimaryStillMatters = ["awaiting_funding", "funding_review"].includes(room.status);
   const showEntryPrimary =
     entryPrimaryStillMatters &&
     (canSubmitFunding || roomAllowsFundingSubmission || currentFundingStatus === "submitted" || currentFundingStatus === "approved");
-  const fundingSectionVisible = !isTournamentRoom && canViewSensitiveInternals && entryFlowStillMatters;
+  const fundingSectionVisible = !isTournamentRoom && canViewSensitiveInternals && showEntryPrimary;
   const resultSectionVisible =
     canSubmitResult ||
     Boolean(latestClaim) ||
-    ["active", "awaiting_results", "under_review", "disputed", "settlement_pending", "completed", "cancelled"].includes(room.status);
+    ["active", "awaiting_results", "under_review", "disputed", "settlement_pending", "completed", "refunded", "voided", "cancelled"].includes(room.status);
   const roomNavItems = [
     { href: "#current-step", label: "Current" },
     { href: "#overview", label: "Overview" },
     { href: "#players", label: "Players" },
-    ...(fundingSectionVisible ? [{ href: "#funding", label: "Funding" }] : []),
+    ...(fundingSectionVisible ? [{ href: "#funding", label: "Entry" }] : []),
     { href: "#live", label: "Live" },
     ...(resultSectionVisible ? [{ href: "#result", label: "Result" }] : [])
   ];
   const primaryAction =
-    canSubmitFunding
+    isExpiredOpenRoom
+      ? { href: "/challenges?mode=create", label: "Post fresh challenge" }
+      : room.status === "open" && canJoinOpenRoom
+        ? { href: "#join-room", label: "Join room" }
+        : room.status === "open" && canSendRoomInvite
+          ? { href: "#invite-player", label: "Invite player" }
+          : room.status === "open"
+            ? { href: "#overview", label: displayedParticipantCount < room.max_participants ? "Share code" : "View players" }
+            : canSubmitFunding
       ? { href: "#funding", label: "Submit funding" }
       : canConfirmStart
-          ? { href: "#live", label: "Confirm ready" }
+          ? { href: "#current-step", label: "Confirm ready" }
         : waitingForOpponentStart
-          ? { href: "#live", label: "Waiting opponent" }
+          ? { href: "#current-step", label: "Waiting opponent" }
           : canRespondToLatestClaim
-            ? { href: "#result-response", label: "Respond" }
-          : canSubmitResult
+            ? { href: "#current-step", label: "Respond" }
+          : canSubmitNewResult
             ? { href: "#result", label: "Submit result" }
+            : canSubmitResult && latestClaim
+              ? { href: "#result", label: "View result" }
+              : reviewInProgress
+                ? { href: "#result", label: "View review" }
+                : finalStage
+                  ? { href: "#result", label: room.status === "completed" ? "View outcome" : "View status" }
             : canManageLivestreams
               ? { href: "#live", label: "Add livestream" }
               : { href: "#players", label: displayedParticipantCount < room.max_participants ? "Check players" : "View players" };
@@ -1324,19 +1240,17 @@ export default async function MatchDetailPage({
               <PendingLink className="inline-flex min-h-10 items-center justify-center rounded-md border border-white/10 bg-white px-4 text-sm font-black text-ink hover:bg-surfaceHigh" href="/matches" pendingLabel="Opening rooms...">
                 All rooms
               </PendingLink>
-              {canConfirmStart ? (
-                <RoomActionForm action={startMatchPlayIslandAction} className="grid gap-2" refreshOnSuccess>
-                  <input name="match_room_id" type="hidden" value={room.id} />
-                  <SubmitButton idleLabel="Confirm ready" pendingLabel="Confirming..." />
-                </RoomActionForm>
-              ) : null}
               {canRespondToLatestClaim ? (
-                <a className="inline-flex min-h-10 items-center justify-center rounded-md bg-action px-4 text-sm font-black text-navy-950 shadow-action hover:bg-actionHover" href="#result-response">
+                <a className="inline-flex min-h-10 items-center justify-center rounded-md bg-action px-4 text-sm font-black text-navy-950 shadow-action hover:bg-actionHover" href="#current-step">
                   Respond to result
                 </a>
-              ) : canSubmitResult ? (
+              ) : canSubmitNewResult ? (
                 <a className="inline-flex min-h-10 items-center justify-center rounded-md bg-action px-4 text-sm font-black text-navy-950 shadow-action hover:bg-actionHover" href="#result">
                   Submit result
+                </a>
+              ) : canSubmitResult && latestClaim ? (
+                <a className="inline-flex min-h-10 items-center justify-center rounded-md bg-action px-4 text-sm font-black text-navy-950 shadow-action hover:bg-actionHover" href="#result">
+                  View result
                 </a>
               ) : null}
             </div>
@@ -1362,7 +1276,7 @@ export default async function MatchDetailPage({
         {playConfirmed ? <TransientStatusBanner clearKeys={["play_confirmed"]} durationMs={10000} message="Ready confirmed. Waiting for the other player before the match goes live." tone="success" /> : null}
         {balanceFunded ? <TransientStatusBanner clearKeys={["balance_funded"]} durationMs={10000} message="Entry paid from Skillsroom Balance. Your funds are locked for this room." tone="success" /> : null}
 
-        <section className="scroll-mt-28" id="current-step-actions">
+        <section className="scroll-mt-28" id="current-step">
           <Panel className="overflow-hidden border-cyan/40 shadow-[0_24px_70px_rgba(24,197,138,0.12)]">
             <div className="grid gap-4 border-b border-line bg-gradient-to-r from-cyanSoft via-white to-green-50 p-4 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
               <div className="min-w-0">
@@ -1408,15 +1322,87 @@ export default async function MatchDetailPage({
                   <SubmitButton idleLabel="Open room" pendingLabel="Opening room..." />
                 </form>
               </div>
+            ) : room.status === "open" ? (
+              <div className="grid gap-4 p-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
+                <div className="grid gap-3">
+                  <div className="rounded-md border border-cyan/30 bg-cyanSoft p-4">
+                    <p className="font-mono text-xs font-black uppercase tracking-[0.14em] text-cyan">Room code</p>
+                    <p className="mt-2 break-all font-mono text-2xl font-black text-ink">{room.room_code}</p>
+                    <p className="mt-2 text-sm font-bold leading-6 text-muted">
+                      Share this code with your opponent. Entry confirmation starts when both player slots are filled.
+                    </p>
+                  </div>
+                  {displayedParticipantCount < room.max_participants ? (
+                    <div className="rounded-md border border-line bg-white p-4 text-sm font-bold leading-6 text-muted">
+                      One open slot remains. Share the room code or send a direct invite if you already know the player.
+                    </div>
+                  ) : (
+                    <div className="rounded-md border border-success/30 bg-green-50 p-4 text-sm font-bold leading-6 text-success">
+                      Both players are in. Entry confirmation opens next.
+                    </div>
+                  )}
+                  <div className="grid gap-3 md:grid-cols-2">
+                    {(["player_a", "player_b"] as const).map((slot) => {
+                      const participant = participants.find((item) => item.slot === slot);
+                      const trust = participant ? trustByUserId.get(participant.user_id) : null;
+                      return (
+                        <div className="rounded-md border border-line bg-surfaceWarm p-4" key={slot}>
+                          <div className="flex flex-wrap items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <p className="font-mono text-xs font-bold uppercase tracking-[0.12em] text-dim">{slot.replace("_", " ")}</p>
+                              <p className="mt-2 text-base font-black text-ink">{participant ? playerDisplayName(participant, trust) : "Open slot"}</p>
+                            </div>
+                            <Badge tone={participant ? "success" : "warning"}>{participant ? "Joined" : "Waiting"}</Badge>
+                          </div>
+                          <p className="mt-2 text-xs font-bold leading-5 text-muted">
+                            {participant ? primaryHandleLabel(trust) : "This slot fills when another player joins with the room code or accepts an invite."}
+                          </p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+                <div className="grid gap-3 self-start">
+                  {canJoinOpenRoom ? (
+                    <form action={joinMatchRoomAction} className="grid scroll-mt-32 gap-3 rounded-lg border border-line bg-white p-4 shadow-tight" id="join-room">
+                      <input name="room_code" type="hidden" value={room.room_code} />
+                      <input name="error_path" type="hidden" value={`/matches/${room.id}`} />
+                      <p className="font-mono text-xs font-black uppercase tracking-[0.14em] text-cyan">Join room</p>
+                      <h3 className="text-xl font-black text-ink">Use this room code</h3>
+                      <p className="text-sm leading-6 text-muted">Joining adds you to this room. Entry confirmation still happens after both players are in.</p>
+                      <SubmitButton idleLabel="Join room" pendingLabel="Joining room..." />
+                    </form>
+                  ) : canSendRoomInvite ? (
+                    <div className="rounded-lg border border-line bg-white p-4 shadow-tight">
+                      <p className="font-mono text-xs font-black uppercase tracking-[0.14em] text-cyan">Invite</p>
+                      <h3 className="mt-2 text-xl font-black text-ink">Invite a player</h3>
+                      <p className="mt-2 text-sm leading-6 text-muted">Send a direct invite from the overview panel, or share the room code anywhere.</p>
+                      <a className="mt-4 inline-flex min-h-10 items-center justify-center rounded-md bg-action px-4 text-sm font-black text-navy-950 shadow-action hover:bg-actionHover" href="#invite-player">
+                        Invite player
+                      </a>
+                    </div>
+                  ) : (
+                    <div className="rounded-lg border border-line bg-white p-4 shadow-tight">
+                      <p className="font-mono text-xs font-black uppercase tracking-[0.14em] text-cyan">Open room</p>
+                      <h3 className="mt-2 text-xl font-black text-ink">{displayedParticipantCount < room.max_participants ? "Waiting for opponent" : "Entry is next"}</h3>
+                      <p className="mt-2 text-sm leading-6 text-muted">
+                        {displayedParticipantCount < room.max_participants
+                          ? "Keep the room code handy while the next player joins."
+                          : "Both players are in. Entry confirmation starts next."}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
             ) : showEntryPrimary ? (
-              <div className="grid gap-4 p-4 xl:grid-cols-[minmax(0,1fr)_24rem]">
+              <div className="grid scroll-mt-32 gap-4 p-4 xl:grid-cols-[minmax(0,1fr)_24rem]" id="funding">
                 <div className="grid gap-3">
                   <div className="rounded-md border border-line bg-white p-4">
                     <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                       <div className="min-w-0">
                         <p className="font-mono text-xs font-black uppercase tracking-[0.14em] text-cyan">Entry payment</p>
                         <h3 className="mt-2 text-xl font-black text-ink">
-                          {currentFundingStatus === "approved" ? "Your entry is confirmed" : currentFundingStatus === "submitted" ? "Payment proof is under review" : "Confirm your entry"}
+                          {currentEntryApproved ? "Your entry is confirmed" : currentEntrySubmitted ? "Payment proof is under review" : currentFundingStatus === "rejected" ? "Update your transfer proof" : "Confirm your entry"}
                         </h3>
                         <p className="mt-2 text-sm leading-6 text-muted">
                           Required: <span className="font-black text-ink">{formatEntryAmount(room)}</span>. Balance available: <span className="font-black text-ink">{formatMinorMoney(room.currency, availableBalanceMinor)}</span>.
@@ -1427,10 +1413,34 @@ export default async function MatchDetailPage({
                         <SubmitButton disabled={!canPayWithBalance} idleLabel="Use balance" pendingLabel="Locking funds..." />
                       </RoomActionForm>
                     </div>
-                    {currentFundingStatus === "approved" ? (
+                    <div className="mt-4 grid gap-3 md:grid-cols-2">
+                      <div className="rounded-md border border-line bg-surfaceWarm p-3">
+                        <p className="font-mono text-[0.62rem] font-black uppercase tracking-[0.12em] text-dim">Entry</p>
+                        <p className="mt-1 text-lg font-black text-ink">{formatEntryAmount(room)}</p>
+                        <p className="mt-1 text-xs font-bold leading-5 text-muted">Equal amount for both players</p>
+                      </div>
+                      <div className="rounded-md border border-line bg-surfaceWarm p-3">
+                        <p className="font-mono text-[0.62rem] font-black uppercase tracking-[0.12em] text-dim">Confirmed</p>
+                        <p className="mt-1 text-lg font-black text-ink">{confirmedEntryCount}/{room.max_participants}</p>
+                        <p className="mt-1 text-xs font-bold leading-5 text-muted">Approved entries</p>
+                      </div>
+                    </div>
+                    {canSubmitFunding ? (
+                      <div className="mt-3 rounded-md border border-cyan/30 bg-cyanSoft p-3 text-sm font-bold leading-6 text-cyan">
+                        Next step: confirm your {formatEntryAmount(room)} entry with Skillsroom Balance or transfer proof.
+                      </div>
+                    ) : null}
+                    {currentParticipant && (canSubmitFunding || currentEntrySubmitted || currentEntryApproved) ? (
+                      <div className="mt-3 rounded-md border border-line bg-surfaceWarm p-3 text-sm font-bold leading-6 text-muted">
+                        Add your payout account on Profile before result review so approved winnings can be paid quickly.
+                      </div>
+                    ) : null}
+                    {currentEntryApproved ? (
                       <p className="mt-3 text-sm font-bold text-success">{allJoinedParticipantsApproved ? "Both entries are approved. Start play when both players are ready." : "Your slot is approved. We are waiting for the other player."}</p>
-                    ) : currentFundingStatus === "submitted" ? (
-                      <p className="mt-3 text-sm font-bold text-warning">Your transfer proof is already waiting for Skillsroom review.</p>
+                    ) : currentEntrySubmitted ? (
+                      <p className="mt-3 text-sm font-bold text-success">Your transfer proof is under review. You do not need to submit again unless Skillsroom asks for a correction.</p>
+                    ) : currentFundingStatus === "rejected" ? (
+                      <p className="mt-3 text-sm font-bold text-danger">Your last transfer proof needs correction. Upload a clearer proof or update the transfer details below.</p>
                     ) : canSubmitFunding && !canPayWithBalance ? (
                       <p className="mt-3 text-sm font-bold text-muted">Your balance is not enough for this room. Top up your wallet or upload transfer proof now.</p>
                     ) : null}
@@ -1450,61 +1460,78 @@ export default async function MatchDetailPage({
                             <Badge tone={fundingMethod.tone}>{fundingMethod.label}</Badge>
                           </div>
                           <p className="mt-2 text-xs font-bold leading-5 text-muted">{fundingMethod.detail}</p>
+                          <div className="mt-3 grid gap-2 rounded-md border border-line bg-white p-3 text-sm">
+                            <div className="flex items-center justify-between gap-3">
+                              <span className="font-bold text-muted">Entry amount</span>
+                              <span className="font-black text-ink">{formatEntryAmount(room)}</span>
+                            </div>
+                            <div className="flex items-center justify-between gap-3">
+                              <span className="font-bold text-muted">Entry status</span>
+                              <span className="font-black text-ink">{participant ? displayLabel(participant.funding_status) : "Waiting"}</span>
+                            </div>
+                            <div className="flex items-center justify-between gap-3">
+                              <span className="font-bold text-muted">Proof</span>
+                              <span className="font-black text-ink">{participant ? fundingMethod.label : "No proof shown"}</span>
+                            </div>
+                          </div>
+                          {trust ? <div className="mt-3"><PlayerTrustCard compact trust={trust} /></div> : null}
                         </div>
                       );
                     })}
                   </div>
                 </div>
-                <RoomActionForm action={submitManualFundingIslandAction} className="grid gap-3 rounded-lg border border-line bg-white p-4 shadow-tight">
-                  <input name="match_room_id" type="hidden" value={room.id} />
-                  <input name="amount_naira" type="hidden" value={room.entry_amount_minor / 100} />
-                  <p className="font-mono text-xs font-black uppercase tracking-[0.14em] text-cyan">Transfer proof</p>
-                  {!currentParticipant ? (
-                    <div className="rounded-md border border-line bg-surfaceWarm p-3 text-sm font-bold text-muted">Join this room first before submitting your own payment proof.</div>
-                  ) : currentFundingStatus === "submitted" ? (
-                    <div className="rounded-md border border-orange-200 bg-warningSoft p-3 text-sm font-bold text-warning">A submission already exists for your slot. Wait for review before sending anything again.</div>
-                  ) : currentFundingStatus === "approved" ? (
-                    <div className="rounded-md border border-success/30 bg-green-50 p-3 text-sm font-bold text-success">Your entry is already approved.</div>
-                  ) : null}
-                  <label className="grid gap-2 text-sm font-bold text-ink">
-                    Bank
-                    <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" disabled={!canSubmitFunding} name="sender_bank_name" placeholder="OPay, GTBank, Moniepoint..." required />
-                  </label>
-                  <label className="grid gap-2 text-sm font-bold text-ink">
-                    Account name
-                    <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" disabled={!canSubmitFunding} name="sender_account_name" placeholder="Name shown on the transfer" required />
-                  </label>
-                  <label className="grid gap-2 text-sm font-bold text-ink">
-                    Transfer screenshot
-                    <input
-                      accept="image/png,image/jpeg,image/webp"
-                      className="min-h-11 rounded-md border border-line bg-white px-3 py-2 text-sm outline-none file:mr-3 file:rounded-sm file:border-0 file:bg-surfaceHigh file:px-3 file:py-2 file:text-xs file:font-black file:text-ink focus:border-action"
-                      disabled={!canSubmitFunding}
-                      name="proof_file"
-                      required
-                      type="file"
+                {canSubmitFunding ? (
+                  <RoomActionForm action={submitManualFundingIslandAction} className="grid gap-3 rounded-lg border border-line bg-white p-4 shadow-tight">
+                    <input name="match_room_id" type="hidden" value={room.id} />
+                    <input name="amount_naira" type="hidden" value={room.entry_amount_minor / 100} />
+                    <p className="font-mono text-xs font-black uppercase tracking-[0.14em] text-cyan">Transfer proof</p>
+                    <ManualPaymentPanel
+                      amountLabel="Exact transfer amount"
+                      amountValue={formatEntryAmount(room)}
+                      referenceHint={`Use room code ${room.room_code} in the transfer narration or note if your banking app supports it.`}
                     />
-                  </label>
-                  <details className="rounded-md border border-line bg-surfaceWarm">
-                    <summary className="cursor-pointer px-3 py-2 text-sm font-black text-ink">Optional transfer details</summary>
-                    <div className="grid gap-3 border-t border-line p-3">
-                      <label className="grid gap-2 text-sm font-bold text-ink">
-                        Transfer reference
-                        <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" disabled={!canSubmitFunding} name="transfer_reference" placeholder={`Narration or receipt reference for ${room.room_code}`} />
-                      </label>
-                      <label className="grid gap-2 text-sm font-bold text-ink">
-                        Proof link
-                        <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" disabled={!canSubmitFunding} name="proof_url" placeholder="Use if the screenshot is hosted elsewhere" type="url" />
-                      </label>
-                      <label className="grid gap-2 text-sm font-bold text-ink">
-                        Note
-                        <textarea className="min-h-20 rounded-md border border-line bg-white px-3 py-2 text-sm outline-none focus:border-action" disabled={!canSubmitFunding} name="proof_note" placeholder="Anything Skillsroom should know" />
-                      </label>
-                    </div>
-                  </details>
-                  <SubmitButton disabled={!canSubmitFunding} idleLabel="Submit payment proof" pendingLabel="Submitting proof..." />
-                  <a className="text-sm font-black text-cyan hover:text-action" href="#funding">See full entry details</a>
-                </RoomActionForm>
+                    <label className="grid gap-2 text-sm font-bold text-ink">
+                      Bank
+                      <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="sender_bank_name" placeholder="OPay, GTBank, Moniepoint..." required />
+                    </label>
+                    <label className="grid gap-2 text-sm font-bold text-ink">
+                      Account name
+                      <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="sender_account_name" placeholder="Name shown on the transfer" required />
+                    </label>
+                    <label className="grid gap-2 text-sm font-bold text-ink">
+                      Transfer screenshot
+                      <input
+                        accept="image/png,image/jpeg,image/webp"
+                        className="min-h-11 rounded-md border border-line bg-white px-3 py-2 text-sm outline-none file:mr-3 file:rounded-sm file:border-0 file:bg-surfaceHigh file:px-3 file:py-2 file:text-xs file:font-black file:text-ink focus:border-action"
+                        name="proof_file"
+                        required
+                        type="file"
+                      />
+                    </label>
+                    <details className="rounded-md border border-line bg-surfaceWarm">
+                      <summary className="cursor-pointer px-3 py-2 text-sm font-black text-ink">Optional transfer details</summary>
+                      <div className="grid gap-3 border-t border-line p-3">
+                        <label className="grid gap-2 text-sm font-bold text-ink">
+                          Transfer reference
+                          <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="transfer_reference" placeholder={`Narration or receipt reference for ${room.room_code}`} />
+                        </label>
+                        <label className="grid gap-2 text-sm font-bold text-ink">
+                          Proof link
+                          <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="proof_url" placeholder="Use if the screenshot is hosted elsewhere" type="url" />
+                        </label>
+                        <label className="grid gap-2 text-sm font-bold text-ink">
+                          Note
+                          <textarea className="min-h-20 rounded-md border border-line bg-white px-3 py-2 text-sm outline-none focus:border-action" name="proof_note" placeholder="Anything Skillsroom should know" />
+                        </label>
+                      </div>
+                    </details>
+                    <SubmitButton idleLabel="Submit payment proof" pendingLabel="Submitting proof..." />
+                  </RoomActionForm>
+                ) : !currentParticipant ? (
+                  <div className="rounded-lg border border-line bg-white p-4 text-sm font-bold leading-6 text-muted shadow-tight">
+                    Only room participants can submit entry proof for this room.
+                  </div>
+                ) : null}
               </div>
             ) : canTournamentCheckIn ? (
               <div className="grid gap-3 p-4 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
@@ -1515,56 +1542,141 @@ export default async function MatchDetailPage({
                 </form>
               </div>
             ) : canConfirmStart ? (
-              <div className="grid gap-3 p-4 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
-                <p className="text-sm leading-6 text-muted">Both entries are approved. Confirm ready when both players are set to begin the match.</p>
-                <RoomActionForm action={startMatchPlayIslandAction} className="grid gap-2" refreshOnSuccess>
+              <div className="grid gap-4 p-4 lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start">
+                <div className="grid gap-3">
+                  <div className="rounded-md border border-success/30 bg-green-50 p-4 text-sm font-bold leading-6 text-success">
+                    Both entries are confirmed. Confirm ready only when both players are set to begin.
+                  </div>
+                  <div className="grid gap-3 md:grid-cols-3">
+                    <div className="rounded-md border border-line bg-white p-3">
+                      <p className="font-mono text-[0.62rem] font-black uppercase tracking-[0.12em] text-dim">Entries</p>
+                      <p className="mt-1 text-lg font-black text-ink">{confirmedEntryCount}/{room.max_participants}</p>
+                      <p className="mt-1 text-xs font-bold leading-5 text-muted">Confirmed</p>
+                    </div>
+                    <div className="rounded-md border border-line bg-white p-3">
+                      <p className="font-mono text-[0.62rem] font-black uppercase tracking-[0.12em] text-dim">Ready</p>
+                      <p className="mt-1 text-lg font-black text-ink">{startConfirmationsCount}/{startConfirmationsRequired}</p>
+                      <p className="mt-1 text-xs font-bold leading-5 text-muted">Player confirmations</p>
+                    </div>
+                    <div className="rounded-md border border-line bg-white p-3">
+                      <p className="font-mono text-[0.62rem] font-black uppercase tracking-[0.12em] text-dim">Result</p>
+                      <p className="mt-1 text-lg font-black text-ink">Locked</p>
+                      <p className="mt-1 text-xs font-bold leading-5 text-muted">Opens after play starts</p>
+                    </div>
+                  </div>
+                </div>
+                <RoomActionForm action={startMatchPlayIslandAction} className="grid gap-2 rounded-lg border border-line bg-white p-4 shadow-tight" refreshOnSuccess>
                   <input name="match_room_id" type="hidden" value={room.id} />
                   <SubmitButton idleLabel="Confirm ready" pendingLabel="Confirming..." />
                 </RoomActionForm>
               </div>
             ) : waitingForOpponentStart ? (
-              <div className="grid gap-3 p-4">
+              <div className="grid gap-4 p-4 lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start">
+                <div className="grid gap-3">
                 <div className="rounded-md border border-success/30 bg-green-50 p-4 text-sm font-bold leading-6 text-success">
                   Your ready status is confirmed. The match will go live after the other player confirms.
                 </div>
-                <a className="inline-flex min-h-10 w-fit items-center justify-center rounded-md border border-line bg-white px-4 text-sm font-black text-ink hover:bg-surfaceHigh" href="#live">
+                  <div className="grid gap-3 md:grid-cols-3">
+                    <div className="rounded-md border border-line bg-white p-3">
+                      <p className="font-mono text-[0.62rem] font-black uppercase tracking-[0.12em] text-dim">Entries</p>
+                      <p className="mt-1 text-lg font-black text-ink">{confirmedEntryCount}/{room.max_participants}</p>
+                      <p className="mt-1 text-xs font-bold leading-5 text-muted">Confirmed</p>
+                    </div>
+                    <div className="rounded-md border border-line bg-white p-3">
+                      <p className="font-mono text-[0.62rem] font-black uppercase tracking-[0.12em] text-dim">Ready</p>
+                      <p className="mt-1 text-lg font-black text-ink">{startConfirmationsCount}/{startConfirmationsRequired}</p>
+                      <p className="mt-1 text-xs font-bold leading-5 text-muted">Waiting for opponent</p>
+                    </div>
+                    <div className="rounded-md border border-line bg-white p-3">
+                      <p className="font-mono text-[0.62rem] font-black uppercase tracking-[0.12em] text-dim">Result</p>
+                      <p className="mt-1 text-lg font-black text-ink">Locked</p>
+                      <p className="mt-1 text-xs font-bold leading-5 text-muted">Opens after play starts</p>
+                    </div>
+                  </div>
+                </div>
+                <a className="inline-flex min-h-10 items-center justify-center rounded-md border border-line bg-white px-4 text-sm font-black text-ink shadow-tight hover:bg-surfaceHigh" href="#live">
                   Open live section
                 </a>
               </div>
             ) : canRespondToLatestClaim && latestClaim ? (
-              <div className="grid gap-4 p-4">
-                <div className="rounded-md border border-cyan/30 bg-cyanSoft p-4">
-                  <p className="font-mono text-xs font-black uppercase tracking-[0.14em] text-cyan">Opponent response</p>
-                  <h3 className="mt-2 text-xl font-black text-ink">Agree or dispute this result</h3>
-                  <p className="mt-2 text-sm leading-6 text-muted">Respond by {dateTimeLabel(latestClaim.opponent_response_due_at)}. Agree when the result is correct. Dispute only when proof or rules need review.</p>
+              <div className="grid gap-4 p-4 xl:grid-cols-[minmax(0,1fr)_24rem]">
+                <div className="grid gap-3">
+                  <div className="rounded-md border border-cyan/30 bg-cyanSoft p-4">
+                    <p className="font-mono text-xs font-black uppercase tracking-[0.14em] text-cyan">Opponent response</p>
+                    <h3 className="mt-2 text-xl font-black text-ink">Agree or dispute this result</h3>
+                    <p className="mt-2 text-sm leading-6 text-muted">
+                      Tap Agree only if the winner, score, and proof are correct. Tap Dispute if proof is missing, unclear, or the score is wrong.
+                    </p>
+                  </div>
+                  <div className="grid gap-2 md:grid-cols-3">
+                    <div className="rounded-md border border-line bg-white p-3">
+                      <p className="font-mono text-[0.62rem] font-black uppercase tracking-[0.12em] text-dim">Claimed score</p>
+                      <p className="mt-2 text-lg font-black text-ink">{scoreSummaryLabel(latestClaim.score_summary)}</p>
+                    </div>
+                    <div className="rounded-md border border-line bg-white p-3">
+                      <p className="font-mono text-[0.62rem] font-black uppercase tracking-[0.12em] text-dim">Response due</p>
+                      <p className="mt-2 text-lg font-black text-ink">{timeRemainingLabel(latestClaim.opponent_response_due_at)}</p>
+                      <p className="mt-1 text-xs font-bold leading-5 text-muted">{dateTimeLabel(latestClaim.opponent_response_due_at)}</p>
+                    </div>
+                    <div className="rounded-md border border-line bg-white p-3">
+                      <p className="font-mono text-[0.62rem] font-black uppercase tracking-[0.12em] text-dim">No response</p>
+                      <p className="mt-2 text-xs font-bold leading-5 text-muted">Skillsroom can review the claim after the deadline.</p>
+                    </div>
+                  </div>
+                  <a className="text-sm font-black text-cyan hover:text-action" href="#result">See submitted proof</a>
                 </div>
-                <form action={respondToResultClaimAction} className="grid gap-3">
+                <form action={respondToResultClaimAction} className="grid gap-3 rounded-lg border border-line bg-white p-4 shadow-tight">
                   <input name="match_room_id" type="hidden" value={room.id} />
                   <input name="result_claim_id" type="hidden" value={latestClaim.id} />
                   <label className="grid gap-2 text-sm font-bold text-ink">
                     Response note
                     <textarea className="min-h-24 rounded-md border border-line bg-white px-3 py-2 text-sm outline-none focus:border-action" name="note" placeholder="If you dispute, explain what is wrong: score, player identity, missing proof, lag, disconnect, or rule issue." />
                   </label>
+                  <details className="rounded-md border border-line bg-surfaceWarm">
+                    <summary className="cursor-pointer px-3 py-2 text-sm font-black text-ink">Optional dispute proof</summary>
+                    <div className="grid gap-3 border-t border-line p-3">
+                      <div className="rounded-md border border-warning bg-amber-50 p-3 text-xs font-bold leading-5 text-amber-900">
+                        Add proof when disputing if you have a screenshot or video that shows what is wrong.
+                      </div>
+                      <label className="grid gap-2 text-sm font-bold text-ink">
+                        Screenshot or video
+                        <input
+                          accept="image/png,image/jpeg,image/webp,video/mp4,video/webm,video/quicktime"
+                          className="min-h-11 rounded-md border border-line bg-white px-3 py-2 text-sm outline-none file:mr-3 file:rounded-sm file:border-0 file:bg-surfaceHigh file:px-3 file:py-2 file:text-xs file:font-black file:text-ink focus:border-action"
+                          name="response_evidence_file"
+                          type="file"
+                        />
+                      </label>
+                      <label className="grid gap-2 text-sm font-bold text-ink">
+                        Proof title
+                        <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" defaultValue="Dispute proof" name="response_evidence_title" />
+                      </label>
+                      <label className="grid gap-2 text-sm font-bold text-ink">
+                        Proof notes
+                        <textarea className="min-h-20 rounded-md border border-line bg-white px-3 py-2 text-sm outline-none focus:border-action" name="response_evidence_notes" placeholder="Tell Skillsroom where to look in the screenshot or video." />
+                      </label>
+                    </div>
+                  </details>
                   <div className="flex flex-wrap gap-3">
                     <SubmitButton idleLabel="Agree with result" name="response" pendingLabel="Submitting..." value="agree" />
                     <SubmitButton idleLabel="Dispute result" name="response" pendingLabel="Submitting..." value="dispute" variant="danger" />
                   </div>
                 </form>
-                <a className="text-sm font-black text-cyan hover:text-action" href="#result">See submitted proof</a>
               </div>
-            ) : canSubmitResult ? (
+            ) : canSubmitNewResult ? (
               <div className="grid gap-4 p-4 xl:grid-cols-[minmax(0,1fr)_24rem]">
                 <div className="grid gap-3">
                   <div className="rounded-md border border-cyan/30 bg-cyanSoft p-4">
                     <p className="font-mono text-xs font-black uppercase tracking-[0.14em] text-cyan">Result evidence</p>
                     <h3 className="mt-2 text-xl font-black text-ink">Submit the winner and proof</h3>
-                    <p className="mt-2 text-sm leading-6 text-muted">Upload a final scoreboard screenshot or short video. Keep player names, score, and result visible.</p>
+                    <p className="mt-2 text-sm leading-6 text-muted">Play only when the room says it is live. After the match, upload a clear final scoreboard screenshot or short video.</p>
                   </div>
                   <div className="grid gap-2 md:grid-cols-2">
                     {[
                       ["1", "Score", "Add the final score or result summary."],
-                      ["2", "Proof", "Attach the screenshot or video that shows the result."],
-                      ["3", "Review", "The opponent gets a response window after your claim."]
+                      ["2", "Proof", "Attach proof with player names, game handles, and the final result visible."],
+                      ["3", "Response", "The opponent can agree or dispute after your claim."],
+                      ["4", "Decision", "Skillsroom checks the result before payout or refund."]
                     ].map(([step, title, detail]) => (
                       <div className="rounded-md border border-line bg-white p-3" key={step}>
                         <span className="grid size-8 place-items-center rounded-full bg-cyan text-xs font-black text-white">{step}</span>
@@ -1622,6 +1734,188 @@ export default async function MatchDetailPage({
                   <a className="text-sm font-black text-cyan hover:text-action" href="#result">See result details</a>
                 </RoomActionForm>
               </div>
+            ) : canSubmitResult && latestClaim ? (
+              <div className="grid gap-4 p-4 lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start">
+                <div className="grid gap-3">
+                  <div className="rounded-md border border-cyan/30 bg-cyanSoft p-4">
+                    <p className="font-mono text-xs font-black uppercase tracking-[0.14em] text-cyan">Result submitted</p>
+                    <h3 className="mt-2 text-xl font-black text-ink">
+                      {latestClaim.status === "submitted" ? "Waiting for opponent response" : "Result review is moving"}
+                    </h3>
+                    <p className="mt-2 text-sm leading-6 text-muted">
+                      {latestClaim.status === "submitted"
+                        ? `Opponent response is due ${dateTimeLabel(latestClaim.opponent_response_due_at)}. Keep this room open for updates.`
+                        : "The submitted result, proof, response, and final decision stay attached to this room."}
+                    </p>
+                  </div>
+                  <div className="grid gap-2 md:grid-cols-2">
+                    {evidencePathCards({
+                      claim: latestClaim,
+                      evidenceCount: results?.evidence_items.filter((item) => item.result_claim_id === latestClaim.id).length ?? 0,
+                      responses: results?.responses ?? [],
+                      reviews: results?.reviews ?? [],
+                      room
+                    }).map((card) => (
+                      <div className="rounded-md border border-line bg-white p-3" key={card.label}>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="font-mono text-[0.62rem] font-black uppercase tracking-[0.12em] text-dim">{card.label}</p>
+                          <Badge tone={card.tone}>{card.value}</Badge>
+                        </div>
+                        <p className="mt-2 text-xs font-bold leading-5 text-muted">{card.detail}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <a className="inline-flex min-h-10 items-center justify-center rounded-md bg-action px-4 text-sm font-black text-navy-950 shadow-action hover:bg-actionHover" href="#result">
+                  View result details
+                </a>
+              </div>
+            ) : reviewInProgress ? (
+              <div className="grid gap-4 p-4 lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start">
+                <div className="grid gap-3">
+                  <div className={room.status === "disputed" ? "rounded-md border border-danger bg-red-50 p-4" : "rounded-md border border-warning/40 bg-warningSoft p-4"}>
+                    <p className={room.status === "disputed" ? "font-mono text-xs font-black uppercase tracking-[0.14em] text-danger" : "font-mono text-xs font-black uppercase tracking-[0.14em] text-warning"}>
+                      {room.status === "disputed" ? "Dispute review" : "Result review"}
+                    </p>
+                    <h3 className="mt-2 text-xl font-black text-ink">
+                      {room.status === "disputed" ? "Skillsroom is checking the dispute" : "Skillsroom is checking the result"}
+                    </h3>
+                    <p className="mt-2 text-sm leading-6 text-muted">
+                      {room.status === "disputed"
+                        ? "Payout stays paused while the submitted proof, opponent response, and dispute details are reviewed."
+                        : "Proof and player responses are being checked before the room moves to payout or refund handling."}
+                    </p>
+                  </div>
+                  <div className="rounded-md border border-line bg-white p-4 text-sm font-bold leading-6 text-muted">
+                    No action is needed from you right now. Keep your proof available in case Skillsroom asks for more context.
+                  </div>
+                  <div className="grid gap-2 md:grid-cols-2">
+                    {evidencePathCards({
+                      claim: latestClaim,
+                      evidenceCount: results?.evidence_items.filter((item) => !latestClaim || item.result_claim_id === latestClaim.id).length ?? 0,
+                      responses: results?.responses ?? [],
+                      reviews: results?.reviews ?? [],
+                      room
+                    }).map((card) => (
+                      <div className="rounded-md border border-line bg-white p-3" key={card.label}>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="font-mono text-[0.62rem] font-black uppercase tracking-[0.12em] text-dim">{card.label}</p>
+                          <Badge tone={card.tone}>{card.value}</Badge>
+                        </div>
+                        <p className="mt-2 text-xs font-bold leading-5 text-muted">{card.detail}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <a className="inline-flex min-h-10 items-center justify-center rounded-md bg-action px-4 text-sm font-black text-navy-950 shadow-action hover:bg-actionHover" href="#result">
+                  View review details
+                </a>
+              </div>
+            ) : finalStage ? (
+              <div className="grid gap-4 p-4 lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start">
+                <div className="grid gap-3">
+                  <div className={
+                    room.status === "voided"
+                      ? "rounded-md border border-danger bg-red-50 p-4"
+                      : room.status === "refunded" || room.status === "settlement_pending"
+                        ? "rounded-md border border-warning/40 bg-warningSoft p-4"
+                        : "rounded-md border border-success/30 bg-green-50 p-4"
+                  }>
+                    <p className={
+                      room.status === "voided"
+                        ? "font-mono text-xs font-black uppercase tracking-[0.14em] text-danger"
+                        : room.status === "refunded" || room.status === "settlement_pending"
+                          ? "font-mono text-xs font-black uppercase tracking-[0.14em] text-warning"
+                          : "font-mono text-xs font-black uppercase tracking-[0.14em] text-success"
+                    }>
+                      {room.status === "completed" ? "Room complete" : room.status === "settlement_pending" ? "Payout pending" : room.status === "refunded" ? "Refund handling" : "Room closed"}
+                    </p>
+                    <h3 className="mt-2 text-xl font-black text-ink">
+                      {room.status === "completed"
+                        ? "This room is settled"
+                        : room.status === "settlement_pending"
+                          ? "Winner approved. Payout is next"
+                          : room.status === "refunded"
+                            ? "Entries are being returned"
+                            : "No winner was confirmed"}
+                    </h3>
+                    <p className="mt-2 text-sm leading-6 text-muted">
+                      {room.status === "completed"
+                        ? "The final decision and money handling are complete. This room is saved in history."
+                        : room.status === "settlement_pending"
+                          ? "The result has been accepted. Skillsroom will complete payout handling from the approved outcome."
+                          : room.status === "refunded"
+                            ? "This room used the refund path. Check your wallet or room updates for the returned entry status."
+                            : "This match was closed without a confirmed winner. Any entry return or follow-up stays attached to this room."}
+                    </p>
+                  </div>
+                  <div className="grid gap-2 md:grid-cols-3">
+                    <div className="rounded-md border border-line bg-white p-3">
+                      <p className="font-mono text-[0.62rem] font-black uppercase tracking-[0.12em] text-dim">Outcome</p>
+                      <p className="mt-2 text-lg font-black text-ink">
+                        {room.status === "refunded" || room.status === "voided"
+                          ? "No payout winner"
+                          : finalWinnerParticipant
+                            ? playerDisplayName(finalWinnerParticipant, trustByUserId.get(finalWinnerParticipant.user_id))
+                            : publicWinnerPage?.winner.label ?? "Winner approved"}
+                      </p>
+                      <p className="mt-1 text-xs font-bold leading-5 text-muted">
+                        {finalDecisionSummary(latestClaim, results?.reviews ?? [], room)}
+                      </p>
+                    </div>
+                    <div className="rounded-md border border-line bg-white p-3">
+                      <p className="font-mono text-[0.62rem] font-black uppercase tracking-[0.12em] text-dim">Money status</p>
+                      <p className="mt-2 text-lg font-black text-ink">
+                        {room.status === "completed"
+                          ? "Complete"
+                          : room.status === "settlement_pending"
+                            ? "Payout pending"
+                            : room.status === "refunded"
+                              ? "Refund path"
+                              : "Closed"}
+                      </p>
+                      <p className="mt-1 text-xs font-bold leading-5 text-muted">
+                        {room.status === "completed"
+                          ? "Prize or refund handling is finished."
+                          : room.status === "settlement_pending"
+                            ? "Winner payout is waiting for final handling."
+                            : room.status === "refunded"
+                              ? "Entry return is the active money outcome."
+                              : "No payout will be made from this room unless Skillsroom reopens the case."}
+                      </p>
+                    </div>
+                    <div className="rounded-md border border-line bg-white p-3">
+                      <p className="font-mono text-[0.62rem] font-black uppercase tracking-[0.12em] text-dim">Room status</p>
+                      <p className="mt-2 text-lg font-black text-ink">{roomDisplayStatusLabel(room)}</p>
+                      <p className="mt-1 text-xs font-bold leading-5 text-muted">
+                        {room.status === "completed" ? "No player action is needed." : "Keep this room for the saved decision and updates."}
+                      </p>
+                    </div>
+                  </div>
+                  {latestClaim ? (
+                    <div className="grid gap-2 md:grid-cols-2">
+                      {evidencePathCards({
+                        claim: latestClaim,
+                        evidenceCount: results?.evidence_items.filter((item) => item.result_claim_id === latestClaim.id).length ?? 0,
+                        responses: results?.responses ?? [],
+                        reviews: results?.reviews ?? [],
+                        room
+                      }).map((card) => (
+                        <div className="rounded-md border border-line bg-white p-3" key={card.label}>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="font-mono text-[0.62rem] font-black uppercase tracking-[0.12em] text-dim">{card.label}</p>
+                            <Badge tone={card.tone}>{card.value}</Badge>
+                          </div>
+                          <p className="mt-2 text-xs font-bold leading-5 text-muted">{card.detail}</p>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+                <a className="inline-flex min-h-10 items-center justify-center rounded-md bg-action px-4 text-sm font-black text-navy-950 shadow-action hover:bg-actionHover" href="#result">
+                  View result details
+                </a>
+              </div>
             ) : (
               <div className="grid gap-3 p-4">
                 <div className="rounded-md border border-line bg-surfaceWarm p-4 text-sm font-bold leading-6 text-muted">
@@ -1662,13 +1956,7 @@ export default async function MatchDetailPage({
                     <SubmitButton idleLabel="Open room" pendingLabel="Opening room..." />
                   </form>
                 ) : null}
-                {canConfirmStart ? (
-                  <RoomActionForm action={startMatchPlayIslandAction} className="grid gap-2" refreshOnSuccess>
-                    <input name="match_room_id" type="hidden" value={room.id} />
-                    <SubmitButton idleLabel="Confirm ready" pendingLabel="Confirming..." />
-                  </RoomActionForm>
-                ) : null}
-                {!canOpen && !canConfirmStart ? (
+                {!canOpen ? (
                   <a className="inline-flex min-h-10 items-center justify-center rounded-md bg-action px-4 text-sm font-black text-navy-950 shadow-action hover:bg-actionHover" href={primaryAction.href}>
                     {primaryAction.label}
                   </a>
@@ -1900,214 +2188,6 @@ export default async function MatchDetailPage({
           )}
         </Reveal>
 
-
-        {fundingSectionVisible ? (
-          <Reveal>
-          <Panel>
-            <PanelHeader
-              eyebrow="Payment summary"
-              title="Entry status"
-              description="Check each player's entry status before the match starts. The Skillsroom team confirms payments and handles payouts after review."
-            />
-            <div className="grid gap-3 p-4 lg:grid-cols-2">
-              {(["player_a", "player_b"] as const).map((slot) => {
-                const participant = participants.find((item) => item.slot === slot);
-                const trust = participant ? trustByUserId.get(participant.user_id) : null;
-                const fundingMethod = fundingMethodSummary(funding, participant);
-                return (
-                  <div className="motion-flow-card rounded-lg border border-line bg-surfaceWarm p-4" key={slot}>
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="font-mono text-xs font-bold uppercase tracking-[0.12em] text-dim">{slot.replace("_", " ")}</p>
-                        <p className="mt-2 text-lg font-black text-ink">{playerDisplayName(participant, trust)}</p>
-                      </div>
-                      <Badge tone={fundingMethod.tone}>{fundingMethod.label}</Badge>
-                    </div>
-                    <p className="mt-3 text-sm leading-6 text-muted">{fundingMethod.detail}</p>
-                    <div className="mt-4 grid gap-2 rounded-md border border-line bg-white p-3 text-sm">
-                      <div className="flex items-center justify-between gap-3">
-                        <span className="font-bold text-muted">Entry amount</span>
-                        <span className="font-black text-ink">{formatEntryAmount(room)}</span>
-                      </div>
-                      <div className="flex items-center justify-between gap-3">
-                        <span className="font-bold text-muted">Funding status</span>
-                        <span className="font-black text-ink">{participant ? displayLabel(participant.funding_status) : "Open slot"}</span>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-            <div className="grid gap-3 border-t border-line p-4 md:grid-cols-3">
-              <div className="motion-flow-card rounded-lg border border-line bg-white p-4">
-                <p className="font-mono text-xs font-black uppercase tracking-[0.12em] text-cyan">Funds locked</p>
-                <p className="mt-2 text-2xl font-black text-ink">{formatMinorMoney(room.currency, fundsLockedMinor)}</p>
-                <p className="mt-2 text-sm leading-6 text-muted">
-                  {fundedParticipants.length}/{room.max_participants} player entries approved for this room.
-                </p>
-              </div>
-              <div className="motion-flow-card rounded-lg border border-line bg-white p-4">
-                <div className="flex items-center justify-between gap-3">
-                  <p className="font-mono text-xs font-black uppercase tracking-[0.12em] text-cyan">Result</p>
-                  <Badge tone={resultCheckpoint.tone}>{resultCheckpoint.label}</Badge>
-                </div>
-                <p className="mt-3 text-sm leading-6 text-muted">{resultCheckpoint.detail}</p>
-              </div>
-              <div className="motion-flow-card rounded-lg border border-line bg-white p-4">
-                <div className="flex items-center justify-between gap-3">
-                  <p className="font-mono text-xs font-black uppercase tracking-[0.12em] text-cyan">Payout</p>
-                  <Badge tone={payoutCheckpoint.tone}>{payoutCheckpoint.label}</Badge>
-                </div>
-                <p className="mt-3 text-sm leading-6 text-muted">{payoutCheckpoint.detail}</p>
-              </div>
-            </div>
-          </Panel>
-          </Reveal>
-        ) : null}
-
-        {fundingSectionVisible ? (
-        <div className="grid min-w-0 gap-6 scroll-mt-32 xl:grid-cols-[minmax(0,1fr)_24rem]" id="funding">
-          <Panel>
-            <PanelHeader
-              eyebrow="Funding"
-              title="Choose how to fund this room"
-              description="Use your approved Skillsroom Balance for instant payment, or upload bank payment proof if you prefer."
-            />
-            <div className="grid gap-3 border-b border-line p-4">
-              <div className="motion-state-card rounded-lg border border-cyan bg-cyanSoft p-4">
-                <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                  <div className="min-w-0">
-                    <p className="font-mono text-xs font-black uppercase tracking-[0.14em] text-cyan">Skillsroom Balance</p>
-                    <h2 className="mt-2 text-xl font-black text-ink">Pay instantly from balance</h2>
-                    <p className="mt-2 text-sm leading-6 text-muted">
-                      Available: <span className="font-black text-ink">{formatMinorMoney(room.currency, availableBalanceMinor)}</span>. Required: <span className="font-black text-ink">{formatEntryAmount(room)}</span>.
-                    </p>
-                  </div>
-                  <RoomActionForm action={payRoomWithBalanceIslandAction} className="shrink-0" refreshOnSuccess>
-                    <input name="match_room_id" type="hidden" value={room.id} />
-                    <SubmitButton disabled={!canPayWithBalance} idleLabel="Use balance" pendingLabel="Locking funds..." />
-                  </RoomActionForm>
-                </div>
-                {!canSubmitFunding && currentFundingStatus === "approved" ? (
-                  <p className="mt-3 text-sm font-bold text-success">Your room entry is already funded.</p>
-                ) : canSubmitFunding && !canPayWithBalance ? (
-                  <p className="mt-3 text-sm font-bold text-muted">
-                    Your balance is not enough for this room. <a className="font-black text-cyan hover:text-action" href="/wallet">Top up your wallet</a> or use manual transfer below.
-                  </p>
-                ) : null}
-              </div>
-            </div>
-            <div className="border-b border-line p-4">
-              <ManualPaymentPanel
-                amountLabel="Exact transfer amount"
-                amountValue={formatEntryAmount(room)}
-                referenceHint={`Use room code ${room.room_code} in the transfer narration or note if your banking app supports it.`}
-              />
-            </div>
-            <div className="grid gap-3 p-4 md:grid-cols-2">
-              {(["player_a", "player_b"] as const).map((slot) => {
-                const participant = participants.find((item) => item.slot === slot);
-                const trust = participant ? trustByUserId.get(participant.user_id) : null;
-                const submission = selectFundingSubmission(funding?.submissions, participant?.id);
-                return <FundingCard key={slot} participant={participant} room={room} submission={submission ?? undefined} trust={trust} />;
-              })}
-            </div>
-          </Panel>
-
-          <Panel>
-            <PanelHeader eyebrow="Submit Funding" title="Transfer proof" description="Amount, sender bank, account name, and screenshot are enough for review." />
-            <RoomActionForm action={submitManualFundingIslandAction} className="motion-flow-card grid gap-3 p-4">
-              {currentParticipant ? (
-                currentFundingStatus === "approved" && ["awaiting_funding", "funding_review", "funded"].includes(room.status) ? (
-                  <TransientStatusBanner
-                    clearKeys={[]}
-                    message={
-                      room.status === "funded" || allJoinedParticipantsApproved
-                        ? "Both funding approvals are in. Start the match when both players are ready."
-                        : "Your own funding is already approved. We are waiting for the other player so the room can move forward."
-                    }
-                    tone="success"
-                  />
-                ) : currentFundingStatus === "submitted" ? (
-                  <div className="rounded-md border border-orange-200 bg-warningSoft p-4 text-sm font-bold text-warning">
-                    Your payment proof is already under review. Wait for Skillsroom approval before sending anything again.
-                  </div>
-                ) : currentFundingStatus === "rejected" ? (
-                  <div className="rounded-md border border-danger bg-red-50 p-4 text-sm font-bold text-danger">
-                    Your last payment proof was rejected. Submit a corrected proof to continue.
-                  </div>
-                ) : null
-              ) : (
-                <div className="rounded-md border border-line bg-surfaceWarm p-4 text-sm font-bold text-muted">
-                  Join this room first before submitting your own funding proof.
-                </div>
-              )}
-              <input name="match_room_id" type="hidden" value={room.id} />
-              <label className="grid gap-2 text-sm font-bold text-ink">
-                Amount (NGN)
-                <input className="min-h-11 rounded-md border border-line bg-surfaceHigh px-3 text-sm" name="amount_naira" readOnly value={room.entry_amount_minor / 100} />
-              </label>
-              <label className="grid gap-2 text-sm font-bold text-ink">
-                Bank
-                <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" disabled={!canSubmitFunding} name="sender_bank_name" placeholder="OPay, GTBank, Moniepoint..." required />
-              </label>
-              <label className="grid gap-2 text-sm font-bold text-ink">
-                Account name
-                <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" disabled={!canSubmitFunding} name="sender_account_name" placeholder="Name shown on the transfer" required />
-              </label>
-              <div className="rounded-md border border-cyan bg-cyanSoft p-4 text-sm leading-6 text-muted">
-                <span className="font-black text-ink">Payout details live on Profile.</span> Add or update your payout account there before result review so winnings can be paid without slowing down entry confirmation.
-              </div>
-              <label className="grid gap-2 text-sm font-bold text-ink">
-                Transfer screenshot
-                <input
-                  accept="image/png,image/jpeg,image/webp"
-                  className="min-h-11 rounded-md border border-line bg-white px-3 py-2 text-sm outline-none file:mr-3 file:rounded-sm file:border-0 file:bg-surfaceHigh file:px-3 file:py-2 file:text-xs file:font-black file:text-ink focus:border-action"
-                  disabled={!canSubmitFunding}
-                  name="proof_file"
-                  required
-                  type="file"
-                />
-                <span className="text-xs leading-5 text-muted">Upload the bank/fintech receipt screenshot. Images up to 8MB.</span>
-              </label>
-              <details className="rounded-md border border-line bg-surfaceWarm">
-                <summary className="cursor-pointer px-3 py-2 text-sm font-black text-ink">Optional transfer details</summary>
-                <div className="grid gap-3 border-t border-line p-3">
-                  <label className="grid gap-2 text-sm font-bold text-ink">
-                    Transfer reference
-                    <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" disabled={!canSubmitFunding} name="transfer_reference" placeholder={`Narration or receipt reference for ${room.room_code}`} />
-                  </label>
-                  <label className="grid gap-2 text-sm font-bold text-ink">
-                    Proof link
-                    <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" disabled={!canSubmitFunding} name="proof_url" placeholder="Use if the screenshot is hosted elsewhere" type="url" />
-                  </label>
-                  <label className="grid gap-2 text-sm font-bold text-ink">
-                    Note
-                    <textarea className="min-h-24 rounded-md border border-line bg-white px-3 py-2 text-sm outline-none focus:border-action" disabled={!canSubmitFunding} name="proof_note" placeholder="Anything Skillsroom should know" />
-                  </label>
-                </div>
-              </details>
-              <SubmitButton disabled={!canSubmitFunding} idleLabel="Submit funding" pendingLabel="Submitting funding..." />
-              {!canSubmitFunding && currentFundingStatus === "approved" ? (
-                <p className="text-xs font-bold leading-5 text-muted">
-                  {room.status === "funded"
-                    ? "Your slot is approved. Start live play when both players are ready."
-                    : "Your slot is already approved. The room will stay in funding review until the opponent is approved too."}
-                </p>
-              ) : null}
-              {!canSubmitFunding && currentFundingStatus === "submitted" ? (
-                <p className="text-xs font-bold leading-5 text-muted">A submission already exists for your slot, so this form stays locked until admin reviews it.</p>
-              ) : null}
-              {!canSubmitFunding && room.status === "open" && currentParticipant ? (
-                <p className="text-xs font-bold leading-5 text-muted">Share the room code first. Payment proof opens as soon as the second player joins.</p>
-              ) : null}
-              {!canSubmitFunding && !currentParticipant ? (
-                <p className="text-xs font-bold leading-5 text-muted">Only joined room participants can submit funding for this room.</p>
-              ) : null}
-            </RoomActionForm>
-          </Panel>
-        </div>
-        ) : null}
 
         <details className="group overflow-hidden rounded-[1.35rem] border border-line bg-white shadow-panel">
           <summary className="motion-tap flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-4 text-left font-black text-ink marker:hidden">
@@ -2345,71 +2425,6 @@ export default async function MatchDetailPage({
             </Panel>
           ) : null}
         </div>
-        ) : null}
-
-        {canViewSensitiveInternals && latestClaim && canRespondToLatestClaim ? (
-          <Panel className="scroll-mt-32 ring-1 ring-cyan/20" id="result-response">
-            <PanelHeader
-              eyebrow="Opponent Response"
-              title="Respond to latest claim"
-              description={`You have until ${dateTimeLabel(latestClaim.opponent_response_due_at)}. Agree when the result is correct. Dispute only when proof or rules need review.`}
-            />
-            <form action={respondToResultClaimAction} className="grid gap-4 p-4">
-              <input name="match_room_id" type="hidden" value={room.id} />
-              <input name="result_claim_id" type="hidden" value={latestClaim.id} />
-              <div className="grid gap-3 lg:grid-cols-3">
-                <div className="rounded-md border border-line bg-surfaceWarm p-3">
-                  <p className="font-mono text-[0.65rem] font-black uppercase tracking-[0.12em] text-dim">Claimed score</p>
-                  <p className="mt-2 text-lg font-black text-ink">{scoreSummaryLabel(latestClaim.score_summary)}</p>
-                </div>
-                <div className="rounded-md border border-line bg-surfaceWarm p-3">
-                  <p className="font-mono text-[0.65rem] font-black uppercase tracking-[0.12em] text-dim">Deadline</p>
-                  <p className="mt-2 text-lg font-black text-ink">{timeRemainingLabel(latestClaim.opponent_response_due_at)}</p>
-                  <p className="mt-1 text-xs font-bold text-muted">{dateTimeLabel(latestClaim.opponent_response_due_at)}</p>
-                </div>
-                <div className="rounded-md border border-line bg-surfaceWarm p-3">
-                  <p className="font-mono text-[0.65rem] font-black uppercase tracking-[0.12em] text-dim">If you do nothing</p>
-                  <p className="mt-2 text-sm font-bold leading-5 text-muted">Skillsroom can review the claim under the no-response rule after the deadline.</p>
-                </div>
-              </div>
-
-              <label className="grid gap-2 text-sm font-bold text-ink">
-                Response note
-                <textarea className="min-h-24 rounded-md border border-line bg-white px-3 py-2 text-sm outline-none focus:border-action" name="note" placeholder="If you dispute, explain what is wrong: score, player identity, missing proof, lag, disconnect, or rule issue." />
-              </label>
-
-              <details className="rounded-md border border-line bg-white">
-                <summary className="cursor-pointer px-4 py-3 text-sm font-black text-ink">Add dispute proof</summary>
-                <div className="grid gap-3 border-t border-line p-4">
-                  <div className="rounded-md border border-warning bg-amber-50 p-3 text-xs font-bold leading-5 text-amber-900">
-                    Dispute proof should show what is wrong: the final score, player identity, missing proof, disconnect, lag, no-show, or rule issue. If you dispute without a clear note or proof, admin may rely on the submitted result evidence.
-                  </div>
-                  <label className="grid gap-2 text-sm font-bold text-ink">
-                    Screenshot or video <span className="font-bold text-muted">(only needed when disputing)</span>
-                    <input
-                      accept="image/png,image/jpeg,image/webp,video/mp4,video/webm,video/quicktime"
-                      className="min-h-11 rounded-md border border-line bg-white px-3 py-2 text-sm outline-none file:mr-3 file:rounded-sm file:border-0 file:bg-surfaceHigh file:px-3 file:py-2 file:text-xs file:font-black file:text-ink focus:border-action"
-                      name="response_evidence_file"
-                      type="file"
-                    />
-                  </label>
-                  <label className="grid gap-2 text-sm font-bold text-ink">
-                    Proof title
-                    <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" defaultValue="Dispute proof" name="response_evidence_title" />
-                  </label>
-                  <label className="grid gap-2 text-sm font-bold text-ink">
-                    Proof notes
-                    <textarea className="min-h-24 rounded-md border border-line bg-white px-3 py-2 text-sm outline-none focus:border-action" name="response_evidence_notes" placeholder="Tell admin where to look in the screenshot or video." />
-                  </label>
-                </div>
-              </details>
-
-              <div className="flex flex-wrap gap-3">
-                <SubmitButton idleLabel="Agree with result" name="response" pendingLabel="Submitting..." value="agree" />
-                <SubmitButton idleLabel="Dispute result" name="response" pendingLabel="Submitting..." value="dispute" variant="danger" />
-              </div>
-            </form>
-          </Panel>
         ) : null}
 
         {canViewSensitiveInternals ? (

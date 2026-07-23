@@ -185,6 +185,10 @@ export default async function AdminResultsPage({ searchParams }: { searchParams:
   );
   const resultsSnapshot: AdminResultsSnapshot = {
     claims,
+    evidence_by_claim_id: queueCards.reduce<Record<string, MatchEvidenceItem[]>>((next, card) => {
+      next[card.claim.id] = card.evidence;
+      return next;
+    }, {}),
     loaded_at: new Date().toISOString()
   };
 

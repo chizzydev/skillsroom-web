@@ -2,15 +2,17 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { AdminEmptyState } from "@/components/admin/AdminEmptyState";
+import { EvidenceMediaDrawer } from "@/components/evidence/EvidenceMediaDrawer";
 import { webQueryKeys } from "@/components/realtime/webRealtimeInvalidation";
 import { Badge } from "@/components/ui/Badge";
 import { PendingLink } from "@/components/ui/PendingLink";
 import { Panel, PanelHeader } from "@/components/ui/Panel";
 import { StatusPanel } from "@/components/ui/StatusPanel";
-import { type MatchResultClaim, type ResultClaimStatus } from "@/lib/match-room-api";
+import { type MatchEvidenceItem, type MatchResultClaim, type ResultClaimStatus } from "@/lib/match-room-api";
 
 export type AdminResultsSnapshot = {
   claims: MatchResultClaim[];
+  evidence_by_claim_id?: Record<string, MatchEvidenceItem[]>;
   loaded_at: string;
 };
 
@@ -69,6 +71,11 @@ function responseWindowExpired(claim: MatchResultClaim) {
   return Number.isFinite(dueAt) && dueAt <= Date.now();
 }
 
+function evidenceLabel(items: MatchEvidenceItem[]) {
+  if (!items.length) return "No evidence attached";
+  return `${items.length} proof file${items.length === 1 ? "" : "s"}`;
+}
+
 async function fetchResultsSnapshot() {
   const response = await fetch("/api/admin/results/live", {
     credentials: "same-origin",
@@ -90,6 +97,7 @@ export function AdminResultsLiveQueue({ initialSnapshot }: { initialSnapshot: Ad
   });
 
   const claims = snapshot.claims;
+  const evidenceByClaimId = snapshot.evidence_by_claim_id ?? {};
 
   return (
     <section className="grid gap-5">
@@ -119,7 +127,10 @@ export function AdminResultsLiveQueue({ initialSnapshot }: { initialSnapshot: Ad
                     <Badge tone={status === "opponent_disputed" ? "danger" : status === "opponent_agreed" ? "success" : "warning"}>{statusClaims.length}</Badge>
                   </div>
                 </div>
-                {statusClaims.length ? statusClaims.map((claim) => (
+                {statusClaims.length ? statusClaims.map((claim) => {
+                  const evidence = evidenceByClaimId[claim.id] ?? [];
+                  const firstEvidence = evidence.find((item) => item.uri) ?? null;
+                  return (
                   <article className="rounded-md border border-line bg-white p-4" key={claim.id}>
                     <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                       <div className="min-w-0">
@@ -132,6 +143,16 @@ export function AdminResultsLiveQueue({ initialSnapshot }: { initialSnapshot: Ad
                         <p className="mt-1 font-mono text-xs font-bold text-dim">Room ID {claim.match_room_id}</p>
                       </div>
                       <div className="flex flex-wrap items-start gap-2">
+                        {firstEvidence ? (
+                          <EvidenceMediaDrawer
+                            className="inline-flex min-h-10 w-auto items-center justify-center rounded-md border border-cyan bg-cyanSoft px-3 text-sm font-black text-cyan hover:bg-white"
+                            description={firstEvidence.notes}
+                            title={firstEvidence.title || "Match result evidence"}
+                            url={firstEvidence.uri}
+                          >
+                            Open evidence
+                          </EvidenceMediaDrawer>
+                        ) : null}
                         <PendingLink className="inline-flex min-h-10 items-center justify-center rounded-md border border-line bg-surfaceWarm px-3 text-sm font-black text-ink hover:bg-surfaceHigh" href={`/matches/${claim.match_room_id}#result`} pendingLabel="Opening room...">
                           View room
                         </PendingLink>
@@ -146,13 +167,17 @@ export function AdminResultsLiveQueue({ initialSnapshot }: { initialSnapshot: Ad
                       <div><dt className="font-mono text-[11px] font-bold uppercase tracking-[0.12em] text-dim">Winner</dt><dd className="mt-1 break-all font-mono text-[11px] text-dim">{claim.claimed_winner_user_id}</dd></div>
                       <div><dt className="font-mono text-[11px] font-bold uppercase tracking-[0.12em] text-dim">Note</dt><dd className="mt-1 font-bold text-ink">{claim.note ?? "No note"}</dd></div>
                     </dl>
+                    <div className={["mt-4 rounded-md border p-3 text-sm font-bold leading-6", evidence.length ? "border-cyan/30 bg-cyanSoft text-cyan" : "border-line bg-surfaceWarm text-muted"].join(" ")}>
+                      {evidence.length ? `${evidenceLabel(evidence)} saved for this result claim.` : "No result proof is attached to this claim yet."}
+                    </div>
                     {claim.status === "submitted" ? (
                       <div className={["mt-4 rounded-md border p-3 text-sm font-bold leading-6", responseWindowExpired(claim) ? "border-danger bg-red-50 text-danger" : "border-amber-200 bg-amber-50 text-amber-900"].join(" ")}>
                         Opponent response due: {dateTimeLabel(claim.opponent_response_due_at)}.
                       </div>
                     ) : null}
                   </article>
-                )) : <AdminEmptyState description={emptyDescription} title={emptyTitle} />}
+                );
+                }) : <AdminEmptyState description={emptyDescription} title={emptyTitle} />}
               </section>
             );
           }) : <AdminEmptyState description="No result claims are waiting in submitted, agreed, or disputed review." title="Result review queue is clear" />}
