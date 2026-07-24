@@ -9,11 +9,24 @@ import { shareMetadata, shareUrl } from "@/lib/share-cards";
 
 export const revalidate = 300;
 
-function tone(priority: "low" | "normal" | "high" | "critical"): BadgeTone {
+function tone(priority: string): BadgeTone {
   if (priority === "critical") return "danger";
   if (priority === "high") return "warning";
   if (priority === "normal") return "cyan";
   return "neutral";
+}
+
+function safeText(value: unknown, fallback: string) {
+  return typeof value === "string" && value.trim() ? value.trim() : fallback;
+}
+
+function safeDateLabel(value: unknown) {
+  const date = typeof value === "string" || typeof value === "number" ? new Date(value) : null;
+  return date && Number.isFinite(date.getTime()) ? date.toLocaleString("en-NG") : "Date unavailable";
+}
+
+function safeCategoryLabel(value: unknown) {
+  return safeText(value, "announcement").replaceAll("_", " ");
 }
 
 export async function generateMetadata({
@@ -24,9 +37,11 @@ export async function generateMetadata({
   const { announcementId } = await params;
   try {
     const result = await getCommunityAnnouncement(announcementId);
+    const title = safeText(result.announcement.title, "Skillsroom update");
+    const description = safeText(result.announcement.summary, "Community update from Skillsroom.");
     return shareMetadata({
-      title: result.announcement.title,
-      description: result.announcement.summary,
+      title,
+      description,
       path: `/community/announcements/${announcementId}`
     });
   } catch {
@@ -82,29 +97,37 @@ export default async function CommunityAnnouncementDetailPage({
     );
   }
 
+  const title = safeText(item.title, "Skillsroom update");
+  const summary = safeText(item.summary, "Community update from Skillsroom.");
+  const body = safeText(item.body, summary);
+  const paragraphs = body.split(/\r?\n\r?\n/).map((paragraph) => paragraph.trim()).filter(Boolean);
+  const priority = safeText(item.priority, "normal");
+  const scope = item.scope === "tournament" ? "tournament" : "platform";
+  const author = safeText(item.author_display_name || item.author_username, "Skillsroom");
+
   return (
     <AppShell active="community">
       <section className="grid gap-6">
         <Panel>
           <PanelHeader
             eyebrow="Announcement"
-            title={item.title}
-            description={item.summary}
+            title={title}
+            description={summary}
           />
           <div className="grid gap-4 p-4">
             <div className="flex flex-wrap items-center gap-2">
-              <Badge tone={tone(item.priority)}>{item.priority}</Badge>
-              <Badge tone="neutral">{item.category.replaceAll("_", " ")}</Badge>
-              <Badge tone="cyan">{item.scope === "tournament" ? item.tournament_title ?? "Tournament" : "Platform"}</Badge>
+              <Badge tone={tone(priority)}>{priority}</Badge>
+              <Badge tone="neutral">{safeCategoryLabel(item.category)}</Badge>
+              <Badge tone="cyan">{scope === "tournament" ? item.tournament_title ?? "Tournament" : "Platform"}</Badge>
             </div>
             <div className="grid gap-3 text-sm leading-7 text-ink">
-              {item.body.split(/\r?\n\r?\n/).map((paragraph, index) => (
+              {paragraphs.map((paragraph, index) => (
                 <p key={`${item.id}-${index}`}>{paragraph}</p>
               ))}
             </div>
             <div className="flex flex-wrap items-center gap-4 text-xs font-bold uppercase tracking-[0.12em] text-muted">
-              <span>{new Date(item.published_at ?? item.created_at).toLocaleString("en-NG")}</span>
-              <span>{item.author_display_name || item.author_username || "Skillsroom"}</span>
+              <span>{safeDateLabel(item.published_at ?? item.created_at)}</span>
+              <span>{author}</span>
             </div>
             <div className="flex flex-wrap gap-3">
               {item.cta_url && item.cta_label ? (
@@ -128,8 +151,8 @@ export default async function CommunityAnnouncementDetailPage({
         </Panel>
         <Panel>
           <PublicSharePanel
-            summary={item.summary}
-            title={item.title}
+            summary={summary}
+            title={title}
             url={shareUrl(`/community/announcements/${encodeURIComponent(item.id)}`)}
           />
         </Panel>
