@@ -394,6 +394,17 @@ function fundingMethodSummary(funding: RoomFundingOverview | null, participant: 
   };
 }
 
+function fundingProofSummary(funding: RoomFundingOverview | null, participant: MatchParticipant | undefined) {
+  if (!participant) return "No proof shown";
+  const submission = selectFundingSubmission(funding?.submissions, participant.id);
+  if (submission?.status === "submitted") return "Proof in review";
+  if (submission?.status === "approved") return "Transfer proof approved";
+  if (submission?.status === "rejected") return "Proof needs correction";
+  if (submission?.status === "cancelled") return "Proof cancelled";
+  if (participant.funding_status === "approved") return "No transfer proof needed";
+  return "No proof shown";
+}
+
 function resultReadinessMessage(room: MatchRoom, canConfirmStart: boolean) {
   if (room.status === "funded") {
     return canConfirmStart
@@ -1105,7 +1116,9 @@ export default async function MatchDetailPage({
     Boolean(currentParticipant) &&
     (currentFundingStatus === "pending" || currentFundingStatus === "rejected");
   const availableBalanceMinor = walletOverview?.account.available_balance_minor ?? 0;
-  const canPayWithBalance = canSubmitFunding && availableBalanceMinor >= room.entry_amount_minor;
+  const winningsBalanceMinor = walletOverview?.account.winnings_balance_minor ?? 0;
+  const playableBalanceMinor = availableBalanceMinor + winningsBalanceMinor;
+  const canPayWithBalance = canSubmitFunding && playableBalanceMinor >= room.entry_amount_minor;
   const joinedParticipants = participants.filter((participant) => participant.participant_status === "joined");
   const startConfirmationsRequired = joinedParticipants.length;
   const startConfirmationsCount = startConfirmations.length;
@@ -1405,7 +1418,7 @@ export default async function MatchDetailPage({
                           {currentEntryApproved ? "Your entry is confirmed" : currentEntrySubmitted ? "Payment proof is under review" : currentFundingStatus === "rejected" ? "Update your transfer proof" : "Confirm your entry"}
                         </h3>
                         <p className="mt-2 text-sm leading-6 text-muted">
-                          Required: <span className="font-black text-ink">{formatEntryAmount(room)}</span>. Balance available: <span className="font-black text-ink">{formatMinorMoney(room.currency, availableBalanceMinor)}</span>.
+                          Required: <span className="font-black text-ink">{formatEntryAmount(room)}</span>. Playable balance: <span className="font-black text-ink">{formatMinorMoney(room.currency, playableBalanceMinor)}</span>.
                         </p>
                       </div>
                       <RoomActionForm action={payRoomWithBalanceIslandAction} className="shrink-0" refreshOnSuccess>
@@ -1423,6 +1436,16 @@ export default async function MatchDetailPage({
                         <p className="font-mono text-[0.62rem] font-black uppercase tracking-[0.12em] text-dim">Confirmed</p>
                         <p className="mt-1 text-lg font-black text-ink">{confirmedEntryCount}/{room.max_participants}</p>
                         <p className="mt-1 text-xs font-bold leading-5 text-muted">Approved entries</p>
+                      </div>
+                      <div className="rounded-md border border-line bg-surfaceWarm p-3">
+                        <p className="font-mono text-[0.62rem] font-black uppercase tracking-[0.12em] text-dim">Available</p>
+                        <p className="mt-1 text-lg font-black text-ink">{formatMinorMoney(room.currency, availableBalanceMinor)}</p>
+                        <p className="mt-1 text-xs font-bold leading-5 text-muted">Ready for entry</p>
+                      </div>
+                      <div className="rounded-md border border-cyan/30 bg-cyanSoft p-3">
+                        <p className="font-mono text-[0.62rem] font-black uppercase tracking-[0.12em] text-cyan">Winnings</p>
+                        <p className="mt-1 text-lg font-black text-ink">{formatMinorMoney(room.currency, winningsBalanceMinor)}</p>
+                        <p className="mt-1 text-xs font-bold leading-5 text-muted">Can be used if not reserved for payout</p>
                       </div>
                     </div>
                     {canSubmitFunding ? (
@@ -1471,7 +1494,7 @@ export default async function MatchDetailPage({
                             </div>
                             <div className="flex items-center justify-between gap-3">
                               <span className="font-bold text-muted">Proof</span>
-                              <span className="font-black text-ink">{participant ? fundingMethod.label : "No proof shown"}</span>
+                              <span className="text-right font-black text-ink">{fundingProofSummary(funding, participant)}</span>
                             </div>
                           </div>
                           {trust ? <div className="mt-3"><PlayerTrustCard compact trust={trust} /></div> : null}
