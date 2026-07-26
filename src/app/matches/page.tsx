@@ -63,7 +63,9 @@ export default async function MatchesPage({ searchParams }: { searchParams: Prom
           <PanelHeader eyebrow="Join Code" title="Join a private room" description="Players can join a room only when their profile is complete and the room is open." />
           <form action={joinMatchRoomAction} className="grid gap-3 p-4 md:grid-cols-[1fr_auto]">
             <input
-              className="min-h-11 rounded-md border border-line bg-white px-3 font-mono text-sm font-bold uppercase outline-none focus:border-action"
+              autoCapitalize="none"
+              autoComplete="off"
+              className="min-h-11 rounded-md border border-line bg-white px-3 font-mono text-sm font-bold outline-none focus:border-action"
               name="room_code"
               placeholder="SR8K21"
               required

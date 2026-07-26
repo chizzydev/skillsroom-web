@@ -7,9 +7,9 @@ export function RoomCodeInput() {
 
   return (
     <input
-      autoCapitalize="characters"
+      autoCapitalize="none"
       autoComplete="off"
-      className="mt-2 min-h-11 w-full rounded-md border border-white/10 bg-white px-3 font-mono text-base font-black uppercase text-ink outline-none focus:border-action"
+      className="mt-2 min-h-11 w-full rounded-md border border-white/10 bg-white px-3 font-mono text-base font-black text-ink outline-none focus:border-action"
       enterKeyHint="go"
       inputMode="text"
       maxLength={12}
