@@ -12,6 +12,7 @@ import { ChatSearchPanel } from "./ChatSearchPanel";
 import { ChatSideRail } from "./ChatSideRail";
 import { ChatThreadPanel } from "./ChatThreadPanel";
 import { ChatVirtualThread } from "./ChatVirtualThread";
+import { MobileBottomNav } from "@/components/layout/MobileBottomNav";
 import { Toast } from "@/components/ui/Toast";
 import { useStableCallback } from "./chat-hooks";
 import { useChatStore } from "./chat-store";
@@ -2334,7 +2335,7 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
   return (
     <section className={[
       "min-w-0 overflow-hidden shadow-tight",
-      fullLayout ? "fixed inset-0 grid h-[100dvh] max-h-[100dvh] grid-rows-[auto_minmax(0,1fr)] border-0 bg-[#0f1b29] overscroll-none" : "rounded-lg border border-line bg-white"
+      fullLayout ? "fixed inset-0 grid h-[100dvh] max-h-[100dvh] grid-rows-[auto_minmax(0,1fr)_auto] border-0 bg-[#0f1b29] overscroll-none md:grid-rows-[auto_minmax(0,1fr)]" : "rounded-lg border border-line bg-white"
     ].join(" ")}>
       <header className={[
         "flex min-w-0 items-center gap-3 border-b p-3 sm:p-4",
@@ -2715,6 +2716,7 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
         </div>
         {fullLayout ? <ChatSideRail users={userDirectory} onOpenUserProfile={openUserProfile} /> : null}
       </div>
+      {fullLayout ? <MobileBottomNav active="lobby" placement="static" /> : null}
       {viewer ? (
         <ChatImageViewer
           currentUserId={currentUserId}

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import type { ChatChannel, ChatDmRequest } from "@/lib/match-room-api";
 import { channelInitials, channelPreview, channelTitle, channelTypeLabel } from "@/components/community/chat-state";
+import { MobileBottomNav } from "@/components/layout/MobileBottomNav";
 
 type ChatHomeClientProps = {
   channels: ChatChannel[];
@@ -118,16 +119,18 @@ export function ChatHomeClient({ channels, currentUserId, dmRequests }: ChatHome
 
   return (
     <div className="min-h-[100svh] bg-[#edf4fa] px-3 py-4 text-white sm:px-6 lg:px-8">
-      <div className="mx-auto grid w-full max-w-5xl gap-4 pb-[max(env(safe-area-inset-bottom),1rem)]">
+      <div className="mx-auto grid w-full max-w-5xl gap-4 pb-[calc(6.5rem+env(safe-area-inset-bottom))] md:pb-[max(env(safe-area-inset-bottom),1rem)]">
         <section className="rounded-lg bg-[#0f1b29] p-5 shadow-panel sm:p-6">
           <div className="flex items-start justify-between gap-3">
             <div className="inline-flex min-h-9 items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 text-xs font-black uppercase tracking-[0.16em] text-white">
               <span className="text-sky-300">#</span>
               Chat
             </div>
-            <Link aria-label="Go to Home" className="grid h-11 min-w-11 shrink-0 place-items-center rounded-full bg-white/10 px-3 text-xs font-black text-white hover:bg-white/15" href="/">
-              Home
-            </Link>
+            {globalChannel ? (
+              <Link aria-label="Open General chat" className="grid h-11 min-w-11 shrink-0 place-items-center rounded-full bg-white/10 px-3 text-xs font-black text-white hover:bg-white/15" href={channelHref(globalChannel)}>
+                General chat
+              </Link>
+            ) : null}
           </div>
           <h1 className="mt-5 max-w-xl text-3xl font-black leading-tight text-white sm:text-4xl">Global, rooms, and DMs.</h1>
           <div className="mt-4 grid grid-cols-3 gap-2">
@@ -184,6 +187,7 @@ export function ChatHomeClient({ channels, currentUserId, dmRequests }: ChatHome
           </section>
         )}
       </div>
+      <MobileBottomNav active="lobby" />
     </div>
   );
 }

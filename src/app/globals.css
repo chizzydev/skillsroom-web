@@ -93,6 +93,10 @@ textarea {
     pointer-events: none;
     transform: translate3d(0, calc(100% + env(safe-area-inset-bottom) + 1rem), 0);
   }
+
+  html[data-keyboard-open="true"] .mobile-bottom-nav[data-placement="static"] {
+    display: none;
+  }
 }
 
 button {
