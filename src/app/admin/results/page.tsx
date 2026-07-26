@@ -20,11 +20,13 @@ import {
   type MatchEvidenceItem,
   type MatchParticipant,
   type MatchResultClaim,
+  type MatchResultProofRequest,
+  type MatchResultProofRequestResponse,
   type MatchTimeline,
   type PlayerTrustSummary,
   type ResultClaimStatus
 } from "@/lib/match-room-api";
-import { reviewResultClaimAction } from "./actions";
+import { requestMoreResultProofAction, reviewResultClaimAction } from "./actions";
 import { AdminResultsLiveQueue, type AdminResultsSnapshot } from "./AdminResultsLiveQueue";
 
 export const dynamic = "force-dynamic";
@@ -87,6 +89,8 @@ type AdminResultQueueCard = {
   room: MatchTimeline["room"] | null;
   participants: MatchParticipant[];
   evidence: MatchEvidenceItem[];
+  proofRequests: MatchResultProofRequest[];
+  proofRequestResponses: MatchResultProofRequestResponse[];
   trustByUserId: Map<string, PlayerTrustSummary | null>;
   loadError?: string | null;
 };
@@ -119,6 +123,8 @@ async function loadQueueCard(claim: MatchResultClaim): Promise<AdminResultQueueC
       room: timeline.room,
       participants: results.participants,
       evidence: results.evidence_items.filter((item) => item.result_claim_id === claim.id),
+      proofRequests: results.proof_requests.filter((item) => item.result_claim_id === claim.id),
+      proofRequestResponses: results.proof_request_responses.filter((item) => item.result_claim_id === claim.id),
       trustByUserId: new Map<string, PlayerTrustSummary | null>(trustEntries),
       loadError: null
     };
@@ -128,10 +134,17 @@ async function loadQueueCard(claim: MatchResultClaim): Promise<AdminResultQueueC
       room: null,
       participants: [],
       evidence: [],
+      proofRequests: [],
+      proofRequestResponses: [],
       trustByUserId: new Map<string, PlayerTrustSummary | null>(),
       loadError: "Room details unavailable for this claim."
     };
   }
+}
+
+function proofRequestStatus(request: MatchResultProofRequest) {
+  if (request.status === "pending" && new Date(request.due_at).getTime() <= Date.now()) return "overdue";
+  return request.status;
 }
 
 const queueStatuses: Array<{
@@ -189,6 +202,14 @@ export default async function AdminResultsPage({ searchParams }: { searchParams:
       next[card.claim.id] = card.evidence;
       return next;
     }, {}),
+    proof_requests_by_claim_id: queueCards.reduce<Record<string, MatchResultProofRequest[]>>((next, card) => {
+      next[card.claim.id] = card.proofRequests;
+      return next;
+    }, {}),
+    proof_request_responses_by_claim_id: queueCards.reduce<Record<string, MatchResultProofRequestResponse[]>>((next, card) => {
+      next[card.claim.id] = card.proofRequestResponses;
+      return next;
+    }, {}),
     loaded_at: new Date().toISOString()
   };
 
@@ -216,10 +237,10 @@ export default async function AdminResultsPage({ searchParams }: { searchParams:
           <div className="grid h-fit gap-4 xl:sticky xl:top-24">
             <AdminStepUpPanel returnTo="/admin/results" />
             <Panel>
-              <PanelHeader eyebrow="Decision" title="Review result claim" description="Approve only after the opponent agrees. Submitted claims can be disputed, rejected, closed without a winner, or left for the opponent response." />
+              <PanelHeader eyebrow="Decision" title="Review result claim" description="Use the approval path that matches the player response and proof review." />
               <form action={reviewResultClaimAction} className="grid gap-3 p-4">
                 <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm font-bold leading-6 text-amber-900">
-                  Winner approval is locked until the opponent accepts the result. Timeout award is available only after the response deadline has passed. Use Mark disputed when the evidence needs team review before payout.
+                  Approve agreed claim only when the opponent accepted the result. Approve after dispute review only after Skillsroom checks the proof and dispute reason. Timeout award is only for missed responses after the deadline.
                 </div>
                 <label className="grid gap-2 text-sm font-bold text-ink">
                   Claim ID
@@ -230,12 +251,38 @@ export default async function AdminResultsPage({ searchParams }: { searchParams:
                   <textarea className="min-h-28 rounded-md border border-line bg-white px-3 py-2 text-sm outline-none focus:border-action" name="note" />
                 </label>
                 <div className="grid gap-2">
-                  <FormActionButton idleLabel="Approve claim" name="decision" pendingLabel="Approving claim..." value="approve_claim" />
+                  <FormActionButton idleLabel="Approve agreed claim" name="decision" pendingLabel="Approving agreed claim..." value="approve_claim" />
+                  <FormActionButton idleLabel="Approve after dispute review" name="decision" pendingLabel="Approving after dispute review..." value="approve_disputed_claim" variant="secondary" />
                   <FormActionButton idleLabel="Award after no response" name="decision" pendingLabel="Awarding after no response..." value="opponent_timeout_awarded" variant="secondary" />
                   <FormActionButton idleLabel="Mark disputed" name="decision" pendingLabel="Marking disputed..." value="mark_disputed" variant="secondary" />
                   <FormActionButton idleLabel="Reject claim" name="decision" pendingLabel="Rejecting claim..." value="reject_claim" variant="danger" />
                   <FormActionButton idleLabel="Void match and refund entries" name="decision" pendingLabel="Queuing refunds..." value="void_match" variant="danger" />
                 </div>
+              </form>
+            </Panel>
+            <Panel>
+              <PanelHeader eyebrow="More proof" title="Request player proof" description="Ask the claimant, opponent, or both players for more proof. Players have 24 hours to respond." />
+              <form action={requestMoreResultProofAction} className="grid gap-3 p-4">
+                <label className="grid gap-2 text-sm font-bold text-ink">
+                  Claim ID
+                  <input className="min-h-11 rounded-md border border-line bg-white px-3 font-mono text-sm outline-none focus:border-action" name="claim_id" required />
+                </label>
+                <label className="grid gap-2 text-sm font-bold text-ink">
+                  Who needs to respond?
+                  <select className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="target" defaultValue="both">
+                    <option value="both">Both players</option>
+                    <option value="claimant">Result claimant</option>
+                    <option value="opponent">Opponent</option>
+                  </select>
+                </label>
+                <label className="grid gap-2 text-sm font-bold text-ink">
+                  Player-facing request
+                  <textarea className="min-h-28 rounded-md border border-line bg-white px-3 py-2 text-sm outline-none focus:border-action" name="message" placeholder="Tell players exactly what proof Skillsroom needs, such as final scoreboard, lobby names, or a short clip showing the disputed moment." required />
+                </label>
+                <div className="rounded-md border border-cyan/30 bg-cyanSoft p-3 text-sm font-bold leading-6 text-cyan">
+                  The response deadline is fixed at 24 hours. If a player misses it, Skillsroom can decide from the saved proof.
+                </div>
+                <FormActionButton idleLabel="Request more proof" name="action" pendingLabel="Sending request..." value="request_more_proof" variant="secondary" />
               </form>
             </Panel>
           </div>
@@ -355,6 +402,26 @@ export default async function AdminResultsPage({ searchParams }: { searchParams:
                         No evidence link loaded for this claim yet.
                       </div>
                     )}
+                    {card.proofRequests.length ? (
+                      <div className="mt-4 grid gap-2">
+                        {card.proofRequests.map((request) => {
+                          const status = proofRequestStatus(request);
+                          const responseCount = card.proofRequestResponses.filter((response) => response.proof_request_id === request.id).length;
+                          return (
+                            <div className="rounded-md border border-line bg-surfaceWarm p-3 text-sm" key={request.id}>
+                              <div className="flex flex-wrap items-center justify-between gap-2">
+                                <span className="font-mono text-[11px] font-bold uppercase tracking-[0.12em] text-dim">Proof request</span>
+                                <Badge tone={status === "responded" ? "success" : status === "overdue" ? "danger" : "warning"}>{displayLabel(status)}</Badge>
+                              </div>
+                              <p className="mt-2 font-bold leading-6 text-ink">{request.message}</p>
+                              <p className="mt-1 text-xs font-bold leading-5 text-muted">
+                                Target: {displayLabel(request.target)}. Due: {dateTimeLabel(request.due_at)}. Responses: {responseCount}.
+                              </p>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : null}
                     {card.loadError ? <p className="mt-3 text-xs font-bold text-danger">{card.loadError}</p> : null}
                   </article>
                         );
@@ -373,10 +440,10 @@ export default async function AdminResultsPage({ searchParams }: { searchParams:
           <div className="grid h-fit gap-4 xl:sticky xl:top-24">
             <AdminStepUpPanel returnTo="/admin/results" />
             <Panel>
-              <PanelHeader eyebrow="Decision" title="Review result claim" description="Approve only after the opponent agrees. Submitted claims can be disputed, rejected, closed without a winner, or left for the opponent response." />
+              <PanelHeader eyebrow="Decision" title="Review result claim" description="Use the approval path that matches the player response and proof review." />
               <form action={reviewResultClaimAction} className="grid gap-3 p-4">
                 <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm font-bold leading-6 text-amber-900">
-                  Winner approval is locked until the opponent accepts the result. Timeout award is available only after the response deadline has passed. Use Mark disputed when the evidence needs team review before payout.
+                  Approve agreed claim only when the opponent accepted the result. Approve after dispute review only after Skillsroom checks the proof and dispute reason. Timeout award is only for missed responses after the deadline.
                 </div>
                 <label className="grid gap-2 text-sm font-bold text-ink">
                   Claim ID
@@ -387,12 +454,38 @@ export default async function AdminResultsPage({ searchParams }: { searchParams:
                   <textarea className="min-h-28 rounded-md border border-line bg-white px-3 py-2 text-sm outline-none focus:border-action" name="note" />
                 </label>
                 <div className="grid gap-2">
-                  <FormActionButton idleLabel="Approve claim" name="decision" pendingLabel="Approving claim..." value="approve_claim" />
+                  <FormActionButton idleLabel="Approve agreed claim" name="decision" pendingLabel="Approving agreed claim..." value="approve_claim" />
+                  <FormActionButton idleLabel="Approve after dispute review" name="decision" pendingLabel="Approving after dispute review..." value="approve_disputed_claim" variant="secondary" />
                   <FormActionButton idleLabel="Award after no response" name="decision" pendingLabel="Awarding after no response..." value="opponent_timeout_awarded" variant="secondary" />
                   <FormActionButton idleLabel="Mark disputed" name="decision" pendingLabel="Marking disputed..." value="mark_disputed" variant="secondary" />
                   <FormActionButton idleLabel="Reject claim" name="decision" pendingLabel="Rejecting claim..." value="reject_claim" variant="danger" />
                   <FormActionButton idleLabel="Void match and refund entries" name="decision" pendingLabel="Queuing refunds..." value="void_match" variant="danger" />
                 </div>
+              </form>
+            </Panel>
+            <Panel>
+              <PanelHeader eyebrow="More proof" title="Request player proof" description="Ask the claimant, opponent, or both players for more proof. Players have 24 hours to respond." />
+              <form action={requestMoreResultProofAction} className="grid gap-3 p-4">
+                <label className="grid gap-2 text-sm font-bold text-ink">
+                  Claim ID
+                  <input className="min-h-11 rounded-md border border-line bg-white px-3 font-mono text-sm outline-none focus:border-action" name="claim_id" required />
+                </label>
+                <label className="grid gap-2 text-sm font-bold text-ink">
+                  Who needs to respond?
+                  <select className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="target" defaultValue="both">
+                    <option value="both">Both players</option>
+                    <option value="claimant">Result claimant</option>
+                    <option value="opponent">Opponent</option>
+                  </select>
+                </label>
+                <label className="grid gap-2 text-sm font-bold text-ink">
+                  Player-facing request
+                  <textarea className="min-h-28 rounded-md border border-line bg-white px-3 py-2 text-sm outline-none focus:border-action" name="message" placeholder="Tell players exactly what proof Skillsroom needs, such as final scoreboard, lobby names, or a short clip showing the disputed moment." required />
+                </label>
+                <div className="rounded-md border border-cyan/30 bg-cyanSoft p-3 text-sm font-bold leading-6 text-cyan">
+                  The response deadline is fixed at 24 hours. If a player misses it, Skillsroom can decide from the saved proof.
+                </div>
+                <FormActionButton idleLabel="Request more proof" name="action" pendingLabel="Sending request..." value="request_more_proof" variant="secondary" />
               </form>
             </Panel>
           </div>

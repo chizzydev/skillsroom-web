@@ -20,6 +20,7 @@ import {
   startMatchPlay,
   submitManualFunding,
   submitResultClaim,
+  respondToResultProofRequest,
   respondToResultClaim,
   ApiRequestError,
   type MatchChallengeSkillLevel
@@ -452,6 +453,39 @@ export async function respondToResultClaimAction(formData: FormData) {
   }
 
   redirect(`/matches/${matchRoomId}`);
+}
+
+export async function respondToResultProofRequestAction(
+  _state: RoomActionState,
+  formData: FormData
+): Promise<RoomActionState> {
+  const matchRoomId = String(formData.get("match_room_id") || "");
+
+  try {
+    const user = await getCurrentUser();
+    if (!user) throw new Error("Please sign in before sending proof.");
+    const evidenceFile = uploadedFile(formData, "proof_request_evidence_file");
+    if (!evidenceFile) throw new Error("Upload the requested proof before sending your response.");
+    const storedEvidence = await storeEvidenceFile({ file: evidenceFile, matchRoomId, userId: user.id });
+    if (!storedEvidence) throw new Error("The proof upload could not be saved. Try again with a supported file.");
+    await respondToResultProofRequest(String(formData.get("proof_request_id") || ""), {
+      note: optionalString(formData, "note"),
+      evidence: [
+        {
+          evidence_type: storedEvidence.evidenceType,
+          uri: storedEvidence.url,
+          title: optionalString(formData, "proof_request_evidence_title")
+            ?? (storedEvidence.evidenceType === "video" ? "Requested video proof" : "Requested screenshot proof"),
+          notes: optionalString(formData, "proof_request_evidence_notes")
+        }
+      ]
+    });
+  } catch (error) {
+    return roomActionError(actionErrorMessage(error));
+  }
+
+  revalidateRoom(matchRoomId);
+  return roomActionSuccess("Requested proof sent. Skillsroom will continue the review.");
 }
 
 export async function createMatchLivestreamAction(formData: FormData) {

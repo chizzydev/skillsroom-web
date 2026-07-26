@@ -549,8 +549,10 @@ export type ResultClaimStatus =
   | "withdrawn";
 export type ResultReviewDecision =
   | "approve_claim"
+  | "approve_disputed_claim"
   | "approve_no_response"
   | "opponent_timeout_awarded"
+  | "proof_request_timeout_awarded"
   | "reject_claim"
   | "mark_disputed"
   | "void_match";
@@ -581,12 +583,36 @@ export type MatchEvidenceItem = {
   id: string;
   match_room_id: string;
   result_claim_id: string | null;
+  proof_request_id: string | null;
   submitted_by_user_id: string;
   participant_id: string | null;
   evidence_type: EvidenceItemType;
   uri: string | null;
   title: string;
   notes: string | null;
+  created_at: string;
+};
+
+export type MatchResultProofRequest = {
+  id: string;
+  match_room_id: string;
+  result_claim_id: string;
+  requested_by_user_id: string;
+  target: "claimant" | "opponent" | "both";
+  message: string;
+  due_at: string;
+  status: "pending" | "responded" | "overdue" | "cancelled";
+  created_at: string;
+  updated_at: string;
+};
+
+export type MatchResultProofRequestResponse = {
+  id: string;
+  proof_request_id: string;
+  result_claim_id: string;
+  responder_participant_id: string;
+  responder_user_id: string;
+  note: string | null;
   created_at: string;
 };
 
@@ -617,6 +643,8 @@ export type RoomResultOverview = {
   evidence_items: MatchEvidenceItem[];
   responses: MatchResultResponse[];
   reviews: MatchResultReview[];
+  proof_requests: MatchResultProofRequest[];
+  proof_request_responses: MatchResultProofRequestResponse[];
 };
 
 export type MatchSettlement = {
@@ -3466,6 +3494,24 @@ export function respondToResultClaim(
   });
 }
 
+export function respondToResultProofRequest(
+  proofRequestId: string,
+  input: {
+    note?: string;
+    evidence: Array<{
+      evidence_type: EvidenceItemType;
+      uri?: string;
+      title: string;
+      notes?: string;
+    }>;
+  }
+) {
+  return apiRequest<{ response: MatchResultProofRequestResponse }>(`/match-rooms/result-proof-requests/${proofRequestId}/responses`, {
+    method: "POST",
+    body: JSON.stringify(input)
+  });
+}
+
 export function listResultClaims(status: ResultClaimStatus = "submitted") {
   return apiRequest<{ claims: MatchResultClaim[] }>(
     `/admin/results/claims?status=${encodeURIComponent(status)}`
@@ -3480,6 +3526,17 @@ export function reviewResultClaim(
     method: "POST",
     headers: { "x-admin-step-up": input.stepUpToken },
     body: JSON.stringify({ decision: input.decision, note: input.note })
+  });
+}
+
+export function requestMoreResultProof(
+  claimId: string,
+  input: { target: "claimant" | "opponent" | "both"; message: string; stepUpToken: string }
+) {
+  return apiRequest<{ proof_request: MatchResultProofRequest }>(`/admin/results/claims/${claimId}/proof-requests`, {
+    method: "POST",
+    headers: { "x-admin-step-up": input.stepUpToken },
+    body: JSON.stringify({ target: input.target, message: input.message })
   });
 }
 

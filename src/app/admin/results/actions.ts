@@ -3,12 +3,14 @@
 import { redirect } from "next/navigation";
 import { adminActionErrorMessage } from "@/lib/admin-action-errors";
 import { requireAdminStepUpToken } from "@/lib/admin-step-up-session";
-import { reviewResultClaim, type ResultReviewDecision } from "@/lib/match-room-api";
+import { requestMoreResultProof, reviewResultClaim, type ResultReviewDecision } from "@/lib/match-room-api";
 
 const resultSuccessMessages: Record<ResultReviewDecision, string> = {
   approve_claim: "Result claim approved.",
+  approve_disputed_claim: "Result approved after dispute review.",
   approve_no_response: "Result approved after no opponent response.",
   opponent_timeout_awarded: "Result awarded after no opponent response.",
+  proof_request_timeout_awarded: "Result awarded after a missed proof deadline.",
   reject_claim: "Result claim rejected.",
   mark_disputed: "Result claim moved to dispute review.",
   void_match: "Match closed without a winner. Refunds were queued."
@@ -30,4 +32,19 @@ export async function reviewResultClaimAction(formData: FormData) {
   }
 
   redirect(`/admin/results?success=${encodeURIComponent(resultSuccessMessages[decision] ?? "Result review completed.")}`);
+}
+
+export async function requestMoreResultProofAction(formData: FormData) {
+  const claimId = String(formData.get("claim_id") || "");
+  const target = String(formData.get("target") || "both") as "claimant" | "opponent" | "both";
+  const message = String(formData.get("message") || "").trim();
+
+  try {
+    const stepUpToken = await requireAdminStepUpToken();
+    await requestMoreResultProof(claimId, { target, message, stepUpToken });
+  } catch (error) {
+    redirect(`/admin/results?error=${encodeURIComponent(await adminActionErrorMessage(error, "The proof request could not be sent."))}`);
+  }
+
+  redirect(`/admin/results?success=${encodeURIComponent("Proof request sent. Players have 24 hours to respond.")}`);
 }

@@ -1,6 +1,13 @@
 import { NextResponse } from "next/server";
 import { canAccessAdmin, canUseAdminSection, getCurrentUser } from "@/lib/auth-bridge";
-import { getRoomResults, listResultClaims, type MatchEvidenceItem, type ResultClaimStatus } from "@/lib/match-room-api";
+import {
+  getRoomResults,
+  listResultClaims,
+  type MatchEvidenceItem,
+  type MatchResultProofRequest,
+  type MatchResultProofRequestResponse,
+  type ResultClaimStatus
+} from "@/lib/match-room-api";
 
 export const dynamic = "force-dynamic";
 
@@ -31,12 +38,24 @@ export async function GET() {
       next[claim.id] = roomResults?.evidence_items.filter((item) => item.result_claim_id === claim.id) ?? [];
       return next;
     }, {});
+    const proofRequestsByClaimId = claims.reduce<Record<string, MatchResultProofRequest[]>>((next, claim) => {
+      const roomResults = roomResultsById.get(claim.match_room_id);
+      next[claim.id] = roomResults?.proof_requests.filter((item) => item.result_claim_id === claim.id) ?? [];
+      return next;
+    }, {});
+    const proofRequestResponsesByClaimId = claims.reduce<Record<string, MatchResultProofRequestResponse[]>>((next, claim) => {
+      const roomResults = roomResultsById.get(claim.match_room_id);
+      next[claim.id] = roomResults?.proof_request_responses.filter((item) => item.result_claim_id === claim.id) ?? [];
+      return next;
+    }, {});
 
     return NextResponse.json({
       ok: true,
       data: {
         claims,
         evidence_by_claim_id: evidenceByClaimId,
+        proof_requests_by_claim_id: proofRequestsByClaimId,
+        proof_request_responses_by_claim_id: proofRequestResponsesByClaimId,
         loaded_at: new Date().toISOString()
       }
     });

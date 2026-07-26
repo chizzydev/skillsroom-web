@@ -57,6 +57,7 @@ import {
   payRoomWithBalanceIslandAction,
   startMatchPlayIslandAction,
   respondToResultClaimAction,
+  respondToResultProofRequestAction,
   submitManualFundingIslandAction,
   submitResultClaimIslandAction
 } from "../actions";
@@ -149,6 +150,10 @@ function claimReviewStatus(claim: MatchResultClaim, reviews: RoomResultOverview[
   const decisionLabel =
     review.decision === "approve_claim"
       ? "Winner approved"
+      : review.decision === "approve_disputed_claim"
+        ? "Winner approved after dispute review"
+      : review.decision === "proof_request_timeout_awarded"
+        ? "Winner awarded after missed proof deadline"
       : review.decision === "approve_no_response" || review.decision === "opponent_timeout_awarded"
         ? "Winner awarded after no response"
         : review.decision === "reject_claim"
@@ -162,7 +167,7 @@ function claimReviewStatus(claim: MatchResultClaim, reviews: RoomResultOverview[
     detail: review.decision === "void_match"
       ? review.note ?? "No winner was confirmed. Entries are being returned."
       : review.note ?? `Final decision saved on ${dateTimeLabel(review.created_at)}.`,
-    tone: review.decision === "approve_claim" || review.decision === "approve_no_response" || review.decision === "opponent_timeout_awarded" ? "success" as const : review.decision === "mark_disputed" || review.decision === "void_match" ? "danger" as const : "warning" as const
+    tone: review.decision === "approve_claim" || review.decision === "approve_disputed_claim" || review.decision === "approve_no_response" || review.decision === "opponent_timeout_awarded" || review.decision === "proof_request_timeout_awarded" ? "success" as const : review.decision === "mark_disputed" || review.decision === "void_match" ? "danger" as const : "warning" as const
   };
 }
 
@@ -171,6 +176,8 @@ function finalDecisionSummary(claim: MatchResultClaim | null, reviews: RoomResul
   const review = reviews.find((item) => item.result_claim_id === claim.id) ?? null;
   if (review?.note) return review.note;
   if (review?.decision === "approve_claim") return "Winner confirmed after proof and player responses were checked.";
+  if (review?.decision === "approve_disputed_claim") return "Winner confirmed after Skillsroom reviewed the dispute and proof.";
+  if (review?.decision === "proof_request_timeout_awarded") return "Winner awarded after a requested proof deadline was missed.";
   if (review?.decision === "approve_no_response" || review?.decision === "opponent_timeout_awarded") {
     return "Winner awarded after the opponent did not respond before the deadline.";
   }
@@ -224,6 +231,22 @@ function evidencePathCards(input: {
       tone: ["completed", "settlement_pending"].includes(input.room.status) ? "success" as const : "warning" as const
     }
   ];
+}
+
+function proofRequestStatus(request: RoomResultOverview["proof_requests"][number]) {
+  if (request.status === "pending" && new Date(request.due_at).getTime() <= Date.now()) return "overdue";
+  return request.status;
+}
+
+function proofRequestTargetsPlayer(input: {
+  request: RoomResultOverview["proof_requests"][number];
+  claim: MatchResultClaim;
+  participant: MatchParticipant | null;
+}) {
+  if (!input.participant) return false;
+  if (input.request.target === "both") return true;
+  if (input.request.target === "claimant") return input.participant.id === input.claim.claimant_participant_id;
+  return input.participant.id !== input.claim.claimant_participant_id;
 }
 
 function nextAction(room: MatchRoom, participantCount: number, expired = false) {
@@ -1152,6 +1175,20 @@ export default async function MatchDetailPage({
     latestClaim.claimant_user_id !== user.id &&
     latestClaim.claimant_participant_id !== currentParticipant?.id &&
     latestClaim.claimed_winner_participant_id !== currentParticipant?.id;
+  const latestProofRequests = latestClaim ? results?.proof_requests.filter((request) => request.result_claim_id === latestClaim.id) ?? [] : [];
+  const proofRequestResponses = results?.proof_request_responses ?? [];
+  const activeProofRequest = latestProofRequests
+    .filter((request) => proofRequestStatus(request) === "pending")
+    .sort((left, right) => new Date(right.created_at).getTime() - new Date(left.created_at).getTime())[0] ?? null;
+  const currentPlayerRespondedToProofRequest = Boolean(activeProofRequest && currentParticipant && proofRequestResponses.some((response) =>
+    response.proof_request_id === activeProofRequest.id && response.responder_participant_id === currentParticipant.id
+  ));
+  const canRespondToProofRequest = Boolean(
+    latestClaim &&
+    activeProofRequest &&
+    proofRequestTargetsPlayer({ request: activeProofRequest, claim: latestClaim, participant: currentParticipant ?? null }) &&
+    !currentPlayerRespondedToProofRequest
+  );
   const canTournamentCheckIn =
     isTournamentRoom &&
     Boolean(currentParticipant) &&
@@ -1633,6 +1670,53 @@ export default async function MatchDetailPage({
                 </div>
                 <a className="inline-flex min-h-10 items-center justify-center rounded-md border border-line bg-white px-4 text-sm font-black text-ink shadow-tight hover:bg-surfaceHigh" href="#live">
                   Open live section
+                </a>
+              </div>
+            ) : canRespondToProofRequest && activeProofRequest ? (
+              <div className="grid gap-4 p-4 xl:grid-cols-[minmax(0,1fr)_24rem]">
+                <div className="grid gap-3">
+                  <div className="rounded-md border border-cyan/30 bg-cyanSoft p-4">
+                    <p className="font-mono text-xs font-black uppercase tracking-[0.14em] text-cyan">More proof</p>
+                    <h3 className="mt-2 text-xl font-black text-ink">Skillsroom needs more proof</h3>
+                    <p className="mt-2 text-sm font-bold leading-6 text-muted">{activeProofRequest.message}</p>
+                    <p className="mt-2 text-xs font-bold leading-5 text-muted">Due: {dateTimeLabel(activeProofRequest.due_at)}. If the deadline passes, Skillsroom can decide from the saved proof.</p>
+                  </div>
+                </div>
+                <RoomActionForm action={respondToResultProofRequestAction} className="grid scroll-mt-32 gap-3 rounded-lg border border-line bg-white p-4 shadow-tight" id="result-proof-request-action">
+                  <input name="match_room_id" type="hidden" value={room.id} />
+                  <input name="proof_request_id" type="hidden" value={activeProofRequest.id} />
+                  <label className="grid gap-2 text-sm font-bold text-ink">
+                    Requested screenshot or video
+                    <input
+                      accept="image/png,image/jpeg,image/webp,video/mp4,video/webm,video/quicktime"
+                      className="min-h-11 rounded-md border border-line bg-white px-3 py-2 text-sm outline-none file:mr-3 file:rounded-sm file:border-0 file:bg-surfaceHigh file:px-3 file:py-2 file:text-xs file:font-black file:text-ink focus:border-action"
+                      name="proof_request_evidence_file"
+                      required
+                      type="file"
+                    />
+                  </label>
+                  <label className="grid gap-2 text-sm font-bold text-ink">
+                    Proof title
+                    <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" defaultValue="Requested result proof" name="proof_request_evidence_title" />
+                  </label>
+                  <label className="grid gap-2 text-sm font-bold text-ink">
+                    Response note <span className="font-bold text-muted">(optional)</span>
+                    <textarea className="min-h-20 rounded-md border border-line bg-white px-3 py-2 text-sm outline-none focus:border-action" name="note" placeholder="Tell Skillsroom what this proof shows." />
+                  </label>
+                  <input name="proof_request_evidence_notes" type="hidden" value="Submitted for Skillsroom proof request." />
+                  <SubmitButton idleLabel="Send requested proof" pendingLabel="Sending proof..." />
+                </RoomActionForm>
+              </div>
+            ) : activeProofRequest ? (
+              <div className="grid gap-4 p-4 lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start">
+                <div className="rounded-md border border-line bg-surfaceWarm p-4">
+                  <p className="font-mono text-xs font-black uppercase tracking-[0.14em] text-cyan">More proof</p>
+                  <h3 className="mt-2 text-xl font-black text-ink">Skillsroom needs more proof</h3>
+                  <p className="mt-2 text-sm font-bold leading-6 text-muted">{currentPlayerRespondedToProofRequest ? "Your proof has been sent. Waiting for the review to continue." : activeProofRequest.message}</p>
+                  <p className="mt-2 text-xs font-bold leading-5 text-muted">Due: {dateTimeLabel(activeProofRequest.due_at)}.</p>
+                </div>
+                <a className="inline-flex min-h-10 items-center justify-center rounded-md bg-action px-4 text-sm font-black text-navy-950 shadow-action hover:bg-actionHover" href="#result">
+                  View result details
                 </a>
               </div>
             ) : canRespondToLatestClaim && latestClaim ? (

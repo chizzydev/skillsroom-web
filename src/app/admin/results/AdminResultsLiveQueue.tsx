@@ -8,11 +8,13 @@ import { Badge } from "@/components/ui/Badge";
 import { PendingLink } from "@/components/ui/PendingLink";
 import { Panel, PanelHeader } from "@/components/ui/Panel";
 import { StatusPanel } from "@/components/ui/StatusPanel";
-import { type MatchEvidenceItem, type MatchResultClaim, type ResultClaimStatus } from "@/lib/match-room-api";
+import { type MatchEvidenceItem, type MatchResultClaim, type MatchResultProofRequest, type MatchResultProofRequestResponse, type ResultClaimStatus } from "@/lib/match-room-api";
 
 export type AdminResultsSnapshot = {
   claims: MatchResultClaim[];
   evidence_by_claim_id?: Record<string, MatchEvidenceItem[]>;
+  proof_requests_by_claim_id?: Record<string, MatchResultProofRequest[]>;
+  proof_request_responses_by_claim_id?: Record<string, MatchResultProofRequestResponse[]>;
   loaded_at: string;
 };
 
@@ -76,6 +78,11 @@ function evidenceLabel(items: MatchEvidenceItem[]) {
   return `${items.length} proof file${items.length === 1 ? "" : "s"}`;
 }
 
+function proofRequestStatus(request: MatchResultProofRequest) {
+  if (request.status === "pending" && new Date(request.due_at).getTime() <= Date.now()) return "overdue";
+  return request.status;
+}
+
 async function fetchResultsSnapshot() {
   const response = await fetch("/api/admin/results/live", {
     credentials: "same-origin",
@@ -98,6 +105,8 @@ export function AdminResultsLiveQueue({ initialSnapshot }: { initialSnapshot: Ad
 
   const claims = snapshot.claims;
   const evidenceByClaimId = snapshot.evidence_by_claim_id ?? {};
+  const proofRequestsByClaimId = snapshot.proof_requests_by_claim_id ?? {};
+  const proofRequestResponsesByClaimId = snapshot.proof_request_responses_by_claim_id ?? {};
 
   return (
     <section className="grid gap-5">
@@ -129,6 +138,8 @@ export function AdminResultsLiveQueue({ initialSnapshot }: { initialSnapshot: Ad
                 </div>
                 {statusClaims.length ? statusClaims.map((claim) => {
                   const evidence = evidenceByClaimId[claim.id] ?? [];
+                  const proofRequests = proofRequestsByClaimId[claim.id] ?? [];
+                  const proofRequestResponses = proofRequestResponsesByClaimId[claim.id] ?? [];
                   const firstEvidence = evidence.find((item) => item.uri) ?? null;
                   return (
                   <article className="rounded-md border border-line bg-white p-4" key={claim.id}>
@@ -170,6 +181,24 @@ export function AdminResultsLiveQueue({ initialSnapshot }: { initialSnapshot: Ad
                     <div className={["mt-4 rounded-md border p-3 text-sm font-bold leading-6", evidence.length ? "border-cyan/30 bg-cyanSoft text-cyan" : "border-line bg-surfaceWarm text-muted"].join(" ")}>
                       {evidence.length ? `${evidenceLabel(evidence)} saved for this result claim.` : "No result proof is attached to this claim yet."}
                     </div>
+                    {proofRequests.length ? (
+                      <div className="mt-4 grid gap-2">
+                        {proofRequests.map((request) => {
+                          const status = proofRequestStatus(request);
+                          const responseCount = proofRequestResponses.filter((response) => response.proof_request_id === request.id).length;
+                          return (
+                            <div className="rounded-md border border-line bg-surfaceWarm p-3 text-sm" key={request.id}>
+                              <div className="flex flex-wrap items-center justify-between gap-2">
+                                <span className="font-mono text-[11px] font-bold uppercase tracking-[0.12em] text-dim">Proof request</span>
+                                <Badge tone={status === "responded" ? "success" : status === "overdue" ? "danger" : "warning"}>{displayLabel(status)}</Badge>
+                              </div>
+                              <p className="mt-2 font-bold leading-6 text-ink">{request.message}</p>
+                              <p className="mt-1 text-xs font-bold leading-5 text-muted">Target: {displayLabel(request.target)}. Due: {dateTimeLabel(request.due_at)}. Responses: {responseCount}.</p>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : null}
                     {claim.status === "submitted" ? (
                       <div className={["mt-4 rounded-md border p-3 text-sm font-bold leading-6", responseWindowExpired(claim) ? "border-danger bg-red-50 text-danger" : "border-amber-200 bg-amber-50 text-amber-900"].join(" ")}>
                         Opponent response due: {dateTimeLabel(claim.opponent_response_due_at)}.

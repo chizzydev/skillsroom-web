@@ -103,8 +103,16 @@ export function describeRealtimeEvent(event: RealtimeEvent): RealtimeToastMessag
       return { title: "Result agreed", description: "The opponent accepted the submitted score.", tone: "success" };
     case "match.result.dispute":
       return { title: "Result disputed", description: "Team review is now needed.", tone: "danger" };
+    case "match.result.proof_requested":
+      return { title: "More proof requested", description: "Skillsroom asked for more result proof before the review continues.", tone: "warning" };
+    case "match.result.proof_submitted":
+      return { title: "Requested proof submitted", description: "A player sent proof requested by Skillsroom.", tone: "success" };
     case "match.result.reviewed.approve_claim":
       return { title: "Result confirmed", description: "The winner can now be paid from the room record.", tone: "success" };
+    case "match.result.reviewed.approve_disputed_claim":
+      return { title: "Result confirmed after dispute review", description: "Skillsroom reviewed the dispute and proof before confirming the winner.", tone: "success" };
+    case "match.result.reviewed.proof_request_timeout_awarded":
+      return { title: "Winner awarded after missed proof deadline", description: "A requested proof deadline passed, so the result was awarded from the saved room proof.", tone: "success" };
     case "match.result.reviewed.reject_claim":
       return { title: "Result rejected", description: "Evidence stays open for further review.", tone: "warning" };
     case "match.result.reviewed.mark_disputed":
