@@ -193,6 +193,10 @@ function evidencePathCards(input: {
   room: MatchRoom;
 }) {
   const response = input.claim ? claimResponseStatus(input.claim, input.responses) : null;
+  const savedResponse = input.claim ? input.responses.find((item) => item.result_claim_id === input.claim?.id) : null;
+  const responseSummary = savedResponse?.response === "dispute"
+    ? "Dispute reason is shown in the submitted result below."
+    : response?.detail;
   const review = input.claim ? claimReviewStatus(input.claim, input.reviews) : null;
   return [
     {
@@ -204,7 +208,7 @@ function evidencePathCards(input: {
     {
       label: "Opponent response",
       value: response?.label ?? "Starts after claim",
-      detail: response?.detail ?? "The other player gets a deadline to agree or dispute.",
+      detail: responseSummary ?? "The other player gets a deadline to agree or dispute.",
       tone: response?.tone ?? "neutral" as const
     },
     {
