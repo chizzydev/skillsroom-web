@@ -257,7 +257,11 @@ export async function joinMatchRoomAction(formData: FormData) {
   const errorPath = String(formData.get("error_path") || "/matches");
 
   try {
-    const result = await joinMatchRoom(String(formData.get("room_code") || ""));
+    const roomCode = String(formData.get("room_code") || "")
+      .trim()
+      .toUpperCase()
+      .replace(/[^A-Z0-9]/g, "");
+    const result = await joinMatchRoom(roomCode);
     roomId = result.room.id;
   } catch (error) {
     redirect(withError(errorPath, error));

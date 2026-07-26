@@ -14,11 +14,7 @@ export function RoomCodeInput() {
       inputMode="text"
       maxLength={12}
       name="room_code"
-      onInput={(event) => {
-        const input = event.currentTarget;
-        const value = input.value.toUpperCase().replace(/[^A-Z0-9]/g, "");
-        if (input.value !== value) input.value = value;
-      }}
+      pattern="[A-Za-z0-9]+"
       placeholder="SR8K21"
       ref={inputRef}
       required
