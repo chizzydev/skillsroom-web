@@ -11,6 +11,7 @@ type RoomActionFormProps = {
   action: RoomActionHandler;
   children: ReactNode;
   className?: string;
+  id?: string;
   refreshOnSuccess?: boolean;
 };
 
@@ -18,6 +19,7 @@ export function RoomActionForm({
   action,
   children,
   className,
+  id,
   refreshOnSuccess = true
 }: RoomActionFormProps) {
   const router = useRouter();
@@ -59,7 +61,7 @@ export function RoomActionForm({
   const toastTitle = state.status === "error" ? "Action could not be completed" : "Action saved";
 
   return (
-    <form action={formAction} className={className} ref={formRef}>
+    <form action={formAction} className={className} id={id} ref={formRef}>
       {toastVisible && state.status !== "idle" && state.message ? (
         <div className="pointer-events-none fixed inset-x-3 bottom-[calc(5.75rem+env(safe-area-inset-bottom))] z-[85] md:inset-x-auto md:right-6 md:top-20 md:bottom-auto md:w-[24rem]">
           <div

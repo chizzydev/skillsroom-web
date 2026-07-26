@@ -1199,6 +1199,16 @@ export default async function MatchDetailPage({
     { href: "#live", label: "Live" },
     ...(resultSectionVisible ? [{ href: "#result", label: "Result" }] : [])
   ];
+  const actionTargets = {
+    entryPayment: "#entry-payment-action",
+    live: "#live",
+    readyConfirm: "#ready-confirm-action",
+    readyWait: "#ready-wait-action",
+    resultDetails: "#result",
+    resultResponse: "#result-response-action",
+    resultSubmit: "#result-submit-action",
+    roomCode: "#room-code-action"
+  } as const;
   const primaryAction =
     isExpiredOpenRoom
       ? { href: "/challenges?mode=create", label: "Post fresh challenge" }
@@ -1207,25 +1217,25 @@ export default async function MatchDetailPage({
         : room.status === "open" && canSendRoomInvite
           ? { href: "#invite-player", label: "Invite player" }
           : room.status === "open"
-            ? { href: "#overview", label: displayedParticipantCount < room.max_participants ? "Share code" : "View players" }
+            ? { href: displayedParticipantCount < room.max_participants ? actionTargets.roomCode : "#players", label: displayedParticipantCount < room.max_participants ? "Share code" : "View players" }
             : canSubmitFunding
-      ? { href: "#funding", label: "Submit funding" }
+      ? { href: actionTargets.entryPayment, label: "Submit funding" }
       : canConfirmStart
-          ? { href: "#current-step", label: "Confirm ready" }
+          ? { href: actionTargets.readyConfirm, label: "Confirm ready" }
         : waitingForOpponentStart
-          ? { href: "#current-step", label: "Waiting opponent" }
+          ? { href: actionTargets.readyWait, label: "Waiting opponent" }
           : canRespondToLatestClaim
-            ? { href: "#current-step", label: "Respond" }
+            ? { href: actionTargets.resultResponse, label: "Respond" }
           : canSubmitNewResult
-            ? { href: "#result", label: "Submit result" }
+            ? { href: actionTargets.resultSubmit, label: "Submit result" }
             : canSubmitResult && latestClaim
-              ? { href: "#result", label: "View result" }
+              ? { href: actionTargets.resultDetails, label: "View result" }
               : reviewInProgress
-                ? { href: "#result", label: "View review" }
+                ? { href: actionTargets.resultDetails, label: "View review" }
                 : finalStage
-                  ? { href: "#result", label: room.status === "completed" ? "View outcome" : "View status" }
+                  ? { href: actionTargets.resultDetails, label: room.status === "completed" ? "View outcome" : "View status" }
             : canManageLivestreams
-              ? { href: "#live", label: "Add livestream" }
+              ? { href: actionTargets.live, label: "Add livestream" }
               : { href: "#players", label: displayedParticipantCount < room.max_participants ? "Check players" : "View players" };
   return (
     <AppShell active="matches">
@@ -1254,15 +1264,15 @@ export default async function MatchDetailPage({
                 All rooms
               </PendingLink>
               {canRespondToLatestClaim ? (
-                <a className="inline-flex min-h-10 items-center justify-center rounded-md bg-action px-4 text-sm font-black text-navy-950 shadow-action hover:bg-actionHover" href="#current-step">
+                <a className="inline-flex min-h-10 items-center justify-center rounded-md bg-action px-4 text-sm font-black text-navy-950 shadow-action hover:bg-actionHover" href={actionTargets.resultResponse}>
                   Respond to result
                 </a>
               ) : canSubmitNewResult ? (
-                <a className="inline-flex min-h-10 items-center justify-center rounded-md bg-action px-4 text-sm font-black text-navy-950 shadow-action hover:bg-actionHover" href="#result">
+                <a className="inline-flex min-h-10 items-center justify-center rounded-md bg-action px-4 text-sm font-black text-navy-950 shadow-action hover:bg-actionHover" href={actionTargets.resultSubmit}>
                   Submit result
                 </a>
               ) : canSubmitResult && latestClaim ? (
-                <a className="inline-flex min-h-10 items-center justify-center rounded-md bg-action px-4 text-sm font-black text-navy-950 shadow-action hover:bg-actionHover" href="#result">
+                <a className="inline-flex min-h-10 items-center justify-center rounded-md bg-action px-4 text-sm font-black text-navy-950 shadow-action hover:bg-actionHover" href={actionTargets.resultDetails}>
                   View result
                 </a>
               ) : null}
@@ -1338,7 +1348,7 @@ export default async function MatchDetailPage({
             ) : room.status === "open" ? (
               <div className="grid gap-4 p-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
                 <div className="grid gap-3">
-                  <div className="rounded-md border border-cyan/30 bg-cyanSoft p-4">
+                  <div className="scroll-mt-32 rounded-md border border-cyan/30 bg-cyanSoft p-4" id="room-code-action">
                     <p className="font-mono text-xs font-black uppercase tracking-[0.14em] text-cyan">Room code</p>
                     <p className="mt-2 break-all font-mono text-2xl font-black text-ink">{room.room_code}</p>
                     <p className="mt-2 text-sm font-bold leading-6 text-muted">
@@ -1410,7 +1420,7 @@ export default async function MatchDetailPage({
             ) : showEntryPrimary ? (
               <div className="grid scroll-mt-32 gap-4 p-4 xl:grid-cols-[minmax(0,1fr)_24rem]" id="funding">
                 <div className="grid gap-3">
-                  <div className="rounded-md border border-line bg-white p-4">
+                  <div className="scroll-mt-32 rounded-md border border-line bg-white p-4" id="entry-payment-action">
                     <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                       <div className="min-w-0">
                         <p className="font-mono text-xs font-black uppercase tracking-[0.14em] text-cyan">Entry payment</p>
@@ -1504,7 +1514,7 @@ export default async function MatchDetailPage({
                   </div>
                 </div>
                 {canSubmitFunding ? (
-                  <RoomActionForm action={submitManualFundingIslandAction} className="grid gap-3 rounded-lg border border-line bg-white p-4 shadow-tight">
+                  <RoomActionForm action={submitManualFundingIslandAction} className="grid scroll-mt-32 gap-3 rounded-lg border border-line bg-white p-4 shadow-tight" id="entry-transfer-action">
                     <input name="match_room_id" type="hidden" value={room.id} />
                     <input name="amount_naira" type="hidden" value={room.entry_amount_minor / 100} />
                     <p className="font-mono text-xs font-black uppercase tracking-[0.14em] text-cyan">Transfer proof</p>
@@ -1588,13 +1598,13 @@ export default async function MatchDetailPage({
                     </div>
                   </div>
                 </div>
-                <RoomActionForm action={startMatchPlayIslandAction} className="grid gap-2 rounded-lg border border-line bg-white p-4 shadow-tight" refreshOnSuccess>
+                <RoomActionForm action={startMatchPlayIslandAction} className="grid scroll-mt-32 gap-2 rounded-lg border border-line bg-white p-4 shadow-tight" id="ready-confirm-action" refreshOnSuccess>
                   <input name="match_room_id" type="hidden" value={room.id} />
                   <SubmitButton idleLabel="Confirm ready" pendingLabel="Confirming..." />
                 </RoomActionForm>
               </div>
             ) : waitingForOpponentStart ? (
-              <div className="grid gap-4 p-4 lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start">
+              <div className="grid scroll-mt-32 gap-4 p-4 lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start" id="ready-wait-action">
                 <div className="grid gap-3">
                 <div className="rounded-md border border-success/30 bg-green-50 p-4 text-sm font-bold leading-6 text-success">
                   Your ready status is confirmed. The match will go live after the other player confirms.
@@ -1648,7 +1658,7 @@ export default async function MatchDetailPage({
                   </div>
                   <a className="text-sm font-black text-cyan hover:text-action" href="#result">See submitted proof</a>
                 </div>
-                <form action={respondToResultClaimAction} className="grid gap-3 rounded-lg border border-line bg-white p-4 shadow-tight">
+                <form action={respondToResultClaimAction} className="grid scroll-mt-32 gap-3 rounded-lg border border-line bg-white p-4 shadow-tight" id="result-response-action">
                   <input name="match_room_id" type="hidden" value={room.id} />
                   <input name="result_claim_id" type="hidden" value={latestClaim.id} />
                   <label className="grid gap-2 text-sm font-bold text-ink">
@@ -1709,7 +1719,7 @@ export default async function MatchDetailPage({
                     ))}
                   </div>
                 </div>
-                <RoomActionForm action={submitResultClaimIslandAction} className="grid gap-3 rounded-lg border border-line bg-white p-4 shadow-tight">
+                <RoomActionForm action={submitResultClaimIslandAction} className="grid scroll-mt-32 gap-3 rounded-lg border border-line bg-white p-4 shadow-tight" id="result-submit-action">
                   <input name="match_room_id" type="hidden" value={room.id} />
                   <input name="claimed_winner_participant_id" type="hidden" value={currentParticipant?.id ?? ""} />
                   <label className="grid gap-2 text-sm font-bold text-ink">

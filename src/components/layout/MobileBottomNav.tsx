@@ -14,17 +14,12 @@ export type MobileBottomNavKey = (typeof mobileNavItems)[number]["key"];
 
 type MobileBottomNavProps = {
   active: MobileBottomNavKey;
-  placement?: "fixed" | "static";
 };
 
-export function MobileBottomNav({ active, placement = "fixed" }: MobileBottomNavProps) {
+export function MobileBottomNav({ active }: MobileBottomNavProps) {
   return (
     <nav
-      className={[
-        "mobile-bottom-nav z-40 border-t border-line bg-white/95 px-2 pb-[max(env(safe-area-inset-bottom),0.65rem)] pt-2 shadow-[0_-18px_40px_rgba(15,23,42,0.08)] backdrop-blur md:hidden",
-        placement === "fixed" ? "fixed inset-x-0 bottom-0" : "relative"
-      ].join(" ")}
-      data-placement={placement}
+      className="mobile-bottom-nav fixed inset-x-0 bottom-0 z-40 border-t border-line bg-white/95 px-2 pb-[max(env(safe-area-inset-bottom),0.65rem)] pt-2 shadow-[0_-18px_40px_rgba(15,23,42,0.08)] backdrop-blur md:hidden"
     >
       <div className="mx-auto grid max-w-md grid-cols-7 gap-1">
         {mobileNavItems.map((item) => (
