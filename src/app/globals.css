@@ -71,14 +71,14 @@ textarea {
   }
 
   html[data-keyboard-open="true"] {
-    scroll-padding-bottom: 45vh;
+    scroll-padding-bottom: var(--keyboard-safe-area, 9rem);
   }
 
   input:focus,
   select:focus,
   textarea:focus,
   [contenteditable="true"]:focus {
-    scroll-margin-bottom: 45vh;
+    scroll-margin-block: 5.5rem var(--keyboard-safe-area, 9rem);
   }
 
   .mobile-bottom-nav {

@@ -1,31 +1,9 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useRef } from "react";
 
 export function RoomCodeInput() {
   const inputRef = useRef<HTMLInputElement | null>(null);
-
-  useEffect(() => {
-    const resetEntryState = () => {
-      const input = inputRef.current;
-      if (input && document.activeElement === input) input.blur();
-      window.scrollTo({ top: 0, left: 0, behavior: "auto" });
-    };
-
-    const previousScrollRestoration = window.history.scrollRestoration;
-    window.history.scrollRestoration = "manual";
-    resetEntryState();
-    const frame = window.requestAnimationFrame(resetEntryState);
-    const timer = window.setTimeout(resetEntryState, 200);
-    window.addEventListener("pageshow", resetEntryState);
-
-    return () => {
-      window.cancelAnimationFrame(frame);
-      window.clearTimeout(timer);
-      window.removeEventListener("pageshow", resetEntryState);
-      window.history.scrollRestoration = previousScrollRestoration;
-    };
-  }, []);
 
   return (
     <input
@@ -33,19 +11,15 @@ export function RoomCodeInput() {
       autoComplete="off"
       className="mt-2 min-h-11 w-full rounded-md border border-white/10 bg-white px-3 font-mono text-base font-black uppercase text-ink outline-none focus:border-action"
       enterKeyHint="go"
+      inputMode="text"
       maxLength={12}
       name="room_code"
-      onBlur={(event) => {
-        event.currentTarget.readOnly = true;
-      }}
-      onFocus={(event) => {
-        if (event.currentTarget.readOnly) event.currentTarget.blur();
-      }}
-      onPointerDown={(event) => {
-        event.currentTarget.readOnly = false;
+      onInput={(event) => {
+        const input = event.currentTarget;
+        const value = input.value.toUpperCase().replace(/[^A-Z0-9]/g, "");
+        if (input.value !== value) input.value = value;
       }}
       placeholder="SR8K21"
-      readOnly
       ref={inputRef}
       required
       spellCheck={false}
