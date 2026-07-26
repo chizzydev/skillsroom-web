@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { usePathname, useRouter } from "next/navigation";
-import { getNotificationPreferences } from "@/lib/match-room-api";
 import type { RealtimeEvent } from "./realtimeEventPresentation";
 import { classifyRealtimePatch, dispatchRealtimePatch, type RealtimePatchTarget } from "./realtimePatches";
 import { invalidateQueriesForRealtimeEvent, realtimeEventRoomId, realtimeEventTournamentId } from "./webRealtimeInvalidation";
@@ -11,6 +10,25 @@ import { invalidateQueriesForRealtimeEvent, realtimeEventRoomId, realtimeEventTo
 type GlobalRealtimeBridgeProps = {
   enabled: boolean;
 };
+
+type NotificationPreference = {
+  in_app_enabled: boolean;
+  in_app_sound_enabled: boolean;
+};
+
+async function getClientNotificationPreferences() {
+  const response = await fetch("/api/community/notifications/bootstrap", {
+    cache: "no-store",
+    headers: { accept: "application/json" }
+  });
+  if (!response.ok) throw new Error("Notification settings could not be loaded.");
+  const payload = await response.json() as {
+    data?: {
+      preferences?: NotificationPreference;
+    };
+  };
+  return { preferences: payload.data?.preferences ?? null };
+}
 
 function pathRoomId(pathname: string) {
   return pathname.match(/^\/matches\/([^/?#]+)/)?.[1] ?? null;
@@ -116,7 +134,7 @@ export function GlobalRealtimeBridge({ enabled }: GlobalRealtimeBridgeProps) {
   const dirtyWhileHiddenOrEditingRef = useRef(false);
   const preferencesQuery = useQuery({
     queryKey: ["notifications", "preferences"],
-    queryFn: getNotificationPreferences,
+    queryFn: getClientNotificationPreferences,
     enabled,
     staleTime: 60_000
   });
