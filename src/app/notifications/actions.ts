@@ -83,6 +83,7 @@ export async function updateNotificationPreferencesAction(formData: FormData) {
   try {
     await updateNotificationPreferences({
       in_app_enabled: formData.get("in_app_enabled") === "on",
+      in_app_sound_enabled: formData.get("in_app_sound_enabled") === "on",
       email_enabled: formData.get("email_enabled") === "on",
       sms_enabled: formData.get("sms_enabled") === "on",
       room_invites_enabled: formData.get("room_invites_enabled") === "on",

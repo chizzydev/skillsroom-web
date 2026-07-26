@@ -25,6 +25,7 @@ function labelForHref(href: string | null, notificationType: string) {
   if (notificationType === "tournament_host_access_granted") return "Open host tools";
   if (notificationType === "tournament_payout_queued" || notificationType === "tournament_refund_queued" || notificationType === "tournament_wallet_refund") return "Open prizes";
   if (notificationType === "match_result_response_required" || notificationType === "match_result_response_reminder") return "Respond to result";
+  if (notificationType === "match_result_more_proof_requested") return "Send requested proof";
   if (notificationType === "match_result_response_overdue") return "Review result";
   if (notificationType.startsWith("match_result_")) return "Open result";
   if (notificationType === "room_invite") return "Open invite";
@@ -127,6 +128,10 @@ function explicitTypedAction(notification: UserNotification): NotificationAction
 
   if (type === "match_result_response_overdue") {
     return { href: roomHref(notification, notification.action_url, "result-response"), label: "Review result" };
+  }
+
+  if (type === "match_result_more_proof_requested") {
+    return { href: roomHref(notification, notification.action_url, "result-proof-request"), label: "Send requested proof" };
   }
 
   if (type === "match_result_accepted" || type === "match_result_disputed" || type.startsWith("match_result_review_")) {

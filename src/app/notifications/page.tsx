@@ -19,6 +19,7 @@ function emptyNotificationPreferences(userId: string): NotificationPreference {
   return {
     user_id: userId,
     in_app_enabled: true,
+    in_app_sound_enabled: true,
     email_enabled: false,
     sms_enabled: false,
     room_invites_enabled: true,
@@ -107,15 +108,19 @@ export default async function NotificationsPage({ searchParams }: { searchParams
           <PanelHeader eyebrow="Preferences" title="Notification settings" />
           <form action={updateNotificationPreferencesAction} className="grid gap-3 p-4">
             {[
-              ["in_app_enabled", "In-app notifications", preferences.in_app_enabled],
-              ["email_enabled", "Email", preferences.email_enabled],
-              ["sms_enabled", "SMS", preferences.sms_enabled],
-              ["room_invites_enabled", "Room invites", preferences.room_invites_enabled],
-              ["match_updates_enabled", "Match updates", preferences.match_updates_enabled],
-              ["marketing_enabled", "Marketing", preferences.marketing_enabled]
-            ].map(([name, label, checked]) => (
+              ["in_app_enabled", "In-app notifications", "Show updates inside Skillsroom.", preferences.in_app_enabled],
+              ["in_app_sound_enabled", "In-app sound", "Play a short sound for new in-app notifications.", preferences.in_app_sound_enabled],
+              ["email_enabled", "Email for priority updates", "Only important alerts, requests, and announcements are sent by email.", preferences.email_enabled],
+              ["sms_enabled", "SMS", "Reserved for future critical alerts.", preferences.sms_enabled],
+              ["room_invites_enabled", "Room invites", "Notify me when a player sends a room invite.", preferences.room_invites_enabled],
+              ["match_updates_enabled", "Match updates", "Notify me about match actions that need attention.", preferences.match_updates_enabled],
+              ["marketing_enabled", "Marketing", "Send occasional product and community promotions.", preferences.marketing_enabled]
+            ].map(([name, label, description, checked]) => (
               <label className="flex min-w-0 items-center justify-between gap-3 rounded-md border border-line bg-white px-3 py-2 text-sm font-bold text-ink" key={String(name)}>
-                <span className="min-w-0 break-words">{label}</span>
+                <span className="min-w-0">
+                  <span className="block break-words">{label}</span>
+                  <span className="mt-1 block text-xs leading-5 text-muted">{description}</span>
+                </span>
                 <input className="shrink-0" defaultChecked={Boolean(checked)} name={String(name)} type="checkbox" />
               </label>
             ))}

@@ -1,8 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { usePathname, useRouter } from "next/navigation";
+import { getNotificationPreferences } from "@/lib/match-room-api";
 import type { RealtimeEvent } from "./realtimeEventPresentation";
 import { classifyRealtimePatch, dispatchRealtimePatch, type RealtimePatchTarget } from "./realtimePatches";
 import { invalidateQueriesForRealtimeEvent, realtimeEventRoomId, realtimeEventTournamentId } from "./webRealtimeInvalidation";
@@ -24,6 +25,28 @@ function activeElementIsEditable() {
   if (!(element instanceof HTMLElement)) return false;
   const tagName = element.tagName.toLowerCase();
   return tagName === "input" || tagName === "textarea" || tagName === "select" || element.isContentEditable;
+}
+
+function playNotificationTone() {
+  const AudioContextCtor = window.AudioContext ?? (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+  if (!AudioContextCtor) return;
+
+  const context = new AudioContextCtor();
+  const oscillator = context.createOscillator();
+  const gain = context.createGain();
+
+  oscillator.type = "sine";
+  oscillator.frequency.setValueAtTime(880, context.currentTime);
+  oscillator.frequency.exponentialRampToValueAtTime(660, context.currentTime + 0.14);
+  gain.gain.setValueAtTime(0.0001, context.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.08, context.currentTime + 0.015);
+  gain.gain.exponentialRampToValueAtTime(0.0001, context.currentTime + 0.18);
+
+  oscillator.connect(gain);
+  gain.connect(context.destination);
+  oscillator.start();
+  oscillator.stop(context.currentTime + 0.2);
+  window.setTimeout(() => void context.close().catch(() => undefined), 260);
 }
 
 function isRoomPatchTarget(target: RealtimePatchTarget) {
@@ -89,7 +112,14 @@ export function GlobalRealtimeBridge({ enabled }: GlobalRealtimeBridgeProps) {
   const cursorRef = useRef<string | null>(null);
   const seenEventIdsRef = useRef<Set<string>>(new Set());
   const refreshTimerRef = useRef<number | null>(null);
+  const lastSoundAtRef = useRef(0);
   const dirtyWhileHiddenOrEditingRef = useRef(false);
+  const preferencesQuery = useQuery({
+    queryKey: ["notifications", "preferences"],
+    queryFn: getNotificationPreferences,
+    enabled,
+    staleTime: 60_000
+  });
 
   useEffect(() => {
     pathnameRef.current = pathname;
@@ -124,9 +154,21 @@ export function GlobalRealtimeBridge({ enabled }: GlobalRealtimeBridgeProps) {
 
     const detail = dispatchRealtimePatch(event);
     invalidateQueriesForRealtimeEvent(queryClient, event);
+    const preferences = preferencesQuery.data?.preferences;
+    if (event.event_type === "notification.created" && document.visibilityState === "visible" && preferences?.in_app_enabled && preferences.in_app_sound_enabled) {
+      const now = Date.now();
+      if (now - lastSoundAtRef.current > 1_500) {
+        lastSoundAtRef.current = now;
+        try {
+          playNotificationTone();
+        } catch {
+          // Browsers may block audio until the player interacts with the page.
+        }
+      }
+    }
     const target = detail.target ?? classifyRealtimePatch(event);
     if (routeShouldRefresh(pathnameRef.current, event, target)) refreshSoon();
-  }, [queryClient, refreshSoon]);
+  }, [preferencesQuery.data?.preferences, queryClient, refreshSoon]);
 
   const listeners = useMemo(() => ({
     visibility: flushDeferredRefresh,

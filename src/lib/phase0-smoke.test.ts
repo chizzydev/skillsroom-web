@@ -70,6 +70,18 @@ expectHref(
 );
 
 expectHref(
+  "more proof request routes to the requested proof panel",
+  notificationAction(
+    notification({
+      action_url: "/matches/room-1#result",
+      match_room_id: "room-1",
+      notification_type: "match_result_more_proof_requested"
+    })
+  ).href,
+  "/matches/room-1#result-proof-request"
+);
+
+expectHref(
   "accepted result routes to the result panel",
   notificationAction(
     notification({

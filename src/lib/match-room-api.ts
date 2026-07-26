@@ -977,6 +977,7 @@ export type UserNotification = {
 export type NotificationPreference = {
   user_id: string;
   in_app_enabled: boolean;
+  in_app_sound_enabled: boolean;
   email_enabled: boolean;
   sms_enabled: boolean;
   room_invites_enabled: boolean;

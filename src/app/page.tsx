@@ -553,8 +553,8 @@ export default async function HomePage({ searchParams }: HomePageProps) {
                 <SubmitButton idleLabel="Join" pendingLabel="Joining..." />
                 <PendingLink
                   className="inline-flex min-h-10 items-center justify-center rounded-md border border-white/10 bg-white px-4 text-sm font-black text-ink hover:bg-surfaceHigh"
-                  href="/challenges?mode=create"
-                  pendingLabel="Opening creator..."
+                  href="/matches/new"
+                  pendingLabel="Opening room creator..."
                 >
                   Create
                 </PendingLink>

@@ -1246,7 +1246,8 @@ export default async function MatchDetailPage({
     readyConfirm: "#ready-confirm-action",
     readyWait: "#ready-wait-action",
     resultDetails: "#result",
-    resultResponse: "#result-response-action",
+    resultProofRequest: "#result-proof-request",
+    resultResponse: "#result-response",
     resultSubmit: "#result-submit-action",
     roomCode: "#room-code-action"
   } as const;
@@ -1265,6 +1266,8 @@ export default async function MatchDetailPage({
           ? { href: actionTargets.readyConfirm, label: "Confirm ready" }
         : waitingForOpponentStart
           ? { href: actionTargets.readyWait, label: "Waiting opponent" }
+          : canRespondToProofRequest
+            ? { href: actionTargets.resultProofRequest, label: "Send requested proof" }
           : canRespondToLatestClaim
             ? { href: actionTargets.resultResponse, label: "Respond" }
           : canSubmitNewResult
@@ -1304,7 +1307,11 @@ export default async function MatchDetailPage({
               <PendingLink className="inline-flex min-h-10 items-center justify-center rounded-md border border-white/10 bg-white px-4 text-sm font-black text-ink hover:bg-surfaceHigh" href="/matches" pendingLabel="Opening rooms...">
                 All rooms
               </PendingLink>
-              {canRespondToLatestClaim ? (
+              {canRespondToProofRequest ? (
+                <a className="inline-flex min-h-10 items-center justify-center rounded-md bg-action px-4 text-sm font-black text-navy-950 shadow-action hover:bg-actionHover" href={actionTargets.resultProofRequest}>
+                  Send requested proof
+                </a>
+              ) : canRespondToLatestClaim ? (
                 <a className="inline-flex min-h-10 items-center justify-center rounded-md bg-action px-4 text-sm font-black text-navy-950 shadow-action hover:bg-actionHover" href={actionTargets.resultResponse}>
                   Respond to result
                 </a>
@@ -1459,7 +1466,7 @@ export default async function MatchDetailPage({
                 </div>
               </div>
             ) : showEntryPrimary ? (
-              <div className="grid scroll-mt-32 gap-4 p-4 xl:grid-cols-[minmax(0,1fr)_24rem]" id="funding">
+              <div className="grid scroll-mt-32 items-start gap-4 p-4 xl:grid-cols-[minmax(0,1fr)_24rem]" id="funding">
                 <div className="grid gap-3">
                   <div className="scroll-mt-32 rounded-md border border-line bg-white p-4" id="entry-payment-action">
                     <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
@@ -1555,7 +1562,7 @@ export default async function MatchDetailPage({
                   </div>
                 </div>
                 {canSubmitFunding ? (
-                  <RoomActionForm action={submitManualFundingIslandAction} className="grid scroll-mt-32 gap-3 rounded-lg border border-line bg-white p-4 shadow-tight" id="entry-transfer-action">
+                  <RoomActionForm action={submitManualFundingIslandAction} className="grid scroll-mt-32 gap-3 self-start rounded-lg border border-line bg-white p-4 shadow-tight" id="entry-transfer-action">
                     <input name="match_room_id" type="hidden" value={room.id} />
                     <input name="amount_naira" type="hidden" value={room.entry_amount_minor / 100} />
                     <p className="font-mono text-xs font-black uppercase tracking-[0.14em] text-cyan">Transfer proof</p>
@@ -1673,7 +1680,7 @@ export default async function MatchDetailPage({
                 </a>
               </div>
             ) : canRespondToProofRequest && activeProofRequest ? (
-              <div className="grid gap-4 p-4 xl:grid-cols-[minmax(0,1fr)_24rem]">
+              <div className="grid scroll-mt-32 items-start gap-4 p-4 xl:grid-cols-[minmax(0,1fr)_24rem]" id="result-proof-request">
                 <div className="grid gap-3">
                   <div className="rounded-md border border-cyan/30 bg-cyanSoft p-4">
                     <p className="font-mono text-xs font-black uppercase tracking-[0.14em] text-cyan">More proof</p>
@@ -1682,7 +1689,7 @@ export default async function MatchDetailPage({
                     <p className="mt-2 text-xs font-bold leading-5 text-muted">Due: {dateTimeLabel(activeProofRequest.due_at)}. If the deadline passes, Skillsroom can decide from the saved proof.</p>
                   </div>
                 </div>
-                <RoomActionForm action={respondToResultProofRequestAction} className="grid scroll-mt-32 gap-3 rounded-lg border border-line bg-white p-4 shadow-tight" id="result-proof-request-action">
+                <RoomActionForm action={respondToResultProofRequestAction} className="grid scroll-mt-32 gap-3 self-start rounded-lg border border-line bg-white p-4 shadow-tight" id="result-proof-request-action">
                   <input name="match_room_id" type="hidden" value={room.id} />
                   <input name="proof_request_id" type="hidden" value={activeProofRequest.id} />
                   <label className="grid gap-2 text-sm font-bold text-ink">
@@ -1708,7 +1715,7 @@ export default async function MatchDetailPage({
                 </RoomActionForm>
               </div>
             ) : activeProofRequest ? (
-              <div className="grid gap-4 p-4 lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start">
+              <div className="grid scroll-mt-32 gap-4 p-4 lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start" id="result-proof-request">
                 <div className="rounded-md border border-line bg-surfaceWarm p-4">
                   <p className="font-mono text-xs font-black uppercase tracking-[0.14em] text-cyan">More proof</p>
                   <h3 className="mt-2 text-xl font-black text-ink">Skillsroom needs more proof</h3>
@@ -1720,7 +1727,7 @@ export default async function MatchDetailPage({
                 </a>
               </div>
             ) : canRespondToLatestClaim && latestClaim ? (
-              <div className="grid gap-4 p-4 xl:grid-cols-[minmax(0,1fr)_24rem]">
+              <div className="grid scroll-mt-32 items-start gap-4 p-4 xl:grid-cols-[minmax(0,1fr)_24rem]" id="result-response">
                 <div className="grid gap-3">
                   <div className="rounded-md border border-cyan/30 bg-cyanSoft p-4">
                     <p className="font-mono text-xs font-black uppercase tracking-[0.14em] text-cyan">Opponent response</p>
@@ -1746,7 +1753,7 @@ export default async function MatchDetailPage({
                   </div>
                   <a className="text-sm font-black text-cyan hover:text-action" href="#result">See submitted proof</a>
                 </div>
-                <form action={respondToResultClaimAction} className="grid scroll-mt-32 gap-3 rounded-lg border border-line bg-white p-4 shadow-tight" id="result-response-action">
+                <form action={respondToResultClaimAction} className="grid scroll-mt-32 gap-3 self-start rounded-lg border border-line bg-white p-4 shadow-tight" id="result-response-action">
                   <input name="match_room_id" type="hidden" value={room.id} />
                   <input name="result_claim_id" type="hidden" value={latestClaim.id} />
                   <label className="grid gap-2 text-sm font-bold text-ink">
@@ -1785,7 +1792,7 @@ export default async function MatchDetailPage({
                 </form>
               </div>
             ) : canSubmitNewResult ? (
-              <div className="grid gap-4 p-4 xl:grid-cols-[minmax(0,1fr)_24rem]">
+              <div className="grid items-start gap-4 p-4 xl:grid-cols-[minmax(0,1fr)_24rem]">
                 <div className="grid gap-3">
                   <div className="rounded-md border border-cyan/30 bg-cyanSoft p-4">
                     <p className="font-mono text-xs font-black uppercase tracking-[0.14em] text-cyan">Result evidence</p>
@@ -1807,7 +1814,7 @@ export default async function MatchDetailPage({
                     ))}
                   </div>
                 </div>
-                <RoomActionForm action={submitResultClaimIslandAction} className="grid scroll-mt-32 gap-3 rounded-lg border border-line bg-white p-4 shadow-tight" id="result-submit-action">
+                <RoomActionForm action={submitResultClaimIslandAction} className="grid scroll-mt-32 gap-3 self-start rounded-lg border border-line bg-white p-4 shadow-tight" id="result-submit-action">
                   <input name="match_room_id" type="hidden" value={room.id} />
                   <input name="claimed_winner_participant_id" type="hidden" value={currentParticipant?.id ?? ""} />
                   <label className="grid gap-2 text-sm font-bold text-ink">

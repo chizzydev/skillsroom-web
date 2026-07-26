@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { AdminEmptyState } from "@/components/admin/AdminEmptyState";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { AdminStepUpPanel } from "@/components/admin/AdminStepUpPanel";
+import { EvidenceMediaDrawer } from "@/components/evidence/EvidenceMediaDrawer";
 import { AdminShell } from "@/components/layout/AdminShell";
 import { LiveUpdateStream } from "@/components/realtime/LiveUpdateStream";
 import { Badge } from "@/components/ui/Badge";
@@ -407,6 +408,7 @@ export default async function AdminResultsPage({ searchParams }: { searchParams:
                         {card.proofRequests.map((request) => {
                           const status = proofRequestStatus(request);
                           const responseCount = card.proofRequestResponses.filter((response) => response.proof_request_id === request.id).length;
+                          const requestedProof = card.evidence.filter((item) => item.proof_request_id === request.id);
                           return (
                             <div className="rounded-md border border-line bg-surfaceWarm p-3 text-sm" key={request.id}>
                               <div className="flex flex-wrap items-center justify-between gap-2">
@@ -417,6 +419,27 @@ export default async function AdminResultsPage({ searchParams }: { searchParams:
                               <p className="mt-1 text-xs font-bold leading-5 text-muted">
                                 Target: {displayLabel(request.target)}. Due: {dateTimeLabel(request.due_at)}. Responses: {responseCount}.
                               </p>
+                              {requestedProof.length ? (
+                                <div className="mt-3 grid gap-2 md:grid-cols-2">
+                                  {requestedProof.map((item) => item.uri ? (
+                                    <EvidenceMediaDrawer
+                                      className="inline-flex min-h-10 w-full items-center justify-center rounded-md border border-cyan bg-cyanSoft px-3 text-sm font-black text-cyan hover:bg-white"
+                                      description={item.notes}
+                                      key={item.id}
+                                      title={item.title || "Requested result proof"}
+                                      url={item.uri}
+                                    >
+                                      Open requested proof
+                                    </EvidenceMediaDrawer>
+                                  ) : (
+                                    <div className="rounded-md border border-line bg-white p-3" key={item.id}>
+                                      <span className="block font-mono text-[11px] font-bold uppercase tracking-[0.12em] text-cyan">{displayLabel(item.evidence_type)}</span>
+                                      <span className="mt-1 block font-bold text-ink">{item.title || "Requested result proof"}</span>
+                                      {item.notes ? <span className="mt-1 block text-xs leading-5 text-muted">{item.notes}</span> : null}
+                                    </div>
+                                  ))}
+                                </div>
+                              ) : null}
                             </div>
                           );
                         })}
