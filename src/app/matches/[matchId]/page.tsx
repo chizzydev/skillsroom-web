@@ -485,7 +485,9 @@ function livestreamStatusLabel(status: LivestreamPlaybackStatus) {
 }
 
 function streamingProviderLabel(provider: StreamingConnectedAccount["provider"]) {
-  return provider === "youtube" ? "YouTube" : "Twitch";
+  if (provider === "youtube") return "YouTube";
+  if (provider === "kick") return "Kick";
+  return "Twitch";
 }
 
 function connectedStreamStatusLabel(status: StreamingConnectedAccount["live_status"]) {
@@ -511,11 +513,11 @@ function livestreamEmptyRoleDetail(role: LivestreamRole, canManageLivestreams: b
   }
   if (role === "player_a") {
     return canManageLivestreams
-      ? "Use this slot for Player A's YouTube, Twitch, or TikTok stream."
+      ? "Use this slot for Player A's YouTube, Twitch, Kick, or TikTok stream."
       : "Player A's stream can be added by the room host or Skillsroom team.";
   }
   return canManageLivestreams
-    ? "Use this slot for Player B's YouTube, Twitch, or TikTok stream."
+    ? "Use this slot for Player B's YouTube, Twitch, Kick, or TikTok stream."
     : "Player B's stream can be added by the room host or Skillsroom team.";
 }
 
@@ -825,7 +827,7 @@ async function RoomLivestreamIsland({
                   <Badge tone="neutral">Stand by</Badge>
                   <h2 className="mt-4 text-balance text-xl font-black text-white sm:text-2xl">No live stream added yet</h2>
                   <p className="mt-3 text-sm leading-6 text-slate-300 [overflow-wrap:anywhere]">
-                    Add a YouTube, Twitch, or TikTok stream to make this room watchable.
+                    Add a YouTube, Twitch, Kick, or TikTok stream to make this room watchable.
                   </p>
                   {canManageLivestreams ? (
                     <a className="mt-4 inline-flex min-h-10 items-center justify-center rounded-md bg-action px-4 text-sm font-black text-navy-950 shadow-action hover:bg-actionHover" href="#add-room-stream">
@@ -866,7 +868,7 @@ async function RoomLivestreamIsland({
                 </div>
               ) : (
                 <a className="mt-3 inline-flex min-h-10 w-full items-center justify-center rounded-md border border-line bg-white px-4 text-sm font-black text-ink hover:bg-surfaceHigh sm:w-auto" href="/profile?sections=full#streaming-accounts">
-                  Connect YouTube or Twitch
+                  Connect YouTube, Twitch, or Kick
                 </a>
               )}
             </div>
@@ -913,7 +915,7 @@ async function RoomLivestreamIsland({
 
       {canManageLivestreams ? (
         <Panel className="scroll-mt-32" id="add-room-stream">
-          <PanelHeader eyebrow="Broadcast Controls" title="Add stream link manually" description="Paste the exact YouTube, Twitch, or TikTok stream for this room." />
+          <PanelHeader eyebrow="Broadcast Controls" title="Add stream link manually" description="Paste the exact YouTube, Twitch, Kick, or TikTok stream for this room." />
           <div className="grid min-w-0 max-w-full gap-5 p-3 sm:p-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
             <RoomActionForm action={createMatchLivestreamIslandAction} className="motion-premium-panel motion-flow-card grid min-w-0 max-w-full gap-3 rounded-md border border-line bg-white p-4">
               <input name="match_room_id" type="hidden" value={room.id} />

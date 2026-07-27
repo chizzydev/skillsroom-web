@@ -91,7 +91,9 @@ function roomLabel(row: MatchPayout | MatchRefund) {
 }
 
 function streamProviderLabel(provider: StreamingConnectedAccount["provider"]) {
-  return provider === "youtube" ? "YouTube" : "Twitch";
+  if (provider === "youtube") return "YouTube";
+  if (provider === "kick") return "Kick";
+  return "Twitch";
 }
 
 function streamStatusTone(status: StreamingConnectedAccount["live_status"]) {
@@ -886,9 +888,9 @@ export default async function ProfilePage({ searchParams }: ProfilePageProps) {
 
         <Panel>
           <PanelHeader
-            description="Connect Twitch or save the channel you use for match streams so players can watch from the match room."
+            description="Connect Twitch or Kick, or save the channel you use for match streams so players can watch from the match room."
             eyebrow="Streaming Accounts"
-            title="YouTube and Twitch"
+            title="YouTube, Twitch, and Kick"
           />
           <div className="grid gap-4 border-b border-line p-4 lg:grid-cols-[minmax(0,1fr)_320px]">
             <div className="grid gap-3">
@@ -900,7 +902,7 @@ export default async function ProfilePage({ searchParams }: ProfilePageProps) {
                 </p>
               </div>
               <div className="rounded-md border border-amber-200 bg-amber-50 p-4 text-sm font-bold leading-6 text-amber-900">
-                YouTube direct connection is waiting on Google app verification. Save your YouTube channel manually for now; Twitch can still connect directly.
+                YouTube direct connection is waiting on Google app verification. Save your YouTube channel manually for now; Twitch and Kick can still connect directly.
               </div>
             </div>
             <div className="grid content-start gap-3">
@@ -914,6 +916,10 @@ export default async function ProfilePage({ searchParams }: ProfilePageProps) {
               <form action={startStreamingOauthAction}>
                 <input name="provider" type="hidden" value="twitch" />
                 <SubmitButton fullWidth idleLabel="Connect Twitch" pendingLabel="Opening Twitch..." variant="secondary" />
+              </form>
+              <form action={startStreamingOauthAction}>
+                <input name="provider" type="hidden" value="kick" />
+                <SubmitButton fullWidth idleLabel="Connect Kick" pendingLabel="Opening Kick..." variant="secondary" />
               </form>
             </div>
           </div>
@@ -982,7 +988,7 @@ export default async function ProfilePage({ searchParams }: ProfilePageProps) {
             <div className="p-4">
               <EmptyState
                 title="Connect a channel before your next streamed match."
-                description="Connect Twitch directly, or save a public YouTube or Twitch channel link below."
+                description="Connect Twitch or Kick directly, or save a public YouTube, Twitch, or Kick channel link below."
               />
             </div>
           )}
@@ -993,6 +999,7 @@ export default async function ProfilePage({ searchParams }: ProfilePageProps) {
               <select className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="provider">
                 <option value="youtube">YouTube</option>
                 <option value="twitch">Twitch</option>
+                <option value="kick">Kick</option>
               </select>
             </label>
             <label className="grid gap-2 text-sm font-bold text-ink">
@@ -1008,7 +1015,7 @@ export default async function ProfilePage({ searchParams }: ProfilePageProps) {
               <div className="border-t border-line p-3">
                 <label className="grid gap-2 text-sm font-bold text-ink">
                   Channel handle
-                  <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" maxLength={120} name="provider_login" placeholder="Useful for Twitch embeds" />
+                  <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" maxLength={120} name="provider_login" placeholder="Useful for Twitch or Kick embeds" />
                 </label>
               </div>
             </details>

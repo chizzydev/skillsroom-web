@@ -175,7 +175,7 @@ export type ManualFundingSubmission = {
 export type WalletTopupStatus = "submitted" | "approved" | "rejected" | "cancelled";
 export type WalletPayoutRequestStatus = "requested" | "approved" | "paid" | "rejected" | "cancelled" | "failed";
 
-export type StreamingProvider = "youtube" | "twitch";
+export type StreamingProvider = "youtube" | "twitch" | "kick";
 export type StreamingAccountStatus = "connected" | "needs_reauth" | "revoked" | "manual";
 export type StreamingLiveStatus = "unknown" | "live" | "offline" | "replay" | "unavailable";
 
