@@ -104,9 +104,14 @@ export async function upsertPayoutProfileAction(formData: FormData) {
 
 export async function startStreamingOauthAction(formData: FormData) {
   let authorizationUrl = "";
+  const provider = String(formData.get("provider") || "youtube") as "youtube" | "twitch";
+  if (provider === "youtube") {
+    redirect(`/profile?sections=full&error=${encodeURIComponent("YouTube direct connection is waiting on Google app verification. Save your YouTube channel manually for now.")}#streaming-accounts`);
+  }
+
   try {
     const result = await startStreamingOauth({
-      provider: String(formData.get("provider") || "youtube") as "youtube" | "twitch",
+      provider,
       redirect_path: "/profile?sections=full"
     });
     authorizationUrl = result.authorization_url;

@@ -886,23 +886,31 @@ export default async function ProfilePage({ searchParams }: ProfilePageProps) {
 
         <Panel>
           <PanelHeader
-            description="Connect or save the channel you use for match streams so players can watch from the match room."
+            description="Connect Twitch or save the channel you use for match streams so players can watch from the match room."
             eyebrow="Streaming Accounts"
             title="YouTube and Twitch"
           />
           <div className="grid gap-4 border-b border-line p-4 lg:grid-cols-[minmax(0,1fr)_320px]">
-            <div className="rounded-md border border-cyan bg-cyanSoft p-4 text-sm leading-6 text-muted">
-              <p className="font-black text-ink">What this unlocks</p>
-              <p className="mt-2">
-                Your match room can use your saved channel instead of asking you to paste the same link every time.
-                Tournament hosts can also mark a saved channel as the official stream for an event.
-              </p>
-            </div>
             <div className="grid gap-3">
-              <form action={startStreamingOauthAction}>
-                <input name="provider" type="hidden" value="youtube" />
-                <SubmitButton fullWidth idleLabel="Connect YouTube" pendingLabel="Opening YouTube..." variant="secondary" />
-              </form>
+              <div className="rounded-md border border-cyan bg-cyanSoft p-4 text-sm leading-6 text-muted">
+                <p className="font-black text-ink">What this unlocks</p>
+                <p className="mt-2">
+                  Your match room can use your saved channel instead of asking you to paste the same link every time.
+                  Tournament hosts can also mark a saved channel as the official stream for an event.
+                </p>
+              </div>
+              <div className="rounded-md border border-amber-200 bg-amber-50 p-4 text-sm font-bold leading-6 text-amber-900">
+                YouTube direct connection is waiting on Google app verification. Save your YouTube channel manually for now; Twitch can still connect directly.
+              </div>
+            </div>
+            <div className="grid content-start gap-3">
+              <button
+                className="min-h-11 cursor-not-allowed rounded-md border border-line bg-surfaceWarm px-4 text-sm font-black text-muted"
+                disabled
+                type="button"
+              >
+                Use manual YouTube
+              </button>
               <form action={startStreamingOauthAction}>
                 <input name="provider" type="hidden" value="twitch" />
                 <SubmitButton fullWidth idleLabel="Connect Twitch" pendingLabel="Opening Twitch..." variant="secondary" />
@@ -974,7 +982,7 @@ export default async function ProfilePage({ searchParams }: ProfilePageProps) {
             <div className="p-4">
               <EmptyState
                 title="Connect a channel before your next streamed match."
-                description="Use the buttons above, or save a public channel link below if you prefer to add it yourself."
+                description="Connect Twitch directly, or save a public YouTube or Twitch channel link below."
               />
             </div>
           )}
