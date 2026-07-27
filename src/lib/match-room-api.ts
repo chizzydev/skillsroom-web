@@ -550,6 +550,7 @@ export type ResultClaimStatus =
 export type ResultReviewDecision =
   | "approve_claim"
   | "approve_disputed_claim"
+  | "award_opponent_after_dispute_review"
   | "approve_no_response"
   | "opponent_timeout_awarded"
   | "proof_request_timeout_awarded"

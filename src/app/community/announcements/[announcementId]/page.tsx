@@ -104,6 +104,7 @@ export default async function CommunityAnnouncementDetailPage({
   const priority = safeText(item.priority, "normal");
   const scope = item.scope === "tournament" ? "tournament" : "platform";
   const author = safeText(item.author_display_name || item.author_username, "Skillsroom");
+  const publicAnnouncementId = safeText(item.id, announcementId);
 
   return (
     <AppShell active="community">
@@ -153,7 +154,7 @@ export default async function CommunityAnnouncementDetailPage({
           <PublicSharePanel
             summary={summary}
             title={title}
-            url={shareUrl(`/community/announcements/${encodeURIComponent(item.id)}`)}
+            url={shareUrl(`/community/announcements/${encodeURIComponent(publicAnnouncementId)}`)}
           />
         </Panel>
       </section>

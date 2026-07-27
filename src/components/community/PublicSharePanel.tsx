@@ -103,7 +103,7 @@ export function PublicSharePanel({
       </div>
 
       <p className="text-xs leading-5 text-muted">
-        {isPending ? "Updating share state..." : "Preview cards use the linked page metadata, so shared links stay readable in chat apps."}
+        {isPending ? "Preparing share options..." : "Shared links open with a clean preview in chat apps."}
       </p>
     </div>
   );

@@ -8,6 +8,7 @@ import { requestMoreResultProof, reviewResultClaim, type ResultReviewDecision } 
 const resultSuccessMessages: Record<ResultReviewDecision, string> = {
   approve_claim: "Result claim approved.",
   approve_disputed_claim: "Result approved after dispute review.",
+  award_opponent_after_dispute_review: "Opponent awarded after dispute review.",
   approve_no_response: "Result approved after no opponent response.",
   opponent_timeout_awarded: "Result awarded after no opponent response.",
   proof_request_timeout_awarded: "Result awarded after a missed proof deadline.",

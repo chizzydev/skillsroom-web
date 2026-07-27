@@ -111,6 +111,8 @@ export function describeRealtimeEvent(event: RealtimeEvent): RealtimeToastMessag
       return { title: "Result confirmed", description: "The winner can now be paid from the room record.", tone: "success" };
     case "match.result.reviewed.approve_disputed_claim":
       return { title: "Result confirmed after dispute review", description: "Skillsroom reviewed the dispute and proof before confirming the winner.", tone: "success" };
+    case "match.result.reviewed.award_opponent_after_dispute_review":
+      return { title: "Opponent awarded after dispute review", description: "Skillsroom reviewed the dispute and proof before confirming the opponent as winner.", tone: "success" };
     case "match.result.reviewed.proof_request_timeout_awarded":
       return { title: "Winner awarded after missed proof deadline", description: "A requested proof deadline passed, so the result was awarded from the saved room proof.", tone: "success" };
     case "match.result.reviewed.reject_claim":

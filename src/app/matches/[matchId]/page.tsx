@@ -152,6 +152,8 @@ function claimReviewStatus(claim: MatchResultClaim, reviews: RoomResultOverview[
       ? "Winner approved"
       : review.decision === "approve_disputed_claim"
         ? "Winner approved after dispute review"
+      : review.decision === "award_opponent_after_dispute_review"
+        ? "Opponent awarded after dispute review"
       : review.decision === "proof_request_timeout_awarded"
         ? "Winner awarded after missed proof deadline"
       : review.decision === "approve_no_response" || review.decision === "opponent_timeout_awarded"
@@ -167,7 +169,7 @@ function claimReviewStatus(claim: MatchResultClaim, reviews: RoomResultOverview[
     detail: review.decision === "void_match"
       ? review.note ?? "No winner was confirmed. Entries are being returned."
       : review.note ?? `Final decision saved on ${dateTimeLabel(review.created_at)}.`,
-    tone: review.decision === "approve_claim" || review.decision === "approve_disputed_claim" || review.decision === "approve_no_response" || review.decision === "opponent_timeout_awarded" || review.decision === "proof_request_timeout_awarded" ? "success" as const : review.decision === "mark_disputed" || review.decision === "void_match" ? "danger" as const : "warning" as const
+    tone: review.decision === "approve_claim" || review.decision === "approve_disputed_claim" || review.decision === "award_opponent_after_dispute_review" || review.decision === "approve_no_response" || review.decision === "opponent_timeout_awarded" || review.decision === "proof_request_timeout_awarded" ? "success" as const : review.decision === "mark_disputed" || review.decision === "void_match" ? "danger" as const : "warning" as const
   };
 }
 
@@ -177,6 +179,7 @@ function finalDecisionSummary(claim: MatchResultClaim | null, reviews: RoomResul
   if (review?.note) return review.note;
   if (review?.decision === "approve_claim") return "Winner confirmed after proof and player responses were checked.";
   if (review?.decision === "approve_disputed_claim") return "Winner confirmed after Skillsroom reviewed the dispute and proof.";
+  if (review?.decision === "award_opponent_after_dispute_review") return "Opponent confirmed as winner after Skillsroom reviewed the dispute and proof.";
   if (review?.decision === "proof_request_timeout_awarded") return "Winner awarded after a requested proof deadline was missed.";
   if (review?.decision === "approve_no_response" || review?.decision === "opponent_timeout_awarded") {
     return "Winner awarded after the opponent did not respond before the deadline.";

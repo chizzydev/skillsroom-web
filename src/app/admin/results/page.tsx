@@ -241,7 +241,7 @@ export default async function AdminResultsPage({ searchParams }: { searchParams:
               <PanelHeader eyebrow="Decision" title="Review result claim" description="Use the approval path that matches the player response and proof review." />
               <form action={reviewResultClaimAction} className="grid gap-3 p-4">
                 <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm font-bold leading-6 text-amber-900">
-                  Approve agreed claim only when the opponent accepted the result. Approve after dispute review only after Skillsroom checks the proof and dispute reason. Timeout award is only for missed responses after the deadline.
+                  Approve agreed claim only when the opponent accepted the result. Use dispute review actions only after Skillsroom checks the proof and dispute reason. Timeout award is only for missed responses after the deadline.
                 </div>
                 <label className="grid gap-2 text-sm font-bold text-ink">
                   Claim ID
@@ -254,6 +254,7 @@ export default async function AdminResultsPage({ searchParams }: { searchParams:
                 <div className="grid gap-2">
                   <FormActionButton idleLabel="Approve agreed claim" name="decision" pendingLabel="Approving agreed claim..." value="approve_claim" />
                   <FormActionButton idleLabel="Approve after dispute review" name="decision" pendingLabel="Approving after dispute review..." value="approve_disputed_claim" variant="secondary" />
+                  <FormActionButton idleLabel="Award opponent after dispute review" name="decision" pendingLabel="Awarding opponent after dispute review..." value="award_opponent_after_dispute_review" variant="secondary" />
                   <FormActionButton idleLabel="Award after no response" name="decision" pendingLabel="Awarding after no response..." value="opponent_timeout_awarded" variant="secondary" />
                   <FormActionButton idleLabel="Mark disputed" name="decision" pendingLabel="Marking disputed..." value="mark_disputed" variant="secondary" />
                   <FormActionButton idleLabel="Reject claim" name="decision" pendingLabel="Rejecting claim..." value="reject_claim" variant="danger" />
@@ -466,7 +467,7 @@ export default async function AdminResultsPage({ searchParams }: { searchParams:
               <PanelHeader eyebrow="Decision" title="Review result claim" description="Use the approval path that matches the player response and proof review." />
               <form action={reviewResultClaimAction} className="grid gap-3 p-4">
                 <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm font-bold leading-6 text-amber-900">
-                  Approve agreed claim only when the opponent accepted the result. Approve after dispute review only after Skillsroom checks the proof and dispute reason. Timeout award is only for missed responses after the deadline.
+                  Approve agreed claim only when the opponent accepted the result. Use dispute review actions only after Skillsroom checks the proof and dispute reason. Timeout award is only for missed responses after the deadline.
                 </div>
                 <label className="grid gap-2 text-sm font-bold text-ink">
                   Claim ID
@@ -479,6 +480,7 @@ export default async function AdminResultsPage({ searchParams }: { searchParams:
                 <div className="grid gap-2">
                   <FormActionButton idleLabel="Approve agreed claim" name="decision" pendingLabel="Approving agreed claim..." value="approve_claim" />
                   <FormActionButton idleLabel="Approve after dispute review" name="decision" pendingLabel="Approving after dispute review..." value="approve_disputed_claim" variant="secondary" />
+                  <FormActionButton idleLabel="Award opponent after dispute review" name="decision" pendingLabel="Awarding opponent after dispute review..." value="award_opponent_after_dispute_review" variant="secondary" />
                   <FormActionButton idleLabel="Award after no response" name="decision" pendingLabel="Awarding after no response..." value="opponent_timeout_awarded" variant="secondary" />
                   <FormActionButton idleLabel="Mark disputed" name="decision" pendingLabel="Marking disputed..." value="mark_disputed" variant="secondary" />
                   <FormActionButton idleLabel="Reject claim" name="decision" pendingLabel="Rejecting claim..." value="reject_claim" variant="danger" />
