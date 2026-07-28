@@ -27,7 +27,14 @@ const premiumArtwork = {
   hero: "/marketing/skillsroom-premium/hero-premium.jpg",
   matchRooms: "/marketing/skillsroom-premium/match-rooms-premium.png",
   community: "/marketing/skillsroom-premium/community-premium.png",
-  tournaments: "/marketing/skillsroom-premium/tournaments-premium.png"
+  tournaments: "/marketing/skillsroom-premium/tournaments-premium.png",
+  androidSecurity: "/marketing/skillsroom-android-security-check.jpeg"
+} as const;
+
+const androidApk = {
+  href: "/downloads/skillsroom-android-v1.0.2-arm64.apk",
+  version: "1.0.2",
+  size: "31.3 MB"
 } as const;
 
 function firstName(value?: string | null) {
@@ -179,6 +186,56 @@ function PremiumFeatureCard({
         <p className="mt-3 text-sm leading-6 text-slate-300">{description}</p>
       </div>
     </article>
+  );
+}
+
+function AndroidAppTrustPanel({ compact = false }: { compact?: boolean }) {
+  return (
+    <Panel>
+      <PanelHeader
+        eyebrow="Android app"
+        title="Install the Skillsroom app"
+        description="The Android release is available as an official Skillsroom download."
+      />
+      <div className={["grid gap-4 p-4", compact ? "" : "lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-center"].join(" ")}>
+        <div className="min-w-0">
+          <div className="grid grid-cols-3 gap-2">
+            <div className="rounded-md border border-line bg-surfaceHigh p-3">
+              <p className="font-mono text-[0.62rem] font-black uppercase tracking-[0.12em] text-dim">Version</p>
+              <p className="mt-2 text-sm font-black text-ink">{androidApk.version}</p>
+            </div>
+            <div className="rounded-md border border-line bg-surfaceHigh p-3">
+              <p className="font-mono text-[0.62rem] font-black uppercase tracking-[0.12em] text-dim">Size</p>
+              <p className="mt-2 text-sm font-black text-ink">{androidApk.size}</p>
+            </div>
+            <div className="rounded-md border border-line bg-surfaceHigh p-3">
+              <p className="font-mono text-[0.62rem] font-black uppercase tracking-[0.12em] text-dim">Source</p>
+              <p className="mt-2 text-sm font-black text-ink">Official</p>
+            </div>
+          </div>
+          <p className="mt-4 text-sm leading-6 text-muted">
+            Recent device security checks reported no risks for the Skillsroom Android release. Android may still ask you to confirm before installing because the app is downloaded directly from Skillsroom.
+          </p>
+          <a
+            className="mt-4 inline-flex min-h-10 w-full items-center justify-center rounded-md bg-action px-4 text-sm font-black text-navy-950 shadow-action hover:bg-actionHover sm:w-auto"
+            download
+            href={androidApk.href}
+          >
+            Download Android app
+          </a>
+        </div>
+        <div className="overflow-hidden rounded-lg border border-line bg-navy-900">
+          <Image
+            alt="Skillsroom Android app security check"
+            className="h-auto w-full object-cover"
+            height={360}
+            sizes={compact ? "(max-width: 768px) 100vw, 360px" : "(min-width: 1024px) 18rem, 100vw"}
+            src={premiumArtwork.androidSecurity}
+            width={520}
+          />
+        </div>
+      </div>
+    </Panel>
   );
 }
 
@@ -345,6 +402,10 @@ export default async function HomePage({ searchParams }: HomePageProps) {
 
             <div className="grid gap-6">
               <Reveal staggerIndex={1}>
+              <AndroidAppTrustPanel compact />
+              </Reveal>
+
+              <Reveal staggerIndex={2}>
               <Panel>
                 <PanelHeader eyebrow="Explore" title="See Skillsroom in motion" />
                 <div className="grid gap-2 p-4">
@@ -364,7 +425,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
               </Panel>
               </Reveal>
 
-              <Reveal staggerIndex={2}>
+              <Reveal staggerIndex={3}>
               <Panel>
                 <PanelHeader eyebrow="Account" title="Ready to continue?" />
                 <div className="grid gap-2 p-4">
@@ -470,6 +531,10 @@ export default async function HomePage({ searchParams }: HomePageProps) {
         ) : null}
 
         <HomeLiveLobbyIsland initialSummary={summary} />
+
+        <Reveal>
+          <AndroidAppTrustPanel />
+        </Reveal>
 
         <div className="grid min-w-0 gap-6 lg:grid-cols-2">
             <Reveal staggerIndex={0}>
