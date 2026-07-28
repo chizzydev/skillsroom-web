@@ -644,7 +644,7 @@ async function RoomPlayersIsland({
     <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1fr)_24rem]">
       <Panel className="scroll-mt-32" id="players">
         <PanelHeader eyebrow="Players" title="Room slots" description="Check who has joined, their payment status, and the game handle to use before play." />
-        <div className="grid gap-3 p-4 md:grid-cols-2">
+        <div className="grid grid-cols-2 gap-3 p-4">
           {(["player_a", "player_b"] as const).map((slot) => {
             const participant = participants.find((item) => item.slot === slot);
             const trust = participant ? trustByUserId.get(participant.user_id) : null;
@@ -697,7 +697,7 @@ function RoomPlayersFallback({ participants, room }: { participants: MatchPartic
     <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1fr)_24rem]">
       <Panel className="scroll-mt-32" id="players">
         <PanelHeader eyebrow="Players" title="Room slots" description="Loading player details." />
-        <div className="grid gap-3 p-4 md:grid-cols-2">
+        <div className="grid grid-cols-2 gap-3 p-4">
           {(["player_a", "player_b"] as const).map((slot) => {
             const participant = participants.find((item) => item.slot === slot);
             return (
@@ -728,7 +728,7 @@ function RoomPlayersSummary({ participants, room }: { participants: MatchPartici
     <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1fr)_24rem]">
       <Panel className="scroll-mt-32" id="players">
         <PanelHeader eyebrow="Players" title="Room slots" description="Open this section to confirm player details before play." />
-        <div className="grid gap-3 p-4 md:grid-cols-2">
+        <div className="grid grid-cols-2 gap-3 p-4">
           {(["player_a", "player_b"] as const).map((slot) => {
             const participant = participants.find((item) => item.slot === slot);
             return (
@@ -907,7 +907,7 @@ async function RoomLivestreamIsland({
 
             <div className="motion-premium-panel motion-state-card min-w-0 rounded-lg border border-cyan bg-cyanSoft p-4">
               <p className="font-mono text-xs font-black uppercase tracking-[0.12em] text-cyan">Match controls nearby</p>
-              <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-1">
+              <div className="mt-3 grid grid-cols-2 gap-2 xl:grid-cols-1">
                 <a className="inline-flex min-h-10 items-center justify-center rounded-md border border-line bg-white px-3 text-sm font-black text-ink hover:bg-surfaceHigh" href="/chat">Open chat</a>
                 {canViewSensitiveInternals ? <a className="inline-flex min-h-10 items-center justify-center rounded-md border border-line bg-white px-3 text-sm font-black text-ink hover:bg-surfaceHigh" href="#result">Result and evidence</a> : null}
                 {canViewSensitiveInternals && !isTournamentRoom ? <a className="inline-flex min-h-10 items-center justify-center rounded-md border border-line bg-white px-3 text-sm font-black text-ink hover:bg-surfaceHigh" href="#funding">Funding status</a> : null}
@@ -1314,6 +1314,7 @@ export default async function MatchDetailPage({
                 <span className="rounded-md border border-white/10 bg-white/5 px-3 py-2 font-mono text-white">{room.room_code}</span>
                 <span className="rounded-md border border-white/10 bg-white/5 px-3 py-2">{isTournamentRoom ? "Tournament match" : `${formatEntryAmount(room)} entry`}</span>
                 <span className="rounded-md border border-white/10 bg-white/5 px-3 py-2">{displayedParticipantCount}/{room.max_participants} players</span>
+                <span className="rounded-md border border-white/10 bg-white/5 px-3 py-2">Created {dateTimeLabel(room.created_at)}</span>
               </div>
             </div>
             <div className="flex flex-wrap gap-2 lg:justify-end">
@@ -1374,7 +1375,7 @@ export default async function MatchDetailPage({
                 <h2 className="mt-2 text-2xl font-black text-ink">{nextTitle}</h2>
                 <p className="mt-2 max-w-3xl text-sm leading-6 text-muted">{nextDetail}</p>
               </div>
-              <div className="grid gap-2 sm:grid-cols-3 md:min-w-[22rem]">
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 md:min-w-[28rem]">
                 <div className="rounded-md border border-line bg-white p-3">
                   <p className="font-mono text-[0.62rem] font-black uppercase tracking-[0.12em] text-dim">Status</p>
                   <p className="mt-1 text-sm font-black text-ink">{roomDisplayStatusLabel(room, isExpiredOpenRoom)}</p>
@@ -1386,6 +1387,10 @@ export default async function MatchDetailPage({
                 <div className="rounded-md border border-line bg-white p-3">
                   <p className="font-mono text-[0.62rem] font-black uppercase tracking-[0.12em] text-dim">Entry</p>
                   <p className="mt-1 text-sm font-black text-ink">{isTournamentRoom ? "Tournament" : formatEntryAmount(room)}</p>
+                </div>
+                <div className="rounded-md border border-line bg-white p-3">
+                  <p className="font-mono text-[0.62rem] font-black uppercase tracking-[0.12em] text-dim">Created</p>
+                  <p className="mt-1 text-sm font-black text-ink">{dateTimeLabel(room.created_at)}</p>
                 </div>
               </div>
             </div>
@@ -1431,7 +1436,7 @@ export default async function MatchDetailPage({
                       Both players are in. Entry confirmation opens next.
                     </div>
                   )}
-                  <div className="grid gap-3 md:grid-cols-2">
+                  <div className="grid grid-cols-2 gap-3">
                     {(["player_a", "player_b"] as const).map((slot) => {
                       const participant = participants.find((item) => item.slot === slot);
                       const trust = participant ? trustByUserId.get(participant.user_id) : null;
@@ -1503,7 +1508,7 @@ export default async function MatchDetailPage({
                         <SubmitButton disabled={!canPayWithBalance} idleLabel="Use balance" pendingLabel="Locking funds..." />
                       </RoomActionForm>
                     </div>
-                    <div className="mt-4 grid gap-3 md:grid-cols-2">
+                    <div className="mt-4 grid grid-cols-2 gap-3">
                       <div className="rounded-md border border-line bg-surfaceWarm p-3">
                         <p className="font-mono text-[0.62rem] font-black uppercase tracking-[0.12em] text-dim">Entry</p>
                         <p className="mt-1 text-lg font-black text-ink">{formatEntryAmount(room)}</p>
@@ -1545,7 +1550,7 @@ export default async function MatchDetailPage({
                       <p className="mt-3 text-sm font-bold text-muted">Your balance is not enough for this room. Top up your wallet or upload transfer proof now.</p>
                     ) : null}
                   </div>
-                  <div className="grid gap-3 md:grid-cols-2">
+                  <div className="grid grid-cols-2 gap-3">
                     {(["player_a", "player_b"] as const).map((slot) => {
                       const participant = participants.find((item) => item.slot === slot);
                       const trust = participant ? trustByUserId.get(participant.user_id) : null;
@@ -1647,7 +1652,7 @@ export default async function MatchDetailPage({
                   <div className="rounded-md border border-success/30 bg-green-50 p-4 text-sm font-bold leading-6 text-success">
                     Both entries are confirmed. Confirm ready only when both players are set to begin.
                   </div>
-                  <div className="grid gap-3 md:grid-cols-3">
+                  <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
                     <div className="rounded-md border border-line bg-white p-3">
                       <p className="font-mono text-[0.62rem] font-black uppercase tracking-[0.12em] text-dim">Entries</p>
                       <p className="mt-1 text-lg font-black text-ink">{confirmedEntryCount}/{room.max_participants}</p>
@@ -1676,7 +1681,7 @@ export default async function MatchDetailPage({
                 <div className="rounded-md border border-success/30 bg-green-50 p-4 text-sm font-bold leading-6 text-success">
                   Your ready status is confirmed. The match will go live after the other player confirms.
                 </div>
-                  <div className="grid gap-3 md:grid-cols-3">
+                  <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
                     <div className="rounded-md border border-line bg-white p-3">
                       <p className="font-mono text-[0.62rem] font-black uppercase tracking-[0.12em] text-dim">Entries</p>
                       <p className="mt-1 text-lg font-black text-ink">{confirmedEntryCount}/{room.max_participants}</p>
@@ -1755,7 +1760,7 @@ export default async function MatchDetailPage({
                       Tap Agree only if the winner, score, and proof are correct. Tap Dispute if proof is missing, unclear, or the score is wrong.
                     </p>
                   </div>
-                  <div className="grid gap-2 md:grid-cols-3">
+                  <div className="grid grid-cols-2 gap-2 md:grid-cols-3">
                     <div className="rounded-md border border-line bg-white p-3">
                       <p className="font-mono text-[0.62rem] font-black uppercase tracking-[0.12em] text-dim">Claimed score</p>
                       <p className="mt-2 text-lg font-black text-ink">{scoreSummaryLabel(latestClaim.score_summary)}</p>
@@ -1831,7 +1836,7 @@ export default async function MatchDetailPage({
                     <h3 className="mt-2 text-xl font-black text-ink">Submit the winner and proof</h3>
                     <p className="mt-2 text-sm leading-6 text-muted">Play only when the room says it is live. After the match, upload a clear final scoreboard screenshot or short video.</p>
                   </div>
-                  <div className="grid gap-2 md:grid-cols-2">
+                  <div className="grid grid-cols-2 gap-2">
                     {[
                       ["1", "Score", "Add the final score or result summary."],
                       ["2", "Proof", "Attach proof with player names, game handles, and the final result visible."],
@@ -1914,7 +1919,7 @@ export default async function MatchDetailPage({
                         : "The submitted result, proof, response, and final decision stay attached to this room."}
                     </p>
                   </div>
-                  <div className="grid gap-2 md:grid-cols-2">
+                  <div className="grid grid-cols-2 gap-2">
                     {evidencePathCards({
                       claim: latestClaim,
                       evidenceCount: results?.evidence_items.filter((item) => item.result_claim_id === latestClaim.id).length ?? 0,
@@ -1955,7 +1960,7 @@ export default async function MatchDetailPage({
                   <div className="rounded-md border border-line bg-white p-4 text-sm font-bold leading-6 text-muted">
                     No action is needed from you right now. Keep your proof available in case Skillsroom asks for more context.
                   </div>
-                  <div className="grid gap-2 md:grid-cols-2">
+                  <div className="grid grid-cols-2 gap-2">
                     {evidencePathCards({
                       claim: latestClaim,
                       evidenceCount: results?.evidence_items.filter((item) => !latestClaim || item.result_claim_id === latestClaim.id).length ?? 0,
@@ -2015,7 +2020,7 @@ export default async function MatchDetailPage({
                             : "This match was closed without a confirmed winner. Any entry return or follow-up stays attached to this room."}
                     </p>
                   </div>
-                  <div className="grid gap-2 md:grid-cols-3">
+                  <div className="grid grid-cols-2 gap-2 md:grid-cols-3">
                     <div className="rounded-md border border-line bg-white p-3">
                       <p className="font-mono text-[0.62rem] font-black uppercase tracking-[0.12em] text-dim">Outcome</p>
                       <p className="mt-2 text-lg font-black text-ink">
@@ -2059,7 +2064,7 @@ export default async function MatchDetailPage({
                     </div>
                   </div>
                   {latestClaim ? (
-                    <div className="grid gap-2 md:grid-cols-2">
+                    <div className="grid grid-cols-2 gap-2">
                       {evidencePathCards({
                         claim: latestClaim,
                         evidenceCount: results?.evidence_items.filter((item) => item.result_claim_id === latestClaim.id).length ?? 0,
@@ -2132,7 +2137,7 @@ export default async function MatchDetailPage({
                 </a>
               </div>
             </Panel>
-            <div className="grid min-w-0 gap-3 sm:grid-cols-3 lg:grid-cols-1">
+            <div className="grid min-w-0 grid-cols-2 gap-3 lg:grid-cols-1">
               <Panel className="p-4">
                 <p className="font-mono text-xs font-bold uppercase tracking-[0.12em] text-dim">Entry</p>
                 <p className="mt-2 text-2xl font-black text-warning">{isTournamentRoom ? "Tournament" : formatEntryAmount(room)}</p>
@@ -2149,7 +2154,7 @@ export default async function MatchDetailPage({
                 <p className="mt-2 text-sm font-bold text-muted">Room progress is saved</p>
               </Panel>
               {canManageRoomInvites ? (
-                <Panel className="scroll-mt-32 p-4" id="invite-player">
+                <Panel className="col-span-2 scroll-mt-32 p-4 lg:col-span-1" id="invite-player">
                   <p className="font-mono text-xs font-bold uppercase tracking-[0.12em] text-cyan">Invite</p>
                   <h2 className="mt-2 text-xl font-black text-ink">Invite a player</h2>
                   <p className="mt-2 text-sm leading-6 text-muted">
@@ -2211,7 +2216,7 @@ export default async function MatchDetailPage({
             />
             <div className="grid gap-4 p-4 xl:grid-cols-[minmax(0,1fr)_20rem]">
               <div className="grid gap-3">
-                <div className="grid gap-3 md:grid-cols-2">
+                <div className="grid grid-cols-2 gap-3">
                   {participants.map((participant) => {
                     const trust = trustByUserId.get(participant.user_id);
                     return (
@@ -2230,7 +2235,7 @@ export default async function MatchDetailPage({
                     <p className="mt-2 text-sm leading-6 text-muted">
                       Defeated {publicWinnerPage.opponent?.label ?? "the verified opponent"} in {publicWinnerPage.room.title ?? publicWinnerPage.room.room_code}.
                     </p>
-                    <div className="mt-3 grid gap-2 text-sm font-bold text-muted sm:grid-cols-2">
+                    <div className="mt-3 grid grid-cols-2 gap-2 text-sm font-bold text-muted">
                       <span>Result: {publicWinnerPage.result.status_label}</span>
                       <span>Score: {scoreSummaryLabel(publicWinnerPage.result.score_summary)}</span>
                     </div>
@@ -2271,7 +2276,7 @@ export default async function MatchDetailPage({
             />
             <div className="grid gap-4 p-4 xl:grid-cols-[minmax(0,1fr)_22rem]">
               <div className="grid gap-3">
-                <div className="grid gap-3 md:grid-cols-3">
+                <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
                   <div className="rounded-md border border-line bg-surfaceWarm p-4">
                     <p className="font-mono text-xs font-black uppercase tracking-[0.12em] text-dim">Stage</p>
                     <p className="mt-2 text-base font-black text-ink">{tournamentStage?.name ?? "Generated stage"}</p>
@@ -2285,7 +2290,7 @@ export default async function MatchDetailPage({
                     <p className="mt-2 text-base font-black text-ink">#{tournamentMatch?.match_number ?? room.room_code}</p>
                   </div>
                 </div>
-                <div className="grid gap-3 md:grid-cols-2">
+                <div className="grid grid-cols-2 gap-3">
                   {tournamentSides.map((side: TournamentMatchSide) => {
                     const entry = tournamentDetail?.entries.find((item) => item.id === side.entry_id);
                     const participant = participants.find((item) => metadataString(item.metadata, "tournament_entry_id") === side.entry_id);
@@ -2371,7 +2376,7 @@ export default async function MatchDetailPage({
                 title="How to connect in-game"
                 description={`Skillsroom keeps the room record. Players still meet inside ${gameName} to play the match.`}
               />
-              <div className="grid gap-3 p-4 md:grid-cols-2">
+              <div className="grid grid-cols-2 gap-3 p-4">
                 {[
                   ["1", "Copy opponent identity", "Use the game handle or UID shown above, not their Skillsroom email."],
                   ["2", "Create or join lobby", "One player creates the private game lobby and shares the in-game room code if needed."],
@@ -2428,7 +2433,7 @@ export default async function MatchDetailPage({
               title="When play does not go cleanly"
               description="These room rules cover late opponents, no-shows, disconnects, timeouts, and proof that cannot be verified."
             />
-            <div className="grid gap-3 pt-4 md:grid-cols-2 xl:grid-cols-5">
+            <div className="grid grid-cols-2 gap-3 pt-4 xl:grid-cols-5">
               {roomIssueRules.map((rule) => (
                 <div className="rounded-md border border-line bg-surfaceWarm p-4" key={rule.key}>
                   <h3 className="text-sm font-black text-ink">{rule.title}</h3>
@@ -2448,7 +2453,7 @@ export default async function MatchDetailPage({
               description="Proof, opponent response, dispute status, admin review, and final decision stay attached to this room."
             />
             <div className="grid gap-3 p-4">
-              <div className="grid gap-3 lg:grid-cols-4">
+              <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
                 {evidencePathCards({
                   claim: latestClaim,
                   evidenceCount: results?.evidence_items.filter((item) => !latestClaim || item.result_claim_id === latestClaim.id).length ?? 0,

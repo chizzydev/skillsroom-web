@@ -35,7 +35,7 @@ export default async function MatchesPage({ searchParams }: { searchParams: Prom
                 Track rooms from open entry through funding, play, result review, and settlement.
               </p>
             </div>
-            <div className="grid w-full min-w-0 max-w-full gap-2 min-[380px]:grid-cols-2 lg:w-auto lg:min-w-[20rem]">
+            <div className="grid w-full min-w-0 max-w-full grid-cols-2 gap-2 lg:w-auto lg:min-w-[20rem]">
               <PendingLink className="inline-flex min-h-10 items-center justify-center rounded-md bg-action px-3 text-center text-sm font-black text-navy-950 shadow-action hover:bg-actionHover" href="/matches/new" pendingLabel="Opening creator...">
                 Create room
               </PendingLink>
@@ -48,7 +48,7 @@ export default async function MatchesPage({ searchParams }: { searchParams: Prom
 
         {(error || activitySnapshot.loadError) ? <TransientStatusBanner clearKeys={["error"]} durationMs={12000} message={error ?? activitySnapshot.loadError ?? ""} /> : null}
 
-        <div className="grid min-w-0 max-w-full gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid min-w-0 max-w-full grid-cols-2 gap-3 lg:grid-cols-4">
           <Reveal staggerIndex={0}><StatusPanel detail="Visible to lobby" label="Open" tone="cyan" value={countStatus(activitySnapshot.counts, "open")} /></Reveal>
           <Reveal staggerIndex={1}><StatusPanel detail="Manual transfer next" label="Awaiting Funding" tone="warning" value={countStatus(activitySnapshot.counts, "awaiting_funding")} /></Reveal>
           <Reveal staggerIndex={2}><StatusPanel detail="Payment proof check" label="Funding Review" tone="danger" value={countStatus(activitySnapshot.counts, "funding_review")} /></Reveal>

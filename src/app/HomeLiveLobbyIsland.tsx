@@ -42,6 +42,21 @@ function compactDate(value: string | null) {
   return value ? new Date(value).toLocaleString("en-NG", { dateStyle: "medium", timeStyle: "short" }) : "Date not set";
 }
 
+function createdDateLabel(value?: string | null) {
+  if (!value) return "Created time unavailable";
+  const time = new Date(value).getTime();
+  if (!Number.isFinite(time)) return "Created time unavailable";
+  return `Created ${new Date(time).toLocaleString("en-NG", { dateStyle: "medium", timeStyle: "short" })}`;
+}
+
+function newestRoomsFirst(rooms: PlayerHomeRoomPreview[]) {
+  return [...rooms].sort((left, right) => {
+    const leftTime = new Date(left.created_at ?? "").getTime();
+    const rightTime = new Date(right.created_at ?? "").getTime();
+    return (Number.isFinite(rightTime) ? rightTime : 0) - (Number.isFinite(leftTime) ? leftTime : 0);
+  });
+}
+
 function reviewQueueHref(reviewRooms: PlayerHomeRoomPreview[]) {
   const hasResultReview = reviewRooms.some((room) => room.status === "under_review");
   return `/matches?queue=${hasResultReview ? "review" : "disputed"}#room-activity`;
@@ -105,6 +120,7 @@ function HomeRoomCard({ room, actionLabel = "Open room" }: { room: PlayerHomeRoo
           <span>{playerCount}/{room.max_participants} players</span>
           <span>{room.ruleset_title ?? "Rules ready"}</span>
         </div>
+        <p className="mt-2 text-xs font-extrabold text-dim">{createdDateLabel(room.created_at)}</p>
       </div>
       <PendingLink
         className="inline-flex min-h-10 items-center justify-center rounded-md bg-action px-4 text-sm font-black text-navy-950 shadow-action hover:bg-actionHover"
@@ -166,8 +182,8 @@ export function HomeLiveLobbyIsland({ initialSummary }: { initialSummary: Player
     staleTime: 10_000
   });
 
-  const recommendedRooms = summary.recommended_room_previews ?? [];
-  const actionRooms = summary.active_room_previews ?? [];
+  const recommendedRooms = newestRoomsFirst(summary.recommended_room_previews ?? []);
+  const actionRooms = newestRoomsFirst(summary.active_room_previews ?? []);
   const openTournaments = summary.open_tournament_previews ?? [];
   const reviewRooms = summary.active_review_previews ?? [];
   const walletMiniBalance = summary.wallet_mini_balance;

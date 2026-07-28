@@ -234,7 +234,7 @@ function ChallengeCard({
         <p className="mt-2 text-sm leading-6 text-muted">
           {challenge.game_name} - {rulesetName(challenge)} - {challenge.platform} - {challenge.region}
         </p>
-        <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
+        <dl className="mt-4 grid grid-cols-2 gap-3 text-sm lg:grid-cols-4">
           <div className="rounded-md border border-line bg-surfaceHigh p-3">
             <dt className="text-xs font-black uppercase tracking-[0.12em] text-muted">Entry</dt>
             <dd className="mt-1 font-black text-ink">{entry}</dd>
@@ -252,7 +252,7 @@ function ChallengeCard({
             <dd className="mt-1 font-black text-ink">{creatorRecord}</dd>
           </div>
         </dl>
-        <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="mt-4 grid grid-cols-2 gap-2 xl:grid-cols-4">
           {trustBadges.map((item) => (
             <div className="rounded-md border border-line bg-surfaceHigh p-3" key={item.key}>
               <div className="flex min-w-0 items-center justify-between gap-2">
