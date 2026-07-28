@@ -47,14 +47,6 @@ function reviewQueueHref(reviewRooms: PlayerHomeRoomPreview[]) {
   return `/matches?queue=${hasResultReview ? "review" : "disputed"}#room-activity`;
 }
 
-function reviewDetail(reviewRooms: PlayerHomeRoomPreview[]) {
-  const reviewCount = reviewRooms.filter((room) => room.status === "under_review").length;
-  const disputedCount = reviewRooms.filter((room) => room.status === "disputed").length;
-  if (reviewCount > 0 && disputedCount > 0) return "Review and disputed rooms are split in Room activity";
-  if (disputedCount > 0) return "Open the Disputed queue";
-  return "Open the Review queue";
-}
-
 function HomeMetricLink({
   detail,
   href,
@@ -77,13 +69,15 @@ function HomeMetricLink({
 
   return (
     <PendingLink
-      className={["motion-card min-w-0 rounded-[1.05rem] border border-line border-t-4 bg-white p-4 shadow-[0_14px_34px_rgba(3,10,20,0.07)] transition hover:-translate-y-0.5 hover:bg-surfaceHigh", toneClass].join(" ")}
+      className={["motion-card grid min-h-36 min-w-0 content-between rounded-[1.05rem] border border-line border-t-4 bg-white p-4 shadow-[0_14px_34px_rgba(3,10,20,0.07)] transition hover:-translate-y-0.5 hover:bg-surfaceHigh", toneClass].join(" ")}
       href={href}
       pendingLabel="Opening..."
     >
       <span className="font-mono text-[0.68rem] font-black uppercase tracking-[0.12em] text-dim">{label}</span>
-      <strong className="mt-2 block truncate text-3xl font-black leading-none">{value}</strong>
-      <span className="mt-2 block text-xs font-semibold leading-5 text-muted">{detail}</span>
+      <span>
+        <strong className="block truncate text-3xl font-black leading-none md:text-4xl">{value}</strong>
+        <span className="mt-2 block text-xs font-semibold leading-5 text-muted">{detail}</span>
+      </span>
     </PendingLink>
   );
 }
@@ -175,7 +169,7 @@ export function HomeLiveLobbyIsland({ initialSummary }: { initialSummary: Player
   const walletBalanceLabel = walletMiniBalance
     ? formatCompactMinorMoney(walletMiniBalance.currency, walletMiniBalance.available_balance_minor + walletMiniBalance.winnings_balance_minor)
     : formatCompactMinorMoney("NGN", 0);
-  const playNowTotal = (summary.play_now_counts?.recommended_matches ?? recommendedRooms.length) + (summary.play_now_counts?.open_tournaments ?? openTournaments.length);
+  const profileReady = summary.profile_readiness?.status === "ready";
 
   return (
     <section className="grid min-w-0 gap-4" id="live-lobby">
@@ -185,17 +179,13 @@ export function HomeLiveLobbyIsland({ initialSummary }: { initialSummary: Player
         </div>
       ) : null}
 
-      <div className="grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <HomeMetricLink detail={isFetching ? "Refreshing..." : "Rooms and tournaments"} href="/challenges" label="Play now" tone="cyan" value={playNowTotal.toString()} />
-        <HomeMetricLink detail="Rooms that fit your balance" href="/challenges" label="Matches" tone="success" value={(summary.play_now_counts?.recommended_matches ?? recommendedRooms.length).toString()} />
+      <div className="grid max-w-4xl min-w-0 gap-3 sm:grid-cols-2">
+        <HomeMetricLink detail={isFetching ? "Refreshing..." : "Open now"} href="/matches#room-activity" label="Rooms" tone="cyan" value={(summary.play_now_counts?.open_rooms ?? (summary.open_room_previews ?? []).length).toString()} />
+        <HomeMetricLink detail="Recommended" href="/challenges" label="Matches" tone="success" value={(summary.play_now_counts?.recommended_matches ?? recommendedRooms.length).toString()} />
         <HomeMetricLink detail="Open entries" href="/tournaments?filter=registration_open" label="Tourneys" tone="warning" value={(summary.play_now_counts?.open_tournaments ?? openTournaments.length).toString()} />
-        <HomeMetricLink detail={reviewRooms.length ? reviewDetail(reviewRooms) : "No room needs review"} href={reviewQueueHref(reviewRooms)} label="Reviews" tone={reviewRooms.length ? "danger" : "success"} value={reviewRooms.length.toString()} />
-      </div>
-
-      <div className="grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        <HomeMetricLink detail="Can be joined" href="/matches#room-activity" label="Open rooms" tone="cyan" value={(summary.play_now_counts?.open_rooms ?? (summary.open_room_previews ?? []).length).toString()} />
-        <HomeMetricLink detail="Available for entry" href="/wallet" label="Balance" tone="warning" value={walletBalanceLabel} />
-        <HomeMetricLink detail="Messages and updates" href="/notifications" label="Unread" tone={(summary.unread_notification_count ?? 0) > 0 ? "danger" : "success"} value={(summary.unread_notification_count ?? 0).toString()} />
+        <HomeMetricLink detail={reviewRooms.length ? "Needs action" : "No action needed"} href={reviewQueueHref(reviewRooms)} label="Reviews" tone={reviewRooms.length ? "danger" : "success"} value={reviewRooms.length.toString()} />
+        <HomeMetricLink detail="You have balance available for paid play." href="/wallet" label="Wallet" tone="success" value={walletBalanceLabel} />
+        <HomeMetricLink detail={summary.profile_readiness?.detail ?? "Your player profile and game handle are ready."} href="/profile" label="Profile" tone={profileReady ? "success" : "warning"} value={summary.profile_readiness?.label ?? "Profile ready"} />
       </div>
 
       <div className="grid min-w-0 gap-6 xl:grid-cols-3">

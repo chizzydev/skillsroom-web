@@ -9,16 +9,12 @@ import { SubmitButton } from "@/components/ui/SubmitButton";
 import { getCurrentUser } from "@/lib/auth-bridge";
 import { HomeLiveLobbyIsland } from "./HomeLiveLobbyIsland";
 import {
-  formatEntryAmount,
   getProfileMe,
   getPlayerHomeSummary,
-  matchStatusLabel,
-  type PlayerHomeRoomPreview,
   type PlayerHomeReadiness,
   type PlayerHomeSummary,
   type PlayerLadderRow,
-  type PlayerMission,
-  type MatchRoomStatus
+  type PlayerMission
 } from "@/lib/match-room-api";
 import { joinMatchRoomAction } from "./matches/actions";
 import { RoomCodeInput } from "@/components/matches/RoomCodeInput";
@@ -33,14 +29,6 @@ const premiumArtwork = {
   community: "/marketing/skillsroom-premium/community-premium.png",
   tournaments: "/marketing/skillsroom-premium/tournaments-premium.png"
 } as const;
-
-function statusTone(status: MatchRoomStatus) {
-  if (status === "open") return "cyan" as const;
-  if (["awaiting_funding", "funding_review", "funded"].includes(status)) return "warning" as const;
-  if (["under_review", "disputed"].includes(status)) return "danger" as const;
-  if (["active", "awaiting_results", "settlement_pending"].includes(status)) return "success" as const;
-  return "cyan" as const;
-}
 
 function firstName(value?: string | null) {
   const trimmed = value?.trim();
@@ -89,27 +77,6 @@ function emptyHomeSummary(): PlayerHomeSummary {
     active_tournament_preview_count: 0,
     community_highlights_preview: []
   };
-}
-
-function playerRoomStatusLabel(status: MatchRoomStatus) {
-  const labels: Partial<Record<MatchRoomStatus, string>> = {
-    draft: "Draft",
-    open: "Open",
-    awaiting_funding: "Waiting for payment",
-    funding_review: "Payment under review",
-    funded: "Ready to start",
-    active: "In play",
-    awaiting_results: "Result needed",
-    under_review: "Result under review",
-    disputed: "Dispute open",
-    settlement_pending: "Prize review ready",
-    completed: "Completed",
-    cancelled: "Cancelled",
-    refunded: "Refunded",
-    voided: "Voided"
-  };
-
-  return labels[status] ?? matchStatusLabel(status);
 }
 
 function missionPercent(mission: PlayerMission) {
@@ -168,36 +135,6 @@ function readinessTone(status: PlayerHomeReadiness["status"]) {
   if (status === "blocked") return "danger" as const;
   if (status === "needs_review") return "warning" as const;
   return "cyan" as const;
-}
-
-function HomeRoomCard({ room, actionLabel = "Open room" }: { room: PlayerHomeRoomPreview; actionLabel?: string }) {
-  const playerCount = room.participant_count ?? 0;
-  return (
-    <article className="grid gap-4 border-b border-line p-4 last:border-b-0 md:grid-cols-[1fr_auto] md:items-center">
-      <div className="min-w-0">
-        <div className="flex flex-wrap items-center gap-2">
-          <Badge tone={statusTone(room.status)}>{playerRoomStatusLabel(room.status)}</Badge>
-          <span className="rounded-md bg-surfaceHigh px-2 py-1 font-mono text-xs font-black text-ink">{room.room_code}</span>
-          {room.game_name ? <Badge tone="neutral">{room.game_name}</Badge> : null}
-        </div>
-        <PendingLink className="mt-3 block text-base font-black text-ink hover:text-action md:text-lg" href={`/matches/${room.id}`} pendingLabel="Opening room...">
-          {room.title ?? "Private match room"}
-        </PendingLink>
-        <div className="mt-3 grid gap-2 text-sm font-bold text-muted sm:grid-cols-3">
-          <span>{formatEntryAmount(room)} entry</span>
-          <span>{playerCount}/{room.max_participants} players</span>
-          <span>{room.ruleset_title ?? "Rules ready"}</span>
-        </div>
-      </div>
-      <PendingLink
-        className="inline-flex min-h-10 items-center justify-center rounded-md bg-action px-4 text-sm font-black text-navy-950 shadow-action hover:bg-actionHover"
-        href={`/matches/${room.id}`}
-        pendingLabel="Opening room..."
-      >
-        {actionLabel}
-      </PendingLink>
-    </article>
-  );
 }
 
 function ReadinessCard({ title, readiness, href, actionLabel }: { title: string; readiness: PlayerHomeReadiness; href: string; actionLabel: string }) {
@@ -456,8 +393,6 @@ export default async function HomePage({ searchParams }: HomePageProps) {
   const profileOverview = profileResult.status === "fulfilled" ? profileResult.value : null;
   const profile = profileOverview?.profile ?? null;
   const greetingName = firstName(profile?.display_name ?? profile?.username ?? emailName(user.email));
-  const openRooms = summary.open_room_previews ?? [];
-  const reviewRooms = summary.active_review_previews ?? [];
   const communityHighlights = summary.community_highlights_preview ?? [];
 
   return (
@@ -622,50 +557,6 @@ export default async function HomePage({ searchParams }: HomePageProps) {
             </Reveal>
 
             <Reveal staggerIndex={2}>
-            <Panel>
-              <PanelHeader eyebrow="Review" title="Active disputes and reviews" />
-              {reviewRooms.length ? (
-                <div>
-                  {reviewRooms.map((room, index) => (
-                    <Reveal key={room.id} staggerIndex={index}>
-                      <HomeRoomCard actionLabel="Review room" room={room} />
-                    </Reveal>
-                  ))}
-                </div>
-              ) : (
-                <div className="p-4">
-                  <div className="rounded-md border border-line bg-successSoft p-4">
-                    <p className="text-sm font-black text-success">No active dispute</p>
-                    <p className="mt-2 text-sm leading-6 text-muted">Your rooms have no open dispute or result review right now.</p>
-                  </div>
-                </div>
-              )}
-            </Panel>
-            </Reveal>
-
-            <Reveal staggerIndex={3}>
-            <Panel>
-              <PanelHeader eyebrow="Open Rooms" title="More rooms to join" />
-              {openRooms.length ? (
-                <div>
-                  {openRooms.slice(0, 3).map((room, index) => (
-                    <Reveal key={room.id} staggerIndex={index}>
-                      <HomeRoomCard actionLabel="View" room={room} />
-                    </Reveal>
-                  ))}
-                </div>
-              ) : (
-                <div className="p-4">
-                  <div className="rounded-md border border-dashed border-line bg-surfaceWarm p-5 text-center">
-                    <h3 className="text-base font-black text-ink">No open room is available</h3>
-                    <p className="mt-2 text-sm leading-6 text-muted">Create one and invite a player with your room code.</p>
-                  </div>
-                </div>
-              )}
-            </Panel>
-            </Reveal>
-
-            <Reveal staggerIndex={4}>
             <Panel>
               <PanelHeader
                 eyebrow="Community"
