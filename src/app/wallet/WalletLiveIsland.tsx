@@ -82,7 +82,7 @@ export function WalletLiveIsland({ initialSnapshot, showActivity }: { initialSna
         </div>
       ) : null}
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatusPanel detail={isFetching ? "Refreshing..." : "Ready to use later"} label="Available" tone="success" value={formatCompactMinorMoney(currency, account?.available_balance_minor ?? 0)} />
         <StatusPanel detail="Reserved for active play" label="Locked" tone="warning" value={formatCompactMinorMoney(currency, account?.locked_balance_minor ?? 0)} />
         <StatusPanel detail="Won but not paid out" label="Winnings" tone="cyan" value={formatCompactMinorMoney(currency, account?.winnings_balance_minor ?? 0)} />

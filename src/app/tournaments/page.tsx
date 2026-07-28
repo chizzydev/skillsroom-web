@@ -10,6 +10,7 @@ import { StatusPanel } from "@/components/ui/StatusPanel";
 import { canAccessAdmin, getCurrentUser } from "@/lib/auth-bridge";
 import {
   displayEnumLabel,
+  formatCompactMinorMoney,
   formatMinorMoney,
   listCommunityHighlights,
   listTournaments,
@@ -198,11 +199,11 @@ export default async function TournamentsPage({
           </Reveal>
         ) : null}
 
-        <div className="grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid min-w-0 grid-cols-2 gap-3 lg:grid-cols-4">
           <Reveal staggerIndex={0}><StatusPanel detail="Can accept entrants" label="Open" tone="cyan" value={openCount.toString()} /></Reveal>
           <Reveal staggerIndex={1}><StatusPanel detail="Seeding, live, review" label="In Motion" tone="warning" value={liveCount.toString()} /></Reveal>
           <Reveal staggerIndex={2}><StatusPanel detail="Finished events" label="Completed" tone="success" value={completedCount.toString()} /></Reveal>
-          <Reveal staggerIndex={3}><StatusPanel detail="Projected/approved" label="Prize Pools" tone="success" value={formatMinorMoney("NGN", totalPrize)} /></Reveal>
+          <Reveal staggerIndex={3}><StatusPanel detail="Projected/approved" label="Prize Pools" tone="success" value={formatCompactMinorMoney("NGN", totalPrize)} /></Reveal>
         </div>
 
         <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">

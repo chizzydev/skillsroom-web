@@ -82,7 +82,7 @@ const TournamentCard = memo(function TournamentCard({ tournament }: { tournament
         {tournament.description ? (
           <p className="mt-2 line-clamp-2 text-sm leading-6 text-muted">{tournament.description}</p>
         ) : null}
-        <div className="mt-4 grid gap-2 text-sm font-bold text-muted sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mt-4 grid grid-cols-2 gap-2 text-sm font-bold text-muted lg:grid-cols-4">
           <span>{tournament.game_name ?? "Game"} lane</span>
           <span>{tournament.scoring_label} scoring</span>
           <span>{tournament.registered_entry_count}/{tournament.max_entries} entries</span>

@@ -7,7 +7,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { Panel, PanelHeader } from "@/components/ui/Panel";
 import { PendingLink } from "@/components/ui/PendingLink";
 import { StatusPanel } from "@/components/ui/StatusPanel";
-import { displayEnumLabel, formatMinorMoney } from "@/lib/display-format";
+import { displayEnumLabel, formatCompactMinorMoney } from "@/lib/display-format";
 import type {
   TournamentActivityPayload,
   TournamentDetail,
@@ -106,20 +106,20 @@ export function TournamentLiveIsland({ initialSnapshot }: { initialSnapshot: Tou
         </div>
       ) : null}
 
-      <div className="grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid min-w-0 grid-cols-2 gap-3 lg:grid-cols-4">
         <StatusPanel detail={isFetching ? "Refreshing..." : "Current event status"} label="Status" tone={statusTone(detail.status)} value={displayEnumLabel(detail.status)} />
         <StatusPanel detail={`${checkedIn} checked in`} label="Entries" tone="success" value={`${detail.registered_entry_count ?? detail.entries.length}/${detail.max_entries}`} />
-        <StatusPanel detail={`${formatMinorMoney(detail.currency, pendingFunding)} under review`} label="Funding" tone="warning" value={formatMinorMoney(detail.currency, approvedFunding)} />
+        <StatusPanel detail={`${formatCompactMinorMoney(detail.currency, pendingFunding)} under review`} label="Funding" tone="warning" value={formatCompactMinorMoney(detail.currency, approvedFunding)} />
         <StatusPanel detail={`${activeMatches.length} need attention`} label="Matches" tone={activeMatches.length ? "danger" : "cyan"} value={detail.matches.length.toString()} />
       </div>
 
       <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1fr)_24rem]">
         <Panel>
           <PanelHeader eyebrow="Live Tournament" title="What needs attention now" description="Registration, check-in, funding, matches, and review status refresh while this page is open." />
-          <div className="grid gap-3 p-4 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 p-4 xl:grid-cols-4">
             <div className="rounded-md border border-line bg-surfaceWarm p-4">
               <p className="font-mono text-xs font-black uppercase tracking-[0.12em] text-dim">Prize pool</p>
-              <p className="mt-2 text-xl font-black text-success">{formatMinorMoney(detail.currency, projectedPrize(detail))}</p>
+              <p className="mt-2 text-xl font-black text-success">{formatCompactMinorMoney(detail.currency, projectedPrize(detail))}</p>
               <p className="mt-1 text-xs font-bold text-muted">{displayEnumLabel(detail.prize_distribution_mode)}</p>
             </div>
             <div className="rounded-md border border-line bg-surfaceWarm p-4">

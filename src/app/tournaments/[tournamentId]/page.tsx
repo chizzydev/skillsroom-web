@@ -21,6 +21,7 @@ import { livestreamProviderLabel } from "@/lib/livestream-url";
 import {
   ApiRequestError,
   displayEnumLabel,
+  formatCompactMinorMoney,
   formatMinorMoney,
   getTournamentBracket,
   getTournamentEntrants,
@@ -377,23 +378,23 @@ async function TournamentFundingSection({ tournament, view }: { tournament: Tour
         eyebrow="Prizes"
         title="Prize pool and allocations"
       />
-      <div className="grid gap-4 p-4 lg:grid-cols-2">
+      <div className="grid grid-cols-2 gap-4 p-4">
         <div className="motion-premium-panel motion-flow-card rounded-md border border-line bg-surfaceWarm p-4">
           <p className="font-mono text-xs font-black uppercase tracking-[0.12em] text-dim">Projected or approved</p>
-          <strong className="mt-2 block text-3xl font-black text-success">{formatMinorMoney(tournament.currency, prize)}</strong>
+          <strong className="mt-2 block break-words text-xl font-black text-success sm:text-3xl">{formatCompactMinorMoney(tournament.currency, prize)}</strong>
           <p className="mt-2 text-sm font-bold text-muted">{displayEnumLabel(tournament.prize_distribution_mode)} distribution</p>
         </div>
         <div className="motion-premium-panel motion-flow-card rounded-md border border-line bg-surfaceWarm p-4">
           <p className="font-mono text-xs font-black uppercase tracking-[0.12em] text-dim">Contribution records</p>
-          <strong className="mt-2 block text-3xl font-black text-ink">{view === "full" ? funding?.prize_contributions.length ?? 0 : "Open"}</strong>
+          <strong className="mt-2 block break-words text-xl font-black text-ink sm:text-3xl">{view === "full" ? funding?.prize_contributions.length ?? 0 : "Open"}</strong>
           <p className="mt-2 text-sm font-bold text-muted">Detailed allocation history loads only when requested.</p>
         </div>
       </div>
       {view === "summary" ? (
-        <div className="grid gap-3 p-4 pt-0 sm:grid-cols-3">
+        <div className="grid grid-cols-2 gap-3 p-4 pt-0 sm:grid-cols-3">
           <div className="rounded-md border border-line bg-white p-4">
             <p className="font-mono text-xs font-black uppercase tracking-[0.12em] text-dim">Approved in</p>
-            <p className="mt-2 text-xl font-black text-success">{formatMinorMoney(tournament.currency, tournament.approved_prize_contribution_minor ?? 0)}</p>
+            <p className="mt-2 text-xl font-black text-success">{formatCompactMinorMoney(tournament.currency, tournament.approved_prize_contribution_minor ?? 0)}</p>
           </div>
           <div className="rounded-md border border-line bg-white p-4">
             <p className="font-mono text-xs font-black uppercase tracking-[0.12em] text-dim">Prize mode</p>
@@ -404,7 +405,7 @@ async function TournamentFundingSection({ tournament, view }: { tournament: Tour
             <p className="mt-2 text-xl font-black text-ink">{tournament.commission_bps / 100}%</p>
           </div>
           <PendingLink
-            className="inline-flex min-h-10 items-center justify-center rounded-md border border-line bg-white px-4 text-sm font-black text-ink hover:bg-surfaceHigh sm:col-span-3"
+            className="col-span-2 inline-flex min-h-10 items-center justify-center rounded-md border border-line bg-white px-4 text-sm font-black text-ink hover:bg-surfaceHigh sm:col-span-3"
             href={`/tournaments/${encodeURIComponent(tournament.id)}?funding=full`}
             pendingLabel="Loading full funding..."
           >
@@ -451,7 +452,7 @@ async function TournamentCompetitionSections({ tournament, view }: { tournament:
           eyebrow="Competition"
           title="Bracket summary"
         />
-        <div className="grid gap-3 p-4 sm:grid-cols-3">
+        <div className="grid grid-cols-2 gap-3 p-4 sm:grid-cols-3">
           <div className="rounded-md border border-line bg-surfaceWarm p-4">
             <p className="font-mono text-xs font-black uppercase tracking-[0.12em] text-dim">Format</p>
             <p className="mt-2 text-xl font-black text-ink">{displayEnumLabel(tournament.format)}</p>
@@ -503,7 +504,7 @@ async function TournamentCompetitionSections({ tournament, view }: { tournament:
             eyebrow="Leaderboard"
             title="Tournament standings"
           />
-          <div className="grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-2 gap-3 p-4 lg:grid-cols-3">
             <div className="rounded-md border border-line bg-surfaceWarm p-4">
               <p className="font-mono text-xs font-black uppercase tracking-[0.12em] text-dim">Ranked entries</p>
               <p className="mt-2 text-2xl font-black text-ink">{detail.standings.length}</p>
@@ -1170,10 +1171,10 @@ export default async function TournamentDetailPage({
 
         <TournamentLiveIsland initialSnapshot={liveSnapshot} />
 
-        <div className="grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid min-w-0 grid-cols-2 gap-3 lg:grid-cols-4">
           <Reveal staggerIndex={0}><StatusPanel detail={registrationDetail} label="Registration" tone="cyan" value={registrationTitle} /></Reveal>
           <Reveal staggerIndex={1}><StatusPanel detail={`${checkedIn} checked in`} label="Entries" tone="success" value={`${entries}/${detail.max_entries}`} /></Reveal>
-          <Reveal staggerIndex={2}><StatusPanel detail={displayEnumLabel(detail.prize_distribution_mode)} label="Prize Pool" tone="success" value={formatMinorMoney(detail.currency, prize)} /></Reveal>
+          <Reveal staggerIndex={2}><StatusPanel detail={displayEnumLabel(detail.prize_distribution_mode)} label="Prize Pool" tone="success" value={formatCompactMinorMoney(detail.currency, prize)} /></Reveal>
           <Reveal staggerIndex={3}><StatusPanel detail={detail.game_name ?? detail.game_id} label="Format" tone="warning" value={displayEnumLabel(detail.format)} /></Reveal>
         </div>
 
@@ -1259,7 +1260,7 @@ export default async function TournamentDetailPage({
               eyebrow="Overview"
               title="Tournament policy"
             />
-            <div className="grid gap-3 p-4 sm:grid-cols-2 xl:grid-cols-3">
+            <div className="grid grid-cols-2 gap-3 p-4 xl:grid-cols-3">
               {[
                 ["Game", detail.game_name ?? detail.game_id],
                 ["Ruleset", detail.ruleset_slug ?? "Flexible by stage"],
@@ -1517,7 +1518,7 @@ export default async function TournamentDetailPage({
 
           <Panel className="scroll-mt-32" id="registration">
             <PanelHeader eyebrow="Registration" title="Entry readiness" />
-            <div className="grid gap-3 p-4">
+            <div className="grid grid-cols-2 gap-3 p-4">
               <div className="motion-flow-card rounded-md border border-line bg-white p-4">
                 <p className="font-mono text-xs font-black uppercase tracking-[0.12em] text-cyan">Slots</p>
                 <p className="mt-2 text-2xl font-black text-ink">{entries}/{detail.max_entries}</p>
@@ -1592,7 +1593,7 @@ export default async function TournamentDetailPage({
             title="Registered entries"
           />
           {entrantsView === "summary" ? (
-            <div className="grid gap-3 p-4 sm:grid-cols-3">
+            <div className="grid grid-cols-2 gap-3 p-4 sm:grid-cols-3">
               <div className="rounded-md border border-line bg-surfaceWarm p-4">
                 <p className="font-mono text-xs font-black uppercase tracking-[0.12em] text-dim">Registered</p>
                 <p className="mt-2 text-2xl font-black text-ink">{entries}/{detail.max_entries}</p>
@@ -1606,7 +1607,7 @@ export default async function TournamentDetailPage({
                 <p className="mt-2 text-2xl font-black text-ink">{myEntry ? displayEnumLabel(myEntry.status) : "Not entered"}</p>
               </div>
               <PendingLink
-                className="inline-flex min-h-10 items-center justify-center rounded-md border border-line bg-white px-4 text-sm font-black text-ink hover:bg-surfaceHigh sm:col-span-3"
+                className="col-span-2 inline-flex min-h-10 items-center justify-center rounded-md border border-line bg-white px-4 text-sm font-black text-ink hover:bg-surfaceHigh sm:col-span-3"
                 href={`/tournaments/${encodeURIComponent(detail.id)}?entrants=full`}
                 pendingLabel="Loading roster..."
               >

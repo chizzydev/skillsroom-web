@@ -394,11 +394,11 @@ export default async function ProfilePage({ searchParams }: ProfilePageProps) {
                 title="Open full profile controls"
                 description="Game accounts, payout profile, clan, referrals, streaming accounts, and settlement history are ready when you need them."
               />
-              <div className="grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="grid grid-cols-2 gap-3 p-4 lg:grid-cols-3">
                 <StatusPanel detail="Identity and readiness are already loaded." label="Bootstrap" tone="success" value="Fast" />
                 <StatusPanel detail={`${profileSummary?.game_account_count ?? gameAccounts.length} saved handles`} label="Game accounts" tone={gameAccounts.length ? "cyan" : "warning"} value={gameAccounts.length ? "Saved" : "Open"} />
                 <StatusPanel detail={payoutProfile ? payoutProfile.bank_name : "Add bank details before payouts"} label="Payout" tone={payoutProfile ? "success" : "warning"} value={payoutProfile ? "Ready" : "Open"} />
-                <button className="inline-flex min-h-10 items-center justify-center rounded-md border border-line bg-white px-4 text-sm font-black text-ink hover:bg-surfaceHigh sm:col-span-2 lg:col-span-3" data-profile-sections-toggle type="button">
+                <button className="col-span-2 inline-flex min-h-10 items-center justify-center rounded-md border border-line bg-white px-4 text-sm font-black text-ink hover:bg-surfaceHigh lg:col-span-3" data-profile-sections-toggle type="button">
                   Show full profile sections
                 </button>
               </div>
@@ -514,7 +514,7 @@ export default async function ProfilePage({ searchParams }: ProfilePageProps) {
 
           <Panel>
             <PanelHeader eyebrow="History" title="Reputation record" />
-            <div className="grid gap-3 p-4 sm:grid-cols-2 xl:grid-cols-1">
+            <div className="grid grid-cols-2 gap-3 p-4 xl:grid-cols-1">
               <StatusPanel detail="Platform score" label="Reputation" tone="success" value={(profile?.reputation_score ?? 1000).toString()} />
               <StatusPanel detail="Settled matches" label="Completed" tone="cyan" value={(profile?.completed_matches ?? 0).toString()} />
               <StatusPanel detail={`${profile?.wins ?? 0} wins / ${profile?.losses ?? 0} losses`} label="Record" tone="success" value={`${profile?.wins ?? 0}-${profile?.losses ?? 0}`} />
@@ -610,7 +610,7 @@ export default async function ProfilePage({ searchParams }: ProfilePageProps) {
 
           <Panel>
             <PanelHeader eyebrow="Payment Details" title="Current payout card" />
-            <div className="grid gap-3 p-4 sm:grid-cols-2 xl:grid-cols-1">
+            <div className="grid grid-cols-2 gap-3 p-4 xl:grid-cols-1">
               <StatusPanel
                 detail={payoutProfile?.bank_name ?? "Add the bank you want Skillsroom to use"}
                 label="Destination"
@@ -756,7 +756,7 @@ export default async function ProfilePage({ searchParams }: ProfilePageProps) {
 
           <Panel>
             <PanelHeader eyebrow="Clan" title="Public team signals" />
-            <div className="grid gap-3 p-4 sm:grid-cols-2 xl:grid-cols-1">
+            <div className="grid grid-cols-2 gap-3 p-4 xl:grid-cols-1">
               <StatusPanel detail="Active members on the public roster" label="Members" tone="cyan" value={clanMembers.length.toString()} />
               <StatusPanel detail="Current clan reputation score" label="Reputation" tone="success" value={(clan?.reputation_score ?? 1000).toString()} />
               <StatusPanel detail="Completed clan-linked tournaments" label="Tourneys" tone="warning" value={(clanHistory.length || 0).toString()} />
@@ -811,7 +811,7 @@ export default async function ProfilePage({ searchParams }: ProfilePageProps) {
 
           <Panel>
             <PanelHeader eyebrow="Rewards" title="Current status" />
-            <div className="grid gap-3 p-4 sm:grid-cols-2 xl:grid-cols-1">
+            <div className="grid grid-cols-2 gap-3 p-4 xl:grid-cols-1">
               <StatusPanel detail="Tracked referred signups" label="Total" tone="cyan" value={referralSummary.total.toString()} />
               <StatusPanel detail="Need setup or first real activity" label="Pending" tone="warning" value={referralSummary.pending_activation.toString()} />
               <StatusPanel detail="Non-money rewards unlocked" label="Issued" tone="success" value={referralSummary.reward_issued.toString()} />
