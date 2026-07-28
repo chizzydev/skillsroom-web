@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { formatLagosDateTime } from "@/lib/date-format";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -24,6 +24,10 @@ function formatRemaining(msRemaining: number) {
   return `${minutes}m ${seconds.toString().padStart(2, "0")}s`;
 }
 
+function isStepUpErrorMessage(message: string | null) {
+  return Boolean(message && /admin step-up|sensitive actions|step-up token|confirm your password/i.test(message));
+}
+
 export function AdminStepUpPanelClient({
   description,
   expiresAt,
@@ -32,29 +36,32 @@ export function AdminStepUpPanelClient({
   unlocked
 }: AdminStepUpPanelClientProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const expiryMs = expiresAt ? new Date(expiresAt).getTime() : null;
   const [now, setNow] = useState(() => Date.now());
   const [refreshingAfterExpiry, setRefreshingAfterExpiry] = useState(false);
+  const serverRejectedUnlock = isStepUpErrorMessage(searchParams.get("error"));
+  const panelUnlocked = unlocked && !serverRejectedUnlock;
 
   const active = useMemo(() => {
-    return Boolean(unlocked && expiryMs && expiryMs > now);
-  }, [expiryMs, now, unlocked]);
+    return Boolean(panelUnlocked && expiryMs && expiryMs > now);
+  }, [expiryMs, now, panelUnlocked]);
 
   useEffect(() => {
-    if (!unlocked || !expiryMs) return;
+    if (!panelUnlocked || !expiryMs) return;
 
     const tick = window.setInterval(() => {
       setNow(Date.now());
     }, 1000);
 
     return () => window.clearInterval(tick);
-  }, [expiryMs, unlocked]);
+  }, [expiryMs, panelUnlocked]);
 
   useEffect(() => {
-    if (active || !unlocked || !expiryMs || refreshingAfterExpiry) return;
+    if (active || !panelUnlocked || !expiryMs || refreshingAfterExpiry) return;
     setRefreshingAfterExpiry(true);
     router.refresh();
-  }, [active, expiryMs, refreshingAfterExpiry, router, unlocked]);
+  }, [active, expiryMs, panelUnlocked, refreshingAfterExpiry, router]);
 
   const remainingLabel = expiryMs && active ? formatRemaining(expiryMs - now) : null;
 
@@ -78,7 +85,7 @@ export function AdminStepUpPanelClient({
               <SubmitButton idleLabel="Lock sensitive actions" pendingLabel="Locking..." variant="secondary" />
             </form>
           </>
-        ) : unlocked ? (
+        ) : panelUnlocked ? (
           <div className="grid gap-3">
             <div className="rounded-md border border-orange-200 bg-warningSoft p-3 text-sm font-bold text-warning">
               Sensitive actions expired at {expiresAt ? formatLagosDateTime(expiresAt) : "the end of the unlock window"}. Confirm your password again to continue.

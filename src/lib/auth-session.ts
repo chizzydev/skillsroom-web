@@ -40,12 +40,14 @@ export function setAuthCookies(response: NextResponse, session: AuthSessionPaylo
 
 export function clearAuthCookies(response: NextResponse) {
   for (const name of [...accessTokenCookieNames(), ...refreshTokenCookieNames(), ...adminStepUpCookieNames()]) {
+    expireCookie(response, name);
     response.cookies.delete(name);
   }
 }
 
 export function clearAdminStepUpCookies(response: NextResponse) {
   for (const name of adminStepUpCookieNames()) {
+    expireCookie(response, name);
     response.cookies.delete(name);
   }
 }
@@ -74,5 +76,16 @@ export function setAdminStepUpCookie(response: NextResponse, session: AdminStepU
     secure,
     path: "/",
     expires: new Date(session.expires_at)
+  });
+}
+
+function expireCookie(response: NextResponse, name: string) {
+  response.cookies.set(name, "", {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+    expires: new Date(0),
+    maxAge: 0
   });
 }

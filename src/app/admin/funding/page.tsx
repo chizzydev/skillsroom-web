@@ -32,7 +32,7 @@ export default async function AdminFundingPage({ searchParams }: { searchParams:
     <AdminShell active="funding">
       <section className="grid gap-5">
         <AdminPageHeader
-          description="Confirm exact transfer amount, sender identity, room, and reference before approval writes ledger entries."
+          description="Confirm exact transfer amount, sender identity, room, and reference before approval updates payment records."
           eyebrow="Funding"
           title="Manual Funding Queue"
           tone="warning"
@@ -53,7 +53,7 @@ export default async function AdminFundingPage({ searchParams }: { searchParams:
           <div className="grid h-fit gap-4 xl:sticky xl:top-24">
             <AdminStepUpPanel returnTo="/admin/funding" />
             <Panel>
-              <PanelHeader eyebrow="Decision" title="Approve or reject funding" description="Approvals create balanced ledger entries into platform cash and match escrow." />
+              <PanelHeader eyebrow="Decision" title="Approve or reject funding" description="Approvals update platform balance records and reserve the room entry." />
               <form action={reviewFundingSubmissionAction} className="grid gap-3 p-4">
                 <label className="grid gap-2 text-sm font-bold text-ink">
                   Submission ID

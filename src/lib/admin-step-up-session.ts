@@ -34,6 +34,7 @@ export async function getAdminStepUpState(): Promise<AdminStepUpState> {
 
   const expiresAt = nextExpiry(token);
   if (!expiresAt) {
+    await clearAdminStepUpToken();
     return { unlocked: false, token: null, expiresAt: null };
   }
 
@@ -63,6 +64,14 @@ export async function persistAdminStepUpToken(token: string, expiresAt: string) 
 export async function clearAdminStepUpToken() {
   const cookieStore = await cookies();
   for (const name of adminStepUpCookieNames()) {
+    cookieStore.set(name, "", {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+      path: "/",
+      expires: new Date(0),
+      maxAge: 0
+    });
     cookieStore.delete(name);
   }
 }
