@@ -5,7 +5,7 @@ import { webQueryKeys } from "@/components/realtime/webRealtimeInvalidation";
 import { Badge } from "@/components/ui/Badge";
 import { Panel, PanelHeader } from "@/components/ui/Panel";
 import { StatusPanel } from "@/components/ui/StatusPanel";
-import { formatMinorMoney } from "@/lib/display-format";
+import { formatCompactMinorMoney, formatMinorMoney } from "@/lib/display-format";
 import type { WalletLedgerEntry, WalletOverview, WalletPayoutRequest, WalletTopup } from "@/lib/match-room-api";
 
 export type WalletLiveSnapshot = {
@@ -83,10 +83,10 @@ export function WalletLiveIsland({ initialSnapshot, showActivity }: { initialSna
       ) : null}
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <StatusPanel detail={isFetching ? "Refreshing..." : "Ready to use later"} label="Available" tone="success" value={formatMinorMoney(currency, account?.available_balance_minor ?? 0)} />
-        <StatusPanel detail="Reserved for active play" label="Locked" tone="warning" value={formatMinorMoney(currency, account?.locked_balance_minor ?? 0)} />
-        <StatusPanel detail="Won but not paid out" label="Winnings" tone="cyan" value={formatMinorMoney(currency, account?.winnings_balance_minor ?? 0)} />
-        <StatusPanel detail="Waiting for admin review" label="Pending top-ups" tone="danger" value={formatMinorMoney(currency, pendingTopups)} />
+        <StatusPanel detail={isFetching ? "Refreshing..." : "Ready to use later"} label="Available" tone="success" value={formatCompactMinorMoney(currency, account?.available_balance_minor ?? 0)} />
+        <StatusPanel detail="Reserved for active play" label="Locked" tone="warning" value={formatCompactMinorMoney(currency, account?.locked_balance_minor ?? 0)} />
+        <StatusPanel detail="Won but not paid out" label="Winnings" tone="cyan" value={formatCompactMinorMoney(currency, account?.winnings_balance_minor ?? 0)} />
+        <StatusPanel detail="Waiting for admin review" label="Pending top-ups" tone="danger" value={formatCompactMinorMoney(currency, pendingTopups)} />
       </div>
 
       {showActivity ? (

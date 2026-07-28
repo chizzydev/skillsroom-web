@@ -5,24 +5,20 @@ import { MotionSection, Reveal } from "@/components/motion";
 import { Badge } from "@/components/ui/Badge";
 import { PendingLink } from "@/components/ui/PendingLink";
 import { Panel, PanelHeader } from "@/components/ui/Panel";
-import { StatusPanel } from "@/components/ui/StatusPanel";
 import { SubmitButton } from "@/components/ui/SubmitButton";
 import { getCurrentUser } from "@/lib/auth-bridge";
 import { HomeLiveLobbyIsland } from "./HomeLiveLobbyIsland";
 import {
   formatEntryAmount,
-  formatMinorMoney,
   getProfileMe,
   getPlayerHomeSummary,
   matchStatusLabel,
-  displayEnumLabel,
   type PlayerHomeRoomPreview,
   type PlayerHomeReadiness,
   type PlayerHomeSummary,
   type PlayerLadderRow,
   type PlayerMission,
-  type MatchRoomStatus,
-  type Tournament
+  type MatchRoomStatus
 } from "@/lib/match-room-api";
 import { joinMatchRoomAction } from "./matches/actions";
 import { RoomCodeInput } from "@/components/matches/RoomCodeInput";
@@ -116,17 +112,6 @@ function playerRoomStatusLabel(status: MatchRoomStatus) {
   return labels[status] ?? matchStatusLabel(status);
 }
 
-function compactDate(value: string | null) {
-  return value ? new Date(value).toLocaleString("en-NG", { dateStyle: "medium", timeStyle: "short" }) : "Date not set";
-}
-
-function projectedTournamentPrize(tournament: Tournament) {
-  return Math.max(
-    tournament.approved_prize_contribution_minor ?? 0,
-    tournament.sponsored_prize_pool_minor + tournament.guaranteed_prize_pool_minor
-  );
-}
-
 function missionPercent(mission: PlayerMission) {
   if (mission.target <= 0) return mission.completed ? 100 : 0;
   return Math.min(100, Math.round((mission.progress / mission.target) * 100));
@@ -210,35 +195,6 @@ function HomeRoomCard({ room, actionLabel = "Open room" }: { room: PlayerHomeRoo
         pendingLabel="Opening room..."
       >
         {actionLabel}
-      </PendingLink>
-    </article>
-  );
-}
-
-function TournamentHomeCard({ tournament }: { tournament: Tournament }) {
-  return (
-    <article className="grid gap-4 border-b border-line p-4 last:border-b-0 md:grid-cols-[1fr_auto] md:items-center">
-      <div className="min-w-0">
-        <div className="flex flex-wrap items-center gap-2">
-          <Badge tone="cyan">Open tournament</Badge>
-          <Badge tone="neutral">{displayEnumLabel(tournament.format)}</Badge>
-          {tournament.game_name ? <Badge tone="neutral">{tournament.game_name}</Badge> : null}
-        </div>
-        <PendingLink className="mt-3 block text-base font-black text-ink hover:text-action md:text-lg" href={`/tournaments/${tournament.id}`} pendingLabel="Opening tournament...">
-          {tournament.title}
-        </PendingLink>
-        <div className="mt-3 grid gap-2 text-sm font-bold text-muted sm:grid-cols-3">
-          <span>{formatMinorMoney(tournament.currency, tournament.entry_fee_amount_minor)} entry</span>
-          <span>{tournament.registered_entry_count}/{tournament.max_entries} entries</span>
-          <span>{compactDate(tournament.starts_at)}</span>
-        </div>
-      </div>
-      <PendingLink
-        className="inline-flex min-h-10 items-center justify-center rounded-md border border-line bg-white px-4 text-sm font-black text-ink hover:bg-surfaceHigh"
-        href={`/tournaments/${tournament.id}`}
-        pendingLabel="Opening tournament..."
-      >
-        View event
       </PendingLink>
     </article>
   );
@@ -500,18 +456,9 @@ export default async function HomePage({ searchParams }: HomePageProps) {
   const profileOverview = profileResult.status === "fulfilled" ? profileResult.value : null;
   const profile = profileOverview?.profile ?? null;
   const greetingName = firstName(profile?.display_name ?? profile?.username ?? emailName(user.email));
-  const actionRooms = summary.active_room_previews ?? [];
-  const recommendedRooms = summary.recommended_room_previews ?? [];
   const openRooms = summary.open_room_previews ?? [];
   const reviewRooms = summary.active_review_previews ?? [];
-  const openTournaments = summary.open_tournament_previews ?? [];
-  const walletMiniBalance = summary.wallet_mini_balance;
-  const walletBalanceLabel = walletMiniBalance
-    ? formatMinorMoney(walletMiniBalance.currency, walletMiniBalance.available_balance_minor + walletMiniBalance.winnings_balance_minor)
-    : formatMinorMoney("NGN", 0);
   const communityHighlights = summary.community_highlights_preview ?? [];
-  const playNowTotal = (summary.play_now_counts?.recommended_matches ?? recommendedRooms.length) + (summary.play_now_counts?.open_tournaments ?? openTournaments.length);
-  const topOpenTournamentPrize = openTournaments.reduce((max, tournament) => Math.max(max, projectedTournamentPrize(tournament)), 0);
 
   return (
     <AppShell active="home">
@@ -589,128 +536,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
 
         <HomeLiveLobbyIsland initialSummary={summary} />
 
-        <div className="grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <Reveal staggerIndex={0}><StatusPanel detail="Rooms and tournaments" label="Play Now" tone="cyan" value={playNowTotal.toString()} /></Reveal>
-          <Reveal staggerIndex={1}><StatusPanel detail="Rooms that fit your balance" label="Recommended" tone="success" value={(summary.play_now_counts?.recommended_matches ?? recommendedRooms.length).toString()} /></Reveal>
-          <Reveal staggerIndex={2}><StatusPanel detail="Your rooms needing review" label="Reviews" tone={reviewRooms.length ? "danger" : "success"} value={reviewRooms.length.toString()} /></Reveal>
-          <Reveal staggerIndex={3}><StatusPanel detail="Available for entry" label="Balance" tone="warning" value={walletBalanceLabel} /></Reveal>
-        </div>
-
-        <div className="grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <Reveal staggerIndex={0}><StatusPanel detail="Can be joined" label="Open Rooms" tone="cyan" value={(summary.play_now_counts?.open_rooms ?? openRooms.length).toString()} /></Reveal>
-          <Reveal staggerIndex={1}><StatusPanel detail="Taking entries" label="Open Events" tone="warning" value={(summary.play_now_counts?.open_tournaments ?? openTournaments.length).toString()} /></Reveal>
-          <Reveal staggerIndex={2}><StatusPanel detail="Prize pool to chase" label="Event Prize" tone="success" value={formatMinorMoney("NGN", topOpenTournamentPrize)} /></Reveal>
-          <Reveal staggerIndex={3}><StatusPanel detail="Messages and updates" label="Unread" tone="danger" value={(summary.unread_notification_count ?? 0).toString()} /></Reveal>
-        </div>
-
-        <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1fr)_24rem]">
-          <div className="grid gap-6">
-            <Reveal>
-            <Panel>
-              <PanelHeader
-                action={
-                  <PendingLink className="rounded-md border border-line bg-white px-3 py-2 text-sm font-black text-ink hover:bg-surfaceHigh" href="/challenges" pendingLabel="Opening challenges...">
-                    View challenges
-                  </PendingLink>
-                }
-                eyebrow="Play now"
-                title="Best things to join"
-                description="Rooms here are open and fit your current balance."
-              />
-              {recommendedRooms.length ? (
-                <div>
-                  {recommendedRooms.map((room, index) => (
-                    <Reveal key={room.id} staggerIndex={index}>
-                      <HomeRoomCard actionLabel="Join room" room={room} />
-                    </Reveal>
-                  ))}
-                </div>
-              ) : (
-                <div className="p-4">
-                  <div className="grid place-items-center rounded-md border border-dashed border-line bg-surfaceWarm p-8 text-center">
-                    <div className="max-w-md">
-                      <h3 className="text-lg font-black text-ink">No recommended rooms yet</h3>
-                      <p className="mt-2 text-sm leading-6 text-muted">
-                        Add funds, finish your profile, or create a challenge and share the room code.
-                      </p>
-                      <PendingLink
-                        className="mt-4 inline-flex min-h-10 items-center justify-center rounded-md bg-action px-4 text-sm font-black text-navy-950 shadow-action hover:bg-actionHover"
-                        href="/challenges?mode=create"
-                        pendingLabel="Opening creator..."
-                      >
-                        Create challenge
-                      </PendingLink>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </Panel>
-            </Reveal>
-
-            <Reveal>
-            <Panel>
-              <PanelHeader
-                action={
-                  <PendingLink className="rounded-md border border-line bg-white px-3 py-2 text-sm font-black text-ink hover:bg-surfaceHigh" href="/tournaments?filter=registration_open" pendingLabel="Opening tournaments...">
-                    View all events
-                  </PendingLink>
-                }
-                eyebrow="Events"
-                title="Open tournaments"
-                description="Events taking entries right now."
-              />
-              {openTournaments.length ? (
-                <div>
-                  {openTournaments.map((tournament, index) => (
-                    <Reveal key={tournament.id} staggerIndex={index}>
-                      <TournamentHomeCard tournament={tournament} />
-                    </Reveal>
-                  ))}
-                </div>
-              ) : (
-                <div className="p-4">
-                  <div className="rounded-md border border-dashed border-line bg-surfaceWarm p-6 text-center">
-                    <h3 className="text-lg font-black text-ink">No open tournaments right now</h3>
-                    <p className="mt-2 text-sm leading-6 text-muted">Check the community page for recent winners and upcoming news.</p>
-                  </div>
-                </div>
-              )}
-            </Panel>
-            </Reveal>
-
-            <Reveal>
-            <Panel>
-              <PanelHeader
-                action={
-                  <PendingLink className="rounded-md border border-line bg-white px-3 py-2 text-sm font-black text-ink hover:bg-surfaceHigh" href="/matches" pendingLabel="Opening rooms...">
-                    View your rooms
-                  </PendingLink>
-                }
-                eyebrow="Lobby"
-                title="Rooms needing action"
-                description="These rooms are waiting for payment, play, proof, result, or review."
-              />
-              {actionRooms.length ? (
-                <div>
-                  {actionRooms.map((room, index) => (
-                    <Reveal key={room.id} staggerIndex={index}>
-                      <HomeRoomCard room={room} />
-                    </Reveal>
-                  ))}
-                </div>
-              ) : (
-                <div className="p-4">
-                  <div className="rounded-md border border-dashed border-line bg-surfaceWarm p-6 text-center">
-                    <h3 className="text-lg font-black text-ink">No room needs you right now</h3>
-                    <p className="mt-2 text-sm leading-6 text-muted">You are clear. Join an open room or create a new challenge.</p>
-                  </div>
-                </div>
-              )}
-            </Panel>
-            </Reveal>
-          </div>
-
-          <div className="grid gap-6">
+        <div className="grid min-w-0 gap-6 lg:grid-cols-2">
             <Reveal staggerIndex={0}>
             <Panel>
               <PanelHeader
@@ -874,7 +700,6 @@ export default async function HomePage({ searchParams }: HomePageProps) {
               </div>
             </Panel>
             </Reveal>
-          </div>
         </div>
       </MotionSection>
     </AppShell>

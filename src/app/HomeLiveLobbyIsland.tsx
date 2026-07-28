@@ -6,8 +6,7 @@ import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { PendingLink } from "@/components/ui/PendingLink";
 import { Panel, PanelHeader } from "@/components/ui/Panel";
-import { StatusPanel } from "@/components/ui/StatusPanel";
-import { displayEnumLabel, formatEntryAmount, formatMinorMoney, matchStatusLabel } from "@/lib/display-format";
+import { displayEnumLabel, formatCompactMinorMoney, formatEntryAmount, formatMinorMoney, matchStatusLabel } from "@/lib/display-format";
 import type { MatchRoomStatus, PlayerHomeRoomPreview, PlayerHomeSummary, Tournament } from "@/lib/match-room-api";
 
 function statusTone(status: MatchRoomStatus) {
@@ -43,10 +42,49 @@ function compactDate(value: string | null) {
   return value ? new Date(value).toLocaleString("en-NG", { dateStyle: "medium", timeStyle: "short" }) : "Date not set";
 }
 
-function projectedTournamentPrize(tournament: Tournament) {
-  return Math.max(
-    tournament.approved_prize_contribution_minor ?? 0,
-    tournament.sponsored_prize_pool_minor + tournament.guaranteed_prize_pool_minor
+function reviewQueueHref(reviewRooms: PlayerHomeRoomPreview[]) {
+  const hasResultReview = reviewRooms.some((room) => room.status === "under_review");
+  return `/matches?queue=${hasResultReview ? "review" : "disputed"}#room-activity`;
+}
+
+function reviewDetail(reviewRooms: PlayerHomeRoomPreview[]) {
+  const reviewCount = reviewRooms.filter((room) => room.status === "under_review").length;
+  const disputedCount = reviewRooms.filter((room) => room.status === "disputed").length;
+  if (reviewCount > 0 && disputedCount > 0) return "Review and disputed rooms are split in Room activity";
+  if (disputedCount > 0) return "Open the Disputed queue";
+  return "Open the Review queue";
+}
+
+function HomeMetricLink({
+  detail,
+  href,
+  label,
+  tone,
+  value
+}: {
+  detail: string;
+  href: string;
+  label: string;
+  tone: "cyan" | "success" | "warning" | "danger";
+  value: string;
+}) {
+  const toneClass = {
+    cyan: "border-t-cyan text-cyan",
+    success: "border-t-success text-success",
+    warning: "border-t-warning text-warning",
+    danger: "border-t-danger text-danger"
+  }[tone];
+
+  return (
+    <PendingLink
+      className={["motion-card min-w-0 rounded-[1.05rem] border border-line border-t-4 bg-white p-4 shadow-[0_14px_34px_rgba(3,10,20,0.07)] transition hover:-translate-y-0.5 hover:bg-surfaceHigh", toneClass].join(" ")}
+      href={href}
+      pendingLabel="Opening..."
+    >
+      <span className="font-mono text-[0.68rem] font-black uppercase tracking-[0.12em] text-dim">{label}</span>
+      <strong className="mt-2 block truncate text-3xl font-black leading-none">{value}</strong>
+      <span className="mt-2 block text-xs font-semibold leading-5 text-muted">{detail}</span>
+    </PendingLink>
   );
 }
 
@@ -132,12 +170,12 @@ export function HomeLiveLobbyIsland({ initialSummary }: { initialSummary: Player
   const recommendedRooms = summary.recommended_room_previews ?? [];
   const actionRooms = summary.active_room_previews ?? [];
   const openTournaments = summary.open_tournament_previews ?? [];
+  const reviewRooms = summary.active_review_previews ?? [];
   const walletMiniBalance = summary.wallet_mini_balance;
   const walletBalanceLabel = walletMiniBalance
-    ? formatMinorMoney(walletMiniBalance.currency, walletMiniBalance.available_balance_minor + walletMiniBalance.winnings_balance_minor)
-    : formatMinorMoney("NGN", 0);
+    ? formatCompactMinorMoney(walletMiniBalance.currency, walletMiniBalance.available_balance_minor + walletMiniBalance.winnings_balance_minor)
+    : formatCompactMinorMoney("NGN", 0);
   const playNowTotal = (summary.play_now_counts?.recommended_matches ?? recommendedRooms.length) + (summary.play_now_counts?.open_tournaments ?? openTournaments.length);
-  const topOpenTournamentPrize = openTournaments.reduce((max, tournament) => Math.max(max, projectedTournamentPrize(tournament)), 0);
 
   return (
     <section className="grid min-w-0 gap-4" id="live-lobby">
@@ -148,17 +186,16 @@ export function HomeLiveLobbyIsland({ initialSummary }: { initialSummary: Player
       ) : null}
 
       <div className="grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <StatusPanel detail={isFetching ? "Refreshing..." : "Rooms and tournaments"} label="Play Now" tone="cyan" value={playNowTotal.toString()} />
-        <StatusPanel detail="Rooms that fit your balance" label="Recommended" tone="success" value={(summary.play_now_counts?.recommended_matches ?? recommendedRooms.length).toString()} />
-        <StatusPanel detail="Your rooms needing review" label="Reviews" tone={(summary.active_review_previews ?? []).length ? "danger" : "success"} value={(summary.active_review_previews ?? []).length.toString()} />
-        <StatusPanel detail="Available for entry" label="Balance" tone="warning" value={walletBalanceLabel} />
+        <HomeMetricLink detail={isFetching ? "Refreshing..." : "Rooms and tournaments"} href="/challenges" label="Play now" tone="cyan" value={playNowTotal.toString()} />
+        <HomeMetricLink detail="Rooms that fit your balance" href="/challenges" label="Matches" tone="success" value={(summary.play_now_counts?.recommended_matches ?? recommendedRooms.length).toString()} />
+        <HomeMetricLink detail="Open entries" href="/tournaments?filter=registration_open" label="Tourneys" tone="warning" value={(summary.play_now_counts?.open_tournaments ?? openTournaments.length).toString()} />
+        <HomeMetricLink detail={reviewRooms.length ? reviewDetail(reviewRooms) : "No room needs review"} href={reviewQueueHref(reviewRooms)} label="Reviews" tone={reviewRooms.length ? "danger" : "success"} value={reviewRooms.length.toString()} />
       </div>
 
-      <div className="grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <StatusPanel detail="Can be joined" label="Open Rooms" tone="cyan" value={(summary.play_now_counts?.open_rooms ?? (summary.open_room_previews ?? []).length).toString()} />
-        <StatusPanel detail="Taking entries" label="Open Events" tone="warning" value={(summary.play_now_counts?.open_tournaments ?? openTournaments.length).toString()} />
-        <StatusPanel detail="Prize pool to chase" label="Event Prize" tone="success" value={formatMinorMoney("NGN", topOpenTournamentPrize)} />
-        <StatusPanel detail="Messages and updates" label="Unread" tone="danger" value={(summary.unread_notification_count ?? 0).toString()} />
+      <div className="grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <HomeMetricLink detail="Can be joined" href="/matches#room-activity" label="Open rooms" tone="cyan" value={(summary.play_now_counts?.open_rooms ?? (summary.open_room_previews ?? []).length).toString()} />
+        <HomeMetricLink detail="Available for entry" href="/wallet" label="Balance" tone="warning" value={walletBalanceLabel} />
+        <HomeMetricLink detail="Messages and updates" href="/notifications" label="Unread" tone={(summary.unread_notification_count ?? 0) > 0 ? "danger" : "success"} value={(summary.unread_notification_count ?? 0).toString()} />
       </div>
 
       <div className="grid min-w-0 gap-6 xl:grid-cols-3">
