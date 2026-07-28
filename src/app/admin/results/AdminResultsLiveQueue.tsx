@@ -223,7 +223,7 @@ export function AdminResultsLiveQueue({ initialSnapshot }: { initialSnapshot: Ad
                     ) : null}
                     {claim.status === "submitted" ? (
                       <div className={["mt-4 rounded-md border p-3 text-sm font-bold leading-6", responseWindowExpired(claim) ? "border-danger bg-red-50 text-danger" : "border-amber-200 bg-amber-50 text-amber-900"].join(" ")}>
-                        Opponent response due: {dateTimeLabel(claim.opponent_response_due_at)}.
+                        Opponent response due: {dateTimeLabel(claim.opponent_response_due_at)}. {responseWindowExpired(claim) ? "Ready for no-response catch-up if the automatic award has not finished yet." : "Waiting for the opponent to agree or dispute."}
                       </div>
                     ) : null}
                   </article>

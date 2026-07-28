@@ -6,6 +6,7 @@ import { AppShell } from "@/components/layout/AppShell";
 import { MotionSection, Reveal } from "@/components/motion";
 import { LiveUpdateStream } from "@/components/realtime/LiveUpdateStream";
 import { RealtimePatchStatus } from "@/components/realtime/RealtimePatchStatus";
+import { LivestreamLinkFields } from "@/components/streaming/LivestreamLinkFields";
 import { Badge, type BadgeTone } from "@/components/ui/Badge";
 import { DataTable } from "@/components/ui/DataTable";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -16,6 +17,7 @@ import { StatusPanel } from "@/components/ui/StatusPanel";
 import { SubmitButton } from "@/components/ui/SubmitButton";
 import { Timeline } from "@/components/ui/Timeline";
 import { canAccessAdmin, getCurrentUser } from "@/lib/auth-bridge";
+import { livestreamProviderLabel } from "@/lib/livestream-url";
 import {
   ApiRequestError,
   displayEnumLabel,
@@ -149,12 +151,12 @@ function TournamentStreamCard({ item }: { item: CommunityLivestreamLink }) {
       target="_blank"
     >
       <div className="flex flex-wrap items-center gap-2">
-        <Badge tone={item.is_featured ? "success" : "cyan"}>{item.provider}</Badge>
+        <Badge tone={item.is_featured ? "success" : "cyan"}>{livestreamProviderLabel(item.provider)}</Badge>
         <Badge tone="neutral">{item.visibility}</Badge>
       </div>
       <h2 className="mt-3 text-base font-black text-ink">{item.title}</h2>
       <p className="mt-2 text-sm text-muted">
-        {item.embed_url ? "Embedded watch available here." : `Open stream on ${item.provider}.`}
+        {item.embed_url ? "Embedded watch available here." : `Open stream on ${livestreamProviderLabel(item.provider)}.`}
       </p>
     </a>
   );
@@ -214,23 +216,13 @@ async function TournamentHostBroadcastSection({ tournamentId, canAttemptManage }
       <PanelHeader
         eyebrow="Host Broadcast"
         title="Manage livestream links"
-        description="Attach official watch links for YouTube, Twitch, Facebook, TikTok, Kick, or another safe HTTPS destination."
+        description="Attach official watch links for YouTube, Twitch, Kick, or TikTok."
       />
       <div className="grid gap-5 p-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
         <form action={createTournamentLivestreamAction} className="motion-flow-card grid gap-3 rounded-md border border-line bg-white p-4">
           <input name="tournament_id" type="hidden" value={tournamentId} />
           <div className="grid gap-3 md:grid-cols-2">
-            <label className="grid gap-2 text-sm font-bold text-ink">
-              Provider
-              <select className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="provider">
-                <option value="youtube">YouTube</option>
-                <option value="twitch">Twitch</option>
-                <option value="facebook">Facebook</option>
-                <option value="tiktok">TikTok</option>
-                <option value="kick">Kick</option>
-                <option value="generic">Generic HTTPS</option>
-              </select>
-            </label>
+            <LivestreamLinkFields streamLinkLabel="Stream URL" />
             <label className="grid gap-2 text-sm font-bold text-ink">
               Visibility
               <select className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="visibility">
@@ -243,10 +235,9 @@ async function TournamentHostBroadcastSection({ tournamentId, canAttemptManage }
             Title
             <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" maxLength={140} name="title" required />
           </label>
-          <label className="grid gap-2 text-sm font-bold text-ink">
-            Stream URL
-            <input className="min-h-11 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="stream_url" required type="url" />
-          </label>
+          <p className="text-xs font-bold leading-5 text-muted">
+            Use a secure public stream link. YouTube, Twitch, Kick, and TikTok are supported for tournament streams.
+          </p>
           <SubmitButton idleLabel="Save livestream" pendingLabel="Saving livestream..." />
         </form>
 
@@ -256,7 +247,7 @@ async function TournamentHostBroadcastSection({ tournamentId, canAttemptManage }
               <div className="motion-flow-card rounded-md border border-line bg-surfaceWarm p-4" key={item.id}>
                 <div className="flex flex-wrap items-center gap-2">
                   <Badge tone={item.status === "active" ? "success" : "danger"}>{item.status}</Badge>
-                  <Badge tone="cyan">{item.provider}</Badge>
+                  <Badge tone="cyan">{livestreamProviderLabel(item.provider)}</Badge>
                 </div>
                 <h3 className="mt-3 text-base font-black text-ink">{item.title}</h3>
                 <p className="mt-2 text-sm text-muted">{item.stream_url}</p>

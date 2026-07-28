@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth-bridge";
 import { storeEvidenceFile } from "@/lib/evidence-storage";
+import { isSupportedLivestreamProvider, validateLivestreamUrl } from "@/lib/livestream-url";
 import { manualCollectionAccount } from "@/lib/manual-payment";
 import {
   archiveCommunityLivestream,
@@ -159,15 +160,26 @@ export async function archiveTournamentAnnouncementAction(formData: FormData) {
 
 export async function createTournamentLivestreamAction(formData: FormData) {
   const tournamentId = String(formData.get("tournament_id") || "").trim();
+  const provider = String(formData.get("provider") || "youtube");
+  const streamUrl = String(formData.get("stream_url") || "").trim();
 
   try {
+    if (!isSupportedLivestreamProvider(provider)) {
+      throw new Error("Choose YouTube, Twitch, Kick, or TikTok for this stream.");
+    }
+
+    const validationMessage = validateLivestreamUrl(provider, streamUrl);
+    if (validationMessage) {
+      throw new Error(validationMessage);
+    }
+
     await createCommunityLivestream({
       target_type: "tournament",
       tournament_id: tournamentId,
-      provider: String(formData.get("provider") || "youtube") as never,
+      provider,
       visibility: String(formData.get("visibility") || "public") as never,
       title: String(formData.get("title") || "").trim(),
-      stream_url: String(formData.get("stream_url") || "").trim(),
+      stream_url: streamUrl,
       display_order: Number(formData.get("display_order") || 0),
       is_featured: formData.get("is_featured") === "on"
     });

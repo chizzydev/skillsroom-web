@@ -7,6 +7,7 @@ import { PendingLink } from "@/components/ui/PendingLink";
 import { Panel, PanelHeader } from "@/components/ui/Panel";
 import { StatusPanel } from "@/components/ui/StatusPanel";
 import { TransientStatusBanner } from "@/components/ui/TransientStatusBanner";
+import { RoomCodeInput } from "@/components/matches/RoomCodeInput";
 import { getCurrentUser } from "@/lib/auth-bridge";
 import type { MatchRoomStatus } from "@/lib/match-room-api";
 import { joinMatchRoomAction } from "./actions";
@@ -62,14 +63,7 @@ export default async function MatchesPage({ searchParams }: { searchParams: Prom
         <Panel id="join-room">
           <PanelHeader eyebrow="Join Code" title="Join a private room" description="Players can join a room only when their profile is complete and the room is open." />
           <form action={joinMatchRoomAction} className="grid gap-3 p-4 md:grid-cols-[1fr_auto]">
-            <input
-              autoCapitalize="none"
-              autoComplete="off"
-              className="min-h-11 rounded-md border border-line bg-white px-3 font-mono text-sm font-bold outline-none focus:border-action"
-              name="room_code"
-              placeholder="SR8K21"
-              required
-            />
+            <RoomCodeInput variant="light" />
             <SubmitButton idleLabel="Join room" pendingLabel="Joining room..." />
           </form>
         </Panel>

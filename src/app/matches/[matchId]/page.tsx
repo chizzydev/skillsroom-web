@@ -6,6 +6,7 @@ import { RoomActionForm } from "@/components/matches/RoomActionForm";
 import { ManualPaymentPanel } from "@/components/payments/ManualPaymentPanel";
 import { MotionSection, Reveal } from "@/components/motion";
 import { LiveUpdateStream } from "@/components/realtime/LiveUpdateStream";
+import { LivestreamLinkFields } from "@/components/streaming/LivestreamLinkFields";
 import { PlayerTrustCard } from "@/components/trust/PlayerTrustCard";
 import { Badge } from "@/components/ui/Badge";
 import { PendingLink } from "@/components/ui/PendingLink";
@@ -14,6 +15,7 @@ import { SubmitButton } from "@/components/ui/SubmitButton";
 import { Timeline } from "@/components/ui/Timeline";
 import { TransientStatusBanner } from "@/components/ui/TransientStatusBanner";
 import { getCurrentUser } from "@/lib/auth-bridge";
+import { livestreamProviderLabel } from "@/lib/livestream-url";
 import { roomIssueRulesFromRuleset } from "@/lib/room-issue-rules";
 import {
   formatEntryAmount,
@@ -130,7 +132,7 @@ function claimResponseStatus(claim: MatchResultClaim, responses: RoomResultOverv
     return { label: "Opponent disputed", detail: response.note ?? "Skillsroom review is needed before payout.", tone: "danger" as const };
   }
   if (responseWindowExpired(claim)) {
-    return { label: "Response overdue", detail: "Skillsroom can now review this under the no-response rule.", tone: "warning" as const };
+    return { label: "Response overdue", detail: "Skillsroom can award the submitted result from the saved proof.", tone: "warning" as const };
   }
   return {
     label: "Waiting for opponent",
@@ -143,6 +145,9 @@ function claimReviewStatus(claim: MatchResultClaim, reviews: RoomResultOverview[
   const review = reviews.find((item) => item.result_claim_id === claim.id) ?? null;
   if (!review) {
     if (claim.status === "opponent_disputed") return { label: "Admin review needed", detail: "Payout stays paused while Skillsroom checks the dispute.", tone: "danger" as const };
+    if (claim.status === "submitted" && responseWindowExpired(claim)) {
+      return { label: "Ready for no-response review", detail: "The response window has passed. Skillsroom can award the submitted result from the saved proof.", tone: "warning" as const };
+    }
     if (claim.status === "submitted") return { label: "Not ready for final decision", detail: "Waiting for the opponent response window.", tone: "warning" as const };
     return { label: "Admin review pending", detail: "Skillsroom will check the room record before final payout.", tone: "warning" as const };
   }
@@ -484,7 +489,7 @@ function livestreamStatusLabel(status: LivestreamPlaybackStatus) {
   return "Link unavailable";
 }
 
-function streamingProviderLabel(provider: StreamingConnectedAccount["provider"]) {
+function streamingConnectedProviderLabel(provider: StreamingConnectedAccount["provider"]) {
   if (provider === "youtube") return "YouTube";
   if (provider === "kick") return "Kick";
   return "Twitch";
@@ -804,7 +809,7 @@ async function RoomLivestreamIsland({
                         {livestreamStatusLabel(livestreamPlaybackStatus(primaryLivestream))}
                       </Badge>
                       <Badge tone="cyan">{livestreamRoleLabel(livestreamRole(primaryLivestream))}</Badge>
-                      <Badge tone="neutral">{primaryLivestream.provider}</Badge>
+                      <Badge tone="neutral">{livestreamProviderLabel(primaryLivestream.provider)}</Badge>
                     </div>
                     <h2 className="mt-2 max-w-full text-lg font-black text-white [overflow-wrap:anywhere]">{primaryLivestream.title}</h2>
                   </div>
@@ -859,7 +864,7 @@ async function RoomLivestreamIsland({
                       <div className="grid min-w-0 gap-2 sm:flex sm:items-start sm:justify-between">
                         <div className="min-w-0">
                           <p className="text-sm font-black text-ink [overflow-wrap:anywhere]">{account.display_name}</p>
-                          <p className="text-xs font-bold text-muted [overflow-wrap:anywhere]">{streamingProviderLabel(account.provider)}</p>
+                          <p className="text-xs font-bold text-muted [overflow-wrap:anywhere]">{streamingConnectedProviderLabel(account.provider)}</p>
                         </div>
                         <Badge tone={connectedStreamStatusTone(account.live_status)}>{connectedStreamStatusLabel(account.live_status)}</Badge>
                       </div>
@@ -892,7 +897,7 @@ async function RoomLivestreamIsland({
                     </p>
                     {bestStream ? (
                       <a className="mt-3 inline-flex text-sm font-black text-cyan hover:text-action" href={bestStream.stream_url} rel="noreferrer" target="_blank">
-                        Open {bestStream.provider}
+                        Open {livestreamProviderLabel(bestStream.provider)}
                       </a>
                     ) : null}
                   </div>
@@ -949,10 +954,10 @@ async function RoomLivestreamIsland({
                 Title
                 <input className="min-h-11 min-w-0 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" maxLength={140} name="title" required />
               </label>
-              <label className="grid gap-2 text-sm font-bold text-ink">
-                Stream link
-                <input className="min-h-11 min-w-0 rounded-md border border-line bg-white px-3 text-sm outline-none focus:border-action" name="stream_url" required type="url" />
-              </label>
+              <LivestreamLinkFields />
+              <p className="text-xs font-bold leading-5 text-muted">
+                Use a secure public stream link. YouTube, Twitch, Kick, and TikTok are supported for room streams.
+              </p>
               <SubmitButton idleLabel="Save livestream" pendingLabel="Saving livestream..." />
             </RoomActionForm>
 
@@ -962,7 +967,7 @@ async function RoomLivestreamIsland({
                   <div className="motion-flow-card rounded-md border border-line bg-surfaceWarm p-4" key={item.id}>
                     <div className="flex flex-wrap items-center gap-2">
                       <Badge tone={item.status === "active" ? "success" : "danger"}>{item.status}</Badge>
-                      <Badge tone="cyan">{item.provider}</Badge>
+                      <Badge tone="cyan">{livestreamProviderLabel(item.provider)}</Badge>
                       <Badge tone="neutral">{livestreamRoleLabel(livestreamRole(item))}</Badge>
                     </div>
                     <h3 className="mt-3 text-base font-black text-ink">{item.title}</h3>
@@ -1177,6 +1182,15 @@ export default async function MatchDetailPage({
     Boolean(currentParticipant) &&
     Boolean(latestClaim) &&
     latestClaim?.status === "submitted" &&
+    !responseWindowExpired(latestClaim) &&
+    latestClaim.claimant_user_id !== user.id &&
+    latestClaim.claimant_participant_id !== currentParticipant?.id &&
+    latestClaim.claimed_winner_participant_id !== currentParticipant?.id;
+  const missedResultResponseWindow =
+    Boolean(currentParticipant) &&
+    Boolean(latestClaim) &&
+    latestClaim?.status === "submitted" &&
+    responseWindowExpired(latestClaim) &&
     latestClaim.claimant_user_id !== user.id &&
     latestClaim.claimant_participant_id !== currentParticipant?.id &&
     latestClaim.claimed_winner_participant_id !== currentParticipant?.id;
@@ -1753,7 +1767,7 @@ export default async function MatchDetailPage({
                     </div>
                     <div className="rounded-md border border-line bg-white p-3">
                       <p className="font-mono text-[0.62rem] font-black uppercase tracking-[0.12em] text-dim">No response</p>
-                      <p className="mt-2 text-xs font-bold leading-5 text-muted">Skillsroom can review the claim after the deadline.</p>
+                      <p className="mt-2 text-xs font-bold leading-5 text-muted">The submitted result can be awarded automatically after the deadline.</p>
                     </div>
                   </div>
                   <a className="text-sm font-black text-cyan hover:text-action" href="#result">See submitted proof</a>
@@ -1795,6 +1809,19 @@ export default async function MatchDetailPage({
                     <SubmitButton idleLabel="Dispute result" name="response" pendingLabel="Submitting..." value="dispute" variant="danger" />
                   </div>
                 </form>
+              </div>
+            ) : missedResultResponseWindow && latestClaim ? (
+              <div className="grid scroll-mt-32 gap-4 p-4 lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start" id="result-response">
+                <div className="rounded-md border border-amber-200 bg-amber-50 p-4">
+                  <p className="font-mono text-xs font-black uppercase tracking-[0.14em] text-amber-900">Response closed</p>
+                  <h3 className="mt-2 text-xl font-black text-ink">The response window passed</h3>
+                  <p className="mt-2 text-sm font-bold leading-6 text-muted">
+                    The opponent had 24 hours to agree or dispute. The submitted result can now be awarded automatically from the saved proof.
+                  </p>
+                </div>
+                <a className="inline-flex min-h-10 items-center justify-center rounded-md bg-white px-4 text-sm font-black text-ink ring-1 ring-line hover:bg-surfaceHigh" href="#result">
+                  View result details
+                </a>
               </div>
             ) : canSubmitNewResult ? (
               <div className="grid items-start gap-4 p-4 xl:grid-cols-[minmax(0,1fr)_24rem]">
@@ -1873,10 +1900,16 @@ export default async function MatchDetailPage({
                   <div className="rounded-md border border-cyan/30 bg-cyanSoft p-4">
                     <p className="font-mono text-xs font-black uppercase tracking-[0.14em] text-cyan">Result submitted</p>
                     <h3 className="mt-2 text-xl font-black text-ink">
-                      {latestClaim.status === "submitted" ? "Waiting for opponent response" : "Result review is moving"}
+                      {latestClaim.status === "submitted" && responseWindowExpired(latestClaim)
+                        ? "Response window passed"
+                        : latestClaim.status === "submitted"
+                          ? "Waiting for opponent response"
+                          : "Result review is moving"}
                     </h3>
                     <p className="mt-2 text-sm leading-6 text-muted">
-                      {latestClaim.status === "submitted"
+                      {latestClaim.status === "submitted" && responseWindowExpired(latestClaim)
+                        ? "Skillsroom can award the submitted result from the saved proof if the automatic deadline job has not finished yet."
+                        : latestClaim.status === "submitted"
                         ? `Opponent response is due ${dateTimeLabel(latestClaim.opponent_response_due_at)}. Keep this room open for updates.`
                         : "The submitted result, proof, response, and final decision stay attached to this room."}
                     </p>

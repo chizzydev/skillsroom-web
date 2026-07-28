@@ -241,7 +241,7 @@ export default async function AdminResultsPage({ searchParams }: { searchParams:
               <PanelHeader eyebrow="Decision" title="Review result claim" description="Use the approval path that matches the player response and proof review." />
               <form action={reviewResultClaimAction} className="grid gap-3 p-4">
                 <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm font-bold leading-6 text-amber-900">
-                  Approve agreed claim only when the opponent accepted the result. Use dispute review actions only after Skillsroom checks the proof and dispute reason. Timeout award is only for missed responses after the deadline.
+                  Approve agreed claim only when the opponent accepted the result. Use dispute review actions only after Skillsroom checks the proof and dispute reason. No-response awards run automatically after the deadline; use the timeout button only if a claim still needs catch-up.
                 </div>
                 <label className="grid gap-2 text-sm font-bold text-ink">
                   Claim ID
@@ -380,7 +380,7 @@ export default async function AdminResultsPage({ searchParams }: { searchParams:
                     </dl>
                     {claim.status === "submitted" ? (
                       <div className={["mt-4 rounded-md border p-3 text-sm font-bold leading-6", responseWindowExpired(claim) ? "border-danger bg-red-50 text-danger" : "border-amber-200 bg-amber-50 text-amber-900"].join(" ")}>
-                        Opponent response due: {dateTimeLabel(claim.opponent_response_due_at)}. {responseWindowExpired(claim) ? "No-response approval is now available after checking the evidence, room history, and any support context." : "Winner approval remains locked until the opponent agrees or the window expires."}
+                        Opponent response due: {dateTimeLabel(claim.opponent_response_due_at)}. {responseWindowExpired(claim) ? "Ready for no-response review if the automatic deadline award has not finished yet." : "Winner approval remains locked until the opponent agrees or the window expires."}
                       </div>
                     ) : null}
                     {card.evidence.length ? (
@@ -467,7 +467,7 @@ export default async function AdminResultsPage({ searchParams }: { searchParams:
               <PanelHeader eyebrow="Decision" title="Review result claim" description="Use the approval path that matches the player response and proof review." />
               <form action={reviewResultClaimAction} className="grid gap-3 p-4">
                 <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm font-bold leading-6 text-amber-900">
-                  Approve agreed claim only when the opponent accepted the result. Use dispute review actions only after Skillsroom checks the proof and dispute reason. Timeout award is only for missed responses after the deadline.
+                  Approve agreed claim only when the opponent accepted the result. Use dispute review actions only after Skillsroom checks the proof and dispute reason. No-response awards run automatically after the deadline; use the timeout button only if a claim still needs catch-up.
                 </div>
                 <label className="grid gap-2 text-sm font-bold text-ink">
                   Claim ID

@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth-bridge";
 import { storeEvidenceFile } from "@/lib/evidence-storage";
 import { manualCollectionAccount } from "@/lib/manual-payment";
+import { isSupportedLivestreamProvider, validateLivestreamUrl } from "@/lib/livestream-url";
 import { roomActionError, roomActionSuccess, type RoomActionState } from "@/lib/room-action-state";
 import {
   acceptMatchChallenge,
@@ -145,14 +146,27 @@ async function submitResultClaimFromForm(formData: FormData) {
 
 async function createMatchLivestreamFromForm(formData: FormData) {
   const matchRoomId = String(formData.get("match_room_id") || "");
+  const provider = String(formData.get("provider") || "youtube");
+  const streamUrl = String(formData.get("stream_url") || "").trim();
+
+  if (!isSupportedLivestreamProvider(provider)) {
+    throw new Error("Choose YouTube, Twitch, Kick, or TikTok for this stream.");
+  }
+
+  const validationMessage = validateLivestreamUrl(provider, streamUrl);
+  if (validationMessage) {
+    throw new Error(validationMessage);
+  }
+
   await createCommunityLivestream({
     target_type: "match_room",
     match_room_id: matchRoomId,
+    provider,
     visibility: String(formData.get("visibility") || "public") as never,
     stream_role: String(formData.get("stream_role") || "official") as never,
     playback_status: String(formData.get("playback_status") || "live") as never,
     title: String(formData.get("title") || "").trim(),
-    stream_url: String(formData.get("stream_url") || "").trim(),
+    stream_url: streamUrl,
     display_order: Number(formData.get("display_order") || 0),
     is_featured: formData.get("is_featured") === "on"
   });
