@@ -163,7 +163,7 @@ export function HomeLiveLobbyIsland({ initialSummary }: { initialSummary: Player
 
       <div className="grid min-w-0 gap-6 xl:grid-cols-3">
         <Panel>
-          <PanelHeader eyebrow="Play Now" title="Recommended matches" description="Rooms here are open and fit your current balance." />
+          <PanelHeader eyebrow="Play now" title="Best things to join" description="Rooms here are open and fit your current balance." />
           {recommendedRooms.length ? (
             <div>{recommendedRooms.slice(0, 4).map((room) => <HomeRoomCard actionLabel="Join room" key={room.id} room={room} />)}</div>
           ) : (
@@ -174,7 +174,7 @@ export function HomeLiveLobbyIsland({ initialSummary }: { initialSummary: Player
         </Panel>
 
         <Panel>
-          <PanelHeader eyebrow="Your Action" title="Rooms needing you" description="Rooms waiting for payment, play, proof, result, or review." />
+          <PanelHeader eyebrow="Lobby" title="Rooms needing action" description="Rooms waiting for payment, play, proof, result, or review." />
           {actionRooms.length ? (
             <div>{actionRooms.slice(0, 4).map((room) => <HomeRoomCard key={room.id} room={room} />)}</div>
           ) : (

@@ -16,6 +16,12 @@ type NotificationPreference = {
   in_app_sound_enabled: boolean;
 };
 
+function shouldPlaySoundForRealtimeEvent(event: RealtimeEvent, pathname: string, currentUserId?: string | null) {
+  if (currentUserId && event.actor_user_id === currentUserId) return false;
+  if (event.event_type === "match.challenge.created") return pathname.startsWith("/challenges");
+  return event.event_type === "notification.created" || event.event_type === "room.invite.created";
+}
+
 async function getClientNotificationPreferences() {
   const response = await fetch("/api/community/notifications/bootstrap", {
     cache: "no-store",
@@ -25,9 +31,13 @@ async function getClientNotificationPreferences() {
   const payload = await response.json() as {
     data?: {
       preferences?: NotificationPreference;
+      current_user_id?: string | null;
     };
   };
-  return { preferences: payload.data?.preferences ?? null };
+  return {
+    preferences: payload.data?.preferences ?? null,
+    currentUserId: payload.data?.current_user_id ?? null
+  };
 }
 
 function pathRoomId(pathname: string) {
@@ -187,7 +197,7 @@ export function GlobalRealtimeBridge({ enabled }: GlobalRealtimeBridgeProps) {
     const detail = dispatchRealtimePatch(event);
     invalidateQueriesForRealtimeEvent(queryClient, event);
     const preferences = preferencesQuery.data?.preferences;
-    if (event.event_type === "notification.created" && document.visibilityState === "visible" && preferences?.in_app_enabled && preferences.in_app_sound_enabled) {
+    if (shouldPlaySoundForRealtimeEvent(event, pathnameRef.current, preferencesQuery.data?.currentUserId) && document.visibilityState === "visible" && preferences?.in_app_enabled && preferences.in_app_sound_enabled) {
       const now = Date.now();
       if (now - lastSoundAtRef.current > 1_500) {
         lastSoundAtRef.current = now;
@@ -200,7 +210,7 @@ export function GlobalRealtimeBridge({ enabled }: GlobalRealtimeBridgeProps) {
     }
     const target = detail.target ?? classifyRealtimePatch(event);
     if (routeShouldRefresh(pathnameRef.current, event, target)) refreshSoon();
-  }, [preferencesQuery.data?.preferences, queryClient, refreshSoon]);
+  }, [preferencesQuery.data?.currentUserId, preferencesQuery.data?.preferences, queryClient, refreshSoon]);
 
   const listeners = useMemo(() => ({
     visibility: flushDeferredRefresh,

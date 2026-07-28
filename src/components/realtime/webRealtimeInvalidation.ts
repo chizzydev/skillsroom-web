@@ -65,6 +65,7 @@ export function queryKeysForRealtimeEvent(event: RealtimeEvent): QueryKey[] {
   if (type.startsWith("match.") || roomId) {
     pushUnique(keys, webQueryKeys.rooms);
     pushUnique(keys, webQueryKeys.home);
+    if (type.startsWith("match.challenge.")) pushUnique(keys, webQueryKeys.challenges);
     if (roomId) {
       pushUnique(keys, webQueryKeys.room(roomId));
       pushUnique(keys, webQueryKeys.roomLivestreams(roomId));

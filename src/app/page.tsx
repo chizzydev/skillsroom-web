@@ -613,8 +613,8 @@ export default async function HomePage({ searchParams }: HomePageProps) {
                     View challenges
                   </PendingLink>
                 }
-                eyebrow="Play Now"
-                title="Recommended matches"
+                eyebrow="Play now"
+                title="Best things to join"
                 description="Rooms here are open and fit your current balance."
               />
               {recommendedRooms.length ? (
@@ -686,8 +686,8 @@ export default async function HomePage({ searchParams }: HomePageProps) {
                     View your rooms
                   </PendingLink>
                 }
-                eyebrow="Your Action"
-                title="Rooms needing you"
+                eyebrow="Lobby"
+                title="Rooms needing action"
                 description="These rooms are waiting for payment, play, proof, result, or review."
               />
               {actionRooms.length ? (

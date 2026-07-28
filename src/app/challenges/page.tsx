@@ -532,7 +532,7 @@ export default async function ChallengesPage({ searchParams }: { searchParams: P
                     Showing {challenges.length.toLocaleString()} open {challenges.length === 1 ? "challenge" : "challenges"}
                   </p>
                   <p className="leading-6">
-                    {activeMarketplaceFilters.length ? `Filters: ${activeMarketplaceFilters.join(" / ")}` : "No filters selected"}
+                    {activeMarketplaceFilters.length ? `Showing matches for ${activeMarketplaceFilters.join(" / ")}.` : "Showing every open challenge."}
                   </p>
                 </div>
                 {challenges.length ? (
@@ -544,7 +544,7 @@ export default async function ChallengesPage({ searchParams }: { searchParams: P
                 ) : (
                   <div className="p-4">
                     <div className="rounded-md border border-dashed border-line bg-surfaceWarm p-6">
-                      <h2 className="text-lg font-black text-ink">No open challenge found</h2>
+                      <h2 className="text-lg font-black text-ink">No open challenges found</h2>
                       <p className="mt-2 text-sm leading-6 text-muted">
                         Try clearing the filters or post a challenge with your preferred game, platform, region, and entry.
                       </p>

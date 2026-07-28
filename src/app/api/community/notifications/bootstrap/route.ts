@@ -12,7 +12,7 @@ export async function GET() {
 
   try {
     const bootstrap = await getNotificationBootstrap();
-    return NextResponse.json({ ok: true, data: bootstrap });
+    return NextResponse.json({ ok: true, data: { ...bootstrap, current_user_id: user.id } });
   } catch {
     return NextResponse.json({ ok: false, error: "NOTIFICATIONS_UNAVAILABLE" }, { status: 502 });
   }
