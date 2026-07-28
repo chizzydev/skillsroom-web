@@ -1565,16 +1565,16 @@ export default async function MatchDetailPage({
                             <Badge tone={fundingMethod.tone}>{fundingMethod.label}</Badge>
                           </div>
                           <p className="mt-2 text-xs font-bold leading-5 text-muted">{fundingMethod.detail}</p>
-                          <div className="mt-3 grid gap-2 rounded-md border border-line bg-white p-3 text-sm">
-                            <div className="flex items-center justify-between gap-3">
+                          <div className="mt-3 grid text-sm">
+                            <div className="flex items-center justify-between gap-3 border-t border-line/70 py-2">
                               <span className="font-bold text-muted">Entry amount</span>
                               <span className="font-black text-ink">{formatEntryAmount(room)}</span>
                             </div>
-                            <div className="flex items-center justify-between gap-3">
+                            <div className="flex items-center justify-between gap-3 border-t border-line/70 py-2">
                               <span className="font-bold text-muted">Entry status</span>
                               <span className="font-black text-ink">{participant ? displayLabel(participant.funding_status) : "Waiting"}</span>
                             </div>
-                            <div className="flex items-center justify-between gap-3">
+                            <div className="flex items-center justify-between gap-3 border-t border-line/70 py-2">
                               <span className="font-bold text-muted">Proof</span>
                               <span className="text-right font-black text-ink">{fundingProofSummary(funding, participant)}</span>
                             </div>
