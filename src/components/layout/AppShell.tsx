@@ -23,7 +23,8 @@ const footerLinks = [
   { label: "Trust", href: "/trust" },
   { label: "Terms", href: "/terms" },
   { label: "Privacy", href: "/privacy" },
-  { label: "Support", href: "/support" }
+  { label: "Support", href: "/support" },
+  { label: "Android app", href: "/downloads/skillsroom-android-v1.0.0.apk", download: true }
 ] as const;
 
 export async function AppShell({ active, children }: AppShellProps) {
@@ -96,9 +97,15 @@ export async function AppShell({ active, children }: AppShellProps) {
           </div>
           <nav className="grid min-w-0 grid-cols-2 gap-x-4 gap-y-2 text-xs font-black text-slate-300 sm:flex sm:flex-wrap">
             {footerLinks.map((item) => (
-              <Link className="hover:text-white" href={item.href} key={item.href}>
-                {item.label}
-              </Link>
+              "download" in item ? (
+                <a className="hover:text-white" download href={item.href} key={item.href}>
+                  {item.label}
+                </a>
+              ) : (
+                <Link className="hover:text-white" href={item.href} key={item.href}>
+                  {item.label}
+                </Link>
+              )
             ))}
           </nav>
         </div>
