@@ -69,13 +69,13 @@ function HomeMetricLink({
 
   return (
     <PendingLink
-      className={["motion-card grid min-h-36 min-w-0 content-between rounded-[1.05rem] border border-line border-t-4 bg-white p-4 shadow-[0_14px_34px_rgba(3,10,20,0.07)] transition hover:-translate-y-0.5 hover:bg-surfaceHigh", toneClass].join(" ")}
+      className={["motion-card grid min-h-32 min-w-0 content-between rounded-[1.05rem] border border-line border-t-4 bg-white p-3 shadow-[0_14px_34px_rgba(3,10,20,0.07)] transition hover:-translate-y-0.5 hover:bg-surfaceHigh md:min-h-36 md:p-4", toneClass].join(" ")}
       href={href}
       pendingLabel="Opening..."
     >
-      <span className="font-mono text-[0.68rem] font-black uppercase tracking-[0.12em] text-dim">{label}</span>
+      <span className="font-mono text-[0.62rem] font-black uppercase tracking-[0.12em] text-dim md:text-[0.68rem]">{label}</span>
       <span>
-        <strong className="block truncate text-3xl font-black leading-none md:text-4xl">{value}</strong>
+        <strong className="block truncate text-2xl font-black leading-none md:text-4xl">{value}</strong>
         <span className="mt-2 block text-xs font-semibold leading-5 text-muted">{detail}</span>
       </span>
     </PendingLink>
@@ -179,7 +179,7 @@ export function HomeLiveLobbyIsland({ initialSummary }: { initialSummary: Player
         </div>
       ) : null}
 
-      <div className="grid max-w-4xl min-w-0 gap-3 sm:grid-cols-2">
+      <div className="grid max-w-4xl min-w-0 grid-cols-2 gap-3">
         <HomeMetricLink detail={isFetching ? "Refreshing..." : "Open now"} href="/matches#room-activity" label="Rooms" tone="cyan" value={(summary.play_now_counts?.open_rooms ?? (summary.open_room_previews ?? []).length).toString()} />
         <HomeMetricLink detail="Recommended" href="/challenges" label="Matches" tone="success" value={(summary.play_now_counts?.recommended_matches ?? recommendedRooms.length).toString()} />
         <HomeMetricLink detail="Open entries" href="/tournaments?filter=registration_open" label="Tourneys" tone="warning" value={(summary.play_now_counts?.open_tournaments ?? openTournaments.length).toString()} />

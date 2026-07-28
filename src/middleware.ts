@@ -29,14 +29,16 @@ function accessTokenNeedsRefresh(token: string | null) {
   if (!token) return true;
 
   const [, encodedPayload] = token.split(".");
-  if (!encodedPayload) return false;
+  if (!encodedPayload) return true;
 
   try {
-    const payload = JSON.parse(atob(encodedPayload.replace(/-/g, "+").replace(/_/g, "/"))) as { exp?: unknown };
-    if (typeof payload.exp !== "number") return false;
+    const normalizedPayload = encodedPayload.replace(/-/g, "+").replace(/_/g, "/");
+    const paddedPayload = normalizedPayload.padEnd(Math.ceil(normalizedPayload.length / 4) * 4, "=");
+    const payload = JSON.parse(atob(paddedPayload)) as { exp?: unknown };
+    if (typeof payload.exp !== "number") return true;
     return payload.exp - Math.floor(Date.now() / 1000) <= refreshBeforeExpirySeconds;
   } catch {
-    return false;
+    return true;
   }
 }
 
