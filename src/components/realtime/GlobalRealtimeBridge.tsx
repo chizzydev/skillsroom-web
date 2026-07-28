@@ -50,21 +50,35 @@ function playNotificationTone() {
   if (!AudioContextCtor) return;
 
   const context = new AudioContextCtor();
-  const oscillator = context.createOscillator();
-  const gain = context.createGain();
+  const masterGain = context.createGain();
+  const compressor = context.createDynamicsCompressor();
+  const tones = [
+    { frequency: 1046.5, start: 0, stop: 0.16 },
+    { frequency: 1318.5, start: 0.13, stop: 0.34 }
+  ];
 
-  oscillator.type = "sine";
-  oscillator.frequency.setValueAtTime(880, context.currentTime);
-  oscillator.frequency.exponentialRampToValueAtTime(660, context.currentTime + 0.14);
-  gain.gain.setValueAtTime(0.0001, context.currentTime);
-  gain.gain.exponentialRampToValueAtTime(0.08, context.currentTime + 0.015);
-  gain.gain.exponentialRampToValueAtTime(0.0001, context.currentTime + 0.18);
+  masterGain.gain.setValueAtTime(0.0001, context.currentTime);
+  masterGain.gain.exponentialRampToValueAtTime(0.28, context.currentTime + 0.018);
+  masterGain.gain.exponentialRampToValueAtTime(0.0001, context.currentTime + 0.38);
+  compressor.threshold.setValueAtTime(-18, context.currentTime);
+  compressor.knee.setValueAtTime(12, context.currentTime);
+  compressor.ratio.setValueAtTime(4, context.currentTime);
+  compressor.attack.setValueAtTime(0.003, context.currentTime);
+  compressor.release.setValueAtTime(0.12, context.currentTime);
 
-  oscillator.connect(gain);
-  gain.connect(context.destination);
-  oscillator.start();
-  oscillator.stop(context.currentTime + 0.2);
-  window.setTimeout(() => void context.close().catch(() => undefined), 260);
+  masterGain.connect(compressor);
+  compressor.connect(context.destination);
+
+  tones.forEach((tone) => {
+    const oscillator = context.createOscillator();
+    oscillator.type = "triangle";
+    oscillator.frequency.setValueAtTime(tone.frequency, context.currentTime + tone.start);
+    oscillator.connect(masterGain);
+    oscillator.start(context.currentTime + tone.start);
+    oscillator.stop(context.currentTime + tone.stop);
+  });
+
+  window.setTimeout(() => void context.close().catch(() => undefined), 520);
 }
 
 function isRoomPatchTarget(target: RealtimePatchTarget) {
