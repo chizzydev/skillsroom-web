@@ -52,13 +52,15 @@ function HomeMetricLink({
   href,
   label,
   tone,
-  value
+  value,
+  valueScale = "count"
 }: {
   detail: string;
   href: string;
   label: string;
   tone: "cyan" | "success" | "warning" | "danger";
   value: string;
+  valueScale?: "count" | "label";
 }) {
   const toneClass = {
     cyan: "border-t-cyan text-cyan",
@@ -66,6 +68,9 @@ function HomeMetricLink({
     warning: "border-t-warning text-warning",
     danger: "border-t-danger text-danger"
   }[tone];
+  const valueClass = valueScale === "label"
+    ? "text-lg leading-tight md:text-2xl"
+    : "text-2xl leading-none md:text-4xl";
 
   return (
     <PendingLink
@@ -75,7 +80,7 @@ function HomeMetricLink({
     >
       <span className="font-mono text-[0.62rem] font-black uppercase tracking-[0.12em] text-dim md:text-[0.68rem]">{label}</span>
       <span>
-        <strong className="block truncate text-2xl font-black leading-none md:text-4xl">{value}</strong>
+        <strong className={["block break-words font-black", valueClass].join(" ")}>{value}</strong>
         <span className="mt-2 block text-xs font-semibold leading-5 text-muted">{detail}</span>
       </span>
     </PendingLink>
@@ -184,8 +189,8 @@ export function HomeLiveLobbyIsland({ initialSummary }: { initialSummary: Player
         <HomeMetricLink detail="Recommended" href="/challenges" label="Matches" tone="success" value={(summary.play_now_counts?.recommended_matches ?? recommendedRooms.length).toString()} />
         <HomeMetricLink detail="Open entries" href="/tournaments?filter=registration_open" label="Tourneys" tone="warning" value={(summary.play_now_counts?.open_tournaments ?? openTournaments.length).toString()} />
         <HomeMetricLink detail={reviewRooms.length ? "Needs action" : "No action needed"} href={reviewQueueHref(reviewRooms)} label="Reviews" tone={reviewRooms.length ? "danger" : "success"} value={reviewRooms.length.toString()} />
-        <HomeMetricLink detail="You have balance available for paid play." href="/wallet" label="Wallet" tone="success" value={walletBalanceLabel} />
-        <HomeMetricLink detail={summary.profile_readiness?.detail ?? "Your player profile and game handle are ready."} href="/profile" label="Profile" tone={profileReady ? "success" : "warning"} value={summary.profile_readiness?.label ?? "Profile ready"} />
+        <HomeMetricLink detail="You have balance available for paid play." href="/wallet" label="Wallet" tone="success" value={walletBalanceLabel} valueScale="label" />
+        <HomeMetricLink detail={summary.profile_readiness?.detail ?? "Your player profile and game handle are ready."} href="/profile" label="Profile" tone={profileReady ? "success" : "warning"} value={summary.profile_readiness?.label ?? "Profile ready"} valueScale="label" />
       </div>
 
       <div className="grid min-w-0 gap-6 xl:grid-cols-3">
