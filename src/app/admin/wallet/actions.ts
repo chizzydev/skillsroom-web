@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { adminActionErrorMessage } from "@/lib/admin-action-errors";
 import { requireAdminStepUpToken } from "@/lib/admin-step-up-session";
+import { trackServerAnalyticsEvent } from "@/lib/analytics-server";
 import { reviewWalletPayoutRequest, reviewWalletTopup } from "@/lib/match-room-api";
 
 function withSuccess(decision: "approve" | "reject") {
@@ -28,6 +29,14 @@ export async function reviewWalletTopupAction(formData: FormData) {
       note: String(formData.get("note") || "").trim() || undefined,
       stepUpToken
     });
+    await trackServerAnalyticsEvent({
+      eventName: "wallet.topup_reviewed",
+      screen: "admin_wallet",
+      path: "/admin/wallet",
+      entityType: "wallet_topup",
+      entityId: topupId,
+      metadata: { surface: "admin_web", action: decision }
+    });
   } catch (error) {
     redirect(`/admin/wallet?error=${encodeURIComponent(await adminActionErrorMessage(error, "The wallet top-up review could not be completed."))}`);
   }
@@ -46,6 +55,14 @@ export async function reviewWalletPayoutAction(formData: FormData) {
       payment_reference: String(formData.get("payment_reference") || "").trim() || undefined,
       note: String(formData.get("note") || "").trim() || undefined,
       stepUpToken
+    });
+    await trackServerAnalyticsEvent({
+      eventName: "wallet.payout_reviewed",
+      screen: "admin_wallet",
+      path: "/admin/wallet",
+      entityType: "wallet_payout_request",
+      entityId: payoutRequestId,
+      metadata: { surface: "admin_web", action: decision }
     });
   } catch (error) {
     redirect(`/admin/wallet?error=${encodeURIComponent(await adminActionErrorMessage(error, "The payout review could not be completed."))}`);

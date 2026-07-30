@@ -1,12 +1,17 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { ApiRequestError, reviewGameAccount } from "@/lib/match-room-api";
+import { adminActionErrorMessage } from "@/lib/admin-action-errors";
+import { reviewGameAccount } from "@/lib/match-room-api";
 
-function actionErrorMessage(error: unknown) {
-  if (error instanceof ApiRequestError) return error.message;
-  if (error instanceof Error) return error.message;
-  return "The player admin action could not be completed.";
+async function playerReviewErrorMessage(error: unknown) {
+  const message = await adminActionErrorMessage(
+    error,
+    "Player handle review could not be saved. Refresh the player review page and try again."
+  );
+  return message === "Something went wrong."
+    ? "Player handle review could not be saved. Refresh the player review page and try again."
+    : message;
 }
 
 export async function reviewGameAccountAction(formData: FormData) {
@@ -16,7 +21,7 @@ export async function reviewGameAccountAction(formData: FormData) {
       verification_notes: String(formData.get("verification_notes") || "").trim() || undefined
     });
   } catch (error) {
-    redirect(`/admin/players?error=${encodeURIComponent(actionErrorMessage(error))}`);
+    redirect(`/admin/players?error=${encodeURIComponent(await playerReviewErrorMessage(error))}`);
   }
 
   redirect("/admin/players?game_account_reviewed=1");

@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { adminActionErrorMessage } from "@/lib/admin-action-errors";
 import { requireAdminStepUpToken } from "@/lib/admin-step-up-session";
+import { trackServerAnalyticsEvent } from "@/lib/analytics-server";
 import { reviewFundingSubmission } from "@/lib/match-room-api";
 
 function withSuccess(decision: "approve" | "reject") {
@@ -21,6 +22,14 @@ export async function reviewFundingSubmissionAction(formData: FormData) {
       decision,
       note: String(formData.get("note") || "").trim() || undefined,
       stepUpToken
+    });
+    await trackServerAnalyticsEvent({
+      eventName: "funding.reviewed",
+      screen: "admin_funding",
+      path: "/admin/funding",
+      entityType: "manual_funding_submission",
+      entityId: submissionId,
+      metadata: { surface: "admin_web", action: decision }
     });
   } catch (error) {
     redirect(`/admin/funding?error=${encodeURIComponent(await adminActionErrorMessage(error, "The funding review could not be completed."))}`);

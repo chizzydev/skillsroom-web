@@ -7,6 +7,7 @@ import { storeEvidenceFile } from "@/lib/evidence-storage";
 import { manualCollectionAccount } from "@/lib/manual-payment";
 import { isSupportedLivestreamProvider, validateLivestreamUrl } from "@/lib/livestream-url";
 import { roomActionError, roomActionSuccess, type RoomActionState } from "@/lib/room-action-state";
+import { trackServerAnalyticsEvent } from "@/lib/analytics-server";
 import {
   acceptMatchChallenge,
   archiveCommunityLivestream,
@@ -202,6 +203,15 @@ export async function createMatchRoomAction(formData: FormData) {
     });
 
     roomId = result.room.id;
+    await trackServerAnalyticsEvent({
+      eventName: "room.created",
+      screen: "room_create",
+      path: "/matches/new",
+      entityType: "match_room",
+      entityId: roomId,
+      matchRoomId: roomId,
+      metadata: { surface: "player_web", source: "room_create_form" }
+    });
   } catch (error) {
     redirect(withError("/matches/new", error));
   }
@@ -242,6 +252,18 @@ export async function createMatchChallengeAction(formData: FormData) {
     });
 
     challengeId = result.challenge.id;
+    await trackServerAnalyticsEvent({
+      eventName: "challenge.created",
+      screen: "challenges",
+      path: "/challenges",
+      entityType: "match_challenge",
+      entityId: challengeId,
+      metadata: {
+        surface: "player_web",
+        source: "challenge_create_form",
+        mode: String(formData.get("visibility") || "public") === "private" ? "private" : "public"
+      }
+    });
     revalidatePath("/challenges");
     revalidatePath("/");
   } catch (error) {
@@ -257,6 +279,15 @@ export async function acceptMatchChallengeAction(formData: FormData) {
   try {
     const result = await acceptMatchChallenge(String(formData.get("challenge_id") || ""));
     roomId = result.room.id;
+    await trackServerAnalyticsEvent({
+      eventName: "challenge.accepted",
+      screen: "challenges",
+      path: "/challenges",
+      entityType: "match_challenge",
+      entityId: String(formData.get("challenge_id") || ""),
+      matchRoomId: roomId,
+      metadata: { surface: "player_web", source: "challenge_marketplace" }
+    });
     revalidatePath("/challenges");
     revalidatePath("/");
     revalidateRoom(roomId);
@@ -277,6 +308,15 @@ export async function joinMatchRoomAction(formData: FormData) {
       .replace(/\s+/g, "");
     const result = await joinMatchRoom(roomCode);
     roomId = result.room.id;
+    await trackServerAnalyticsEvent({
+      eventName: "room.joined",
+      screen: "rooms",
+      path: "/matches",
+      entityType: "match_room",
+      entityId: roomId,
+      matchRoomId: roomId,
+      metadata: { surface: "player_web", source: "room_code" }
+    });
   } catch (error) {
     redirect(withError(errorPath, error));
   }
@@ -293,6 +333,15 @@ export async function createRoomInviteAction(formData: FormData) {
       invitee_username: String(formData.get("invitee_username") || "").trim(),
       message: String(formData.get("message") || "").trim() || undefined
     });
+    await trackServerAnalyticsEvent({
+      eventName: "room.invite_sent",
+      screen: "room_detail",
+      path: "/matches/[matchId]",
+      entityType: "match_room",
+      entityId: matchRoomId,
+      matchRoomId,
+      metadata: { surface: "player_web", source: "room_detail" }
+    });
   } catch (error) {
     redirect(`${withError(`/matches/${matchRoomId}`, error)}#invite-player`);
   }
@@ -305,6 +354,15 @@ export async function openMatchRoomAction(formData: FormData) {
 
   try {
     await openMatchRoom(matchRoomId);
+    await trackServerAnalyticsEvent({
+      eventName: "room.opened",
+      screen: "room_detail",
+      path: "/matches/[matchId]",
+      entityType: "match_room",
+      entityId: matchRoomId,
+      matchRoomId,
+      metadata: { surface: "player_web", action: "open" }
+    });
   } catch (error) {
     redirect(withError(`/matches/${matchRoomId}`, error));
   }
@@ -317,6 +375,15 @@ export async function checkInTournamentMatchRoomAction(formData: FormData) {
 
   try {
     await checkInTournamentMatchRoom(matchRoomId);
+    await trackServerAnalyticsEvent({
+      eventName: "tournament.check_in",
+      screen: "room_detail",
+      path: "/matches/[matchId]",
+      entityType: "match_room",
+      entityId: matchRoomId,
+      matchRoomId,
+      metadata: { surface: "player_web", source: "room_detail" }
+    });
   } catch (error) {
     redirect(withError(`/matches/${matchRoomId}`, error));
   }
@@ -333,6 +400,15 @@ export async function startMatchPlayAction(formData: FormData) {
     if (result.room.status !== "active") {
       confirmedOnly = true;
     }
+    await trackServerAnalyticsEvent({
+      eventName: "room.play_started",
+      screen: "room_detail",
+      path: "/matches/[matchId]",
+      entityType: "match_room",
+      entityId: matchRoomId,
+      matchRoomId,
+      metadata: { surface: "player_web", status: confirmedOnly ? "confirmed" : "active" }
+    });
   } catch (error) {
     redirect(withError(`/matches/${matchRoomId}`, error));
   }
@@ -348,6 +424,15 @@ export async function startMatchPlayIslandAction(
 
   try {
     const result = await startMatchPlay(matchRoomId);
+    await trackServerAnalyticsEvent({
+      eventName: "room.play_started",
+      screen: "room_detail",
+      path: "/matches/[matchId]",
+      entityType: "match_room",
+      entityId: matchRoomId,
+      matchRoomId,
+      metadata: { surface: "player_web", status: result.room.status === "active" ? "active" : "confirmed" }
+    });
     revalidateRoom(matchRoomId);
     return roomActionSuccess(
       result.room.status === "active"
@@ -364,6 +449,15 @@ export async function payRoomWithBalanceAction(formData: FormData) {
 
   try {
     matchRoomId = await payRoomWithBalanceFromForm(formData);
+    await trackServerAnalyticsEvent({
+      eventName: "room.entry_paid_balance",
+      screen: "room_detail",
+      path: "/matches/[matchId]",
+      entityType: "match_room",
+      entityId: matchRoomId,
+      matchRoomId,
+      metadata: { surface: "player_web", source: "skillsroom_balance" }
+    });
   } catch (error) {
     redirect(withError(`/matches/${matchRoomId}`, error));
   }
@@ -377,6 +471,15 @@ export async function payRoomWithBalanceIslandAction(
 ): Promise<RoomActionState> {
   try {
     const matchRoomId = await payRoomWithBalanceFromForm(formData);
+    await trackServerAnalyticsEvent({
+      eventName: "room.entry_paid_balance",
+      screen: "room_detail",
+      path: "/matches/[matchId]",
+      entityType: "match_room",
+      entityId: matchRoomId,
+      matchRoomId,
+      metadata: { surface: "player_web", source: "skillsroom_balance" }
+    });
     revalidateRoom(matchRoomId);
     return roomActionSuccess("Your entry fee has been locked from your Skillsroom Balance.");
   } catch (error) {
@@ -389,6 +492,15 @@ export async function submitManualFundingAction(formData: FormData) {
 
   try {
     matchRoomId = await submitManualFundingFromForm(formData);
+    await trackServerAnalyticsEvent({
+      eventName: "room.funding_submitted",
+      screen: "room_detail",
+      path: "/matches/[matchId]",
+      entityType: "match_room",
+      entityId: matchRoomId,
+      matchRoomId,
+      metadata: { surface: "player_web", entry_type: "manual_transfer" }
+    });
   } catch (error) {
     redirect(withError(`/matches/${matchRoomId}`, error));
   }
@@ -402,6 +514,15 @@ export async function submitManualFundingIslandAction(
 ): Promise<RoomActionState> {
   try {
     const matchRoomId = await submitManualFundingFromForm(formData);
+    await trackServerAnalyticsEvent({
+      eventName: "room.funding_submitted",
+      screen: "room_detail",
+      path: "/matches/[matchId]",
+      entityType: "match_room",
+      entityId: matchRoomId,
+      matchRoomId,
+      metadata: { surface: "player_web", entry_type: "manual_transfer" }
+    });
     revalidateRoom(matchRoomId);
     return roomActionSuccess("Funding proof submitted. We will show the updated room status after review.");
   } catch (error) {
@@ -414,6 +535,15 @@ export async function submitResultClaimAction(formData: FormData) {
 
   try {
     matchRoomId = await submitResultClaimFromForm(formData);
+    await trackServerAnalyticsEvent({
+      eventName: "room.result_submitted",
+      screen: "room_detail",
+      path: "/matches/[matchId]",
+      entityType: "match_room",
+      entityId: matchRoomId,
+      matchRoomId,
+      metadata: { surface: "player_web", source: "result_form" }
+    });
   } catch (error) {
     redirect(withError(`/matches/${matchRoomId}`, error));
   }
@@ -427,6 +557,15 @@ export async function submitResultClaimIslandAction(
 ): Promise<RoomActionState> {
   try {
     const matchRoomId = await submitResultClaimFromForm(formData);
+    await trackServerAnalyticsEvent({
+      eventName: "room.result_submitted",
+      screen: "room_detail",
+      path: "/matches/[matchId]",
+      entityType: "match_room",
+      entityId: matchRoomId,
+      matchRoomId,
+      metadata: { surface: "player_web", source: "result_form" }
+    });
     revalidateRoom(matchRoomId);
     return roomActionSuccess("Result submitted. The room will update after the review decision.");
   } catch (error) {
@@ -462,6 +601,15 @@ export async function respondToResultClaimAction(formData: FormData) {
           ]
         : undefined
     });
+    await trackServerAnalyticsEvent({
+      eventName: "room.result_response_submitted",
+      screen: "room_detail",
+      path: "/matches/[matchId]",
+      entityType: "match_room",
+      entityId: matchRoomId,
+      matchRoomId,
+      metadata: { surface: "player_web", action: response }
+    });
   } catch (error) {
     redirect(withError(`/matches/${matchRoomId}`, error));
   }
@@ -494,6 +642,15 @@ export async function respondToResultProofRequestAction(
         }
       ]
     });
+    await trackServerAnalyticsEvent({
+      eventName: "room.proof_response_submitted",
+      screen: "room_detail",
+      path: "/matches/[matchId]",
+      entityType: "match_room",
+      entityId: matchRoomId,
+      matchRoomId,
+      metadata: { surface: "player_web", source: "proof_request" }
+    });
   } catch (error) {
     return roomActionError(actionErrorMessage(error));
   }
@@ -507,6 +664,15 @@ export async function createMatchLivestreamAction(formData: FormData) {
 
   try {
     matchRoomId = await createMatchLivestreamFromForm(formData);
+    await trackServerAnalyticsEvent({
+      eventName: "room.livestream_saved",
+      screen: "room_detail",
+      path: "/matches/[matchId]",
+      entityType: "match_room",
+      entityId: matchRoomId,
+      matchRoomId,
+      metadata: { surface: "player_web", source: "livestream_form" }
+    });
   } catch (error) {
     redirect(withError(`/matches/${matchRoomId}`, error));
   }
@@ -520,6 +686,15 @@ export async function createMatchLivestreamIslandAction(
 ): Promise<RoomActionState> {
   try {
     const matchRoomId = await createMatchLivestreamFromForm(formData);
+    await trackServerAnalyticsEvent({
+      eventName: "room.livestream_saved",
+      screen: "room_detail",
+      path: "/matches/[matchId]",
+      entityType: "match_room",
+      entityId: matchRoomId,
+      matchRoomId,
+      metadata: { surface: "player_web", source: "livestream_form" }
+    });
     revalidateRoom(matchRoomId);
     return roomActionSuccess("Livestream saved. The watch room is updating now.");
   } catch (error) {
@@ -533,6 +708,15 @@ export async function archiveMatchLivestreamAction(formData: FormData) {
 
   try {
     await archiveCommunityLivestream(livestreamId);
+    await trackServerAnalyticsEvent({
+      eventName: "room.livestream_archived",
+      screen: "room_detail",
+      path: "/matches/[matchId]",
+      entityType: "match_room",
+      entityId: matchRoomId,
+      matchRoomId,
+      metadata: { surface: "player_web", action: "archive" }
+    });
   } catch (error) {
     redirect(withError(`/matches/${matchRoomId}`, error));
   }

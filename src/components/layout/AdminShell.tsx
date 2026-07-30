@@ -10,6 +10,7 @@ type AdminShellProps = {
 
 const nav: Array<{ key: AdminSection; label: string; href: string }> = [
   { key: "overview", label: "Overview", href: "/admin" },
+  { key: "analytics", label: "Analytics", href: "/admin/analytics" },
   { key: "funding", label: "Funding", href: "/admin/funding" },
   { key: "wallet", label: "Wallet", href: "/admin/wallet" },
   { key: "paymentReadiness", label: "Payment readiness", href: "/admin/payment-readiness" },
