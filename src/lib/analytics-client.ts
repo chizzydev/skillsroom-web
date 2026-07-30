@@ -1,7 +1,7 @@
 "use client";
 
 const analyticsEndpoint = "/api/analytics/events";
-const sessionStorageKey = "skillsroom.analytics.session_id";
+const sessionStorageKey = "skillsroom.analytics.anonymous_session_id";
 
 type AnalyticsMetadata = Partial<Record<"source" | "action" | "tab" | "surface" | "target" | "queue" | "mode" | "entry_type" | "status", string | number | boolean>>;
 
@@ -26,7 +26,7 @@ function randomSessionSuffix() {
     return crypto.randomUUID();
   }
 
-  return `${Math.random().toString(36).slice(2)}${Date.now().toString(36)}`;
+  return `${Math.random().toString(36).slice(2)}${Math.random().toString(36).slice(2)}`;
 }
 
 function webSessionId() {
@@ -36,11 +36,11 @@ function webSessionId() {
     const existing = window.sessionStorage.getItem(sessionStorageKey);
     if (existing) return existing;
 
-    const next = `web-${Date.now().toString(36)}-${randomSessionSuffix()}`;
+    const next = `anon-web-${randomSessionSuffix()}`;
     window.sessionStorage.setItem(sessionStorageKey, next);
     return next;
   } catch {
-    return `web-${Date.now().toString(36)}-${randomSessionSuffix()}`;
+    return `anon-web-${randomSessionSuffix()}`;
   }
 }
 

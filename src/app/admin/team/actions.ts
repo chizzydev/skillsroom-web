@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { adminActionErrorMessage } from "@/lib/admin-action-errors";
 import { requireAdminStepUpToken } from "@/lib/admin-step-up-session";
 import { canAccessAdmin, getCurrentUser } from "@/lib/auth-bridge";
-import { updateAdminTeamMemberRole, type TeamRole } from "@/lib/match-room-api";
+import { retireAdminTeamTestAccount, updateAdminTeamMemberRole, type TeamRole } from "@/lib/match-room-api";
 
 async function withError(error: unknown) {
   return `/admin/team?error=${encodeURIComponent(await adminActionErrorMessage(error, "Team role update could not be completed."))}`;
@@ -35,4 +35,29 @@ export async function updateTeamRoleAction(formData: FormData) {
   }
 
   redirect("/admin/team?role_updated=1");
+}
+
+export async function retireTestAccountAction(formData: FormData) {
+  try {
+    const user = await getCurrentUser();
+    if (!canAccessAdmin(user) || user?.role !== "owner") {
+      throw new Error("Only the platform owner can retire test accounts.");
+    }
+
+    const reason = String(formData.get("reason") || "").trim();
+    if (reason.length < 8) {
+      throw new Error("Add a clear reason before retiring this test account.");
+    }
+
+    const stepUpToken = await requireAdminStepUpToken();
+    await retireAdminTeamTestAccount({
+      userId: String(formData.get("user_id") || "").trim(),
+      reason,
+      stepUpToken
+    });
+  } catch (error) {
+    redirect(await withError(error));
+  }
+
+  redirect("/admin/team?account_retired=1");
 }

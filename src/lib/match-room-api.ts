@@ -524,6 +524,13 @@ export type AdminAnalyticsSummary = {
     updated_at: string;
   };
   kpis: {
+    total_users: number;
+    total_players: number;
+    new_users: number;
+    new_players: number;
+    real_production_users: number;
+    web_visitors: number;
+    anonymous_web_visitors: number;
     active_users: number;
     sessions: number;
     events: number;
@@ -581,6 +588,24 @@ export type AdminAnalyticsSummary = {
     tournament_commission_reserved_minor: number;
     tournament_commission_completed_minor: number;
   }>;
+  transaction_windows: Array<{
+    window_key: "today" | "seven_days" | "thirty_days";
+    label: string;
+    transaction_count: number;
+    topup_count: number;
+    provider_payment_count: number;
+    payout_count: number;
+    refund_count: number;
+    prize_record_count: number;
+  }>;
+  visitor_conversion: {
+    web_visitors: number;
+    anonymous_web_visitors: number;
+    signups: number;
+    player_signups: number;
+    profile_ready_users: number;
+    first_action_users: number;
+  };
   funnel: {
     room_created: number;
     challenge_created: number;
@@ -668,6 +693,19 @@ export type AdminAnalyticsSummary = {
     pre_cutover_events: number;
     pre_cutover_approved_player_funds_minor: number;
   };
+};
+
+export type AdminAnalyticsUserCandidate = {
+  user_id: string;
+  email: string | null;
+  display_name: string | null;
+  username: string | null;
+  role: string | null;
+  status: string | null;
+  moderation_status: string | null;
+  primary_game_handle: string | null;
+  primary_game_status: string | null;
+  analytics_excluded: boolean;
 };
 
 export type LedgerEntry = {
@@ -1001,6 +1039,9 @@ export type AdminTeamMember = {
   created_at: string;
   updated_at: string;
   team_updated_at: string | null;
+  analytics_excluded: boolean;
+  analytics_exclusion_reason: string | null;
+  account_label: "real_user" | "staff_internal" | "test_excluded" | "disabled";
 };
 
 export type PlayerTrustSummary = {
@@ -3593,6 +3634,12 @@ export function getAdminAnalyticsSummary(days = 28) {
   return apiRequest<AdminAnalyticsSummary>(`/admin/analytics/summary?days=${encodeURIComponent(String(days))}`);
 }
 
+export function searchAdminAnalyticsUsers(input: { query: string; limit?: number }) {
+  const params = new URLSearchParams({ q: input.query });
+  if (input.limit) params.set("limit", String(input.limit));
+  return apiRequest<{ users: AdminAnalyticsUserCandidate[] }>(`/admin/analytics/users/search?${params}`);
+}
+
 export function updateAdminAnalyticsSettings(input: {
   production_activity_starts_at: string;
   production_revenue_starts_at: string;
@@ -3876,6 +3923,19 @@ export function updateAdminTeamMemberRole(input: {
       note: input.note
     })
   });
+}
+
+export function retireAdminTeamTestAccount(input: { userId: string; reason: string; stepUpToken: string }) {
+  return apiRequest<{ members: AdminTeamMember[] }>(
+    `/admin/team/members/${encodeURIComponent(input.userId)}/retire-test-account`,
+    {
+      method: "POST",
+      headers: { "x-admin-step-up": input.stepUpToken },
+      body: JSON.stringify({
+        reason: input.reason
+      })
+    }
+  );
 }
 
 export function listEvidenceAccessEvents(limit = 50) {

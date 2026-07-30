@@ -59,13 +59,12 @@ export async function POST(request: Request) {
   }
 
   const token = await getAccessToken();
-  if (!token) return accepted(false);
 
   const response = await fetch(`${apiBaseUrl()}/analytics/events`, {
     method: "POST",
     headers: {
       accept: "application/json",
-      authorization: `Bearer ${token}`,
+      ...(token ? { authorization: `Bearer ${token}` } : {}),
       "content-type": "application/json"
     },
     body: JSON.stringify({

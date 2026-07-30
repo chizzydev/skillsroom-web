@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { AdminEmptyState } from "@/components/admin/AdminEmptyState";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
+import { AnalyticsUserExclusionPicker } from "@/components/analytics/AnalyticsUserExclusionPicker";
 import { AdminShell } from "@/components/layout/AdminShell";
 import { CountUp } from "@/components/motion";
 import { Badge, type BadgeTone } from "@/components/ui/Badge";
@@ -114,6 +115,10 @@ function previousDaily(summary: AdminAnalyticsSummary) {
   return summary.daily.at(-2) ?? null;
 }
 
+function productionUserShare(summary: AdminAnalyticsSummary) {
+  return pct(summary.kpis.real_production_users, summary.kpis.total_users);
+}
+
 function deltaLabel(current: number, previous?: number) {
   if (previous === undefined) return "No prior day";
   const delta = current - previous;
@@ -173,6 +178,175 @@ function ExecutiveMetricCard({
   );
 }
 
+function AudienceKpiPanel({ summary, days }: { summary: AdminAnalyticsSummary; days: number }) {
+  return (
+    <Panel>
+      <PanelHeader
+        description="Account and production-user health for the selected reporting window."
+        eyebrow="Audience"
+        title="User growth and production audience"
+      />
+      <div className="grid gap-3 p-4 sm:grid-cols-2 xl:grid-cols-5 lg:p-5">
+        <ExecutiveMetricCard
+          detail="All Skillsroom accounts, including players and team members."
+          footer={`${numberLabel(summary.kpis.total_players)} player accounts`}
+          label="Total users"
+          tone="navy"
+          value={numberLabel(summary.kpis.total_users)}
+        />
+        <ExecutiveMetricCard
+          detail={`Accounts created in the last ${days} days, after the reporting cutover.`}
+          footer={`${numberLabel(summary.kpis.new_players)} new player accounts`}
+          label="New users"
+          tone="cyan"
+          value={numberLabel(summary.kpis.new_users)}
+        />
+        <ExecutiveMetricCard
+          detail="Unique web sessions in this reporting window, including anonymous visitors."
+          footer={`${numberLabel(summary.kpis.anonymous_web_visitors)} anonymous sessions`}
+          label="Web visitors"
+          tone="amber"
+          value={numberLabel(summary.kpis.web_visitors)}
+        />
+        <ExecutiveMetricCard
+          detail="Signed-in production players with tracked activity in this window."
+          footer={`${numberLabel(summary.kpis.sessions)} sessions`}
+          label="Active users"
+          tone="green"
+          value={numberLabel(summary.kpis.active_users)}
+        />
+        <ExecutiveMetricCard
+          detail="Active player accounts after excluding staff, disabled, and test accounts."
+          footer={`${productionUserShare(summary)} of all accounts`}
+          label="Production users"
+          tone="navy"
+          value={numberLabel(summary.kpis.real_production_users)}
+        />
+      </div>
+    </Panel>
+  );
+}
+
+function TransactionWindowPanel({ summary }: { summary: AdminAnalyticsSummary }) {
+  const toneByWindow: Record<AdminAnalyticsSummary["transaction_windows"][number]["window_key"], MetricTone> = {
+    today: "green",
+    seven_days: "cyan",
+    thirty_days: "navy"
+  };
+
+  return (
+    <Panel>
+      <PanelHeader
+        description="Transaction counts come from trusted payment, payout, refund, and prize records only."
+        eyebrow="Transactions"
+        title="Trusted transaction volume"
+      />
+      <div className="grid gap-3 p-4 lg:p-5 xl:grid-cols-3">
+        {summary.transaction_windows.map((window) => {
+          const tone = toneByWindow[window.window_key] ?? "navy";
+          const toneClass = metricToneClass[tone];
+          return (
+            <article className={`overflow-hidden rounded-lg border ${toneClass.border} bg-white shadow-[0_18px_45px_rgba(3,10,20,0.07)]`} key={window.window_key}>
+              <div className="flex items-start justify-between gap-3 border-b border-line p-5">
+                <div>
+                  <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-dim">{window.label}</p>
+                  <strong className={`mt-3 block text-4xl font-black leading-none ${toneClass.text}`}>
+                    <CountUp value={numberLabel(window.transaction_count)} />
+                  </strong>
+                  <p className="mt-2 text-sm font-bold text-muted">trusted records</p>
+                </div>
+                <span className={`rounded-full px-3 py-1 text-xs font-black ${toneClass.soft} ${toneClass.text}`}>
+                  {window.transaction_count ? "Active" : "Quiet"}
+                </span>
+              </div>
+              <dl className="grid gap-0 divide-y divide-line px-5 py-2 text-sm">
+                {[
+                  ["Top-ups", window.topup_count],
+                  ["Provider payments", window.provider_payment_count],
+                  ["Payouts", window.payout_count],
+                  ["Refunds", window.refund_count],
+                  ["Prize records", window.prize_record_count]
+                ].map(([label, value]) => (
+                  <div className="flex items-center justify-between gap-3 py-2" key={String(label)}>
+                    <dt className="font-bold text-muted">{label}</dt>
+                    <dd className="font-mono text-xs font-black text-ink">{numberLabel(Number(value))}</dd>
+                  </div>
+                ))}
+              </dl>
+            </article>
+          );
+        })}
+      </div>
+    </Panel>
+  );
+}
+
+function VisitorConversionPanel({ summary }: { summary: AdminAnalyticsSummary }) {
+  const conversion = summary.visitor_conversion;
+  const steps = [
+    {
+      label: "Visitors",
+      value: conversion.web_visitors,
+      detail: `${numberLabel(conversion.anonymous_web_visitors)} anonymous web sessions`,
+      tone: "navy" as MetricTone
+    },
+    {
+      label: "Signups",
+      value: conversion.signups,
+      detail: `${numberLabel(conversion.player_signups)} production player signups`,
+      rate: pct(conversion.signups, conversion.web_visitors),
+      tone: "cyan" as MetricTone
+    },
+    {
+      label: "Profile ready",
+      value: conversion.profile_ready_users,
+      detail: "New production players with completed profiles",
+      rate: pct(conversion.profile_ready_users, conversion.player_signups),
+      tone: "green" as MetricTone
+    },
+    {
+      label: "First action",
+      value: conversion.first_action_users,
+      detail: "New production players who took a room, challenge, tournament, wallet, result, or tracked product action",
+      rate: pct(conversion.first_action_users, conversion.player_signups),
+      tone: "amber" as MetricTone
+    }
+  ];
+
+  return (
+    <Panel>
+      <PanelHeader
+        description="A privacy-clean aggregate funnel from web sessions to account creation, profile readiness, and first meaningful product action."
+        eyebrow="Conversion"
+        title="Visitor to player activation"
+      />
+      <div className="grid gap-3 p-4 lg:p-5 xl:grid-cols-4">
+        {steps.map((step, index) => {
+          const toneClass = metricToneClass[step.tone];
+          return (
+            <article className={`relative overflow-hidden rounded-lg border ${toneClass.border} bg-white p-5 shadow-[0_18px_45px_rgba(3,10,20,0.07)]`} key={step.label}>
+              <span className={`absolute inset-x-0 top-0 h-1 ${toneClass.fill}`} />
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-dim">{step.label}</p>
+                  <strong className={`mt-3 block text-4xl font-black leading-none ${toneClass.text}`}>
+                    <CountUp value={numberLabel(step.value)} />
+                  </strong>
+                </div>
+                {step.rate ? <span className={`rounded-full px-3 py-1 text-xs font-black ${toneClass.soft} ${toneClass.text}`}>{step.rate}</span> : null}
+              </div>
+              <p className="mt-4 text-sm font-bold leading-6 text-muted">{step.detail}</p>
+              <p className="mt-3 border-t border-line pt-3 font-mono text-[0.68rem] font-black uppercase tracking-[0.12em] text-dim">
+                {index === 0 ? "Starting point" : "Conversion from prior stage"}
+              </p>
+            </article>
+          );
+        })}
+      </div>
+    </Panel>
+  );
+}
+
 function AnalyticsHero({
   summary,
   days,
@@ -224,8 +398,8 @@ function AnalyticsHero({
               <strong className="mt-2 block text-2xl font-black text-action">{formatMinorMoney(currency, trustedRevenue)}</strong>
             </div>
             <div className="rounded-md border border-white/10 bg-white/10 p-4">
-              <p className="font-mono text-[0.65rem] font-black uppercase tracking-[0.14em] text-slate-300">Active players</p>
-              <strong className="mt-2 block text-2xl font-black text-white">{numberLabel(summary.kpis.active_users)}</strong>
+              <p className="font-mono text-[0.65rem] font-black uppercase tracking-[0.14em] text-slate-300">Production users</p>
+              <strong className="mt-2 block text-2xl font-black text-white">{numberLabel(summary.kpis.real_production_users)}</strong>
             </div>
           </div>
           <div className="rounded-md border border-white/10 bg-white/10 p-4">
@@ -804,36 +978,7 @@ function QualityControlsPanel({
             <FormActionButton idleLabel="Update reporting basis" pendingLabel="Updating reporting..." />
           </form>
 
-          <form action={excludeAnalyticsUserAction} className="grid gap-4 rounded-lg border border-line bg-white p-4 shadow-[0_14px_34px_rgba(3,10,20,0.06)]">
-            <input name="days" type="hidden" value={days} />
-            <div>
-              <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Exclude player</p>
-              <h3 className="mt-1 text-lg font-black text-ink">Mark a test account</h3>
-              <p className="mt-1 text-sm font-bold leading-6 text-muted">
-                Use this for accounts used in internal checks, seeded activity, APK testing, or payment testing.
-              </p>
-            </div>
-            <label className="grid gap-2 text-sm font-bold text-ink">
-              Player user ID
-              <input
-                className="min-h-11 rounded-md border border-line bg-white px-3 font-mono text-sm outline-none focus:border-action"
-                name="user_id"
-                placeholder="auth user id"
-                required
-              />
-            </label>
-            <label className="grid gap-2 text-sm font-bold text-ink">
-              Reason
-              <textarea
-                className="min-h-24 rounded-md border border-line bg-white px-3 py-2 text-sm outline-none focus:border-action"
-                maxLength={240}
-                name="reason"
-                placeholder="Example: Android release smoke test account."
-                required
-              />
-            </label>
-            <FormActionButton idleLabel="Exclude from analytics" pendingLabel="Saving exclusion..." variant="secondary" />
-          </form>
+          <AnalyticsUserExclusionPicker action={excludeAnalyticsUserAction} days={days} />
         </div>
 
         <div className="overflow-hidden rounded-lg border border-line bg-white">
@@ -964,6 +1109,10 @@ export default async function AdminAnalyticsPage({
                 value={formatMinorMoney(currency, queuedPayments)}
               />
             </div>
+
+            <AudienceKpiPanel summary={summary} days={days} />
+            <VisitorConversionPanel summary={summary} />
+            <TransactionWindowPanel summary={summary} />
 
             <div className="grid gap-5 xl:grid-cols-[minmax(0,1.35fr)_minmax(360px,0.65fr)]">
               <TrendPanel summary={summary} />
