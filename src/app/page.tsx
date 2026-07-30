@@ -32,9 +32,9 @@ const premiumArtwork = {
 } as const;
 
 const androidApk = {
-  href: "/downloads/skillsroom-android-v1.0.2-arm64.apk",
-  version: "1.0.2",
-  size: "31.3 MB"
+  href: "/downloads/skillsroom-android-v1.0.3-arm64.apk",
+  version: "1.0.3",
+  size: "43.0 MB"
 } as const;
 
 function firstName(value?: string | null) {
