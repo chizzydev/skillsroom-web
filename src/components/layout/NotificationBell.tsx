@@ -61,7 +61,9 @@ export function NotificationBell({ initialUnread }: NotificationBellProps) {
       pending_dm_requests: 0,
       count: initialCount
     },
-    refetchInterval: 15_000
+    refetchInterval: 120_000,
+    refetchIntervalInBackground: false,
+    staleTime: 60_000
   });
   const unread = Math.max(0, data.count);
 

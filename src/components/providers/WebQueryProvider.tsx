@@ -11,9 +11,9 @@ export function WebQueryProvider({ children }: { children: React.ReactNode }) {
         defaultOptions: {
           queries: {
             refetchOnReconnect: true,
-            refetchOnWindowFocus: true,
+            refetchOnWindowFocus: false,
             retry: 1,
-            staleTime: 15_000
+            staleTime: 60_000
           }
         }
       })
