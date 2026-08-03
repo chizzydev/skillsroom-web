@@ -4,6 +4,11 @@ import { getWalletOverview, listMyWalletPayoutRequests, listMyWalletTopups, list
 
 export const dynamic = "force-dynamic";
 
+const privateSummaryHeaders = {
+  "Cache-Control": "private, max-age=30, stale-while-revalidate=120",
+  Vary: "Cookie"
+};
+
 export async function GET() {
   const user = await getCurrentUser();
   if (!user) {
@@ -18,16 +23,19 @@ export async function GET() {
       listWalletLedger({ limit: 8 })
     ]);
 
-    return NextResponse.json({
-      ok: true,
-      data: {
-        wallet,
-        topups: topups.topups,
-        payout_requests: payouts.payout_requests,
-        ledger_entries: ledger.ledger_entries,
-        loaded_at: new Date().toISOString()
-      }
-    });
+    return NextResponse.json(
+      {
+        ok: true,
+        data: {
+          wallet,
+          topups: topups.topups,
+          payout_requests: payouts.payout_requests,
+          ledger_entries: ledger.ledger_entries,
+          loaded_at: new Date().toISOString()
+        }
+      },
+      { headers: privateSummaryHeaders }
+    );
   } catch {
     return NextResponse.json({ ok: false, error: "WALLET_UNAVAILABLE" }, { status: 502 });
   }

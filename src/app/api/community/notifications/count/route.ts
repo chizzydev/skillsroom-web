@@ -4,6 +4,11 @@ import { getNotificationBootstrap } from "@/lib/match-room-api";
 
 export const dynamic = "force-dynamic";
 
+const privateSummaryHeaders = {
+  "Cache-Control": "private, max-age=60, stale-while-revalidate=180",
+  Vary: "Cookie"
+};
+
 export async function GET() {
   const user = await getCurrentUser();
   if (!user) {
@@ -19,15 +24,18 @@ export async function GET() {
     ).length;
     const pendingRequests = pendingInvites + pendingDmRequests;
 
-    return NextResponse.json({
-      ok: true,
-      data: {
-        unread,
-        pending_invites: pendingInvites,
-        pending_dm_requests: pendingDmRequests,
-        count: Math.max(unread, pendingRequests)
-      }
-    });
+    return NextResponse.json(
+      {
+        ok: true,
+        data: {
+          unread,
+          pending_invites: pendingInvites,
+          pending_dm_requests: pendingDmRequests,
+          count: Math.max(unread, pendingRequests)
+        }
+      },
+      { headers: privateSummaryHeaders }
+    );
   } catch {
     return NextResponse.json({ ok: false, error: "NOTIFICATION_COUNT_UNAVAILABLE" }, { status: 502 });
   }

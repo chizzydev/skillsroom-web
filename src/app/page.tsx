@@ -32,8 +32,8 @@ const premiumArtwork = {
 } as const;
 
 const androidApk = {
-  href: "/downloads/skillsroom-android-v1.0.3-arm64.apk",
-  version: "1.0.3",
+  href: "/downloads/skillsroom-android-v1.0.4-arm64.apk",
+  version: "1.0.4",
   size: "43.0 MB"
 } as const;
 

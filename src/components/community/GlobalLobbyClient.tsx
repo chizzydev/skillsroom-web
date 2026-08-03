@@ -812,7 +812,7 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
     }
 
     void beat();
-    const timer = window.setInterval(beat, 25_000);
+    const timer = window.setInterval(beat, 60_000);
     function handleVisibilityChange() {
       if (documentIsVisible()) void beat();
     }

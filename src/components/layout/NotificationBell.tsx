@@ -29,8 +29,7 @@ type NotificationCount = {
 
 async function fetchNotificationCount(): Promise<NotificationCount> {
   const response = await fetch("/api/community/notifications/count", {
-    headers: { accept: "application/json" },
-    cache: "no-store"
+    headers: { accept: "application/json" }
   });
   const payload = await response.json().catch(() => null) as { ok?: boolean; data?: Partial<NotificationCount> } | null;
   const count = payload?.ok === true && typeof payload.data?.count === "number" ? payload.data.count : null;
