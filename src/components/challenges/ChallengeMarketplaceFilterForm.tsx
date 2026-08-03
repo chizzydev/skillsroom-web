@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { type FormEvent, useEffect } from "react";
+import { trackWebAnalyticsEvent } from "@/lib/analytics-client";
 import type { Game, MatchChallengeSkillLevel } from "@/lib/match-room-api";
 
 export type ChallengeVisibilityFilter = "" | "public" | "private" | "mine";
@@ -75,17 +76,34 @@ export function ChallengeMarketplaceFilterForm({
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
-    router.push(marketplaceUrl({
+    const filters = {
       game_slug: clean(formData.get("game_slug")),
       platform: clean(formData.get("platform")),
       region: clean(formData.get("region")),
       skill_level: clean(formData.get("skill_level")),
       visibility: clean(formData.get("visibility"))
-    }));
+    };
+    trackWebAnalyticsEvent({
+      eventName: "challenge.filters_applied",
+      screen: "challenges",
+      path: "/challenges",
+      metadata: {
+        surface: "player_web",
+        source: "challenge_marketplace",
+        mode: filters.visibility ?? "all"
+      }
+    });
+    router.push(marketplaceUrl(filters));
     scrollToResults();
   };
 
   const handleClear = () => {
+    trackWebAnalyticsEvent({
+      eventName: "challenge.filters_cleared",
+      screen: "challenges",
+      path: "/challenges",
+      metadata: { surface: "player_web", source: "challenge_marketplace" }
+    });
     router.push(marketplaceUrl({}));
     scrollToResults();
   };

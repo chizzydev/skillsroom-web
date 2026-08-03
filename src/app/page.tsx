@@ -515,10 +515,6 @@ export default async function HomePage({ searchParams }: HomePageProps) {
                   <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Clear match setup</p>
                   <p className="mt-2 text-sm leading-6 text-slate-200">Before a match starts, both players can see the rules, the room status, and what happens next.</p>
                 </div>
-                <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                  <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Everything stays connected</p>
-                  <p className="mt-2 text-sm leading-6 text-slate-200">You can move from chat to room to result review without feeling lost or starting over.</p>
-                </div>
               </div>
             </div>
           </div>

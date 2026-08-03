@@ -253,7 +253,7 @@ export async function createMatchChallengeAction(formData: FormData) {
 
     challengeId = result.challenge.id;
     await trackServerAnalyticsEvent({
-      eventName: "challenge.created",
+      eventName: "challenge.posted",
       screen: "challenges",
       path: "/challenges",
       entityType: "match_challenge",

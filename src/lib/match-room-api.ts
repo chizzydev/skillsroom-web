@@ -1555,10 +1555,33 @@ export type CommunityLeaderboardResponse = {
   leaderboard: LeaderboardRow[];
 };
 
+export type CommunityPlayerRecentResult = {
+  match_room_id: string;
+  room_code: string;
+  title: string | null;
+  game_name: string | null;
+  result: "win" | "loss";
+  opponent_label: string;
+  completed_at: string;
+};
+
+export type CommunityPlayerTournamentPlacement = {
+  tournament_id: string;
+  slug: string;
+  title: string;
+  game_name: string | null;
+  rank: number | null;
+  points: string;
+  record: string;
+  completed_at: string | null;
+};
+
 export type CommunityPlayerRankingResponse = {
   player: LeaderboardRow;
   nearby: LeaderboardRow[];
   summary: CommunityLeaderboardSummary;
+  recent_results: CommunityPlayerRecentResult[];
+  tournament_placements: CommunityPlayerTournamentPlacement[];
 };
 
 export type CommunityPublicIdentity = {

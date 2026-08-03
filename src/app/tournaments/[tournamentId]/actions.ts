@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth-bridge";
+import { trackServerAnalyticsEvent } from "@/lib/analytics-server";
 import { storeEvidenceFile } from "@/lib/evidence-storage";
 import { isSupportedLivestreamProvider, validateLivestreamUrl } from "@/lib/livestream-url";
 import { manualCollectionAccount } from "@/lib/manual-payment";
@@ -44,6 +45,15 @@ export async function registerForTournamentAction(formData: FormData) {
       display_name: optionalString(formData, "display_name"),
       team_name: optionalString(formData, "team_name")
     });
+    await trackServerAnalyticsEvent({
+      eventName: "tournament.registered",
+      screen: "tournament_detail",
+      path: "/tournaments/[tournamentId]",
+      entityType: "tournament",
+      entityId: tournamentId,
+      tournamentId,
+      metadata: { surface: "player_web", source: "tournament_detail" }
+    });
   } catch (error) {
     redirect(`/tournaments/${tournamentId}?error=${encodeURIComponent(actionErrorMessage(error))}`);
   }
@@ -56,6 +66,15 @@ export async function checkInForTournamentAction(formData: FormData) {
 
   try {
     await checkInForTournament(tournamentId);
+    await trackServerAnalyticsEvent({
+      eventName: "tournament.check_in",
+      screen: "tournament_detail",
+      path: "/tournaments/[tournamentId]",
+      entityType: "tournament",
+      entityId: tournamentId,
+      tournamentId,
+      metadata: { surface: "player_web", source: "tournament_detail" }
+    });
   } catch (error) {
     redirect(`/tournaments/${tournamentId}?error=${encodeURIComponent(actionErrorMessage(error))}`);
   }
@@ -68,6 +87,15 @@ export async function payTournamentEntryWithBalanceAction(formData: FormData) {
 
   try {
     await payTournamentEntryWithBalance(tournamentId);
+    await trackServerAnalyticsEvent({
+      eventName: "tournament.entry_paid_balance",
+      screen: "tournament_detail",
+      path: "/tournaments/[tournamentId]",
+      entityType: "tournament",
+      entityId: tournamentId,
+      tournamentId,
+      metadata: { surface: "player_web", source: "skillsroom_balance" }
+    });
   } catch (error) {
     redirect(`/tournaments/${tournamentId}?error=${encodeURIComponent(actionErrorMessage(error))}`);
   }
@@ -101,6 +129,15 @@ export async function submitTournamentContributionAction(formData: FormData) {
       payout_bank_code: optionalString(formData, "payout_bank_code"),
       payout_note: optionalString(formData, "payout_note"),
       notes: optionalString(formData, "notes")
+    });
+    await trackServerAnalyticsEvent({
+      eventName: "tournament.funding_submitted",
+      screen: "tournament_detail",
+      path: "/tournaments/[tournamentId]",
+      entityType: "tournament",
+      entityId: tournamentId,
+      tournamentId,
+      metadata: { surface: "player_web", entry_type: "manual_transfer" }
     });
   } catch (error) {
     redirect(`/tournaments/${tournamentId}?error=${encodeURIComponent(actionErrorMessage(error))}`);

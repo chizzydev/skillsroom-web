@@ -3,8 +3,10 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState, type ComponentProps, type MouseEvent } from "react";
+import { trackWebAnalyticsEvent, type WebAnalyticsEventInput } from "@/lib/analytics-client";
 
 type PendingLinkProps = ComponentProps<typeof Link> & {
+  analytics?: WebAnalyticsEventInput;
   pendingLabel?: string;
 };
 
@@ -13,6 +15,7 @@ function isModifiedClick(event: MouseEvent<HTMLAnchorElement>) {
 }
 
 export function PendingLink({
+  analytics,
   children,
   className = "",
   href,
@@ -53,6 +56,9 @@ export function PendingLink({
       href={href}
       onClick={(event) => {
         onClick?.(event);
+        if (!event.defaultPrevented && analytics) {
+          trackWebAnalyticsEvent(analytics);
+        }
         if (event.defaultPrevented || isModifiedClick(event) || samePageHash) return;
         setPending(true);
       }}

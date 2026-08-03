@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { GoogleAuthButton } from "@/components/auth/GoogleAuthButton";
+import { PublicSharePanel } from "@/components/community/PublicSharePanel";
 import { AppShell } from "@/components/layout/AppShell";
 import { PlayerTrustCard } from "@/components/trust/PlayerTrustCard";
 import { Badge } from "@/components/ui/Badge";
@@ -15,6 +16,7 @@ import { Timeline } from "@/components/ui/Timeline";
 import { canAccessAdmin, getCurrentUser, getGoogleLinkStatus } from "@/lib/auth-bridge";
 import {
   formatEntryAmount,
+  getCommunityPlayerRanking,
   getMyCommunityClan,
   getMyReferralProgram,
   getPlayerTrustSummary,
@@ -30,6 +32,7 @@ import {
   type StreamingConnectedAccount,
   type UserGameAccount
 } from "@/lib/match-room-api";
+import { shareUrl } from "@/lib/share-cards";
 import {
   connectManualStreamingAccountAction,
   disconnectStreamingAccountAction,
@@ -151,6 +154,7 @@ export default async function ProfilePage({ searchParams }: ProfilePageProps) {
   let clanData: Awaited<ReturnType<typeof getMyCommunityClan>> | null = null;
   let referralData: Awaited<ReturnType<typeof getMyReferralProgram>> | null = null;
   let googleLinkStatus: Awaited<ReturnType<typeof getGoogleLinkStatus>> | null = null;
+  let publicRanking: Awaited<ReturnType<typeof getCommunityPlayerRanking>> | null = null;
   let streamingAccounts: StreamingConnectedAccount[] = [];
   let games: Game[] = [];
   let loadError: string | null = null;
@@ -167,7 +171,8 @@ export default async function ProfilePage({ searchParams }: ProfilePageProps) {
       catalogResult,
       gameAccountResult,
       payoutProfileResult,
-      settlementResult
+      settlementResult,
+      publicRankingResult
     ] = await Promise.allSettled([
       getPlayerTrustSummary(user.id),
       getMyCommunityClan(),
@@ -177,7 +182,8 @@ export default async function ProfilePage({ searchParams }: ProfilePageProps) {
       listGameCatalog(),
       getProfileGameAccounts(),
       getProfilePayoutProfile(),
-      getProfileSettlementHistory(10)
+      getProfileSettlementHistory(10),
+      getCommunityPlayerRanking(user.id)
     ]);
 
     if (trustResult.status === "fulfilled") trustData = trustResult.value.trust;
@@ -185,6 +191,7 @@ export default async function ProfilePage({ searchParams }: ProfilePageProps) {
     if (referralResult.status === "fulfilled") referralData = referralResult.value;
     if (googleResult.status === "fulfilled") googleLinkStatus = googleResult.value;
     if (streamingResult.status === "fulfilled") streamingAccounts = streamingResult.value.accounts;
+    if (publicRankingResult.status === "fulfilled") publicRanking = publicRankingResult.value;
     if (catalogResult.status === "fulfilled") games = catalogResult.value.games;
     profileData = {
       ...profileResult,
@@ -247,6 +254,16 @@ export default async function ProfilePage({ searchParams }: ProfilePageProps) {
       status: completion?.complete ? "done" as const : "pending" as const
     }
   ];
+  const primaryGameAccount = gameAccounts.find((account) => account.is_primary && account.status !== "disabled") ?? gameAccounts.find((account) => account.status !== "disabled") ?? null;
+  const profileIsPublic = profile?.visibility === "public";
+  const publicProfilePath = `/community/players/${encodeURIComponent(user.id)}`;
+  const publicProfileReady = Boolean(completion?.complete && profileIsPublic && publicRanking?.player);
+  const publicRankingPlayer = publicRanking?.player ?? null;
+  const publicProfileNeeds = [
+    completion?.complete ? null : "Complete your player setup.",
+    profileIsPublic ? null : "Set profile visibility to Public.",
+    publicRanking?.player ? null : "Build approved match or tournament history."
+  ].filter(Boolean);
 
   return (
     <AppShell active="profile">
@@ -364,6 +381,88 @@ export default async function ProfilePage({ searchParams }: ProfilePageProps) {
               />
               <Timeline items={completionItems} />
             </div>
+          </Panel>
+        </div>
+
+        <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1fr)_420px]">
+          <Panel>
+            <PanelHeader
+              eyebrow="Public Profile"
+              title="Profile preview"
+              description="This is the version of your competitive identity other players can open when your profile is public."
+              action={publicProfileReady ? (
+                <Link className="inline-flex min-h-10 items-center justify-center rounded-md bg-action px-4 text-sm font-black text-navy-950 shadow-action hover:bg-actionHover" href={publicProfilePath}>
+                  Open public profile
+                </Link>
+              ) : null}
+            />
+            <div className="grid gap-4 p-4 lg:grid-cols-[minmax(0,1fr)_18rem]">
+              <div className="rounded-lg border border-line bg-white p-5">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge tone={publicProfileReady ? "success" : "warning"}>{publicProfileReady ? "Shareable" : "Not public yet"}</Badge>
+                  {profileIsPublic ? <Badge tone="cyan">Public visibility</Badge> : <Badge tone="neutral">Private visibility</Badge>}
+                  {primaryGameAccount ? <Badge tone={accountTone(primaryGameAccount.status)}>{accountStatusLabel(primaryGameAccount.status)}</Badge> : null}
+                </div>
+                <h2 className="mt-4 text-2xl font-black leading-tight text-ink">{profile?.display_name || profile?.username || defaultUsername || "Skillsroom player"}</h2>
+                <p className="mt-1 font-mono text-xs font-bold text-muted">@{profile?.username || defaultUsername || "player"}</p>
+                <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                  <div className="rounded-md border border-line bg-surfaceHigh p-3">
+                    <p className="text-xs font-black uppercase tracking-[0.12em] text-muted">Record</p>
+                    <p className="mt-1 font-mono text-lg font-black text-ink">{profile?.wins ?? 0}-{profile?.losses ?? 0}</p>
+                  </div>
+                  <div className="rounded-md border border-line bg-surfaceHigh p-3">
+                    <p className="text-xs font-black uppercase tracking-[0.12em] text-muted">Rank</p>
+                    <p className="mt-1 font-mono text-lg font-black text-ink">{publicRanking?.player ? `#${publicRanking.player.rank}` : "Open"}</p>
+                  </div>
+                  <div className="rounded-md border border-line bg-surfaceHigh p-3">
+                    <p className="text-xs font-black uppercase tracking-[0.12em] text-muted">Main game</p>
+                    <p className="mt-1 truncate text-sm font-black text-ink">{publicRanking?.player.primary_game_name ?? (primaryGameAccount ? gameMap.get(primaryGameAccount.game_id)?.name ?? "Saved" : "Add handle")}</p>
+                  </div>
+                </div>
+                {primaryGameAccount ? (
+                  <p className="mt-4 text-sm font-bold leading-6 text-muted">
+                    Main game handle: <span className="font-mono text-ink">{primaryGameAccount.handle}</span>. Keep handles accurate so opponents can find you during rooms and events.
+                  </p>
+                ) : (
+                  <p className="mt-4 text-sm font-bold leading-6 text-muted">Add a primary game handle before expecting players to trust this profile.</p>
+                )}
+              </div>
+              <div className="rounded-lg border border-line bg-surfaceWarm p-5">
+                <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Readiness</p>
+                <h3 className="mt-2 text-lg font-black text-ink">{publicProfileReady ? "Ready to share" : "Make it shareable"}</h3>
+                <div className="mt-4 grid gap-2">
+                  {(publicProfileNeeds.length ? publicProfileNeeds : ["Your public profile is ready for sharing."]).map((item) => (
+                    <p className="rounded-md border border-line bg-white px-3 py-2 text-sm font-bold text-muted" key={item}>
+                      {item}
+                    </p>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </Panel>
+
+          <Panel>
+            {publicProfileReady && publicRankingPlayer ? (
+              <PublicSharePanel
+                eyebrow="Share"
+                panelTitle="Share your player profile"
+                panelDescription="Send your public record to group chats, opponents, teammates, or tournament hosts."
+                summary={`Rank #${publicRankingPlayer.rank} with ${publicRankingPlayer.wins}-${publicRankingPlayer.losses} record and ${publicRankingPlayer.completed_matches} settled matches.`}
+                title={`${profile?.display_name || profile?.username || "Skillsroom player"} on Skillsroom`}
+                url={shareUrl(publicProfilePath)}
+              />
+            ) : (
+              <div className="grid gap-4 p-4">
+                <div>
+                  <p className="text-xs font-black uppercase tracking-[0.12em] text-muted">Share</p>
+                  <h2 className="mt-2 text-lg font-black text-ink">Public share unlocks after readiness</h2>
+                  <p className="mt-1 text-sm leading-6 text-muted">Finish setup, set visibility to Public, and build approved activity so your profile has something trustworthy to show.</p>
+                </div>
+                <button className="inline-flex min-h-10 items-center justify-center rounded-md border border-line bg-white px-4 text-sm font-black text-ink hover:bg-surfaceHigh" data-profile-sections-toggle type="button">
+                  Open profile controls
+                </button>
+              </div>
+            )}
           </Panel>
         </div>
 

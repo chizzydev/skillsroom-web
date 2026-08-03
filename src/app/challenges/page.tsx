@@ -6,6 +6,7 @@ import { ChallengeMarketplaceFilterForm, type ChallengeVisibilityFilter } from "
 import { MotionSection, Reveal } from "@/components/motion";
 import { Badge } from "@/components/ui/Badge";
 import { Panel, PanelHeader } from "@/components/ui/Panel";
+import { PendingLink } from "@/components/ui/PendingLink";
 import { SubmitButton } from "@/components/ui/SubmitButton";
 import { TransientStatusBanner } from "@/components/ui/TransientStatusBanner";
 import { getCurrentUser } from "@/lib/auth-bridge";
@@ -14,6 +15,7 @@ import {
   displayEnumLabel,
   formatMinorMoney,
   getProfileMe,
+  getWalletOverview,
   listGameCatalog,
   listMatchChallenges,
   type Game,
@@ -116,6 +118,38 @@ function percentLabel(value: number | null) {
   return typeof value === "number" && Number.isFinite(value) ? `${value}%` : "New";
 }
 
+function totalPlayableBalance(wallet: Awaited<ReturnType<typeof getWalletOverview>> | null) {
+  const account = wallet?.account;
+  return (account?.available_balance_minor ?? 0) + (account?.winnings_balance_minor ?? 0);
+}
+
+function compactNairaAmount(amountMinor: number) {
+  return new Intl.NumberFormat("en-NG", {
+    maximumFractionDigits: 1,
+    notation: "compact"
+  }).format(amountMinor / 100);
+}
+
+function bestChallengeScore(challenge: MatchChallengeListRow, currentUserId: string) {
+  let score = 0;
+  if (challenge.creator_user_id !== currentUserId) score += 40;
+  if (challenge.visibility === "public") score += 15;
+  if (challenge.creator_profile_verified) score += 12;
+  if (challenge.creator_game_handle_verified) score += 10;
+  if (!challenge.creator_trust_warning) score += 8;
+  score += Math.min(challenge.creator_completed_matches, 20);
+  score += Math.max(0, 10 - challenge.creator_dispute_rate);
+  score += Math.max(0, 10 - challenge.creator_no_show_rate);
+  return score;
+}
+
+function recommendedChallenges(challenges: MatchChallengeListRow[], currentUserId: string) {
+  return [...challenges]
+    .filter((challenge) => challenge.creator_user_id !== currentUserId)
+    .sort((first, second) => bestChallengeScore(second, currentUserId) - bestChallengeScore(first, currentUserId))
+    .slice(0, 3);
+}
+
 function trustBadgesForChallenge(challenge: MatchChallengeListRow): PlayerTrustBadge[] {
   const badges: PlayerTrustBadge[] = [
     {
@@ -209,23 +243,30 @@ function modeLinkClass(active: boolean) {
 function ChallengeCard({
   challenge,
   currentUserId,
+  featured = false,
+  walletBalanceMinor,
   profileReady
 }: {
   challenge: MatchChallengeListRow;
   currentUserId: string;
+  featured?: boolean;
+  walletBalanceMinor: number | null;
   profileReady: boolean;
 }) {
   const isMine = challenge.creator_user_id === currentUserId;
   const entry = formatMinorMoney(challenge.currency, challenge.entry_amount_minor);
+  const walletCoversEntry = typeof walletBalanceMinor === "number" && walletBalanceMinor >= challenge.entry_amount_minor;
   const creatorRecord = `${challenge.creator_wins}W - ${challenge.creator_losses}L`;
   const trustBadges = trustBadgesForChallenge(challenge);
 
   return (
-    <article className="grid min-w-0 gap-4 border-b border-line bg-white p-4 last:border-b-0 md:grid-cols-[minmax(0,1fr)_auto] md:items-center md:p-5">
+    <article className={["grid min-w-0 gap-4 border-b border-line bg-white p-4 last:border-b-0 md:grid-cols-[minmax(0,1fr)_auto] md:items-center md:p-5", featured ? "bg-[linear-gradient(135deg,#ffffff_0%,#f1fcff_52%,#fffaf0_100%)]" : ""].join(" ")}>
       <div className="min-w-0">
         <div className="flex min-w-0 flex-wrap items-center gap-2">
+          {featured ? <Badge tone="success">Good match</Badge> : null}
           <Badge tone={isMine ? "warning" : "cyan"}>{isMine ? "Your challenge" : "Open challenge"}</Badge>
           {challenge.visibility === "private" ? <Badge tone="neutral">Private</Badge> : null}
+          {challenge.creator_trust_warning ? <Badge tone="warning">Extra review</Badge> : <Badge tone="success">Clear history</Badge>}
           <span className="rounded-full border border-line bg-surfaceHigh px-3 py-1 text-xs font-black text-muted">{timeLeft(challenge.expires_at)}</span>
         </div>
         <h2 className="mt-3 max-w-full text-xl font-black leading-tight text-ink [overflow-wrap:anywhere]">
@@ -238,6 +279,9 @@ function ChallengeCard({
           <div className="rounded-md border border-line bg-surfaceHigh p-3">
             <dt className="text-xs font-black uppercase tracking-[0.12em] text-muted">Entry</dt>
             <dd className="mt-1 font-black text-ink">{entry}</dd>
+            <dd className={["mt-1 text-xs font-bold", walletCoversEntry ? "text-success" : "text-muted"].join(" ")}>
+              {walletCoversEntry ? "Your balance can cover this entry." : "Top up or submit payment proof when needed."}
+            </dd>
           </div>
           <div className="rounded-md border border-line bg-surfaceHigh p-3">
             <dt className="text-xs font-black uppercase tracking-[0.12em] text-muted">Skill</dt>
@@ -268,12 +312,22 @@ function ChallengeCard({
       </div>
       <div className="grid min-w-[11rem] gap-2">
         {isMine ? (
-          <Link
+          <PendingLink
+            analytics={{
+              eventName: "challenge.viewed",
+              screen: "challenges",
+              path: "/challenges",
+              entityType: "match_challenge",
+              entityId: challenge.id,
+              matchRoomId: challenge.match_room_id,
+              metadata: { surface: "player_web", source: "your_challenge_card" }
+            }}
             className="inline-flex min-h-11 items-center justify-center rounded-md border border-line bg-white px-4 text-sm font-black text-ink hover:bg-surfaceHigh"
             href={`/matches/${challenge.match_room_id}`}
+            pendingLabel="Opening room..."
           >
             Open room
-          </Link>
+          </PendingLink>
         ) : (
           <form action={acceptMatchChallengeAction}>
             <input name="challenge_id" type="hidden" value={challenge.id} />
@@ -285,12 +339,22 @@ function ChallengeCard({
             />
           </form>
         )}
-        <Link
+        <PendingLink
+          analytics={{
+            eventName: "challenge.viewed",
+            screen: "challenges",
+            path: "/challenges",
+            entityType: "match_challenge",
+            entityId: challenge.id,
+            matchRoomId: challenge.match_room_id,
+            metadata: { surface: "player_web", source: featured ? "featured_challenge" : "marketplace_card" }
+          }}
           className="inline-flex min-h-11 items-center justify-center rounded-md border border-line bg-white px-4 text-sm font-black text-muted hover:bg-surfaceHigh hover:text-ink"
           href={`/matches/${challenge.match_room_id}`}
+          pendingLabel="Opening details..."
         >
           View details
-        </Link>
+        </PendingLink>
       </div>
     </article>
   );
@@ -313,12 +377,13 @@ export default async function ChallengesPage({ searchParams }: { searchParams: P
   let games: Game[] = [];
   let rulesets: MatchRuleset[] = [];
   let challenges: MatchChallengeListRow[] = [];
+  let wallet: Awaited<ReturnType<typeof getWalletOverview>> | null = null;
   let profileReady = false;
   let missingProfileItems: string[] = [];
   let loadError: string | null = null;
 
   try {
-    const [catalog, profile, challengePage] = await Promise.all([
+    const [catalog, profile, challengePage, walletResult] = await Promise.all([
       listGameCatalog(),
       getProfileMe("summary"),
       listMatchChallenges({
@@ -329,11 +394,13 @@ export default async function ChallengesPage({ searchParams }: { searchParams: P
         visibility: selectedVisibility,
         scope: selectedScope,
         limit: 36
-      })
+      }),
+      getWalletOverview("summary")
     ]);
     games = catalog.games;
     rulesets = catalog.rulesets;
     challenges = challengePage.challenges;
+    wallet = walletResult;
     profileReady = Boolean(profile.completion.complete);
     missingProfileItems = profile.completion.missing ?? [];
   } catch {
@@ -343,8 +410,13 @@ export default async function ChallengesPage({ searchParams }: { searchParams: P
   const selectedGame = games.find((game) => game.slug === (selectedGameSlug ?? "free-fire")) ?? games[0] ?? null;
   const selectedRulesets = selectedGame ? rulesets.filter((ruleset) => ruleset.game_id === selectedGame.id) : [];
   const selectedRuleset = selectedRulesets[0] ?? null;
-  const ownOpenCount = challenges.filter((challenge) => challenge.creator_user_id === user.id).length;
   const publicOpenCount = challenges.filter((challenge) => challenge.visibility === "public").length;
+  const walletBalanceMinor = wallet ? totalPlayableBalance(wallet) : null;
+  const walletBalanceLabel = wallet ? compactNairaAmount(walletBalanceMinor ?? 0) : "Unavailable";
+  const recommended = recommendedChallenges(challenges, user.id);
+  const featuredChallengeIds = new Set(recommended.map((challenge) => challenge.id));
+  const lowestEntryMinor = challenges.length ? Math.min(...challenges.map((challenge) => challenge.entry_amount_minor)) : null;
+  const walletReadyForSomeChallenge = typeof walletBalanceMinor === "number" && typeof lowestEntryMinor === "number" && walletBalanceMinor >= lowestEntryMinor;
   const activeMarketplaceFilters = [
     visibilityFilterLabel(selectedVisibilityFilter),
     selectedGameSlug ? games.find((game) => game.slug === selectedGameSlug)?.name ?? selectedGameSlug : null,
@@ -357,15 +429,23 @@ export default async function ChallengesPage({ searchParams }: { searchParams: P
     <AppShell active="challenges">
       <MotionSection className="grid min-w-0 max-w-full gap-6 overflow-hidden" variant="page">
         <MotionSection className="min-w-0 max-w-full overflow-hidden rounded-lg border border-navy-800 bg-navy-950 p-4 text-white shadow-panel sm:p-5 md:p-7" variant="hero">
-          <div className="flex min-w-0 flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+          <div className="flex min-w-0 flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
             <div className="min-w-0">
-              <Badge tone="cyan" className="border-cyan/30 bg-cyan/10 text-cyan">Challenge Marketplace</Badge>
+              <Badge tone="cyan" className="border-cyan/30 bg-cyan/10 text-cyan">Play now</Badge>
               <h1 className="mt-3 max-w-full text-3xl font-black leading-tight text-white [overflow-wrap:anywhere] sm:text-4xl lg:text-5xl">
-                Find a challenge to play now.
+                Pick the right challenge faster.
               </h1>
               <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-300 [overflow-wrap:anywhere] md:text-base">
-                Browse H2H challenges by game, entry, platform, region, skill level, and player trust. Create one for everyone or keep it private for a player you invite.
+                Compare entry, game, platform, region, skill level, and player trust before you accept. Post your own challenge when the right one is not open yet.
               </p>
+              <div className="mt-5 flex flex-wrap gap-2">
+                <Link className="inline-flex min-h-10 items-center justify-center rounded-md bg-action px-4 text-sm font-black text-navy-950 shadow-action hover:bg-actionHover" href="/challenges#challenge-results">
+                  Browse
+                </Link>
+                <Link className="inline-flex min-h-10 items-center justify-center rounded-md border border-white/15 bg-white/10 px-4 text-sm font-black text-white hover:bg-white/15" href="/challenges?mode=create">
+                  Post challenge
+                </Link>
+              </div>
             </div>
             <div className="grid w-full min-w-0 grid-cols-3 gap-2 lg:w-auto lg:min-w-[28rem]">
               <div className="min-w-0 rounded-md border border-white/10 bg-white/5 p-3">
@@ -377,12 +457,68 @@ export default async function ChallengesPage({ searchParams }: { searchParams: P
                 <p className="mt-1 truncate text-2xl font-black text-white">{publicOpenCount}</p>
               </div>
               <div className="min-w-0 rounded-md border border-white/10 bg-white/5 p-3">
-                <p className="truncate text-xs font-black uppercase tracking-[0.12em] text-slate-300">Yours</p>
-                <p className="mt-1 truncate text-2xl font-black text-white">{ownOpenCount}</p>
+                <p className="truncate text-xs font-black uppercase tracking-[0.12em] text-slate-300">Balance</p>
+                <p className="mt-1 truncate text-2xl font-black text-white">{walletBalanceLabel}</p>
               </div>
             </div>
           </div>
         </MotionSection>
+
+        <Reveal>
+          <Panel>
+            <div className="min-w-0 bg-[linear-gradient(135deg,#ecfeff_0%,#ffffff_55%,#fff7ed_100%)] p-4 lg:p-5">
+                <div className="flex min-w-0 items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Wallet readiness</p>
+                    <h2 className="mt-1 text-lg font-black text-ink">Approved balance: {walletBalanceLabel}</h2>
+                    <p className="mt-1 text-sm leading-6 text-muted">
+                      {walletReadyForSomeChallenge
+                        ? "Your approved balance can cover at least one open entry on this page."
+                        : "Use wallet top-up when you want approved balance ready before joining paid play."}
+                    </p>
+                  </div>
+                  <PendingLink
+                    analytics={{
+                      eventName: "wallet.cta_clicked",
+                      screen: "challenges",
+                      path: "/challenges",
+                      entityType: "wallet",
+                      metadata: { surface: "player_web", source: "challenge_wallet_readiness" }
+                    }}
+                    className="shrink-0 rounded-md bg-action px-4 py-3 text-sm font-black text-navy-950 shadow-action hover:bg-actionHover"
+                    href="/wallet"
+                    pendingLabel="Opening wallet..."
+                  >
+                    Wallet
+                  </PendingLink>
+                </div>
+            </div>
+          </Panel>
+        </Reveal>
+
+        {recommended.length ? (
+          <Reveal>
+            <Panel>
+              <PanelHeader
+                eyebrow="Featured"
+                title="Good matches on this board"
+                description="These challenges are open, not created by you, and have stronger trust signals from the data available."
+              />
+              <div className="divide-y divide-line">
+                {recommended.map((challenge) => (
+                  <ChallengeCard
+                    challenge={challenge}
+                    currentUserId={user.id}
+                    featured
+                    key={challenge.id}
+                    profileReady={profileReady}
+                    walletBalanceMinor={walletBalanceMinor}
+                  />
+                ))}
+              </div>
+            </Panel>
+          </Reveal>
+        ) : null}
 
         {(params.error || loadError) ? (
           <TransientStatusBanner clearKeys={["error"]} durationMs={12000} message={params.error ?? loadError ?? ""} />
@@ -502,7 +638,10 @@ export default async function ChallengesPage({ searchParams }: { searchParams: P
                   <div className="p-4">
                     <div className="rounded-md border border-dashed border-line bg-surfaceWarm p-6">
                       <h2 className="text-lg font-black text-ink">No active game available</h2>
-                      <p className="mt-2 text-sm leading-6 text-muted">A challenge needs an active game and ruleset before it can be posted.</p>
+                      <p className="mt-2 text-sm leading-6 text-muted">A challenge needs an active game and ruleset before it can be posted. Check back after new games are published.</p>
+                      <Link className="mt-4 inline-flex min-h-10 items-center justify-center rounded-md border border-line bg-white px-4 text-sm font-black text-ink hover:bg-surfaceHigh" href="/challenges">
+                        Browse challenges
+                      </Link>
                     </div>
                   </div>
                 )}
@@ -538,16 +677,47 @@ export default async function ChallengesPage({ searchParams }: { searchParams: P
                 {challenges.length ? (
                   <div className="divide-y divide-line">
                     {challenges.map((challenge) => (
-                      <ChallengeCard challenge={challenge} currentUserId={user.id} key={challenge.id} profileReady={profileReady} />
+                      <ChallengeCard
+                        challenge={challenge}
+                        currentUserId={user.id}
+                        featured={featuredChallengeIds.has(challenge.id)}
+                        key={challenge.id}
+                        profileReady={profileReady}
+                        walletBalanceMinor={walletBalanceMinor}
+                      />
                     ))}
                   </div>
                 ) : (
                   <div className="p-4">
-                    <div className="rounded-md border border-dashed border-line bg-surfaceWarm p-6">
+                    <div className="grid gap-4 rounded-md border border-dashed border-line bg-surfaceWarm p-6 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
+                      <div className="min-w-0">
                       <h2 className="text-lg font-black text-ink">No open challenges found</h2>
                       <p className="mt-2 text-sm leading-6 text-muted">
-                        Try clearing the filters or post a challenge with your preferred game, platform, region, and entry.
+                          Clear the filters, post the exact challenge you want, or prepare your wallet so you can accept quickly when a good match appears.
                       </p>
+                      </div>
+                      <div className="grid gap-2 sm:grid-cols-3 md:min-w-[28rem]">
+                        <Link className="inline-flex min-h-10 items-center justify-center rounded-md border border-line bg-white px-4 text-sm font-black text-ink hover:bg-surfaceHigh" href="/challenges#challenge-results">
+                          Clear filters
+                        </Link>
+                        <Link className="inline-flex min-h-10 items-center justify-center rounded-md bg-navy-900 px-4 text-sm font-black text-white hover:bg-navy-800" href="/challenges?mode=create">
+                          Post challenge
+                        </Link>
+                        <PendingLink
+                          analytics={{
+                            eventName: "wallet.cta_clicked",
+                            screen: "challenges",
+                            path: "/challenges",
+                            entityType: "wallet",
+                            metadata: { surface: "player_web", source: "challenge_empty_state" }
+                          }}
+                          className="inline-flex min-h-10 items-center justify-center rounded-md border border-line bg-white px-4 text-sm font-black text-ink hover:bg-surfaceHigh"
+                          href="/wallet"
+                          pendingLabel="Opening wallet..."
+                        >
+                          Wallet
+                        </PendingLink>
+                      </div>
                     </div>
                   </div>
                 )}

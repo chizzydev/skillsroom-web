@@ -25,8 +25,8 @@ export function MobileBottomNav({ active }: MobileBottomNavProps) {
         {mobileNavItems.map((item) => (
           <Link
             className={[
-              "grid min-h-[3.15rem] min-w-0 place-items-center rounded-xl px-1 text-center text-[0.62rem] font-black leading-tight sm:text-[0.68rem]",
-              item.key === active ? "bg-cyanSoft text-ink shadow-tight" : "text-muted"
+              "grid min-h-[3rem] min-w-0 place-items-center rounded-lg px-1 text-center text-[0.62rem] font-black leading-tight sm:text-[0.68rem]",
+              item.key === active ? "bg-cyanSoft/80 text-ink shadow-tight" : "text-muted"
             ].join(" ")}
             href={item.href}
             key={item.key}

@@ -127,6 +127,20 @@ function deltaLabel(current: number, previous?: number) {
 }
 
 function eventLabel(value: string) {
+  const labels: Record<string, string> = {
+    "challenge.accepted": "Challenge accepted",
+    "challenge.filters_applied": "Challenge filters applied",
+    "challenge.filters_cleared": "Challenge filters cleared",
+    "challenge.posted": "Challenge posted",
+    "challenge.viewed": "Challenge viewed",
+    "tournament.check_in": "Tournament check-in",
+    "tournament.entry_paid_balance": "Tournament entry paid from balance",
+    "tournament.funding_submitted": "Tournament payment proof submitted",
+    "tournament.opened": "Tournament opened",
+    "tournament.registered": "Tournament registration",
+    "wallet.cta_clicked": "Wallet button clicked"
+  };
+  if (labels[value]) return labels[value];
   return value
     .replaceAll("_", " ")
     .replaceAll(".", " / ")

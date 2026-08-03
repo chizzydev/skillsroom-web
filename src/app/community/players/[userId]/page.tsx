@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
+import { PublicSharePanel } from "@/components/community/PublicSharePanel";
 import { notFound } from "next/navigation";
 import { AppShell } from "@/components/layout/AppShell";
 import { Badge } from "@/components/ui/Badge";
@@ -8,7 +9,7 @@ import { DataTable } from "@/components/ui/DataTable";
 import { Panel, PanelHeader } from "@/components/ui/Panel";
 import { StatusPanel } from "@/components/ui/StatusPanel";
 import { ApiRequestError, getCommunityPlayerRanking, type LeaderboardRow } from "@/lib/match-room-api";
-import { shareMetadata } from "@/lib/share-cards";
+import { shareMetadata, shareUrl } from "@/lib/share-cards";
 
 type PlayerRankPageProps = {
   params: Promise<{ userId: string }>;
@@ -27,6 +28,31 @@ function cleanFilter(value?: string) {
 
 function displayName(row: LeaderboardRow) {
   return row.display_name || row.username;
+}
+
+function winRate(row: LeaderboardRow) {
+  const total = row.wins + row.losses;
+  if (!total) return "New";
+  return `${Math.round((row.wins / total) * 100)}%`;
+}
+
+function dateLabel(value: string | null) {
+  if (!value) return "Recently";
+  return new Date(value).toLocaleDateString("en-NG", { month: "short", day: "numeric", year: "numeric" });
+}
+
+function placementLabel(rank: number | null) {
+  if (!rank) return "Placed";
+  if (rank === 1) return "Winner";
+  if (rank === 2) return "Runner-up";
+  if (rank === 3) return "Podium";
+  return `#${rank}`;
+}
+
+function trustBadgeTone(player: LeaderboardRow) {
+  if (player.disputes_lost + player.no_shows > 0) return "warning" as const;
+  if (player.completed_matches >= 5 || player.podium_finishes > 0) return "success" as const;
+  return "cyan" as const;
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ userId: string }> }): Promise<Metadata> {
@@ -65,6 +91,15 @@ export default async function CommunityPlayerPage({ params, searchParams }: Play
   }
 
   const player = ranking.player;
+  const profilePath = `/community/players/${encodeURIComponent(userId)}`;
+  const recentResults = ranking.recent_results ?? [];
+  const tournamentPlacements = ranking.tournament_placements ?? [];
+  const publicBadges = [
+    { label: `Rank #${player.rank}`, tone: player.rank <= 3 ? "success" as const : "cyan" as const },
+    { label: `${winRate(player)} win rate`, tone: "success" as const },
+    { label: player.primary_game_name ?? "Multi-game", tone: "cyan" as const },
+    { label: player.disputes_lost + player.no_shows ? "Review history visible" : "Clean record", tone: trustBadgeTone(player) }
+  ];
 
   return (
     <AppShell active="community">
@@ -83,19 +118,24 @@ export default async function CommunityPlayerPage({ params, searchParams }: Play
                 </h1>
                 <p className="mt-2 font-mono text-sm font-bold text-slate-300">@{player.username}</p>
                 <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-300 md:text-base">
-                  This ranking is based on match history, reputation, tournament finishes, and trust penalties.
+                  Public competitor profile with record, main game, tournament placements, and trust signals from approved Skillsroom activity.
                 </p>
+                <div className="mt-5 flex flex-wrap gap-2">
+                  {publicBadges.map((badge) => (
+                    <Badge key={badge.label} tone={badge.tone}>{badge.label}</Badge>
+                  ))}
+                </div>
                 <div className="mt-8 grid gap-3 xl:max-w-2xl xl:grid-cols-3">
                   <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
-                    <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Visible score</p>
-                    <p className="mt-2 text-sm leading-6 text-slate-200">Public rank turns verified history into something players can quickly read and compare.</p>
+                    <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Main game</p>
+                    <p className="mt-2 text-sm leading-6 text-slate-200">{player.primary_game_name ?? "Competition history across Skillsroom games."}</p>
                   </div>
                   <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
-                    <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Verified play</p>
-                    <p className="mt-2 text-sm leading-6 text-slate-200">Wins, losses, tournament finishes, and trust penalties all influence the same public record.</p>
+                    <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Approved results</p>
+                    <p className="mt-2 text-sm leading-6 text-slate-200">Only finished rooms and tournament placements are used here.</p>
                   </div>
                   <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
-                    <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Scene context</p>
+                    <p className="font-mono text-[0.68rem] font-black uppercase tracking-[0.14em] text-cyan">Scene</p>
                     <p className="mt-2 text-sm leading-6 text-slate-200">Game focus and location filters help people understand the environment behind the ranking.</p>
                   </div>
                 </div>
@@ -121,6 +161,17 @@ export default async function CommunityPlayerPage({ params, searchParams }: Play
           <StatusPanel detail="Winner placements" label="Tournament Wins" tone="warning" value={player.tournament_wins.toString()} />
         </div>
 
+        <Panel>
+          <PublicSharePanel
+            eyebrow="Share profile"
+            panelTitle={`Share ${displayName(player)}'s player profile`}
+            panelDescription="Send this public profile to groups, teammates, and opponents with a clean Skillsroom preview."
+            summary={`Rank #${player.rank} with ${player.wins}-${player.losses} record, ${player.completed_matches} settled matches, and ${player.podium_finishes} podium finishes.`}
+            title={`${displayName(player)} on Skillsroom`}
+            url={shareUrl(profilePath)}
+          />
+        </Panel>
+
         <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
           <Panel>
             <PanelHeader eyebrow="Competition Stats" title="Public record" description="Only public, aggregate player stats are shown." />
@@ -133,12 +184,13 @@ export default async function CommunityPlayerPage({ params, searchParams }: Play
           </Panel>
 
           <Panel>
-            <PanelHeader eyebrow="Scene" title="Game and location" />
+            <PanelHeader eyebrow="Identity" title="Main game and scene" />
             <div className="grid gap-3 p-4 text-sm">
               <div className="rounded-2xl border border-line bg-surfaceWarm p-4">
                 <p className="text-xs font-black uppercase tracking-[0.18em] text-muted">Game</p>
                 <p className="mt-2 font-black text-ink">{player.primary_game_name ?? "Any game"}</p>
-                {player.primary_game_handle ? <p className="mt-1 font-mono text-xs font-bold text-muted">{player.primary_game_handle}</p> : null}
+                {player.primary_game_handle ? <p className="mt-1 font-mono text-xs font-bold text-muted">Game handle: {player.primary_game_handle}</p> : null}
+                <p className="mt-2 text-xs leading-5 text-muted">Only the public game handle needed for competition identity is shown.</p>
               </div>
               <div className="rounded-2xl border border-line bg-surfaceWarm p-4">
                 <p className="text-xs font-black uppercase tracking-[0.18em] text-muted">Location</p>
@@ -148,8 +200,77 @@ export default async function CommunityPlayerPage({ params, searchParams }: Play
           </Panel>
         </div>
 
+        <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
+          <Panel>
+            <PanelHeader eyebrow="Recent Results" title="Approved room results" description="Recent finished rooms where the result has passed review." />
+            {recentResults.length ? (
+              <div className="grid gap-3 p-4">
+                {recentResults.map((result) => (
+                  <Link
+                    className="grid gap-3 rounded-md border border-line bg-white p-4 transition hover:border-action hover:bg-surfaceHigh md:grid-cols-[auto_minmax(0,1fr)_auto] md:items-center"
+                    href={`/community/winners/matches/${encodeURIComponent(result.match_room_id)}`}
+                    key={result.match_room_id}
+                  >
+                    <Badge tone={result.result === "win" ? "success" : "neutral"}>{result.result === "win" ? "Win" : "Loss"}</Badge>
+                    <div className="min-w-0">
+                      <h2 className="truncate text-sm font-black text-ink">{result.title || result.room_code}</h2>
+                      <p className="mt-1 text-xs font-bold text-muted">{result.game_name ?? "Game"} against {result.opponent_label}</p>
+                    </div>
+                    <span className="text-xs font-black uppercase tracking-[0.12em] text-muted">{dateLabel(result.completed_at)}</span>
+                  </Link>
+                ))}
+              </div>
+            ) : (
+              <div className="p-4">
+                <div className="rounded-md border border-dashed border-line bg-surfaceWarm p-5">
+                  <h2 className="text-sm font-black text-ink">No approved room results yet</h2>
+                  <p className="mt-2 text-sm leading-6 text-muted">Finished room results will appear here after review.</p>
+                </div>
+              </div>
+            )}
+          </Panel>
+
+          <Panel>
+            <PanelHeader eyebrow="Placements" title="Tournament finishes" description="Completed event placements attached to this public profile." />
+            {tournamentPlacements.length ? (
+              <div className="grid gap-3 p-4">
+                {tournamentPlacements.map((placement) => (
+                  <Link
+                    className="rounded-md border border-line bg-white p-4 transition hover:border-action hover:bg-surfaceHigh"
+                    href={`/community/winners/tournaments/${encodeURIComponent(placement.tournament_id)}`}
+                    key={placement.tournament_id}
+                  >
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge tone={placement.rank === 1 ? "success" : placement.rank && placement.rank <= 3 ? "cyan" : "neutral"}>{placementLabel(placement.rank)}</Badge>
+                      {placement.game_name ? <Badge tone="neutral">{placement.game_name}</Badge> : null}
+                    </div>
+                    <h2 className="mt-3 text-sm font-black text-ink">{placement.title}</h2>
+                    <p className="mt-1 text-xs font-bold text-muted">Record {placement.record} / {placement.points} points</p>
+                  </Link>
+                ))}
+              </div>
+            ) : (
+              <div className="p-4">
+                <div className="rounded-md border border-dashed border-line bg-surfaceWarm p-5">
+                  <h2 className="text-sm font-black text-ink">No tournament placements yet</h2>
+                  <p className="mt-2 text-sm leading-6 text-muted">Completed tournament results will appear here after final placements are confirmed.</p>
+                </div>
+              </div>
+            )}
+          </Panel>
+        </div>
+
         <Panel>
-          <PanelHeader eyebrow="Nearby" title="Players around this rank" description="A compact view of the surrounding leaderboard positions." />
+          <PanelHeader
+            eyebrow="Nearby"
+            title="Players around this rank"
+            description="A compact view of the surrounding leaderboard positions."
+            action={(
+              <Link className="inline-flex min-h-10 items-center justify-center rounded-md border border-line bg-white px-4 text-sm font-black text-ink hover:bg-surfaceHigh" href="/community">
+                Open rankings
+              </Link>
+            )}
+          />
           {ranking.nearby.length ? (
             <DataTable
               columns={[
@@ -170,6 +291,17 @@ export default async function CommunityPlayerPage({ params, searchParams }: Play
               rows={ranking.nearby}
             />
           ) : null}
+        </Panel>
+
+        <Panel>
+          <PublicSharePanel
+            eyebrow="Share rankings"
+            panelTitle="Share the Skillsroom rankings"
+            panelDescription="Bring people back to the public board where this profile is ranked."
+            summary="Public player rankings with records, main games, tournament results, and trust signals."
+            title="Skillsroom Player Rankings"
+            url={shareUrl("/community")}
+          />
         </Panel>
       </section>
     </AppShell>

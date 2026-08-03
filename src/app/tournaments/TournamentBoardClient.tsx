@@ -73,6 +73,15 @@ const TournamentCard = memo(function TournamentCard({ tournament }: { tournament
           </span>
         </div>
         <PendingLink
+          analytics={{
+            eventName: "tournament.opened",
+            screen: "tournaments",
+            path: "/tournaments",
+            entityType: "tournament",
+            entityId: tournament.id,
+            tournamentId: tournament.id,
+            metadata: { surface: "player_web", source: "tournament_board" }
+          }}
           className="mt-3 block break-words text-xl font-black leading-tight text-ink [overflow-wrap:anywhere] hover:text-action"
           href={`/tournaments/${tournament.id}`}
           pendingLabel="Opening tournament..."
@@ -239,7 +248,20 @@ export function TournamentBoardClient({
                   key: "title",
                   label: "Tournament",
                   render: (row) => (
-                    <PendingLink className="font-black text-ink hover:text-action" href={`/tournaments/${row.id}`} pendingLabel="Opening tournament...">
+                    <PendingLink
+                      analytics={{
+                        eventName: "tournament.opened",
+                        screen: "tournaments",
+                        path: "/tournaments",
+                        entityType: "tournament",
+                        entityId: row.id,
+                        tournamentId: row.id,
+                        metadata: { surface: "player_web", source: "tournament_table" }
+                      }}
+                      className="font-black text-ink hover:text-action"
+                      href={`/tournaments/${row.id}`}
+                      pendingLabel="Opening tournament..."
+                    >
                       {row.title}
                     </PendingLink>
                   )
