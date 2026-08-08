@@ -68,9 +68,9 @@ export default async function AdminWalletPage({ searchParams }: { searchParams: 
   let loadError: string | null = null;
   try {
     const [topupResult, payoutResult, dashboardResult] = await Promise.all([
-      listWalletTopups("submitted"),
-      listWalletPayoutRequests("requested"),
-      getAdminWalletDashboard({ userId, matchRoomId, tournamentId, limit: 100 })
+      listWalletTopups("submitted", 25),
+      listWalletPayoutRequests("requested", 25),
+      getAdminWalletDashboard({ userId, matchRoomId, tournamentId, limit: 50 })
     ]);
     topups = topupResult.topups;
     payoutRequests = payoutResult.payout_requests;

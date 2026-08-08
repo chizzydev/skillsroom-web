@@ -60,7 +60,7 @@ export function NotificationBell({ initialUnread }: NotificationBellProps) {
       pending_dm_requests: 0,
       count: initialCount
     },
-    refetchInterval: 120_000,
+    refetchInterval: 180_000,
     refetchIntervalInBackground: false,
     staleTime: 60_000
   });

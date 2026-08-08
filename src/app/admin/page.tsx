@@ -205,7 +205,7 @@ export default async function AdminPage({
 
   if (canSeeFunding) {
     try {
-      const fundingResult = await listFundingSubmissions("submitted");
+      const fundingResult = await listFundingSubmissions("submitted", 12);
       funding = fundingResult.submissions;
     } catch {
       loadErrors.push("Funding queue could not be loaded.");
@@ -214,7 +214,7 @@ export default async function AdminPage({
 
   if (canSeeResults) {
     try {
-      const resultClaims = await listResultClaims("submitted");
+      const resultClaims = await listResultClaims("submitted", 12);
       results = resultClaims.claims;
     } catch {
       loadErrors.push("Result review queue could not be loaded.");
@@ -224,9 +224,9 @@ export default async function AdminPage({
   if (canSeeSettlements) {
     try {
       const [settlementResult, payoutResult, refundResult] = await Promise.all([
-        listSettlements("payout_pending"),
-        listPayouts("queued"),
-        listRefunds("queued")
+        listSettlements("payout_pending", 12),
+        listPayouts("queued", 12),
+        listRefunds("queued", 12)
       ]);
       settlements = settlementResult.settlements;
       payouts = payoutResult.payouts;

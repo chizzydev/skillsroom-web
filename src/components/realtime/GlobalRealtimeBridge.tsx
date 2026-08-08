@@ -226,7 +226,17 @@ export function GlobalRealtimeBridge({ enabled }: GlobalRealtimeBridgeProps) {
     let source: EventSource | null = null;
     let closed = false;
 
+    const disconnect = () => {
+      if (retryTimer) {
+        window.clearTimeout(retryTimer);
+        retryTimer = null;
+      }
+      source?.close();
+      source = null;
+    };
+
     const connect = () => {
+      if (closed || document.visibilityState === "hidden") return;
       source?.close();
       const url = new URL("/api/community/realtime/stream", window.location.origin);
       if (cursorRef.current) url.searchParams.set("cursor", cursorRef.current);
@@ -245,23 +255,31 @@ export function GlobalRealtimeBridge({ enabled }: GlobalRealtimeBridgeProps) {
         retryTimer = window.setTimeout(() => {
           retryTimer = null;
           if (!closed) connect();
-        }, 4_000);
+        }, 15_000);
       });
     };
 
-    document.addEventListener("visibilitychange", listeners.visibility);
+    const handleVisibilityChange = () => {
+      listeners.visibility();
+      if (document.visibilityState === "hidden") {
+        disconnect();
+        return;
+      }
+      if (!source) connect();
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
     window.addEventListener("focus", listeners.focus);
     document.addEventListener("focusout", listeners.focusout);
     connect();
 
     return () => {
       closed = true;
-      if (retryTimer) window.clearTimeout(retryTimer);
+      disconnect();
       if (refreshTimerRef.current) window.clearTimeout(refreshTimerRef.current);
-      document.removeEventListener("visibilitychange", listeners.visibility);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
       window.removeEventListener("focus", listeners.focus);
       document.removeEventListener("focusout", listeners.focusout);
-      source?.close();
     };
   }, [enabled, handleRealtimeEvent, listeners]);
 
