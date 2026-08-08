@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Toast } from "@/components/ui/Toast";
 import { describeRealtimeEvent, type RealtimeEvent, type RealtimeToastTone } from "./realtimeEventPresentation";
-import { dispatchRealtimePatch, type RealtimePatchTarget } from "./realtimePatches";
+import { realtimeEventEventName, type RealtimePatchDetail, type RealtimePatchTarget } from "./realtimePatches";
 import { realtimeEventRoomId, realtimeEventTournamentId } from "./webRealtimeInvalidation";
 
 type LiveUpdateStreamProps = {
@@ -125,13 +125,11 @@ export function LiveUpdateStream({
   const [patchNotice, setPatchNotice] = useState<PatchNotice | null>(null);
   const [showRefreshFallback, setShowRefreshFallback] = useState(false);
   const dirtyRef = useRef(false);
-  const hiddenPatchEventsRef = useRef<RealtimeEvent[]>([]);
+  const hiddenPatchEventsRef = useRef<RealtimePatchDetail[]>([]);
   const hiddenEventsRef = useRef(0);
   const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fallbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const clearNoticeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const connectedOnceRef = useRef(false);
-  const cursorRef = useRef<string | null>(null);
   const seenEventIdsRef = useRef<Set<string>>(new Set());
   const toastTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
@@ -176,16 +174,16 @@ export function LiveUpdateStream({
       clearNoticeTimerRef.current = null;
     };
 
-    const patch = (event: RealtimeEvent) => {
+    const patch = (detail: RealtimePatchDetail) => {
+      const event = detail.event;
       if (document.visibilityState === "hidden") {
         dirtyRef.current = true;
-        hiddenPatchEventsRef.current = [event, ...hiddenPatchEventsRef.current].slice(0, 10);
+        hiddenPatchEventsRef.current = [detail, ...hiddenPatchEventsRef.current].slice(0, 10);
         return;
       }
 
       if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
       clearFallbackTimers();
-      const detail = dispatchRealtimePatch(event);
       setPatchNotice(patchNoticeFor(event, detail.target, detail.handled));
       setShowRefreshFallback(!detail.handled);
       refreshTimerRef.current = setTimeout(() => {
@@ -205,8 +203,8 @@ export function LiveUpdateStream({
     const onVisibilityChange = () => {
       if (document.visibilityState === "visible" && dirtyRef.current) {
         dirtyRef.current = false;
-        for (const event of hiddenPatchEventsRef.current.reverse()) {
-          patch(event);
+        for (const detail of hiddenPatchEventsRef.current.reverse()) {
+          patch(detail);
         }
         hiddenPatchEventsRef.current = [];
       }
@@ -227,49 +225,38 @@ export function LiveUpdateStream({
     };
 
     document.addEventListener("visibilitychange", onVisibilityChange);
+    setStatus("live");
 
-    const url = new URL("/api/community/realtime/stream", window.location.origin);
-    if (cursorRef.current) url.searchParams.set("cursor", cursorRef.current);
-    const source = new EventSource(`${url.pathname}${url.search}`);
-    fallbackTimerRef.current = setTimeout(() => {
-      if (!connectedOnceRef.current) setShowRefreshFallback(true);
-    }, 7000);
-    source.addEventListener("open", () => {
-      connectedOnceRef.current = true;
-      setStatus("live");
-      setShowRefreshFallback(false);
-      if (fallbackTimerRef.current) {
-        clearTimeout(fallbackTimerRef.current);
-        fallbackTimerRef.current = null;
-      }
-    });
-    source.addEventListener("error", () => {
-      setStatus(connectedOnceRef.current ? "reconnecting" : "idle");
-      setShowRefreshFallback(true);
-    });
-    source.addEventListener("realtime-event", (event) => {
+    const onSharedRealtimeEvent = (event: Event) => {
+      const detail = (event as CustomEvent<RealtimePatchDetail>).detail;
+      const payload = detail.event;
       try {
-        const payload = JSON.parse((event as MessageEvent).data) as RealtimeEvent;
-        if (payload.id) cursorRef.current = payload.id;
-        if (seenEventIdsRef.current.has(payload.id)) return;
-        seenEventIdsRef.current.add(payload.id);
+        if (payload.id) {
+          const seenKey = `${payload.id}:${payload.event_type}`;
+          if (seenEventIdsRef.current.has(seenKey)) return;
+          seenEventIdsRef.current.add(seenKey);
+        }
         if (!matchesPrefix(payload.event_type, prefixes)) return;
         if (!eventBelongsToRoom(payload, matchRoomId)) return;
         if (!eventBelongsToTournament(payload, tournamentId)) return;
         showToast(payload);
-        patch(payload);
+        patch(detail);
       } catch {
-        // Ignore malformed events and let the stream continue.
+        // Ignore malformed broadcast detail and keep listening to the shell stream.
       }
-    });
+      setStatus("live");
+      setShowRefreshFallback(false);
+    };
+
+    window.addEventListener(realtimeEventEventName, onSharedRealtimeEvent);
 
     return () => {
       document.removeEventListener("visibilitychange", onVisibilityChange);
+      window.removeEventListener(realtimeEventEventName, onSharedRealtimeEvent);
       if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
       clearFallbackTimers();
       for (const timer of toastTimers.values()) clearTimeout(timer);
       toastTimers.clear();
-      source.close();
     };
   }, [isEnabled, matchRoomId, prefixes, refreshOnPatch, refreshTarget, router, tournamentId]);
 

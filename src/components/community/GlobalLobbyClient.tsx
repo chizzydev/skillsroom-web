@@ -12,6 +12,7 @@ import { ChatSearchPanel } from "./ChatSearchPanel";
 import { ChatSideRail } from "./ChatSideRail";
 import { ChatThreadPanel } from "./ChatThreadPanel";
 import { ChatVirtualThread } from "./ChatVirtualThread";
+import { realtimeEventEventName, type RealtimePatchDetail } from "@/components/realtime/realtimePatches";
 import { Toast } from "@/components/ui/Toast";
 import { useStableCallback } from "./chat-hooks";
 import { useChatStore } from "./chat-store";
@@ -138,7 +139,6 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
   const [notice, setNotice] = useState<ChatActionNotice | null>(null);
   const [settingsNotice, setSettingsNotice] = useState<{ tone: "success" | "danger" | "warning"; message: string } | null>(null);
   const [streamStatus, setStreamStatus] = useState<"starting" | "live" | "reconnecting">("starting");
-  const [streamReconnectKey, setStreamReconnectKey] = useState(0);
   const [showChannelInfo, setShowChannelInfo] = useState(false);
   const [infoTab, setInfoTab] = useState<ChatInfoTab>("members");
   const [mediaByChannel, setMediaByChannel] = useState<Record<string, MediaPage>>({});
@@ -905,19 +905,16 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
     const markOffline = () => setStreamStatus("reconnecting");
     const markOnline = () => {
       setStreamStatus("reconnecting");
-      setStreamReconnectKey((current) => current + 1);
     };
-    const source = new EventSource("/api/community/realtime/stream");
-    source.addEventListener("open", () => setStreamStatus("live"));
-    source.addEventListener("error", () => setStreamStatus("reconnecting"));
     window.addEventListener("offline", markOffline);
     window.addEventListener("online", markOnline);
     const onlineCheck = window.setInterval(() => {
       if (!navigator.onLine) setStreamStatus("reconnecting");
     }, 750);
-    source.addEventListener("realtime-event", (event) => {
+    const onRealtimeEvent = (event: Event) => {
       try {
-        const realtimeEvent = JSON.parse((event as MessageEvent).data) as RealtimeEvent;
+        const realtimeEvent = (event as CustomEvent<RealtimePatchDetail>).detail.event as RealtimeEvent;
+        setStreamStatus("live");
         if (realtimeEvent.event_type === "chat.message.created" || realtimeEvent.event_type === "chat.system_message.created") {
           const channelSlug = realtimeEvent.payload.channel_slug;
           const message = realtimeEvent.payload.message;
@@ -1055,17 +1052,18 @@ export function GlobalLobbyClient({ channels, currentUserId, currentUserRole, in
         }
         filterChannelMessages(channelSlug, (message) => message.id !== messageId);
       } catch {
-        // Keep the lobby stream alive when a non-chat event has an unexpected payload.
+        // Keep the lobby listener alive when a non-chat event has an unexpected payload.
       }
-    });
+    };
+    window.addEventListener(realtimeEventEventName, onRealtimeEvent);
 
     return () => {
       window.removeEventListener("offline", markOffline);
       window.removeEventListener("online", markOnline);
+      window.removeEventListener(realtimeEventEventName, onRealtimeEvent);
       window.clearInterval(onlineCheck);
-      source.close();
     };
-  }, [filterChannelMessages, markRead, patchChannelBySlug, patchChannelPresence, patchMessage, streamReconnectKey, updateMessage, upsertMessage]);
+  }, [filterChannelMessages, markRead, patchChannelBySlug, patchChannelPresence, patchMessage, updateMessage, upsertMessage]);
 
   function uploadAttachment(file: File, existingLocalId?: string) {
     const localId = existingLocalId ?? crypto.randomUUID();

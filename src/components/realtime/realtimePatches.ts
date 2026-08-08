@@ -20,6 +20,7 @@ export type RealtimePatchDetail = {
 };
 
 export const realtimePatchEventName = "skillsroom:realtime-patch";
+export const realtimeEventEventName = "skillsroom:realtime-event";
 
 export function classifyRealtimePatch(event: RealtimeEvent): RealtimePatchTarget {
   const type = event.event_type;
@@ -51,4 +52,8 @@ export function dispatchRealtimePatch(event: RealtimeEvent): RealtimePatchDetail
 
   window.dispatchEvent(new CustomEvent<RealtimePatchDetail>(realtimePatchEventName, { detail }));
   return detail;
+}
+
+export function dispatchRealtimeEvent(detail: RealtimePatchDetail) {
+  window.dispatchEvent(new CustomEvent<RealtimePatchDetail>(realtimeEventEventName, { detail }));
 }

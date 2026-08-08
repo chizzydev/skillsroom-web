@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { AccountMenu } from "./AccountMenu";
+import { GlobalRealtimeBridge } from "@/components/realtime/GlobalRealtimeBridge";
 import { GlobalActionFeedback } from "@/components/ui/GlobalActionFeedback";
 import { canUseAdminSection, getCurrentUser, type AdminSection } from "@/lib/auth-bridge";
 
@@ -89,6 +90,7 @@ export async function AdminShell({ active, children }: AdminShellProps) {
         </div>
       </aside>
       <section className="min-w-0">
+        <GlobalRealtimeBridge enabled={Boolean(user)} />
         <header className="sticky top-0 z-30 hidden h-16 items-center justify-between border-b border-line bg-white/95 px-6 backdrop-blur lg:flex">
           <div>
             <p className="font-mono text-xs font-bold uppercase tracking-[0.14em] text-muted">{roleLabel(user?.role)}</p>

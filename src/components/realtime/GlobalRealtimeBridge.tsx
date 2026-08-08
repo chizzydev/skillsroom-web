@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { usePathname, useRouter } from "next/navigation";
 import type { RealtimeEvent } from "./realtimeEventPresentation";
-import { classifyRealtimePatch, dispatchRealtimePatch, type RealtimePatchTarget } from "./realtimePatches";
+import { classifyRealtimePatch, dispatchRealtimeEvent, dispatchRealtimePatch, type RealtimePatchTarget } from "./realtimePatches";
 import { invalidateQueriesForRealtimeEvent, realtimeEventRoomId, realtimeEventTournamentId } from "./webRealtimeInvalidation";
 
 type GlobalRealtimeBridgeProps = {
@@ -195,6 +195,7 @@ export function GlobalRealtimeBridge({ enabled }: GlobalRealtimeBridgeProps) {
     seenEventIdsRef.current.add(eventKey);
 
     const detail = dispatchRealtimePatch(event);
+    dispatchRealtimeEvent(detail);
     invalidateQueriesForRealtimeEvent(queryClient, event);
     const preferences = preferencesQuery.data?.preferences;
     if (shouldPlaySoundForRealtimeEvent(event, pathnameRef.current, preferencesQuery.data?.currentUserId) && document.visibilityState === "visible" && preferences?.in_app_enabled && preferences.in_app_sound_enabled) {
