@@ -24,7 +24,7 @@ const footerLinks = [
   { label: "Terms", href: "/terms" },
   { label: "Privacy", href: "/privacy" },
   { label: "Support", href: "/support" },
-  { label: "Android app", href: "/downloads/skillsroom-android-v1.0.4-arm64.apk", download: true }
+  { label: "Android app", href: "/downloads/skillsroom-android-v1.0.5-arm64.apk", download: true }
 ] as const;
 
 export async function AppShell({ active, children }: AppShellProps) {
