@@ -12,6 +12,12 @@ import {
 export const dynamic = "force-dynamic";
 
 const statuses: ResultClaimStatus[] = ["submitted", "opponent_agreed", "opponent_disputed"];
+const CLAIMS_PER_STATUS = 12;
+const ROOM_DETAILS_LIMIT = 18;
+const LIVE_HEADERS = {
+  "Cache-Control": "private, max-age=10, stale-while-revalidate=30",
+  Vary: "Cookie"
+};
 
 export async function GET() {
   const user = await getCurrentUser();
@@ -20,9 +26,11 @@ export async function GET() {
   }
 
   try {
-    const groups = await Promise.all(statuses.map(async (status) => ({ status, rows: (await listResultClaims(status)).claims })));
+    const groups = await Promise.all(
+      statuses.map(async (status) => ({ status, rows: (await listResultClaims(status, CLAIMS_PER_STATUS)).claims }))
+    );
     const claims = groups.flatMap((group) => group.rows);
-    const roomIds = Array.from(new Set(claims.map((claim) => claim.match_room_id)));
+    const roomIds = Array.from(new Set(claims.map((claim) => claim.match_room_id))).slice(0, ROOM_DETAILS_LIMIT);
     const roomResultEntries = await Promise.all(
       roomIds.map(async (roomId) => {
         try {
@@ -49,16 +57,19 @@ export async function GET() {
       return next;
     }, {});
 
-    return NextResponse.json({
-      ok: true,
-      data: {
-        claims,
-        evidence_by_claim_id: evidenceByClaimId,
-        proof_requests_by_claim_id: proofRequestsByClaimId,
-        proof_request_responses_by_claim_id: proofRequestResponsesByClaimId,
-        loaded_at: new Date().toISOString()
-      }
-    });
+    return NextResponse.json(
+      {
+        ok: true,
+        data: {
+          claims,
+          evidence_by_claim_id: evidenceByClaimId,
+          proof_requests_by_claim_id: proofRequestsByClaimId,
+          proof_request_responses_by_claim_id: proofRequestResponsesByClaimId,
+          loaded_at: new Date().toISOString()
+        }
+      },
+      { headers: LIVE_HEADERS }
+    );
   } catch {
     return NextResponse.json({ ok: false, error: "RESULT_QUEUE_UNAVAILABLE" }, { status: 502 });
   }

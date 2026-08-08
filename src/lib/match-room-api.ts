@@ -3069,9 +3069,9 @@ export function submitTournamentContribution(
   );
 }
 
-export function listTournamentContributions(status = "submitted") {
+export function listTournamentContributions(status = "submitted", limit?: number) {
   return apiRequest<{ contributions: TournamentPrizeContribution[] }>(
-    `/tournaments/admin/contributions?status=${encodeURIComponent(status)}`
+    `/tournaments/admin/contributions${queryString({ status, limit })}`
   );
 }
 
@@ -3237,13 +3237,13 @@ export function reserveTournamentRefunds(
   );
 }
 
-export function listTournamentSettlements(status?: string) {
-  const query = status ? `?status=${encodeURIComponent(status)}` : "";
+export function listTournamentSettlements(status?: string, limit?: number) {
+  const query = queryString({ status, limit });
   return apiRequest<{ settlements: TournamentSettlement[] }>(`/admin/settlements/tournament-settlements${query}`);
 }
 
-export function listTournamentPayouts(status?: string) {
-  const query = status ? `?status=${encodeURIComponent(status)}` : "";
+export function listTournamentPayouts(status?: string, limit?: number) {
+  const query = queryString({ status, limit });
   return apiRequest<{ payouts: TournamentPayout[] }>(`/admin/settlements/tournament-payouts${query}`);
 }
 
@@ -3293,8 +3293,8 @@ export function updateTournamentPayoutInstructions(
   );
 }
 
-export function listTournamentRefunds(status?: string) {
-  const query = status ? `?status=${encodeURIComponent(status)}` : "";
+export function listTournamentRefunds(status?: string, limit?: number) {
+  const query = queryString({ status, limit });
   return apiRequest<{ refunds: TournamentRefund[] }>(`/admin/settlements/tournament-refunds${query}`);
 }
 
@@ -3558,9 +3558,9 @@ export function payRoomWithBalance(matchRoomId: string) {
   );
 }
 
-export function listFundingSubmissions(status: ManualFundingSubmissionStatus = "submitted") {
+export function listFundingSubmissions(status: ManualFundingSubmissionStatus = "submitted", limit?: number) {
   return apiRequest<{ submissions: ManualFundingSubmission[] }>(
-    `/admin/funding/submissions?status=${encodeURIComponent(status)}`
+    `/admin/funding/submissions${queryString({ status, limit })}`
   );
 }
 
@@ -3628,13 +3628,13 @@ export function requestWalletPayout(input: {
   });
 }
 
-export function listWalletTopups(status: WalletTopupStatus = "submitted") {
-  return apiRequest<{ topups: WalletTopup[] }>(`/admin/wallet/topups?status=${encodeURIComponent(status)}`);
+export function listWalletTopups(status: WalletTopupStatus = "submitted", limit?: number) {
+  return apiRequest<{ topups: WalletTopup[] }>(`/admin/wallet/topups${queryString({ status, limit })}`);
 }
 
-export function listWalletPayoutRequests(status: WalletPayoutRequestStatus = "requested") {
+export function listWalletPayoutRequests(status: WalletPayoutRequestStatus = "requested", limit?: number) {
   return apiRequest<{ payout_requests: WalletPayoutRequest[] }>(
-    `/admin/wallet/payout-requests?status=${encodeURIComponent(status)}`
+    `/admin/wallet/payout-requests${queryString({ status, limit })}`
   );
 }
 
@@ -3778,9 +3778,9 @@ export function respondToResultProofRequest(
   });
 }
 
-export function listResultClaims(status: ResultClaimStatus = "submitted") {
+export function listResultClaims(status: ResultClaimStatus = "submitted", limit?: number) {
   return apiRequest<{ claims: MatchResultClaim[] }>(
-    `/admin/results/claims?status=${encodeURIComponent(status)}`
+    `/admin/results/claims${queryString({ status, limit })}`
   );
 }
 
@@ -3806,9 +3806,10 @@ export function requestMoreResultProof(
   });
 }
 
-export function listSettlements(status?: SettlementStatus) {
-  const query = status ? `?status=${encodeURIComponent(status)}` : "";
-  return apiRequest<{ settlements: MatchSettlement[] }>(`/admin/settlements/settlements${query}`);
+export function listSettlements(status?: SettlementStatus, limit?: number) {
+  return apiRequest<{ settlements: MatchSettlement[] }>(
+    `/admin/settlements/settlements${queryString({ status, limit })}`
+  );
 }
 
 export function reserveSettlement(input: { match_room_id: string; notes?: string; stepUpToken: string }) {
@@ -3819,9 +3820,8 @@ export function reserveSettlement(input: { match_room_id: string; notes?: string
   });
 }
 
-export function listPayouts(status?: PayoutStatus) {
-  const query = status ? `?status=${encodeURIComponent(status)}` : "";
-  return apiRequest<{ payouts: MatchPayout[] }>(`/admin/settlements/payouts${query}`);
+export function listPayouts(status?: PayoutStatus, limit?: number) {
+  return apiRequest<{ payouts: MatchPayout[] }>(`/admin/settlements/payouts${queryString({ status, limit })}`);
 }
 
 export function completePayout(
@@ -3867,9 +3867,8 @@ export function updatePayoutInstructions(
   });
 }
 
-export function listRefunds(status?: RefundStatus) {
-  const query = status ? `?status=${encodeURIComponent(status)}` : "";
-  return apiRequest<{ refunds: MatchRefund[] }>(`/admin/settlements/refunds${query}`);
+export function listRefunds(status?: RefundStatus, limit?: number) {
+  return apiRequest<{ refunds: MatchRefund[] }>(`/admin/settlements/refunds${queryString({ status, limit })}`);
 }
 
 export function reserveRefunds(input: { match_room_id: string; reason: string; stepUpToken: string }) {
